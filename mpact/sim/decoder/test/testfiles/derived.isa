@@ -1,0 +1,191 @@
+// Copyright 2023 Google LLC
+// 
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+// 
+//     https://www.apache.org/licenses/LICENSE-2.0
+// 
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// First disasm field is 18 char wide and left justified.
+disasm widths = {-18};
+
+int global_latency = 0;
+
+isa RiscV32I {
+  namespace mpact::sim::riscv::rv32;
+  slots { riscv32i; }
+}
+
+#include "mpact/sim/decoder/test/testfiles/base.isa"
+
+slot riscv32i : riscv32i_base {
+  includes {
+    #include "mpact/sim/decoder/test/testfiles/riscv32i.h"
+  }
+  default size = 4;
+  default latency = global_latency;
+  default opcode =
+    disasm: "Illegal instruction at 0x%(@:08x)",
+    semfunc: "&SomeFunction";
+  resources TwoOp = { next_pc, rs1 : rd[..rd]};
+  resources ThreeOp = { next_pc, rs1, rs2 : rd[..rd]};
+  opcodes {
+    addi = override,
+      resources: TwoOp,
+      disasm: "addi", "%rd, %rs1, %I_imm12",
+      semfunc: "&SomeFunction";
+    slti = override,
+      resources: TwoOp,
+      disasm: "slti", "%rd, %rs1, %I_imm12",
+      semfunc: "&SomeFunction";
+    sltiu = override,
+      resources: TwoOp,
+      disasm: "sltiu", "%rd, %rs1, %I_imm12",
+      semfunc: "&SomeFunction";
+    andi = override,
+      resources: TwoOp,
+      disasm: "andi", "%rd, %rs1, %I_imm12",
+      semfunc: "&SomeFunction";
+    ori = override,
+      resources: TwoOp,
+      disasm: "ori", "%rd, %rs1, %I_imm12",
+      semfunc: "&SomeFunction";
+    xori = override,
+      resources: TwoOp,
+      disasm: "xori", "%rd, %rs1, %I_imm12",
+      semfunc: "&SomeFunction";
+    slli = override,
+      resources: TwoOp,
+      disasm: "slli", "%rd, %rs1, 0x%(I_uimm5:x)",
+      semfunc: "&SomeFunction";
+    srli = override,
+      resources: TwoOp,
+      disasm: "srli", "%rd  %rs1, 0x%(I_uimm5:x)",
+      semfunc: "&SomeFunction";
+    srai = override,
+      resources: TwoOp,
+      disasm: "srai", "%rd, %rs1, 0x%(I_uimm5:x)",
+      semfunc: "&SomeFunction";
+    lui = override,
+      disasm: "lui", "%rd, 0x%(U_imm20:08x)",
+      semfunc: "&SomeFunction";
+    auipc = override,
+      disasm: "auipc", "%rd, 0x%(U_imm20:08x)",
+      semfunc: "&SomeFunction";
+    add = override,
+      resources: ThreeOp,
+      disasm: "add", "%rd, %rs1, %rs2",
+      semfunc: "&SomeFunction";
+    slt = override,
+      resources: ThreeOp,
+      disasm: "slt", "%rd, %rs1, %rs2",
+      semfunc: "&SomeFunction";
+    sltu = override,
+      resources: ThreeOp,
+      disasm: "sltu", "%rd, %rs1, %rs2",
+      semfunc: "&SomeFunction";
+    and = override,
+      resources: ThreeOp,
+      disasm: "and", "%rd, %rs1, %rs2",
+      semfunc: "&SomeFunction";
+    or = override,
+      resources: ThreeOp,
+      disasm: "or", "%rd, %rs1, %rs2",
+      semfunc: "&SomeFunction";
+    xor = override,
+      resources: ThreeOp,
+      disasm: "xor", "%rd, %rs1, %rs2",
+      semfunc: "&SomeFunction";
+    sll = override,
+      resources: ThreeOp,
+      disasm: "sll", "%rd, %rs1, %rs2",
+      semfunc: "&SomeFunction";
+    srl = override,
+      resources: ThreeOp,
+      disasm: "srl", "%rd, %rs1, %rs2",
+      semfunc: "&SomeFunction";
+    sub = override,
+      resources: ThreeOp,
+      disasm: "sub", "%rd, %rs1, %rs2",
+      semfunc: "&SomeFunction";
+    sra = override,
+      resources: ThreeOp,
+      disasm: "sra", "%rd, %rs1, %rs2",
+      semfunc: "&SomeFunction";
+    nop = override,
+      disasm: "nop",
+      semfunc: "&SomeFunction";
+    hint = override,
+      disasm: "hint",
+      semfunc: "&SomeFunction";
+    jal = override,
+      disasm: "jal", "%rd, %(@+J_imm20:08x)",
+      semfunc: "&SomeFunction";
+    jalr = override,
+      disasm: "jalr", "%rd, %rs1, %J_imm12",
+      semfunc: "&SomeFunction";
+    j = override,
+      disasm: "j", "%(@+J_imm20:08x)",
+      semfunc: "&SomeFunction";
+    jr = override,
+      disasm: "jr", "%rs1, %J_imm12",
+      semfunc: "&SomeFunction";
+    beq = override,
+      disasm: "beq", "%rs1, %rs2, %(@+B_imm12:08x)",
+      semfunc: "&SomeFunction";
+    bne = override,
+      disasm: "bne", "%rs1, %rs2, %(@+B_imm12:08x)",
+      semfunc: "&SomeFunction";
+    blt = override,
+      disasm: "blt", "%rs1, %rs2, %(@+B_imm12:08x)",
+      semfunc: "&SomeFunction";
+    bltu = override,
+      disasm: "bltu", "%rs1, %rs2, %(@+B_imm12:08x)",
+      semfunc: "&SomeFunction";
+    bge = override,
+      disasm: "bge", "%rs1, %rs2, %(@+B_imm12:08x)",
+      semfunc: "&SomeFunction";
+    bgeu = override,
+      disasm: "bgeu", "%rs1, %rs2, %(@+B_imm12:08x)",
+      semfunc: "&SomeFunction";
+    lw = override,
+      disasm: "lw", "%rd, %I_imm12(%rs1)",
+      semfunc: "&SomeFunction", "&SomeOtherFunction";
+    lh = override,
+      disasm: "lh", "%rd, %I_imm12(%rs1)",
+      semfunc: "&SomeFunction", "&SomeOtherFunction";
+    lhu = override,
+      disasm: "lhu", "%rd, %I_imm12(%rs1)",
+      semfunc: "&SomeFunction", "&SomeOtherFunction";
+    lb = override,
+      disasm: "lb", "%rd, %I_imm12(%rs1)",
+      semfunc: "&SomeFunction", "&SomeOtherFunction";
+    lbu = override,
+      disasm: "lbu", "%rd, %I_imm12(%rs1)",
+      semfunc: "&SomeFunction", "&SomeOtherFunction";
+    sw = override,
+      disasm: "sw", "%rs2, %S_imm12(%rs1)",
+      semfunc: "&SomeFunction";
+    sh = override,
+      disasm: "sh", "%rs2, %S_imm12(%rs1)",
+      semfunc: "&SomeFunction";
+    sb = override,
+      disasm: "sb", "%rs2, %S_imm12(%rs1)",
+      semfunc: "&SomeFunction";
+    fence = override,
+      disasm: "fence",
+      semfunc: "&SomeFunction";
+    ecall = override,
+      disasm: "ecall",
+      semfunc: "&SomeFunction";
+    ebreak = override,
+      disasm: "ebreak",
+      semfunc: "&SomeFunction";
+  }
+}

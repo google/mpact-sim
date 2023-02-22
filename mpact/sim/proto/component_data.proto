@@ -1,0 +1,75 @@
+// Copyright 2023 Google LLC
+// 
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+// 
+//     https://www.apache.org/licenses/LICENSE-2.0
+// 
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto2";
+
+package mpact.sim.proto;
+
+option java_multiple_files = true;
+
+// This proto is intended to be used to import configuration data into the
+// configuration entries in a simulator, as well as exporting the
+// values of both the configuration entries and any statistics counters. The
+// proto assumes there may be a hierarchy of components, with each component
+// having a set of configuration entries and/or statistics entries.
+
+enum SIPrefix {
+  PREFIX_NONE = 0;
+  PREFIX_PICO = -12;
+  PREFIX_NANO = -9;
+  PREFIX_MICRO = -6;
+  PREFIX_MILLI = -3;
+  PREFIX_KILO = 3;
+  PREFIX_MEGA = 6;
+  PREFIX_GIGA = 9;
+  PREFIX_TERA = 12;
+}
+
+enum SIUnit {
+  UNIT_NONE = 0;
+  UNIT_SECOND = 1;
+  UNIT_HERTZ = 2;
+  UNIT_VOLT = 3;
+  UNIT_AMPERE = 4;
+  UNIT_WATT = 5;
+}
+
+message PhysicalValue {
+  optional double value = 1;
+  optional SIPrefix si_prefix = 2;
+  optional SIUnit si_unit = 3;
+}
+
+message ComponentValueEntry {
+  optional string name = 1;
+  optional string about = 2;
+  // The current set of allowed values are limited to signed/unsigned 64 bit
+  // int as well as double, and string. The string is only currently
+  // supported by configuration entries.
+  oneof value {
+    bool bool_value = 3;
+    sint64 sint64_value = 4;
+    uint64 uint64_value = 5;
+    double double_value = 6;
+    string string_value = 7;
+    PhysicalValue physical_value = 8;
+  }
+}
+
+message ComponentData {
+  optional string name = 1;
+  repeated ComponentValueEntry configuration = 2;
+  repeated ComponentValueEntry statistics = 3;
+  repeated ComponentData component_data = 4;
+}

@@ -1,0 +1,2 @@
+This is just a text file used to verify that the loader fails if it's not a
+proper elf file.
