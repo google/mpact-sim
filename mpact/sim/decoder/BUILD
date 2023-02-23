@@ -22,8 +22,6 @@ load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 load("//mpact/sim/decoder:antlr_cc.bzl", "antlr4_cc_lexer", "antlr4_cc_parser")
 load("//mpact/sim/decoder:mpact_sim_isa.bzl", "mpact_cc_library", "mpact_cc_binary")
 
-load("@rules_foreign_cc//foreign_cc:defs.bzl", "cmake")
-
 package(default_visibility = ["//visibility:public"])
 
 antlr4_cc_parser(
