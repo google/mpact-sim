@@ -27,8 +27,6 @@ def antlr4_cc_lexer(
       namespaces: The namespace used by the generated files. Uses an array to
         support nested namespaces. Defaults to [name].
       deps: Dependencies for the generated code.
-      compatible_with: Optional standard `compatible_with` attribute.
-      tool: label for antlr4 tool
     """
     namespaces = namespaces or [name]
     deps = deps or []
@@ -172,13 +170,6 @@ def _make_namespace_adjustment_command(namespaces, out_files):
         else:
             commands.append("sed -i 's/using namespace %s;/using namespace %s;/' $(@D)/%s" % (namespaces[0], "::".join(namespaces), filepath))
     return ";\n".join(commands)
-
-# Strip any path component from text. Return only the string that follows the last "/".
-def _strip_path(text):
-    pos = text.rfind("/")
-    if pos == -1:
-        return text
-    return text[pos + 1:]
 
 def _make_outs(file_prefix, suffixes):
     return [file_suffix % file_prefix for file_suffix in suffixes]

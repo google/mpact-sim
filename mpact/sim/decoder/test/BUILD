@@ -14,8 +14,7 @@
 
 # This contains the test projects for the decoder.
 
-load("//mpact/sim/decoder:mpact_sim_isa.bzl", "mpact_bin_fmt_decoder", "mpact_isa_decoder", "mpact_cc_library", "mpact_cc_test")
-load("@bazel_skylib//rules:build_test.bzl", "build_test")
+load("//mpact/sim/decoder:mpact_sim_isa.bzl", "mpact_isa_decoder", "mpact_cc_library", "mpact_cc_test")
 
 mpact_cc_test(
     name = "instruction_set_test",
