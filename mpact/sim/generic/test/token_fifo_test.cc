@@ -30,9 +30,6 @@ namespace {
 constexpr char kControllerName[] = "ErrorController";
 constexpr char kOverflowName[] = "FifoOverflow";
 constexpr char kUnderflowName[] = "FifoUnderflow";
-constexpr int kVectorLength = 8;
-constexpr int kMatrixRows = 8;
-constexpr int kMatrixCols = 16;
 constexpr int kFifoDepth = 5;
 constexpr int kNumTokens = 3;
 

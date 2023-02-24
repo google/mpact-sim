@@ -48,18 +48,6 @@ constexpr char kUint64ConfigName[] = "uint64_config";
 constexpr uint64_t kUint64ConfigValue = 123;
 constexpr uint64_t kUint64ConfigImportValue = 321;
 
-// Text representation of proto expected to be exported.
-constexpr char kExportProto[] = R"pb(
-  name: "top"
-  configuration { name: "int64_config" sint64_value: -456 }
-  statistics { name: "int64_counter" sint64_value: -123 }
-  component_data {
-    name: "child"
-    configuration { name: "uint64_config" uint64_value: 123 }
-    statistics { name: "uint64_counter" uint64_value: 456 }
-  }
-)pb";
-
 // Proto to import.
 constexpr char kImportProto[] = R"pb(
   name: "top"
