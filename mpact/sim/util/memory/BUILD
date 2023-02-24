@@ -14,7 +14,11 @@
 
 # Convenient memory interface and implementation classes.
 
-package(default_visibility = ["//visibility:public"])
+
+package(
+    default_applicable_licenses = ["//:license"],
+    default_visibility = ["//visibility:public"]
+)
 
 cc_library(
     name = "memory",

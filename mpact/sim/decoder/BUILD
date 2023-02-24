@@ -22,7 +22,10 @@ load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 load("//mpact/sim/decoder:antlr_cc.bzl", "antlr4_cc_lexer", "antlr4_cc_parser")
 load("//mpact/sim/decoder:mpact_sim_isa.bzl", "mpact_cc_library", "mpact_cc_binary")
 
-package(default_visibility = ["//visibility:public"])
+package(
+    default_applicable_licenses = ["//:license"],
+    default_visibility = ["//visibility:public"]
+)
 
 antlr4_cc_parser(
     name = "antlr_isa_parser",

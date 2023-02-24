@@ -14,6 +14,10 @@
 
 # Test projects for memory.
 
+package(
+    default_applicable_licenses = ["//:license"],
+)
+
 cc_test(
     name = "flat_memory_test",
     size = "small",

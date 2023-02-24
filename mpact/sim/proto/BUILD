@@ -12,10 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Proto's used by the simulator infrastructure to import configuration values and export
-# configuration and statistics counter values.
+# Proto's used by the simulator infrastructure to import configuration
+# values and export configuration and statistics counter values.
 
-package(default_visibility = ["//visibility:public"])
+
+package(
+    default_applicable_licenses = ["//:license"],
+    default_visibility = ["//visibility:public"],
+)
 
 proto_library(
     name = "component_data_proto",

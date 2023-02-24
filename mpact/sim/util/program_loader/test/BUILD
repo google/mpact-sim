@@ -14,6 +14,10 @@
 
 # Unit test for program loaders.
 
+package(
+    default_applicable_licenses = ["//:license"],
+)
+
 cc_test(
     name = "elf_program_loader_test",
     size = "small",

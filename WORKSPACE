@@ -72,7 +72,7 @@ http_archive(
     urls = ["https://github.com/serge1/ELFIO/releases/download/Release_3.11/elfio-3.11.tar.gz"],
 )
 
-_ALL_CONTENT = """\
+ALL_CONTENT = """\
 filegroup(
   name = "all_srcs",
   srcs = glob(["**"]),
@@ -103,6 +103,13 @@ http_archive(
     url = "https://github.com/bazelbuild/rules_foreign_cc/archive/refs/tags/0.9.0.tar.gz",
 )
 
+# Additional rules for licenses
+http_archive(
+    name = "rules_license",
+    sha256 = "6157e1e68378532d0241ecd15d3c45f6e5cfd98fc10846045509fb2a7cc9e381",
+    url = "https://github.com/bazelbuild/rules_license/releases/download/0.0.4/rules_license-0.0.4.tar.gz"
+)
+
 load("@rules_foreign_cc//foreign_cc:repositories.bzl", "rules_foreign_cc_dependencies")
 rules_foreign_cc_dependencies()
 
@@ -113,3 +120,6 @@ rules_proto_grpc_repos()
 load("@rules_proto//proto:repositories.bzl", "rules_proto_dependencies", "rules_proto_toolchains")
 rules_proto_dependencies()
 rules_proto_toolchains()
+
+load("@rules_license//:deps.bzl", "rules_license_dependencies")
+rules_license_dependencies()

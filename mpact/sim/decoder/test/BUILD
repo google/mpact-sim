@@ -16,6 +16,10 @@
 
 load("//mpact/sim/decoder:mpact_sim_isa.bzl", "mpact_isa_decoder", "mpact_cc_library", "mpact_cc_test")
 
+package(
+    default_applicable_licenses = ["//:license"],
+)
+
 mpact_cc_test(
     name = "instruction_set_test",
     size = "small",

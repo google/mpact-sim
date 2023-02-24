@@ -15,6 +15,10 @@
 
 # Package for include file - tests that exported include files are found by parser.
 
+package(
+    default_applicable_licenses = ["//:license"],
+)
+
 exports_files([
     "bundle_a.isa",
     "empty_include.isa",

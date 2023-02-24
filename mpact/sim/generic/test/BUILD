@@ -14,6 +14,10 @@
 
 # Contains the test cases for the sim/generic directory.
 
+package(
+    default_applicable_licenses = ["//:license"],
+)
+
 cc_test(
     name = "data_buffer_test",
     size = "small",
