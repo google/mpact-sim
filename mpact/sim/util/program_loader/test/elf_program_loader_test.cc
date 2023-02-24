@@ -77,7 +77,7 @@ TEST_F(ElfLoaderTest, LoadExecutable) {
   auto result = loader_.LoadProgram(input_file);
   ASSERT_TRUE(result.status().ok());
   for (auto const &segment : elf_reader_.segments) {
-    if (segment->get_type() != ELFIO::PT_LOAD) continue;
+    if (segment->get_type() != PT_LOAD) continue;
     if (segment->get_file_size() == 0) continue;
 
     int size = segment->get_file_size();

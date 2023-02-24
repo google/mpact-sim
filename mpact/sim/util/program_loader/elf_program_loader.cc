@@ -83,7 +83,7 @@ absl::StatusOr<uint64_t> ElfProgramLoader::LoadProgram(
       continue;
     }
     // If the section isn 't loadable, continue.
-    if (segment->get_type() != ELFIO::PT_LOAD) continue;
+    if (segment->get_type() != PT_LOAD) continue;
     if (segment->get_file_size() == 0) continue;
     // Read the data from the elf file.
     if (dbg_if_ == nullptr) {  // Use memory interfaces.
@@ -91,7 +91,7 @@ absl::StatusOr<uint64_t> ElfProgramLoader::LoadProgram(
       std::memcpy(db->raw_ptr(), segment->get_data(), segment->get_file_size());
 
       if (segment->get_flags() &
-          ELFIO::PF_X) {  // Executable, so write to code memory.
+          PF_X) {  // Executable, so write to code memory.
         code_memory_->Store(segment->get_virtual_address(), db);
       } else {  // Write to data memory.
         data_memory_->Store(segment->get_virtual_address(), db);
@@ -110,9 +110,9 @@ absl::StatusOr<uint64_t> ElfProgramLoader::LoadProgram(
 
   // Now look up any symbol sections.
   for (auto const &section : elf_reader_.sections) {
-    if (section->get_type() == ELFIO::SHT_SYMTAB) {
+    if (section->get_type() == SHT_SYMTAB) {
       symbol_accessors_.push_back(
-          new ELFIO::symbol_section_accessor(elf_reader_, section.get()));
+          new ELFIO::symbol_section_accessor(elf_reader_, section));
     }
   }
   std::string name;
@@ -127,7 +127,7 @@ absl::StatusOr<uint64_t> ElfProgramLoader::LoadProgram(
     for (unsigned i = 0; i < symtab->get_symbols_num(); i++) {
       symtab->get_symbol(i, name, value, size, bind, type, section_index,
                          other);
-      if (type == ELFIO::STT_FUNC) {
+      if (type == STT_FUNC) {
         fcn_symbol_map_.emplace(value, name);
         function_range_map_.insert(
             std::make_pair(AddressRange(value, size), name));

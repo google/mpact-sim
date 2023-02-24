@@ -67,9 +67,9 @@ http_archive(
 http_archive(
     build_file = "BUILD.elfio",
     name = "com_github_serge1_elfio",
-    strip_prefix = "elfio-3.11",
-    sha256 = "3307b104c205399786edbba203906de9517e36297709fe747faf9478d55fbb91",
-    urls = ["https://github.com/serge1/ELFIO/releases/download/Release_3.11/elfio-3.11.tar.gz"],
+    strip_prefix = "elfio-3.9",
+    sha256 = "767b269063fc35aba6d361139f830aa91c45dc6b77942f082666876c1aa0be0f",
+    urls = ["https://github.com/serge1/ELFIO/releases/download/Release_3.9/elfio-3.9.tar.gz"],
 )
 
 ALL_CONTENT = """\
