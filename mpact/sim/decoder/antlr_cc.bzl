@@ -131,7 +131,7 @@ def antlr4_cc_parser(
             "-Wno-nonnull",
             "-iquote $(BINDIR)/external/org_antlr4_cpp_runtime/antlr4/include/antlr4-runtime",
         ],
-        features = ["-use_header_modules"],  
+        features = ["-use_header_modules"],
     )
 
 def _make_tool_invocation_command(package, listener = False, visitor = False):

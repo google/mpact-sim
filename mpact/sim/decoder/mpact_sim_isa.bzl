@@ -21,36 +21,36 @@
 """Build rules to create C++ code from an Isa.g4 decoder grammar."""
 
 def mpact_cc_library(name, srcs = [], hdrs = [], copts = [], deps = [], features = [], visibility = []):
-  native.cc_library(
-    name = name,
-    srcs = srcs,
-    hdrs = hdrs,
-    copts = copts + ["-iquote $(BINDIR)/external/org_antlr4_cpp_runtime/antlr4/include/antlr4-runtime"],
-    deps = deps,
-    visibility = visibility,
-    features = features,
+    native.cc_library(
+        name = name,
+        srcs = srcs,
+        hdrs = hdrs,
+        copts = copts + ["-iquote $(BINDIR)/external/org_antlr4_cpp_runtime/antlr4/include/antlr4-runtime"],
+        deps = deps,
+        visibility = visibility,
+        features = features,
     )
 
 def mpact_cc_binary(name, srcs = [], copts = [], deps = [], features = [], visibility = []):
-  native.cc_binary(
-    name = name,
-    srcs = srcs,
-    copts = copts + ["-iquote $(BINDIR)/external/org_antlr4_cpp_runtime/antlr4/include/antlr4-runtime"],
-    deps = deps,
-    visibility = visibility,
-    features = features,
+    native.cc_binary(
+        name = name,
+        srcs = srcs,
+        copts = copts + ["-iquote $(BINDIR)/external/org_antlr4_cpp_runtime/antlr4/include/antlr4-runtime"],
+        deps = deps,
+        visibility = visibility,
+        features = features,
     )
 
 def mpact_cc_test(name, size = "small", srcs = [], deps = [], copts = [], data = []):
-  native.cc_test(
-    name = name,
-    size = size,
-    copts = copts + ["-iquote $(BINDIR)/external/org_antlr4_cpp_runtime/antlr4/include/antlr4-runtime"],
-    srcs = srcs,
-    deps = deps,
-    data = data,
-  )
-
+    native.cc_test(
+        name = name,
+        size = size,
+        copts = copts + ["-iquote $(BINDIR)/external/org_antlr4_cpp_runtime/antlr4/include/antlr4-runtime"],
+        srcs = srcs,
+        deps = deps,
+        data = data,
+    )
+ 
 def mpact_isa_decoder(name, src, includes, deps = [], isa_name = "", prefix = ""):
     """Generates the C++ source corresponding to an MPACT Isa decoder definition.
 
