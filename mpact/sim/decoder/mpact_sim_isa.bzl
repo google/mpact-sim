@@ -50,7 +50,7 @@ def mpact_cc_test(name, size = "small", srcs = [], deps = [], copts = [], data =
         deps = deps,
         data = data,
     )
- 
+
 def mpact_isa_decoder(name, src, includes, deps = [], isa_name = "", prefix = ""):
     """Generates the C++ source corresponding to an MPACT Isa decoder definition.
 
