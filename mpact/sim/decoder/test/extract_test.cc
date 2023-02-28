@@ -84,10 +84,12 @@ TEST(ExtractTest, ExtractValue) {
 TEST(ExtractTest, WriteExtract) {
   auto recipe = GetExtractionRecipe(kMask);
   auto output = WriteExtraction(recipe, "value", "result", "  ");
+  int width = 0;
   for (int j = 0; j < 4; j++) {
     EXPECT_THAT(output, testing::HasSubstr(absl::StrCat(
                             "= (value >> ", recipe[j].shift, ") & 0x",
                             absl::Hex(recipe[j].mask), ";")));
+    width += j + 1;
   }
 }
 

@@ -41,7 +41,7 @@ namespace decoder {
 namespace bin_format {
 
 class Format;
-struct Field;
+class Field;
 
 // Helper class to store an individual component in an overlay.
 class BitsOrField {
@@ -74,6 +74,7 @@ class BitsOrField {
   int low_ = -1;
   int width_ = -1;
   int position_ = -1;
+  uint64_t mask_ = 0;
   BinaryNum bin_num_;
 };
 

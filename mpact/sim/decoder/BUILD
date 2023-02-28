@@ -30,14 +30,14 @@ package(
 antlr4_cc_parser(
     name = "antlr_isa_parser",
     src = "InstructionSet.g4",
-    #listener = True,
+    listener = True,
     namespaces = [
         "sim",
         "machine_description",
         "instruction_set",
         "generated",
     ],
-    #visitor = True,
+    visitor = True,
 )
 
 antlr4_cc_lexer(
@@ -152,7 +152,7 @@ mpact_cc_binary(
 antlr4_cc_parser(
     name = "bin_format_parser",
     src = "BinFormat.g4",
-    #listener = True,
+    listener = True,
     namespaces = [
         "mpact",
         "sim",
@@ -160,7 +160,7 @@ antlr4_cc_parser(
         "bin_format",
         "generated",
     ],
-    #visitor = True,
+    visitor = True,
 )
 
 antlr4_cc_lexer(

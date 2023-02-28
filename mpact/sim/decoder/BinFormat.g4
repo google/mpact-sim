@@ -1,11 +1,11 @@
 // Copyright 2023 Google LLC
-//
+// 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-//
+// 
 //     https://www.apache.org/licenses/LICENSE-2.0
-//
+// 
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -18,12 +18,12 @@
 // which opcode a particular instruction word value matches. Additionally, the
 // tool will generate extractor functions to extract the bitfields as described
 // in the input description.
-
 grammar BinFormat;
 
 top_level
   : declaration_list EOF
   ;
+
 
 // Include files can only contain bundle and slot declarations and nested
 // includes. Include file parsing starts with the declaration_list_w_eof,

@@ -64,8 +64,7 @@ void ResourceBitSet::Set(int position) {
 
 void ResourceBitSet::Or(const ResourceBitSet& rhs) {
   if (rhs.size_ > size_) Resize(rhs.size_ * kBitsInUint);
-  auto min = std::min(size_, rhs.size_);
-  for (int i = 0; i < min; ++i) bits_[i] |= rhs.bits_[i];
+  for (int i = 0; i < size_; ++i) bits_[i] |= rhs.bits_[i];
 }
 
 void ResourceBitSet::AndNot(const ResourceBitSet& rhs) {

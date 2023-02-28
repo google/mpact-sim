@@ -26,7 +26,7 @@ namespace sim {
 namespace machine_description {
 namespace instruction_set {
 
-struct ResourceReference;
+class ResourceReference;
 class Slot;
 class TemplateExpression;
 

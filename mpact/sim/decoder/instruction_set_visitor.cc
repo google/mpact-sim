@@ -30,6 +30,7 @@
 #include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
+#include "absl/types/variant.h"
 #include "antlr4-runtime/antlr4-runtime.h"
 #include "mpact/sim/decoder/decoder_error_listener.h"
 #include "mpact/sim/decoder/format_name.h"
@@ -63,6 +64,7 @@ InstructionSetVisitor::InstructionSetVisitor() {
 }
 
 InstructionSetVisitor::~InstructionSetVisitor() {
+  /*
   for (auto &[unused, expr_ptr] : constant_map_) {
     delete expr_ptr;
   }
@@ -71,6 +73,7 @@ InstructionSetVisitor::~InstructionSetVisitor() {
     delete wrapper;
   }
   antlr_parser_wrappers_.clear();
+  */
 }
 
 // Main entry point for processing the file.
