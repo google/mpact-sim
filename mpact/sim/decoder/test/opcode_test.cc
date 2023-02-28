@@ -32,7 +32,6 @@ constexpr char kOpcodeName0[] = "opcode_0";
 constexpr char kOpcodeName1[] = "opcode_1";
 constexpr char kOpcodeName2[] = "opcode_2";
 constexpr char kPredicateOpName[] = "pred";
-constexpr int kLatency = 3;
 
 const char *kOpcodeNames[] = {kOpcodeName0, kOpcodeName1, kOpcodeName2};
 

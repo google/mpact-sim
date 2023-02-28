@@ -102,7 +102,6 @@ mpact_cc_test(
     size = "small",
     srcs = [
         "instruction_set_visitor_test.cc",
-        #"testfiles/sparsecore_vex_opcode_enum.h",
     ],
     data = [
         # Local include files.
@@ -173,13 +172,6 @@ mpact_cc_test(
         "@com_google_googletest//:gtest",
         "@com_google_googletest//:gtest_main",
         "@com_google_absl//absl/container:flat_hash_map",
-    ],
-)
-
-mpact_cc_library(
-    name = "sparsecore_vex_opcode_enum",
-    hdrs = [
-        "testfiles/sparsecore_vex_opcode_enum.h",
     ],
 )
 
