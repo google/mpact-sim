@@ -82,7 +82,6 @@ class ElfProgramLoader : public ProgramLoaderInterface {
 
  private:
   bool loaded_ = false;
-  bool symtab_absent_ = false;
   ELFIO::elfio elf_reader_;
   util::MemoryInterface *code_memory_ = nullptr;
   util::MemoryInterface *data_memory_ = nullptr;
