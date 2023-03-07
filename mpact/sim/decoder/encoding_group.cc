@@ -564,7 +564,7 @@ int EncodingGroup::EmitConstraintConditions(
 }
 
 // This method dumps statistics about the group useful for development.
-// TODO(torerik): remove when no longer needed.
+// TODO: remove when no longer needed.
 std::string EncodingGroup::DumpGroup(std::string prefix, std::string indent) {
   std::string output;
   auto pad = absl::PadSpec::kZeroPad8;

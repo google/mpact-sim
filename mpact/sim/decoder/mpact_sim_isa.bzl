@@ -92,7 +92,7 @@ def mpact_isa_decoder(name, src, includes, deps = [], isa_name = "", prefix = ""
         outs = out_files,
         cmd = command,
         heuristic_label_expansion = 0,
-        tools = ["//mpact/sim/decoder:decoder_gen"],
+        tools = [Label("//mpact/sim/decoder:decoder_gen")],
     )
 
     # The rule for the lib that is built from the generated sources.
@@ -101,10 +101,10 @@ def mpact_isa_decoder(name, src, includes, deps = [], isa_name = "", prefix = ""
         srcs = [f for f in out_files if f.endswith(".cc")],
         hdrs = [f for f in out_files if f.endswith(".h")],
         deps = [
-            "//mpact/sim/generic:arch_state",
-            "//mpact/sim/generic:instruction",
-            "@com_google_absl//absl/container:flat_hash_map",
-            "@com_google_absl//absl/strings:str_format",
+            Label("//mpact/sim/generic:arch_state"),
+            Label("//mpact/sim/generic:instruction"),
+            Label("@com_google_absl//absl/container:flat_hash_map"),
+            Label("@com_google_absl//absl/strings:str_format"),
         ] + deps,
     )
 
@@ -147,7 +147,7 @@ def mpact_bin_fmt_decoder(name, src, includes, deps = [], decoder_name = "", pre
         outs = out_files,
         cmd = command,
         heuristic_label_expansion = 0,
-        tools = ["//mpact/sim/decoder:bin_format_gen"],
+        tools = [Label("//mpact/sim/decoder:bin_format_gen")],
     )
 
     # The rule for the lib that is built from the generated sources.
@@ -156,11 +156,11 @@ def mpact_bin_fmt_decoder(name, src, includes, deps = [], decoder_name = "", pre
         srcs = [f for f in out_files if f.endswith(".cc")],
         hdrs = [f for f in out_files if f.endswith(".h")],
         deps = [
-            "//mpact/sim/generic:arch_state",
-            "//mpact/sim/generic:instruction",
-            "@com_google_absl//absl/container:flat_hash_map",
-            "@com_google_absl//absl/functional:any_invocable",
-            "@com_google_absl//absl/strings:str_format",
+            Label("//mpact/sim/generic:arch_state"),
+            Label("//mpact/sim/generic:instruction"),
+            Label("@com_google_absl//absl/container:flat_hash_map"),
+            Label("@com_google_absl//absl/functional:any_invocable"),
+            Label("@com_google_absl//absl/strings:str_format"),
         ] + deps,
     )
 
@@ -175,7 +175,11 @@ def _strip_path(text):
 # those that will be included, the command includes creating a bash array from $(SRCS), then
 # instead of using $(SRCS) in the command, it uses only the first element of that array.
 def _make_isa_tool_invocation_command(prefix, isa_name):
-    cmd = "ARR=($(SRCS)); $(location //mpact/sim/decoder:decoder_gen) " + \
+    decode_gen = Label("//mpact/sim/decoder:decoder_gen")
+
+    tool_label = "@" + decode_gen.workspace_name + "//" + decode_gen.package + \
+            ":" + decode_gen.name;
+    cmd = "ARR=($(SRCS)); $(location " + tool_label + ") " + \
           "$${ARR[0]}" + \
           " --prefix " + prefix + \
           " --output_dir $(@D)"
@@ -187,7 +191,10 @@ def _make_isa_tool_invocation_command(prefix, isa_name):
 # those that will be included, the command includes creating a bash array from $(SRCS), then
 # instead of using $(SRCS) in the command, it uses only the first element of that array.
 def _make_bin_tool_invocation_command(prefix, decoder_name):
-    cmd = "ARR=($(SRCS)); $(location //mpact/sim/decoder:bin_format_gen) " + \
+    binfmt_gen = Label("//mpact/sim/decoder:bin_format_gen")
+    tool_label = "@" + binfmt_gen.workspace_name + "//" + binfmt_gen.package + \
+            ":" + binfmt_gen.name;
+    cmd = "ARR=($(SRCS)); $(location " + tool_label + ") " + \
           "$${ARR[0]}" + \
           " --prefix " + prefix + \
           " --output_dir $(@D)"

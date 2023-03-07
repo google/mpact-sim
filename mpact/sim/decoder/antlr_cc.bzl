@@ -50,13 +50,13 @@ def antlr4_cc_lexer(
         outs = out_files,
         cmd = command,
         heuristic_label_expansion = 0,
-        tools = ["@org_antlr_tool//file"],
+        tools = [Label("@org_antlr_tool//file")],
     )
     native.cc_library(
         name = name,
         srcs = [f for f in out_files if f.endswith(".cpp")],
         hdrs = [f for f in out_files if f.endswith(".h")],
-        deps = ["@org_antlr4_cpp_runtime//:antlr4"] + deps,
+        deps = [Label("@org_antlr4_cpp_runtime//:antlr4")] + deps,
         copts = [
             "-fexceptions",
             "-iquote $(BINDIR)/external/org_antlr4_cpp_runtime/antlr4/include/antlr4-runtime",
@@ -119,13 +119,13 @@ def antlr4_cc_parser(
         outs = out_files,
         cmd = command,
         heuristic_label_expansion = 0,
-        tools = ["@org_antlr_tool//file"],
+        tools = [Label("@org_antlr_tool//file")],
     )
     native.cc_library(
         name = name,
         srcs = [f for f in out_files if f.endswith(".cpp")],
         hdrs = [f for f in out_files if f.endswith(".h")],
-        deps = ["@org_antlr4_cpp_runtime//:antlr4"] + deps,
+        deps = [Label("@org_antlr4_cpp_runtime//:antlr4")] + deps,
         copts = [
             "-fexceptions",
             "-Wno-nonnull",
@@ -135,8 +135,6 @@ def antlr4_cc_parser(
     )
 
 def _make_tool_invocation_command(package, listener = False, visitor = False):
-    # TODO(pelizzi): It would be useful to supply -Werror, but it also fails
-    # on a fairly benign warning about imports.
     return "java -jar $(location @org_antlr_tool//file) " + \
            "$(SRCS)" + \
            (" -visitor" if visitor else " -no-visitor") + \

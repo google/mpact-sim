@@ -62,7 +62,7 @@ class EncodingGroup {
                     const std::string &opcode_enum) const;
   // Return a string containing information about the current group. This will
   // be removed at a later stage.
-  // TODO(torerik): remove when no longer needed.
+  // TODO: Remove when no longer needed.
   std::string DumpGroup(std::string prefix, std::string indent);
 
   // Accessors.
