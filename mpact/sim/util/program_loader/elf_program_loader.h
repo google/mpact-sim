@@ -55,7 +55,7 @@ struct AddressRangeComp {
 // memories are given, then executable segments are loaded into code memory and
 // all other segments into data memory.
 //
-// TODO(torerik): Allow for a multiple memories to be passed in to allow
+// TODO(): Allow for a multiple memories to be passed in to allow
 // segments to be loaded into different memories, not just one big contiguous
 // memory.
 class ElfProgramLoader : public ProgramLoaderInterface {
@@ -82,7 +82,6 @@ class ElfProgramLoader : public ProgramLoaderInterface {
 
  private:
   bool loaded_ = false;
-  bool symtab_absent_ = false;
   ELFIO::elfio elf_reader_;
   util::MemoryInterface *code_memory_ = nullptr;
   util::MemoryInterface *data_memory_ = nullptr;

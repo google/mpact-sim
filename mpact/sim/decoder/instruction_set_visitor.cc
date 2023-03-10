@@ -30,7 +30,6 @@
 #include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
-#include "absl/types/variant.h"
 #include "antlr4-runtime/antlr4-runtime.h"
 #include "mpact/sim/decoder/decoder_error_listener.h"
 #include "mpact/sim/decoder/format_name.h"

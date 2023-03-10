@@ -25,7 +25,6 @@
 #include "absl/container/flat_hash_set.h"
 #include "absl/status/status.h"
 #include "absl/strings/string_view.h"
-#include "absl/types/variant.h"
 #include "mpact/sim/decoder/InstructionSetParser.h"
 #include "mpact/sim/decoder/base_class.h"
 #include "mpact/sim/decoder/opcode.h"
