@@ -1,11 +1,11 @@
 // Copyright 2023 Google LLC
-// 
+//
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// 
+//
 //     https://www.apache.org/licenses/LICENSE-2.0
-// 
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -18,6 +18,7 @@
 
 #include "absl/strings/string_view.h"
 #include "googlemock/include/gmock/gmock.h"
+#include "googletest/include/gtest/gtest.h"
 #include "mpact/sim/generic/data_buffer.h"
 #include "mpact/sim/util/memory/flat_demand_memory.h"
 
@@ -50,28 +51,39 @@ TEST_F(MemoryWatcherTest, SetRanges) {
   int counter = 0;
   uint64_t address = 0;
   // Load callbacks.
-  EXPECT_TRUE(watcher_->SetLoadWatchCallback(
-      AddressRange(0x1000), [&counter, &address](uint64_t addr, int) {
-        address = addr;
-        counter++;
-      }).ok());
-  EXPECT_TRUE(watcher_->SetLoadWatchCallback(
-      AddressRange(0x1001, 0x1003), [&counter, &address](uint64_t addr, int) {
-        address = addr;
-        counter++;
-      }).ok());
+  EXPECT_TRUE(
+      watcher_
+          ->SetLoadWatchCallback(AddressRange(0x1000),
+                                 [&counter, &address](uint64_t addr, int) {
+                                   address = addr;
+                                   counter++;
+                                 })
+          .ok());
+  EXPECT_TRUE(
+      watcher_
+          ->SetLoadWatchCallback(AddressRange(0x1001, 0x1003),
+                                 [&counter, &address](uint64_t addr, int) {
+                                   address = addr;
+                                   counter++;
+                                 })
+          .ok());
   // Store callbacks.
-  EXPECT_TRUE(watcher_->SetStoreWatchCallback(
-      AddressRange(0x1000), [&counter, &address](uint64_t addr, int sz) {
-        address = addr;
-        counter++;
-      }).ok());
-  EXPECT_TRUE(watcher_->SetStoreWatchCallback(
-      AddressRange(0x1001, 0x1003),
-      [&counter, &address](uint64_t addr, int sz) {
-        address = addr;
-        counter++;
-      }).ok());
+  EXPECT_TRUE(
+      watcher_
+          ->SetStoreWatchCallback(AddressRange(0x1000),
+                                  [&counter, &address](uint64_t addr, int sz) {
+                                    address = addr;
+                                    counter++;
+                                  })
+          .ok());
+  EXPECT_TRUE(
+      watcher_
+          ->SetStoreWatchCallback(AddressRange(0x1001, 0x1003),
+                                  [&counter, &address](uint64_t addr, int sz) {
+                                    address = addr;
+                                    counter++;
+                                  })
+          .ok());
 }
 
 // This checks that overlapping ranges generate errors.
@@ -79,11 +91,14 @@ TEST_F(MemoryWatcherTest, OverlappingRanges) {
   int counter = 0;
   uint64_t address = 0;
   // Load callbacks.
-  EXPECT_TRUE(watcher_->SetLoadWatchCallback(
-      AddressRange(0x1000), [&counter, &address](uint64_t addr, int) {
-        address = addr;
-        counter++;
-      }).ok());
+  EXPECT_TRUE(
+      watcher_
+          ->SetLoadWatchCallback(AddressRange(0x1000),
+                                 [&counter, &address](uint64_t addr, int) {
+                                   address = addr;
+                                   counter++;
+                                 })
+          .ok());
   EXPECT_FALSE(
       watcher_
           ->SetLoadWatchCallback(AddressRange(0x1000, 0x1003),
@@ -94,11 +109,14 @@ TEST_F(MemoryWatcherTest, OverlappingRanges) {
           .ok());
 
   // Store callbacks.
-  EXPECT_TRUE(watcher_->SetStoreWatchCallback(
-      AddressRange(0x1000), [&counter, &address](uint64_t addr, int) {
-        address = addr;
-        counter++;
-      }).ok());
+  EXPECT_TRUE(
+      watcher_
+          ->SetStoreWatchCallback(AddressRange(0x1000),
+                                  [&counter, &address](uint64_t addr, int) {
+                                    address = addr;
+                                    counter++;
+                                  })
+          .ok());
   EXPECT_FALSE(
       watcher_
           ->SetStoreWatchCallback(AddressRange(0x1000, 0x1003),
@@ -115,26 +133,33 @@ TEST_F(MemoryWatcherTest, LoadWatch) {
   uint64_t address = 0;
   int size = 0;
   // Three load callbacks are set.
-  EXPECT_TRUE(watcher_->SetLoadWatchCallback(
-      AddressRange(0x1000), [&counter, &address, &size](uint64_t addr, int sz) {
-        address = addr;
-        size = sz;
-        counter++;
-      }).ok());
-  EXPECT_TRUE(watcher_->SetLoadWatchCallback(
-      AddressRange(0x1002, 0x1003),
-      [&counter, &address, &size](uint64_t addr, int sz) {
-        address = addr;
-        size = sz;
-        counter++;
-      }).ok());
-  EXPECT_TRUE(watcher_->SetLoadWatchCallback(
-      AddressRange(0x1004, 0x1007),
-      [&counter, &address, &size](uint64_t addr, int sz) {
-        address = addr;
-        size = sz;
-        counter++;
-      }).ok());
+  EXPECT_TRUE(watcher_
+                  ->SetLoadWatchCallback(
+                      AddressRange(0x1000),
+                      [&counter, &address, &size](uint64_t addr, int sz) {
+                        address = addr;
+                        size = sz;
+                        counter++;
+                      })
+                  .ok());
+  EXPECT_TRUE(watcher_
+                  ->SetLoadWatchCallback(
+                      AddressRange(0x1002, 0x1003),
+                      [&counter, &address, &size](uint64_t addr, int sz) {
+                        address = addr;
+                        size = sz;
+                        counter++;
+                      })
+                  .ok());
+  EXPECT_TRUE(watcher_
+                  ->SetLoadWatchCallback(
+                      AddressRange(0x1004, 0x1007),
+                      [&counter, &address, &size](uint64_t addr, int sz) {
+                        address = addr;
+                        size = sz;
+                        counter++;
+                      })
+                  .ok());
 
   DataBuffer *db1 = db_factory_.Allocate<uint8_t>(1);
   DataBuffer *db2 = db_factory_.Allocate<uint16_t>(1);
@@ -179,26 +204,33 @@ TEST_F(MemoryWatcherTest, GatherWatch) {
   uint64_t address = 0;
   int size = 0;
   // Three load watch points.
-  EXPECT_TRUE(watcher_->SetLoadWatchCallback(
-      AddressRange(0x1000), [&counter, &address, &size](uint64_t addr, int sz) {
-        address = addr;
-        size = sz;
-        counter++;
-      }).ok());
-  EXPECT_TRUE(watcher_->SetLoadWatchCallback(
-      AddressRange(0x1002, 0x1003),
-      [&counter, &address, &size](uint64_t addr, int sz) {
-        address = addr;
-        size = sz;
-        counter++;
-      }).ok());
-  EXPECT_TRUE(watcher_->SetLoadWatchCallback(
-      AddressRange(0x1004, 0x1007),
-      [&counter, &address, &size](uint64_t addr, int sz) {
-        address = addr;
-        size = sz;
-        counter++;
-      }).ok());
+  EXPECT_TRUE(watcher_
+                  ->SetLoadWatchCallback(
+                      AddressRange(0x1000),
+                      [&counter, &address, &size](uint64_t addr, int sz) {
+                        address = addr;
+                        size = sz;
+                        counter++;
+                      })
+                  .ok());
+  EXPECT_TRUE(watcher_
+                  ->SetLoadWatchCallback(
+                      AddressRange(0x1002, 0x1003),
+                      [&counter, &address, &size](uint64_t addr, int sz) {
+                        address = addr;
+                        size = sz;
+                        counter++;
+                      })
+                  .ok());
+  EXPECT_TRUE(watcher_
+                  ->SetLoadWatchCallback(
+                      AddressRange(0x1004, 0x1007),
+                      [&counter, &address, &size](uint64_t addr, int sz) {
+                        address = addr;
+                        size = sz;
+                        counter++;
+                      })
+                  .ok());
 
   DataBuffer *address_db = db_factory_.Allocate<uint64_t>(4);
   DataBuffer *mask_db = db_factory_.Allocate<bool>(4);
@@ -242,26 +274,33 @@ TEST_F(MemoryWatcherTest, StoreWatch) {
   uint64_t address = 0;
   int size = 0;
   // Set three watchpoints [1000,1000], [1002, 1003], [1004, 1007]
-  EXPECT_TRUE(watcher_->SetStoreWatchCallback(
-      AddressRange(0x1000), [&counter, &address, &size](uint64_t addr, int sz) {
-        address = addr;
-        size = sz;
-        counter++;
-      }).ok());
-  EXPECT_TRUE(watcher_->SetStoreWatchCallback(
-      AddressRange(0x1002, 0x1003),
-      [&counter, &address, &size](uint64_t addr, int sz) {
-        address = addr;
-        size = sz;
-        counter++;
-      }).ok());
-  EXPECT_TRUE(watcher_->SetStoreWatchCallback(
-      AddressRange(0x1004, 0x1007),
-      [&counter, &address, &size](uint64_t addr, int sz) {
-        address = addr;
-        size = sz;
-        counter++;
-      }).ok());
+  EXPECT_TRUE(watcher_
+                  ->SetStoreWatchCallback(
+                      AddressRange(0x1000),
+                      [&counter, &address, &size](uint64_t addr, int sz) {
+                        address = addr;
+                        size = sz;
+                        counter++;
+                      })
+                  .ok());
+  EXPECT_TRUE(watcher_
+                  ->SetStoreWatchCallback(
+                      AddressRange(0x1002, 0x1003),
+                      [&counter, &address, &size](uint64_t addr, int sz) {
+                        address = addr;
+                        size = sz;
+                        counter++;
+                      })
+                  .ok());
+  EXPECT_TRUE(watcher_
+                  ->SetStoreWatchCallback(
+                      AddressRange(0x1004, 0x1007),
+                      [&counter, &address, &size](uint64_t addr, int sz) {
+                        address = addr;
+                        size = sz;
+                        counter++;
+                      })
+                  .ok());
 
   DataBuffer *db1 = db_factory_.Allocate<uint8_t>(1);
   DataBuffer *db2 = db_factory_.Allocate<uint16_t>(1);
@@ -305,26 +344,33 @@ TEST_F(MemoryWatcherTest, ScatterWatch) {
   int counter = 0;
   uint64_t address = 0;
   int size = 0;
-  EXPECT_TRUE(watcher_->SetStoreWatchCallback(
-      AddressRange(0x1000), [&counter, &address, &size](uint64_t addr, int sz) {
-        address = addr;
-        size = sz;
-        counter++;
-      }).ok());
-  EXPECT_TRUE(watcher_->SetStoreWatchCallback(
-      AddressRange(0x1002, 0x1003),
-      [&counter, &address, &size](uint64_t addr, int sz) {
-        address = addr;
-        size = sz;
-        counter++;
-      }).ok());
-  EXPECT_TRUE(watcher_->SetStoreWatchCallback(
-      AddressRange(0x1004, 0x1007),
-      [&counter, &address, &size](uint64_t addr, int sz) {
-        address = addr;
-        size = sz;
-        counter++;
-      }).ok());
+  EXPECT_TRUE(watcher_
+                  ->SetStoreWatchCallback(
+                      AddressRange(0x1000),
+                      [&counter, &address, &size](uint64_t addr, int sz) {
+                        address = addr;
+                        size = sz;
+                        counter++;
+                      })
+                  .ok());
+  EXPECT_TRUE(watcher_
+                  ->SetStoreWatchCallback(
+                      AddressRange(0x1002, 0x1003),
+                      [&counter, &address, &size](uint64_t addr, int sz) {
+                        address = addr;
+                        size = sz;
+                        counter++;
+                      })
+                  .ok());
+  EXPECT_TRUE(watcher_
+                  ->SetStoreWatchCallback(
+                      AddressRange(0x1004, 0x1007),
+                      [&counter, &address, &size](uint64_t addr, int sz) {
+                        address = addr;
+                        size = sz;
+                        counter++;
+                      })
+                  .ok());
 
   DataBuffer *address_db = db_factory_.Allocate<uint64_t>(4);
   DataBuffer *mask_db = db_factory_.Allocate<bool>(4);

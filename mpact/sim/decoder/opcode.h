@@ -1,11 +1,11 @@
 // Copyright 2023 Google LLC
-// 
+//
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// 
+//
 //     https://www.apache.org/licenses/LICENSE-2.0
-// 
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -21,14 +21,13 @@
 #include <variant>
 #include <vector>
 
-#include "mpact/sim/decoder/format_name.h"
-#include "mpact/sim/decoder/resource.h"
-#include "mpact/sim/decoder/template_expression.h"
 #include "absl/container/btree_set.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
-#include "absl/types/variant.h"
+#include "mpact/sim/decoder/format_name.h"
+#include "mpact/sim/decoder/resource.h"
+#include "mpact/sim/decoder/template_expression.h"
 
 namespace mpact {
 namespace sim {
@@ -74,9 +73,8 @@ class DestinationOperand {
     if (expression_ == nullptr) return -1;
     auto res = expression_->GetValue();
     if (!res.ok()) {
-      return absl::InternalError(
-          absl::StrCat("Template expression evaluation error",
-                       res.status().message()));
+      return absl::InternalError(absl::StrCat(
+          "Template expression evaluation error", res.status().message()));
     }
     auto variant_value = res.value();
     auto *value_ptr = std::get_if<int>(&variant_value);
@@ -162,6 +160,7 @@ using OpLocatorMap = absl::flat_hash_map<std::string, OperandLocator>;
 
 class Opcode {
   friend class OpcodeFactory;
+
  public:
   // Constructor is private (defined below), only used by OpcodeFactory.
   virtual ~Opcode();

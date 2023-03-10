@@ -1,11 +1,11 @@
 // Copyright 2023 Google LLC
-// 
+//
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// 
+//
 //     https://www.apache.org/licenses/LICENSE-2.0
-// 
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -19,14 +19,14 @@
 #include <type_traits>
 #include <vector>
 
+#include "absl/container/flat_hash_map.h"
+#include "absl/strings/string_view.h"
 #include "mpact/sim/generic/component.h"
 #include "mpact/sim/generic/data_buffer.h"
 #include "mpact/sim/generic/delay_line_interface.h"
 #include "mpact/sim/generic/function_delay_line.h"
 #include "mpact/sim/generic/operand_interface.h"
 #include "mpact/sim/generic/program_error.h"
-#include "absl/container/flat_hash_map.h"
-#include "absl/strings/string_view.h"
 
 namespace mpact {
 namespace sim {

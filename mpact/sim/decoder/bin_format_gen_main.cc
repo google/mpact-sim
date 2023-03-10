@@ -1,11 +1,11 @@
 // Copyright 2023 Google LLC
-// 
+//
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// 
+//
 //     https://www.apache.org/licenses/LICENSE-2.0
-// 
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -18,11 +18,11 @@
 #include <string>
 #include <vector>
 
-#include "mpact/sim/decoder/bin_format_visitor.h"
 #include "absl/flags/flag.h"
 #include "absl/flags/parse.h"
 #include "absl/log/log.h"
 #include "absl/strings/str_split.h"
+#include "mpact/sim/decoder/bin_format_visitor.h"
 
 // Flag specifying the output directory of the generated code. When building
 // using blaze, this is automatically set by the build command in the .bzl file.

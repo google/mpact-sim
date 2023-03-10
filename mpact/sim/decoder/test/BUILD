@@ -14,7 +14,7 @@
 
 # This contains the test projects for the decoder.
 
-load("//mpact/sim/decoder:mpact_sim_isa.bzl", "mpact_isa_decoder", "mpact_cc_library", "mpact_cc_test")
+load("//mpact/sim/decoder:mpact_sim_isa.bzl", "mpact_cc_library", "mpact_cc_test", "mpact_isa_decoder")
 
 package(
     default_applicable_licenses = ["//:license"],
@@ -28,10 +28,10 @@ mpact_cc_test(
     ],
     deps = [
         "//mpact/sim/decoder:isa_parser",
-        "@com_google_googletest//:gtest",
-        "@com_google_googletest//:gtest_main",
         "@com_google_absl//absl/memory",
         "@com_google_absl//absl/strings",
+        "@com_google_googletest//:gtest",
+        "@com_google_googletest//:gtest_main",
     ],
 )
 
@@ -43,10 +43,10 @@ mpact_cc_test(
     ],
     deps = [
         "//mpact/sim/decoder:isa_parser",
-        "@com_google_googletest//:gtest",
-        "@com_google_googletest//:gtest_main",
         "@com_google_absl//absl/memory",
         "@com_google_absl//absl/strings",
+        "@com_google_googletest//:gtest",
+        "@com_google_googletest//:gtest_main",
     ],
 )
 
@@ -58,10 +58,10 @@ mpact_cc_test(
     ],
     deps = [
         "//mpact/sim/decoder:isa_parser",
-        "@com_google_googletest//:gtest",
-        "@com_google_googletest//:gtest_main",
         "@com_google_absl//absl/memory",
         "@com_google_absl//absl/strings",
+        "@com_google_googletest//:gtest",
+        "@com_google_googletest//:gtest_main",
     ],
 )
 
@@ -73,11 +73,11 @@ mpact_cc_test(
     ],
     deps = [
         "//mpact/sim/decoder:isa_parser",
-        "@com_google_googletest//:gtest",
-        "@com_google_googletest//:gtest_main",
         "@com_google_absl//absl/memory",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
+        "@com_google_googletest//:gtest",
+        "@com_google_googletest//:gtest_main",
     ],
 )
 
@@ -89,11 +89,11 @@ mpact_cc_test(
     ],
     deps = [
         "//mpact/sim/decoder:isa_parser",
-        "@com_google_googletest//:gtest",
-        "@com_google_googletest//:gtest_main",
         "@com_google_absl//absl/memory",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/types:variant",
+        "@com_google_googletest//:gtest",
+        "@com_google_googletest//:gtest_main",
     ],
 )
 
@@ -116,13 +116,13 @@ mpact_cc_test(
     ],
     deps = [
         "//mpact/sim/decoder:isa_parser",
-        "@com_google_googletest//:gtest",
-        "@com_google_googletest//:gtest_main",
         "@com_google_absl//absl/flags:flag",
         "@com_google_absl//absl/memory",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
+        "@com_google_googletest//:gtest",
+        "@com_google_googletest//:gtest_main",
     ],
 )
 
@@ -131,8 +131,8 @@ mpact_isa_decoder(
     src = "testfiles/example.isa",
     includes = [
         ":testfiles/bundle_b.isa",
-        "//mpact/sim/decoder/test/testfiles/include:empty_include.isa",
         "//mpact/sim/decoder/test/testfiles/include:bundle_a.isa",
+        "//mpact/sim/decoder/test/testfiles/include:empty_include.isa",
     ],
     isa_name = "Example",
 )
@@ -169,9 +169,9 @@ mpact_cc_test(
         ":example_isa",
         "//mpact/sim/generic:arch_state",
         "//mpact/sim/generic:instruction",
+        "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_googletest//:gtest",
         "@com_google_googletest//:gtest_main",
-        "@com_google_absl//absl/container:flat_hash_map",
     ],
 )
 
@@ -210,10 +210,10 @@ mpact_cc_test(
     ],
     deps = [
         "//mpact/sim/decoder:bin_format_visitor",
-        "@com_google_googletest//:gtest",
-        "@com_google_googletest//:gtest_main",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
+        "@com_google_googletest//:gtest",
+        "@com_google_googletest//:gtest_main",
     ],
 )
 
@@ -226,10 +226,10 @@ mpact_cc_test(
     deps = [
         "//mpact/sim/decoder:bin_format_visitor",
         "//mpact/sim/decoder:decoder_error_listener",
-        "@com_google_googletest//:gtest",
-        "@com_google_googletest//:gtest_main",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
+        "@com_google_googletest//:gtest",
+        "@com_google_googletest//:gtest_main",
     ],
 )

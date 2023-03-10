@@ -14,10 +14,9 @@
 
 # Convenient memory interface and implementation classes.
 
-
 package(
     default_applicable_licenses = ["//:license"],
-    default_visibility = ["//visibility:public"]
+    default_visibility = ["//visibility:public"],
 )
 
 cc_library(

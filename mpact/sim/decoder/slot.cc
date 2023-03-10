@@ -1,11 +1,11 @@
 // Copyright 2023 Google LLC
-// 
+//
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// 
+//
 //     https://www.apache.org/licenses/LICENSE-2.0
-// 
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -21,14 +21,14 @@
 #include <variant>
 #include <vector>
 
+#include "absl/container/flat_hash_set.h"
+#include "absl/log/log.h"
+#include "absl/status/status.h"
 #include "mpact/sim/decoder/format_name.h"
 #include "mpact/sim/decoder/instruction.h"
 #include "mpact/sim/decoder/instruction_set.h"
 #include "mpact/sim/decoder/resource.h"
 #include "mpact/sim/decoder/template_expression.h"
-#include "absl/container/flat_hash_set.h"
-#include "absl/log/log.h"
-#include "absl/status/status.h"
 
 namespace mpact {
 namespace sim {
@@ -279,8 +279,8 @@ std::string Slot::GenerateDisassemblySetter(const Instruction *inst) const {
           }
           auto result = TranslateLocator(iter->second);
           if (!result.status().ok()) {
-            absl::StrAppend(&output, "\n#error ",
-                            result.status().message(), "\n");
+            absl::StrAppend(&output, "\n#error ", result.status().message(),
+                            "\n");
             continue;
           }
           if (!format_info->is_formatted) {

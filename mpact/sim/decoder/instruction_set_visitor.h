@@ -1,11 +1,11 @@
 // Copyright 2023 Google LLC
-// 
+//
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// 
+//
 //     https://www.apache.org/licenses/LICENSE-2.0
-// 
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -24,6 +24,11 @@
 #include <utility>
 #include <vector>
 
+#include "absl/container/btree_set.h"
+#include "absl/container/flat_hash_map.h"
+#include "absl/container/flat_hash_set.h"
+#include "absl/status/status.h"
+#include "absl/strings/string_view.h"
 #include "mpact/sim/decoder/InstructionSetLexer.h"
 #include "mpact/sim/decoder/InstructionSetParser.h"
 #include "mpact/sim/decoder/antlr_parser_wrapper.h"
@@ -34,11 +39,6 @@
 #include "mpact/sim/decoder/opcode.h"
 #include "mpact/sim/decoder/slot.h"
 #include "mpact/sim/decoder/template_expression.h"
-#include "absl/container/btree_set.h"
-#include "absl/container/flat_hash_map.h"
-#include "absl/container/flat_hash_set.h"
-#include "absl/status/status.h"
-#include "absl/strings/string_view.h"
 
 // This file declares the classes that interact with the antlr4 library
 // to parse an input stream and generate the parse tree, then visiting the
@@ -83,7 +83,7 @@ class InstructionSetVisitor {
   struct TemplateFunctionEvaluator {
     TemplateFunction::Evaluator function;
     size_t arity;
-    TemplateFunctionEvaluator(TemplateFunction::Evaluator function_, 
+    TemplateFunctionEvaluator(TemplateFunction::Evaluator function_,
                               size_t arity_)
         : function(std::move(function_)), arity(arity_) {}
   };

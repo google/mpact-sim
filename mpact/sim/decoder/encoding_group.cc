@@ -1,11 +1,11 @@
 // Copyright 2023 Google LLC
-// 
+//
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// 
+//
 //     https://www.apache.org/licenses/LICENSE-2.0
-// 
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -18,16 +18,16 @@
 #include <string>
 #include <vector>
 
-#include "mpact/sim/decoder/extract.h"
-#include "mpact/sim/decoder/format_name.h"
-#include "mpact/sim/decoder/instruction_encoding.h"
-#include "mpact/sim/decoder/instruction_group.h"
 #include "absl/container/flat_hash_set.h"
 #include "absl/functional/bind_front.h"
 #include "absl/log/log.h"
 #include "absl/numeric/bits.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
+#include "mpact/sim/decoder/extract.h"
+#include "mpact/sim/decoder/format_name.h"
+#include "mpact/sim/decoder/instruction_encoding.h"
+#include "mpact/sim/decoder/instruction_group.h"
 
 namespace mpact {
 namespace sim {
@@ -564,7 +564,7 @@ int EncodingGroup::EmitConstraintConditions(
 }
 
 // This method dumps statistics about the group useful for development.
-// TODO: remove when no longer needed.
+// TODO(torerik): remove when no longer needed.
 std::string EncodingGroup::DumpGroup(std::string prefix, std::string indent) {
   std::string output;
   auto pad = absl::PadSpec::kZeroPad8;

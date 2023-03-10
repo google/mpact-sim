@@ -1,11 +1,11 @@
 // Copyright 2023 Google LLC
-// 
+//
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// 
+//
 //     https://www.apache.org/licenses/LICENSE-2.0
-// 
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -17,9 +17,9 @@
 #include <string>
 #include <vector>
 
-#include "mpact/sim/decoder/format.h"
 #include "absl/status/status.h"
 #include "absl/strings/string_view.h"
+#include "mpact/sim/decoder/format.h"
 
 namespace mpact {
 namespace sim {
@@ -30,9 +30,7 @@ BitsOrField::BitsOrField(Field *field, int high, int low, int width)
     : field_(field), high_(high), low_(low), width_(width), position_(-1) {}
 
 BitsOrField::BitsOrField(BinaryNum bin_num, int width)
-    : field_(nullptr),
-      width_(width),
-      bin_num_(bin_num) {
+    : field_(nullptr), width_(width), bin_num_(bin_num) {
   width_ = bin_num_.width;
 }
 

@@ -1,11 +1,11 @@
 // Copyright 2023 Google LLC
-// 
+//
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// 
+//
 //     https://www.apache.org/licenses/LICENSE-2.0
-// 
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -14,9 +14,10 @@
 
 #include "mpact/sim/decoder/overlay.h"
 
+#include "googlemock/include/gmock/gmock.h"
+#include "googletest/include/gtest/gtest.h"
 #include "mpact/sim/decoder/bin_format_visitor.h"
 #include "mpact/sim/decoder/format.h"
-#include "googlemock/include/gmock/gmock.h"
 
 namespace {
 
@@ -108,8 +109,9 @@ TEST_F(OverlayTest, AddFieldRangeReference) {
           .code(),
       absl::StatusCode::kInternal);
   ASSERT_TRUE(
-      overlay->AddFieldReference(kImm2Name,
-                                 std::vector<BitRange>{BitRange{0, 0}}).ok());
+      overlay
+          ->AddFieldReference(kImm2Name, std::vector<BitRange>{BitRange{0, 0}})
+          .ok());
   ASSERT_TRUE(overlay->ComputeHighLow().ok());
   EXPECT_EQ(overlay->computed_width(), 1);
   EXPECT_EQ(overlay->mask(), kImm2Mask0);
@@ -127,8 +129,8 @@ TEST_F(OverlayTest, AddFormatReference) {
                 .code(),
             absl::StatusCode::kInternal);
   ASSERT_TRUE(
-      overlay->AddFormatReference(
-          std::vector<BitRange>{BitRange{12, 10}}).ok());
+      overlay->AddFormatReference(std::vector<BitRange>{BitRange{12, 10}})
+          .ok());
   ASSERT_TRUE(overlay->ComputeHighLow().ok());
   EXPECT_EQ(overlay->computed_width(), kImm3Width);
   EXPECT_EQ(overlay->mask(), kImm3Mask);
@@ -155,12 +157,14 @@ TEST_F(OverlayTest, FullOverlay) {
   auto *overlay =
       new Overlay(kOverlayName, /*is_signed=*/false, kOverlayWidth, format_);
   ASSERT_TRUE(
-    overlay->AddFieldReference(kImm2Name,
-                               std::vector<BitRange>{BitRange{0, 0}}).ok());
+      overlay
+          ->AddFieldReference(kImm2Name, std::vector<BitRange>{BitRange{0, 0}})
+          .ok());
   ASSERT_TRUE(overlay->AddFieldReference(kImm3Name).ok());
   ASSERT_TRUE(
-    overlay->AddFieldReference(kImm2Name,
-                               std::vector<BitRange>{BitRange{1, 1}}).ok());
+      overlay
+          ->AddFieldReference(kImm2Name, std::vector<BitRange>{BitRange{1, 1}})
+          .ok());
   overlay->AddBitConstant(BinaryNum{0b00, 2});
   ASSERT_TRUE(overlay->ComputeHighLow().ok());
   EXPECT_EQ(overlay->computed_width(), overlay->declared_width());
@@ -181,12 +185,14 @@ TEST_F(OverlayTest, WriteSimpleExtractor) {
   auto *overlay =
       new Overlay(kOverlayName, /*is_signed=*/false, kOverlayWidth, format_);
   ASSERT_TRUE(
-    overlay->AddFieldReference(kImm2Name,
-                               std::vector<BitRange>{BitRange{0, 0}}).ok());
+      overlay
+          ->AddFieldReference(kImm2Name, std::vector<BitRange>{BitRange{0, 0}})
+          .ok());
   ASSERT_TRUE(overlay->AddFieldReference(kImm3Name).ok());
   ASSERT_TRUE(
-    overlay->AddFieldReference(kImm2Name,
-                               std::vector<BitRange>{BitRange{1, 1}}).ok());
+      overlay
+          ->AddFieldReference(kImm2Name, std::vector<BitRange>{BitRange{1, 1}})
+          .ok());
   overlay->AddBitConstant(BinaryNum{0b00, 2});
 
   ASSERT_TRUE(overlay->ComputeHighLow().ok());

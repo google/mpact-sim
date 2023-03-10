@@ -1,11 +1,11 @@
 // Copyright 2023 Google LLC
-// 
+//
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// 
+//
 //     https://www.apache.org/licenses/LICENSE-2.0
-// 
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -25,6 +25,7 @@
 #include "absl/memory/memory.h"
 #include "absl/status/status.h"
 #include "googlemock/include/gmock/gmock.h"
+#include "googletest/include/gtest/gtest.h"
 #include "mpact/sim/proto/component_data.pb.h"
 #include "src/google/protobuf/text_format.h"
 #include "src/google/protobuf/util/message_differencer.h"
@@ -37,7 +38,7 @@ using ::mpact::sim::generic::ConfigValue;
 using ::mpact::sim::proto::ComponentData;
 using ::mpact::sim::proto::ComponentValueEntry;
 
-constexpr char kBoolConfigName[]= "BoolConfigName";
+constexpr char kBoolConfigName[] = "BoolConfigName";
 constexpr char kInt64ConfigName[] = "Int64ConfigName";
 constexpr char kUint64ConfigName[] = "Uint64ConfigName";
 constexpr char kDoubleConfigName[] = "DoubleConfigName";
@@ -204,12 +205,11 @@ TEST(ConfigTest, ProtoExport) {
   // Ensure that the proto is parsed correctly.
   ComponentData fromText;
   EXPECT_TRUE(
-    google::protobuf::TextFormat::ParseFromString(kProtoValue, &fromText));
+      google::protobuf::TextFormat::ParseFromString(kProtoValue, &fromText));
   // The proto parsed from the string should be equal to that exported from
   // the configuration entries.
-  EXPECT_TRUE(
-      google::protobuf::util::MessageDifferencer::Equals(fromText,
-                                                         *exported_proto));
+  EXPECT_TRUE(google::protobuf::util::MessageDifferencer::Equals(
+      fromText, *exported_proto));
 }
 
 // Tests that the config entries correctly import values from a proto.
@@ -233,7 +233,7 @@ TEST(ConfigTest, ProtoImport) {
   ComponentData fromText;
   // Parse the proto from text description.
   EXPECT_TRUE(
-    google::protobuf::TextFormat::ParseFromString(kProtoValue, &fromText));
+      google::protobuf::TextFormat::ParseFromString(kProtoValue, &fromText));
   // For each configuration entry, look up a config entry with a matching name
   // and import the proto value to the config.
   for (int index = 0; index < fromText.configuration_size(); index++) {
@@ -291,7 +291,7 @@ TEST(ConfigTest, ImportFailNoNameInProto) {
   ComponentData fromText;
   // Parse the proto from text description.
   EXPECT_TRUE(
-    google::protobuf::TextFormat::ParseFromString(kProtoNoName, &fromText));
+      google::protobuf::TextFormat::ParseFromString(kProtoNoName, &fromText));
   // Expect each import to fail with internal error.
   const ComponentValueEntry &entry = fromText.configuration(0);
   for (int index = 0; index < fromText.configuration_size(); index++) {
@@ -316,8 +316,8 @@ TEST(ConfigTest, ImportFailWrongNameInProto) {
 
   ComponentData fromText;
   // Parse the proto from text description.
-  EXPECT_TRUE(
-    google::protobuf::TextFormat::ParseFromString(kProtoWrongName, &fromText));
+  EXPECT_TRUE(google::protobuf::TextFormat::ParseFromString(kProtoWrongName,
+                                                            &fromText));
   // Expect each import to fail with internal error, as the proto message
   // passed in has a name that doesn't match the configuration entry.
   for (int index = 0; index < fromText.configuration_size(); index++) {
@@ -346,9 +346,8 @@ TEST(ConfigTest, ImportFailWrongValue) {
 
   ComponentData fromText;
   // Parse the proto from text description.
-  EXPECT_TRUE(
-      google::protobuf::TextFormat::ParseFromString(kProtoWrongValues,
-                                                    &fromText));
+  EXPECT_TRUE(google::protobuf::TextFormat::ParseFromString(kProtoWrongValues,
+                                                            &fromText));
   // For each configuration entry, look up a config entry with a matching name
   // and import the proto value to the config. Because the value fields are
   // mismatches to the type of the config entry they should all fail with

@@ -1,11 +1,11 @@
 // Copyright 2023 Google LLC
-// 
+//
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// 
+//
 //     https://www.apache.org/licenses/LICENSE-2.0
-// 
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -23,6 +23,11 @@
 #include <utility>
 #include <vector>
 
+#include "absl/container/flat_hash_set.h"
+#include "absl/log/log.h"
+#include "absl/status/status.h"
+#include "absl/strings/str_cat.h"
+#include "absl/strings/str_split.h"
 #include "mpact/sim/decoder/bin_decoder.h"
 #include "mpact/sim/decoder/bin_encoding_info.h"
 #include "mpact/sim/decoder/bin_format_contexts.h"
@@ -31,11 +36,6 @@
 #include "mpact/sim/decoder/instruction_encoding.h"
 #include "mpact/sim/decoder/instruction_group.h"
 #include "mpact/sim/decoder/overlay.h"
-#include "absl/container/flat_hash_set.h"
-#include "absl/log/log.h"
-#include "absl/status/status.h"
-#include "absl/strings/str_cat.h"
-#include "absl/strings/str_split.h"
 
 namespace mpact {
 namespace sim {
@@ -475,8 +475,7 @@ void BinFormatVisitor::VisitFormatDef(FormatDefCtx *ctx,
     format_res = encoding_info->AddFormat(format_name, format_width);
   }
   if (!format_res.ok()) {
-    error_listener_->semanticError(ctx->start,
-                                   format_res.status().message());
+    error_listener_->semanticError(ctx->start, format_res.status().message());
     return;
   }
   // Parse the fields in the format.
@@ -541,8 +540,7 @@ void BinFormatVisitor::VisitOverlayDef(OverlayDefCtx *ctx, Format *format) {
   // Visit the bitfield spec items.
   auto overlay_res = format->AddFieldOverlay(name, is_signed, width);
   if (!overlay_res.ok()) {
-    error_listener_->semanticError(ctx->start,
-                                   overlay_res.status().message());
+    error_listener_->semanticError(ctx->start, overlay_res.status().message());
   }
   auto *overlay = overlay_res.value();
   for (auto *bit_field : ctx->bit_field_list()->bit_field_spec()) {

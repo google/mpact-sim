@@ -20,11 +20,11 @@
 
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 load("//mpact/sim/decoder:antlr_cc.bzl", "antlr4_cc_lexer", "antlr4_cc_parser")
-load("//mpact/sim/decoder:mpact_sim_isa.bzl", "mpact_cc_library", "mpact_cc_binary")
+load("//mpact/sim/decoder:mpact_sim_isa.bzl", "mpact_cc_binary", "mpact_cc_library")
 
 package(
     default_applicable_licenses = ["//:license"],
-    default_visibility = ["//visibility:public"]
+    default_visibility = ["//visibility:public"],
 )
 
 antlr4_cc_parser(
@@ -61,12 +61,12 @@ mpact_cc_library(
     hdrs = [
         "decoder_error_listener.h",
     ],
+    visibility = [":__subpackages__"],
     deps = [
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/strings",
         "@org_antlr4_cpp_runtime//:antlr4",
     ],
-    visibility = [":__subpackages__"],
 )
 
 mpact_cc_library(
@@ -256,4 +256,3 @@ bzl_library(
     srcs = ["mpact_sim_isa.bzl"],
     visibility = ["//visibility:public"],
 )
-

@@ -27,10 +27,10 @@ cc_test(
         "//mpact/sim/generic:core",
         "//mpact/sim/generic:instruction",
         "//mpact/sim/util/memory",
-        "@com_google_googletest//:gtest",
-        "@com_google_googletest//:gtest_main",
         "@com_google_absl//absl/memory",
         "@com_google_absl//absl/strings",
+        "@com_google_googletest//:gtest",
+        "@com_google_googletest//:gtest_main",
     ],
 )
 
@@ -43,10 +43,10 @@ cc_test(
         "//mpact/sim/generic:core",
         "//mpact/sim/generic:instruction",
         "//mpact/sim/util/memory",
-        "@com_google_googletest//:gtest",
-        "@com_google_googletest//:gtest_main",
         "@com_google_absl//absl/memory",
         "@com_google_absl//absl/strings",
+        "@com_google_googletest//:gtest",
+        "@com_google_googletest//:gtest_main",
     ],
 )
 
@@ -57,10 +57,10 @@ cc_test(
     deps = [
         "//mpact/sim/generic:core",
         "//mpact/sim/util/memory",
-        "@com_google_googletest//:gtest",
-        "@com_google_googletest//:gtest_main",
         "@com_google_absl//absl/memory",
         "@com_google_absl//absl/strings",
+        "@com_google_googletest//:gtest",
+        "@com_google_googletest//:gtest_main",
     ],
 )
 
@@ -73,9 +73,9 @@ cc_test(
     deps = [
         "//mpact/sim/generic:core",
         "//mpact/sim/util/memory",
-        "@com_google_googletest//:gtest",
-        "@com_google_googletest//:gtest_main",
         "@com_google_absl//absl/memory",
         "@com_google_absl//absl/strings",
+        "@com_google_googletest//:gtest",
+        "@com_google_googletest//:gtest_main",
     ],
 )

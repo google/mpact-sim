@@ -14,10 +14,9 @@
 
 # Program loader library.
 
-
 package(
     default_applicable_licenses = ["//:license"],
-    default_visibility = ["//visibility:public"]
+    default_visibility = ["//visibility:public"],
 )
 
 cc_library(
@@ -43,9 +42,9 @@ cc_library(
         ":program_loader",
         "//mpact/sim/generic:core",
         "//mpact/sim/util/memory",
+        "@com_github_serge1_elfio//:elfio",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
-        "@com_github_serge1_elfio//:elfio",
     ],
 )

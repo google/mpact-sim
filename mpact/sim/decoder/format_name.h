@@ -25,6 +25,8 @@ namespace machine_description {
 namespace instruction_set {
 
 // Function to convert from snake_case to PascalCase for output.
+// TODO(torerik) Replace locally defined function with a library version
+// if available.
 // Function to convert to PascalCase.
 std::string ToPascalCase(absl::string_view name);
 // Function to convert to snake_case.

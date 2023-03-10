@@ -17,10 +17,9 @@
 # specialization is required, architecture dependent projects should define
 # appropriate (possibly derived) supplementary structures.
 
-
 package(
     default_applicable_licenses = ["//:license"],
-    default_visibility = ["//visibility:public"]
+    default_visibility = ["//visibility:public"],
 )
 
 # Core piece of the simulator.

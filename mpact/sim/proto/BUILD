@@ -15,7 +15,6 @@
 # Proto's used by the simulator infrastructure to import configuration
 # values and export configuration and statistics counter values.
 
-
 package(
     default_applicable_licenses = ["//:license"],
     default_visibility = ["//visibility:public"],
