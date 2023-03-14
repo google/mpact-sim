@@ -63,7 +63,6 @@ InstructionSetVisitor::InstructionSetVisitor() {
 }
 
 InstructionSetVisitor::~InstructionSetVisitor() {
-  /*
   for (auto &[unused, expr_ptr] : constant_map_) {
     delete expr_ptr;
   }
@@ -72,7 +71,6 @@ InstructionSetVisitor::~InstructionSetVisitor() {
     delete wrapper;
   }
   antlr_parser_wrappers_.clear();
-  */
 }
 
 // Main entry point for processing the file.
