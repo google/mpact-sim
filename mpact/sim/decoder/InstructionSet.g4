@@ -72,9 +72,7 @@
 // destination operands. The operand names are intended to correspond to
 // specific operand fields in the instruction encoding.
 
-
 grammar InstructionSet;
-
 
 top_level
   : declaration* EOF
