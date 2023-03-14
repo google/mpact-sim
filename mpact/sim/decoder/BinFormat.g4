@@ -18,7 +18,9 @@
 // which opcode a particular instruction word value matches. Additionally, the
 // tool will generate extractor functions to extract the bitfields as described
 // in the input description.
+
 grammar BinFormat;
+
 
 top_level
   : declaration_list EOF
