@@ -21,11 +21,9 @@
 
 grammar BinFormat;
 
-
 top_level
   : declaration_list EOF
   ;
-
 
 // Include files can only contain bundle and slot declarations and nested
 // includes. Include file parsing starts with the declaration_list_w_eof,
