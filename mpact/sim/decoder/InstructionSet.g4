@@ -72,7 +72,9 @@
 // destination operands. The operand names are intended to correspond to
 // specific operand fields in the instruction encoding.
 
+
 grammar InstructionSet;
+
 
 top_level
   : declaration* EOF
@@ -283,7 +285,7 @@ opcode_list
 // true superset of the base slot.
 
 opcode_spec
-  : name=IDENT 
+  : name=IDENT
     (
         '=' deleted=DELETE
       | size_spec? '{' operand_spec '}' (',' opcode_attribute_list)?
