@@ -175,7 +175,7 @@ def _strip_path(text):
 # those that will be included, the command includes creating a bash array from $(SRCS), then
 # instead of using $(SRCS) in the command, it uses only the first element of that array.
 def _make_isa_tool_invocation_command(prefix, isa_name):
-    cmd = "ARR=($(SRCS)); $(location //third_party/mpact_sim/decoder:decoder_gen) " + \
+    cmd = "ARR=($(SRCS)); $(location @mpact-sim//mpact/sim/decoder:decoder_gen) " + \
           "$${ARR[0]}" + \
           " --prefix " + prefix + \
           " --output_dir $(@D)"
@@ -187,7 +187,7 @@ def _make_isa_tool_invocation_command(prefix, isa_name):
 # those that will be included, the command includes creating a bash array from $(SRCS), then
 # instead of using $(SRCS) in the command, it uses only the first element of that array.
 def _make_bin_tool_invocation_command(prefix, decoder_name):
-    cmd = "ARR=($(SRCS)); $(location //third_party/mpact_sim/decoder:bin_format_gen) " + \
+    cmd = "ARR=($(SRCS)); $(location @mpact-sim//mpact/sim/decoder:bin_format_gen) " + \
           "$${ARR[0]}" + \
           " --prefix " + prefix + \
           " --output_dir $(@D)"
