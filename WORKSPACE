@@ -76,14 +76,6 @@ http_archive(
     urls = ["https://github.com/serge1/ELFIO/releases/download/Release_3.9/elfio-3.9.tar.gz"],
 )
 
-ALL_CONTENT = """\
-filegroup(
-  name = "all_srcs",
-  srcs = glob(["**"]),
-  visibility = ["//visibility:public"],
-)
-"""
-
 # Antlr4 c++ runtime.
 http_archive(
     name = "org_antlr4_cpp_runtime",
