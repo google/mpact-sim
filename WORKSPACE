@@ -55,6 +55,10 @@ http_archive(
     urls = ["https://github.com/rules-proto-grpc/rules_proto_grpc/archive/4.3.0.tar.gz"],
 )
 
+load("@rules_proto_grpc//:repositories.bzl", "rules_proto_grpc_toolchains", "rules_proto_grpc_repos")
+rules_proto_grpc_toolchains()
+rules_proto_grpc_repos()
+
 # Google test.
 http_archive(
     name = "com_google_googletest",
@@ -95,6 +99,20 @@ http_file(
     url = "https://www.antlr.org/download/antlr-4.11.1-complete.jar",
 )
 
+# Binding to tool targets in mpact-sim. This is required for the macros
+# in mpact_sim_isa.bzl to work properly when generating code for the
+# decoders. These create the //external:decoder_gen and
+# //external:bin_format_gen aliases used in mpact_sim_isa.bzl.
+bind(
+    name = "decoder_gen",
+    actual = "//mpact/sim/decoder:decoder_gen",
+)
+
+bind(
+    name = "bin_format_gen",
+    actual = "//mpact/sim/decoder:bin_format_gen",
+)
+
 # Additional rules for building non-bazel projects. Antlr4 builds using cmake.
 http_archive(
     name = "rules_foreign_cc",
@@ -103,6 +121,9 @@ http_archive(
     url = "https://github.com/bazelbuild/rules_foreign_cc/archive/refs/tags/0.9.0.tar.gz",
 )
 
+load("@rules_foreign_cc//foreign_cc:repositories.bzl", "rules_foreign_cc_dependencies")
+rules_foreign_cc_dependencies()
+
 # Additional rules for licenses
 http_archive(
     name = "rules_license",
@@ -110,16 +131,6 @@ http_archive(
     url = "https://github.com/bazelbuild/rules_license/releases/download/0.0.4/rules_license-0.0.4.tar.gz"
 )
 
-load("@rules_foreign_cc//foreign_cc:repositories.bzl", "rules_foreign_cc_dependencies")
-rules_foreign_cc_dependencies()
-
-load("@rules_proto_grpc//:repositories.bzl", "rules_proto_grpc_toolchains", "rules_proto_grpc_repos")
-rules_proto_grpc_toolchains()
-rules_proto_grpc_repos()
-
-load("@rules_proto//proto:repositories.bzl", "rules_proto_dependencies", "rules_proto_toolchains")
-rules_proto_dependencies()
-rules_proto_toolchains()
-
 load("@rules_license//:deps.bzl", "rules_license_dependencies")
 rules_license_dependencies()
+
