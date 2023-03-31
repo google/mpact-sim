@@ -197,10 +197,10 @@ TEST_F(FlatDemandMemoryTest, LargeBlockOfMemory) {
   DataBuffer *st_db = arch_state_->db_factory()->Allocate<uint8_t>(
       FlatDemandMemory::kAllocationSize * 2);
   // Set the store data to known value.
-  std::memset(st_db->raw_ptr(), 0xbe, FlatDemandMemory::kAllocationSize * 2);
+  std::memset(st_db->raw_ptr(), 0xbe, FlatDemandMemory::kAllocationSize);
   mem->Store(0x1234, st_db);
   // Set the load data buffer to a different value.
-  std::memset(ld_db->raw_ptr(), 0xff, FlatDemandMemory::kAllocationSize * 2);
+  std::memset(ld_db->raw_ptr(), 0xff, FlatDemandMemory::kAllocationSize);
   mem->Load(0x1234, ld_db, nullptr, nullptr);
   // Compare the values loaded to the store data.
   EXPECT_THAT(ld_db->Get<uint8_t>(),
