@@ -14,6 +14,7 @@
 
 #include "mpact/sim/util/memory/flat_demand_memory.h"
 
+#include <cstdint>
 #include <cstring>
 #include <memory>
 
