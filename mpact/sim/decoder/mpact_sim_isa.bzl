@@ -26,7 +26,7 @@ def mpact_cc_library(name, srcs = [], hdrs = [], copts = [], deps = [], features
         srcs = srcs,
         hdrs = hdrs,
         copts = copts + ["-iquote $(BINDIR)/external/org_antlr4_cpp_runtime/antlr4/include/antlr4-runtime"],
-        deps = deps,
+        deps = deps + ["@org_antlr4_cpp_runtime//:antlr4"],
         visibility = visibility,
         features = features,
     )
@@ -36,7 +36,7 @@ def mpact_cc_binary(name, srcs = [], copts = [], deps = [], features = [], visib
         name = name,
         srcs = srcs,
         copts = copts + ["-iquote $(BINDIR)/external/org_antlr4_cpp_runtime/antlr4/include/antlr4-runtime"],
-        deps = deps,
+        deps = deps + ["@org_antlr4_cpp_runtime//:antlr4"],
         visibility = visibility,
         features = features,
     )
@@ -47,7 +47,7 @@ def mpact_cc_test(name, size = "small", srcs = [], deps = [], copts = [], data =
         size = size,
         copts = copts + ["-iquote $(BINDIR)/external/org_antlr4_cpp_runtime/antlr4/include/antlr4-runtime"],
         srcs = srcs,
-        deps = deps,
+        deps = deps + ["@org_antlr4_cpp_runtime//:antlr4"],
         data = data,
     )
 
@@ -92,7 +92,7 @@ def mpact_isa_decoder(name, src, includes, deps = [], isa_name = "", prefix = ""
         outs = out_files,
         cmd = command,
         heuristic_label_expansion = 0,
-        tools = ["//external:decoder_gen"],
+        tools = ["@@com_google_mpact-sim//mpact/sim/decoder:decoder_gen"],
     )
 
     # The rule for the lib that is built from the generated sources.
@@ -101,8 +101,8 @@ def mpact_isa_decoder(name, src, includes, deps = [], isa_name = "", prefix = ""
         srcs = [f for f in out_files if f.endswith(".cc")],
         hdrs = [f for f in out_files if f.endswith(".h")],
         deps = [
-            Label("//mpact/sim/generic:arch_state"),
-            Label("//mpact/sim/generic:instruction"),
+            "@@com_google_mpact-sim//mpact/sim/generic:arch_state",
+            "@@com_google_mpact-sim//mpact/sim/generic:instruction",
             "@com_google_absl//absl/container:flat_hash_map",
             "@com_google_absl//absl/strings:str_format",
         ] + deps,
@@ -147,7 +147,7 @@ def mpact_bin_fmt_decoder(name, src, includes, deps = [], decoder_name = "", pre
         outs = out_files,
         cmd = command,
         heuristic_label_expansion = 0,
-        tools = ["//external:bin_format_gen"],
+        tools = ["@@com_google_mpact-sim//mpact/sim/decoder:bin_format_gen"],
     )
 
     # The rule for the lib that is built from the generated sources.
@@ -156,8 +156,8 @@ def mpact_bin_fmt_decoder(name, src, includes, deps = [], decoder_name = "", pre
         srcs = [f for f in out_files if f.endswith(".cc")],
         hdrs = [f for f in out_files if f.endswith(".h")],
         deps = [
-            Label("//mpact/sim/generic:arch_state"),
-            Label("//mpact/sim/generic:instruction"),
+            "@@com_google_mpact-sim//mpact/sim/generic:arch_state",
+            "@@com_google_mpact-sim//mpact/sim/generic:instruction",
             "@com_google_absl//absl/container:flat_hash_map",
             "@com_google_absl//absl/functional:any_invocable",
             "@com_google_absl//absl/strings:str_format",
@@ -175,7 +175,7 @@ def _strip_path(text):
 # those that will be included, the command includes creating a bash array from $(SRCS), then
 # instead of using $(SRCS) in the command, it uses only the first element of that array.
 def _make_isa_tool_invocation_command(prefix, isa_name):
-    cmd = "ARR=($(SRCS)); $(location //external:decoder_gen) " + \
+    cmd = "ARR=($(SRCS)); $(location @@com_google_mpact-sim//mpact/sim/decoder:decoder_gen) " + \
           "$${ARR[0]}" + \
           " --prefix " + prefix + \
           " --output_dir $(@D)"
@@ -187,7 +187,7 @@ def _make_isa_tool_invocation_command(prefix, isa_name):
 # those that will be included, the command includes creating a bash array from $(SRCS), then
 # instead of using $(SRCS) in the command, it uses only the first element of that array.
 def _make_bin_tool_invocation_command(prefix, decoder_name):
-    cmd = "ARR=($(SRCS)); $(location //external:bin_format_gen) " + \
+    cmd = "ARR=($(SRCS)); $(location @@com_google_mpact-sim//mpact/sim/decoder:bin_format_gen) " + \
           "$${ARR[0]}" + \
           " --prefix " + prefix + \
           " --output_dir $(@D)"
