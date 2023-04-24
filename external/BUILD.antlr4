@@ -27,6 +27,9 @@ cmake(
     cache_entries = {
         "CMAKE_CXX_FLAGS": "-std=c++17",
     },
+    generate_args = [
+        "-G Ninja",
+    ],
     lib_source = ":all_srcs",
     tags = ["requires-network"],
     out_static_libs = ["libantlr4-runtime.a"],
