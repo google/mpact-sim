@@ -1,6 +1,0 @@
-# Ignore all bazel related directories
-
-bazel-bin
-bazel-mpact-sim
-bazel-out
-bazel-testlogs
