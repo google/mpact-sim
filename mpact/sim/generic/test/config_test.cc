@@ -77,14 +77,19 @@ constexpr char kStringValue[] = "string value";
 TEST(ConfigTest, BaseConstruction) {
   Config<bool> bool_config(kBoolConfigName);
   EXPECT_EQ(bool_config.name(), kBoolConfigName);
+  EXPECT_FALSE(bool_config.HasConfigValue());
   Config<int64_t> int64_config(kInt64ConfigName);
   EXPECT_EQ(int64_config.name(), kInt64ConfigName);
+  EXPECT_FALSE(int64_config.HasConfigValue());
   Config<uint64_t> uint64_config(kUint64ConfigName);
   EXPECT_EQ(uint64_config.name(), kUint64ConfigName);
+  EXPECT_FALSE(uint64_config.HasConfigValue());
   Config<double> double_config(kDoubleConfigName);
   EXPECT_EQ(double_config.name(), kDoubleConfigName);
+  EXPECT_FALSE(double_config.HasConfigValue());
   Config<std::string> string_config(kStringConfigName);
   EXPECT_EQ(string_config.name(), kStringConfigName);
+  EXPECT_FALSE(string_config.HasConfigValue());
 }
 
 // Testing that the value can be set and retrieved using the variant type.
@@ -95,30 +100,35 @@ TEST(ConfigTest, ConfigValue) {
   Config<bool> bool_config(kBoolConfigName);
   input_value = ConfigValue(kBoolValue);
   EXPECT_TRUE(bool_config.SetConfigValue(input_value).ok());
+  EXPECT_TRUE(bool_config.HasConfigValue());
   output_value = bool_config.GetConfigValue();
   EXPECT_EQ(std::get<bool>(output_value), kBoolValue);
 
   Config<int64_t> int64_config(kInt64ConfigName);
   input_value = ConfigValue(kInt64Value);
   EXPECT_TRUE(int64_config.SetConfigValue(input_value).ok());
+  EXPECT_TRUE(int64_config.HasConfigValue());
   output_value = int64_config.GetConfigValue();
   EXPECT_EQ(std::get<int64_t>(output_value), kInt64Value);
 
   Config<uint64_t> uint64_config(kUint64ConfigName);
   input_value = ConfigValue(kUint64Value);
   EXPECT_TRUE(uint64_config.SetConfigValue(input_value).ok());
+  EXPECT_TRUE(uint64_config.HasConfigValue());
   output_value = uint64_config.GetConfigValue();
   EXPECT_EQ(std::get<uint64_t>(output_value), kUint64Value);
 
   Config<double> double_config(kDoubleConfigName);
   input_value = ConfigValue(kDoubleValue);
   EXPECT_TRUE(double_config.SetConfigValue(input_value).ok());
+  EXPECT_TRUE(double_config.HasConfigValue());
   output_value = double_config.GetConfigValue();
   EXPECT_EQ(std::get<double>(output_value), kDoubleValue);
 
   Config<std::string> string_config(kStringConfigName);
   input_value = ConfigValue(std::string(kStringValue));
   EXPECT_TRUE(string_config.SetConfigValue(input_value).ok());
+  EXPECT_TRUE(string_config.HasConfigValue());
   output_value = string_config.GetConfigValue();
   EXPECT_EQ(std::get<std::string>(output_value), kStringValue);
 }
