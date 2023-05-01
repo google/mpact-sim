@@ -86,6 +86,12 @@ class CounterValueOutputBase : public CounterBaseInterface {
   // to Initialize(..) is required before it can be added to a component.
   CounterValueOutputBase() : is_enabled_(false), is_initialized_(false) {}
   // Constructs and initializes the counter.
+  CounterValueOutputBase(std::string name, std::string about, const T initial)
+      : name_(std::move(name)),
+        about_(about),
+        is_enabled_(true),
+        is_initialized_(true),
+        value_(std::move(initial)) {}
   CounterValueOutputBase(std::string name, const T initial)
       : name_(std::move(name)),
         about_(),
@@ -198,8 +204,12 @@ class SimpleCounter : public CounterValueOutputBase<T>,
 
   // Constructor and destructor.
   SimpleCounter() : CounterValueOutputBase<T>() {}
+  SimpleCounter(std::string name, std::string about, const T &initial)
+      : CounterValueOutputBase<T>(std::move(name), std::move(about), initial) {}
   SimpleCounter(std::string name, const T &initial)
       : CounterValueOutputBase<T>(std::move(name), initial) {}
+  SimpleCounter(std::string name, std::string about)
+      : SimpleCounter(std::move(name), std::move(about), T()) {}
   explicit SimpleCounter(std::string name)
       : SimpleCounter(std::move(name), T()) {}
   SimpleCounter &operator=(const SimpleCounter &) = delete;
