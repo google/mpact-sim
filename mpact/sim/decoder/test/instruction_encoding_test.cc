@@ -180,7 +180,7 @@ TEST_F(InstructionEncodingTest, IllegalSignedConstraints) {
 
 TEST_F(InstructionEncodingTest, AddEqualUnsignedConstraint) {
   auto status = i_type_->AddEqualConstraint("func3", kFunc3Value);
-  EXPECT_OK(status);
+  EXPECT_TRUE(status.ok());
   EXPECT_EQ(i_type_->GetValue(), kFunc3Value << 12);
   EXPECT_EQ(i_type_->GetMask(), kFunc3Mask);
   EXPECT_EQ(i_type_->GetCombinedMask(), kFunc3Mask);
@@ -200,7 +200,7 @@ TEST_F(InstructionEncodingTest, AddEqualUnsignedConstraint) {
 TEST_F(InstructionEncodingTest, AddOtherConstraints) {
   auto status =
       i_type_->AddOtherConstraint(ConstraintType::kGe, "func3", kFunc3Value);
-  EXPECT_OK(status);
+  EXPECT_TRUE(status.ok());
   EXPECT_EQ(i_type_->GetValue(), 0);
   EXPECT_EQ(i_type_->GetMask(), 0);
   EXPECT_EQ(i_type_->GetCombinedMask(), kFunc3Mask);
