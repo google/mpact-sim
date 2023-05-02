@@ -31,6 +31,16 @@ namespace bin_format {
 
 using ::mpact::sim::machine_description::instruction_set::ToSnakeCase;
 
+FieldOrFormat::~FieldOrFormat() {
+  if (is_field_) {
+    delete field_;
+  } else {
+    delete format_;
+  }
+  field_ = nullptr;
+  format_ = nullptr;
+}
+
 // The equality operator compares to verify that the field/format definitions
 // are equivalent, i.e., refers to the same bits.
 bool FieldOrFormat::operator==(const FieldOrFormat &rhs) const {
@@ -61,9 +71,9 @@ Format::Format(std::string name, int width, std::string base_format_name,
       encoding_info_(encoding_info) {}
 
 Format::~Format() {
-  for (auto &[unused, field_ptr] : field_map_) {
-    delete field_ptr;
-  }
+  // for (auto &[unused, field_ptr] : field_map_) {
+  //   delete field_ptr;
+  // }
   field_map_.clear();
   for (auto &[unused, overlay_ptr] : overlay_map_) {
     delete overlay_ptr;
@@ -247,7 +257,7 @@ void Format::PropagateExtractorsUp() {
       // promoted.
       if (overlay_ptr == nullptr) continue;
       auto iter = base_format_->overlay_extractors_.find(name);
-      // If it isn't in the partent, add it.
+      // If it isn't in the parent, add it.
       if (iter == base_format_->overlay_extractors_.end()) {
         base_format_->overlay_extractors_.insert(
             std::make_pair(name, overlay_ptr));

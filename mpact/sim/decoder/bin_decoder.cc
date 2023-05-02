@@ -17,7 +17,6 @@
 #include <string>
 
 #include "mpact/sim/decoder/bin_encoding_info.h"
-#include "mpact/sim/decoder/instruction_encoding.h"
 #include "mpact/sim/decoder/instruction_group.h"
 
 namespace mpact {
@@ -38,7 +37,7 @@ BinDecoder::~BinDecoder() {
   instruction_group_vec_.clear();
 }
 
-void BinDecoder::SelectInstructionGroupForDecoder(InstructionGroup *group) {
+void BinDecoder::AddInstructionGroup(InstructionGroup *group) {
   instruction_group_vec_.push_back(group);
 }
 

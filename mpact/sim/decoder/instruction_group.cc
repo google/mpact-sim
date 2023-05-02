@@ -53,6 +53,10 @@ InstructionGroup::~InstructionGroup() {
   }
   encoding_map_.clear();
   encoding_vec_.clear();
+  for (auto *group : encoding_group_vec_) {
+    delete group;
+  }
+  encoding_group_vec_.clear();
 }
 
 // Add an instruction encoding into the current group. Check that the format

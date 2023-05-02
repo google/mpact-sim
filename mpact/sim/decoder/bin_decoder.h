@@ -46,7 +46,7 @@ class BinDecoder {
   // Checks for invalid encodings, such as some duplicates.
   void CheckEncodings();
   // Select instruction group for decoder generation.
-  void SelectInstructionGroupForDecoder(InstructionGroup *group);
+  void AddInstructionGroup(InstructionGroup *group);
 
   // Accessors.
   const std::string &name() const { return name_; }

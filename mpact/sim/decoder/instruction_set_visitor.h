@@ -16,8 +16,6 @@
 #define MPACT_SIM_DECODER_INSTRUCTION_SET_VISITOR_H_
 
 #include <deque>
-#include <iostream>
-#include <istream>
 #include <memory>
 #include <optional>
 #include <string>
@@ -29,6 +27,7 @@
 #include "absl/container/flat_hash_set.h"
 #include "absl/status/status.h"
 #include "absl/strings/string_view.h"
+#include "antlr4-runtime/ParserRuleContext.h"
 #include "mpact/sim/decoder/InstructionSetLexer.h"
 #include "mpact/sim/decoder/InstructionSetParser.h"
 #include "mpact/sim/decoder/antlr_parser_wrapper.h"
@@ -67,8 +66,8 @@ class InstructionSetVisitor {
 
   // Entry point for processing a source_stream input, generating any output
   // files in the given directory. Returns OK if no errors were encountered.
-  absl::Status Process(const std::string &file_name, const std::string &prefix,
-                       const std::string &isa_name,
+  absl::Status Process(const std::vector<std::string> &file_names,
+                       const std::string &prefix, const std::string &isa_name,
                        const std::vector<std::string> &include_roots,
                        absl::string_view directory);
 
@@ -123,8 +122,7 @@ class InstructionSetVisitor {
   // The following methods visits the parts of the parse tree indicated by
   // the method name and builds up the internal representation used for
   // decoder generation.
-  std::unique_ptr<InstructionSet> VisitTopLevel(TopLevelCtx *ctx,
-                                                const std::string &isa_name);
+  void VisitTopLevel(TopLevelCtx *ctx);
 
   std::unique_ptr<InstructionSet> VisitIsaDeclaration(IsaDeclCtx *ctx);
   void VisitConstantDef(ConstantDefCtx *ctx);
@@ -154,6 +152,10 @@ class InstructionSetVisitor {
       Slot *slot, Instruction *inst, ResourceItemCtx *resource_item);
   void VisitResourceDetailsLists(ResourceDetailsCtx *ctx, Slot *slot,
                                  Instruction *inst, ResourceSpec *spec);
+  std::unique_ptr<InstructionSet> ProcessTopLevel(absl::string_view isa_name);
+  void ParseIncludeFile(antlr4::ParserRuleContext *ctx,
+                        const std::string &file_name,
+                        const std::vector<std::string> &dirs);
   DestinationOperand *FindDestinationOpInExpression(
       ExpressionCtx *ctx, const Slot *slot, const Instruction *inst) const;
   void PerformOpcodeOverrides(

@@ -51,21 +51,31 @@ def mpact_cc_test(name, size = "small", srcs = [], deps = [], copts = [], data =
         data = data,
     )
 
-def mpact_isa_decoder(name, src, includes, deps = [], isa_name = "", prefix = ""):
+def mpact_isa_decoder(name, includes, src = "", srcs = [], deps = [], isa_name = "", prefix = ""):
     """Generates the C++ source corresponding to an MPACT Isa decoder definition.
 
     Args:
       name: The name of the package to use for the cc_library.
-      src:  The .isa file containing the Isa rules.
+      src:  The .isa file containing the Isa rules (or use srcs).
+      srcs: The .isa files containing the Isa rules (if src is not specified).
       deps: Dependencies for the cc_library.
       includes: Include .isa files.
       isa_name: Name of isa to generate code for.
       prefix: File prefix for the generated files (otherwise uses base name of src file
     """
-    if not src.endswith(".isa"):
-        fail("Grammar must end with .isa", "src")
+
+    # if src is not empty, prepend it to the srcs list.
+    if src != "":
+        isa_srcs = [src] + srcs
+    else:
+        isa_srcs = srcs
+
+    for f in isa_srcs:
+        if not f.endswith(".isa"):
+            fail("Grammar file '" + f + "' must end with .isa", "src")
+
     if prefix == "":
-        file_prefix = src[:-4]
+        file_prefix = isa_srcs[0][:-4]
         base_file_prefix = _strip_path(file_prefix)
     else:
         base_file_prefix = prefix
@@ -80,15 +90,15 @@ def mpact_isa_decoder(name, src, includes, deps = [], isa_name = "", prefix = ""
 
     # The command to generate the files.
     command = ";\n".join([
-        _make_isa_tool_invocation_command(base_file_prefix, isa_name),
+        _make_isa_tool_invocation_command(len(isa_srcs), base_file_prefix, isa_name),
     ])
 
     # The rule for the generated sources.
     native.genrule(
         name = name + "_source",
-        # Add includes to srcs to ensure they are added to the blaze build sandbox where
+        # Add includes to isa_srcs to ensure they are added to the blaze build sandbox where
         # they can be found.
-        srcs = [src] + includes,
+        srcs = isa_srcs + includes,
         outs = out_files,
         cmd = command,
         heuristic_label_expansion = 0,
@@ -108,19 +118,28 @@ def mpact_isa_decoder(name, src, includes, deps = [], isa_name = "", prefix = ""
         ] + deps,
     )
 
-def mpact_bin_fmt_decoder(name, src, includes, deps = [], decoder_name = "", prefix = ""):
+def mpact_bin_fmt_decoder(name, includes, src = "", srcs = [], deps = [], decoder_name = "", prefix = ""):
     """Generates the C++ source corresponding to an MPACT Bin Format decoder definition.
 
     Args:
       name: The name of the package to use for the cc_library.
-      src:  The .bin_fmt file containing the Bin Format rules.
       includes: Include .bin_fmt files.
+      src:  The .bin_fmt file containing the Bin Format rules.
+      srcs: List of .bin_fmt files containing the Bin Format rules.
       deps: Dependencies for the cc_library
       decoder_name: Name of decoder from .bin_fmt file to generate
       prefix: File prefix for the generated files (otherwise uses base name of src file
     """
-    if not src.endswith(".bin_fmt"):
-        fail("Grammar must end with .bin_fmt", "src")
+
+    if src != "":
+        bin_srcs = [src] + srcs
+    else:
+        bin_srcs = srcs
+
+    for f in bin_srcs:
+        if not f.endswith(".bin_fmt"):
+            fail("Grammar file '" + f + "' must end with .bin_fmt", "srcs")
+
     if prefix == "":
         file_prefix = src[:-8]
         base_file_prefix = _strip_path(file_prefix)
@@ -135,7 +154,7 @@ def mpact_bin_fmt_decoder(name, src, includes, deps = [], decoder_name = "", pre
 
     # The command to generate the files.
     command = ";\n".join([
-        _make_bin_tool_invocation_command(base_file_prefix, decoder_name),
+        _make_bin_tool_invocation_command(len(bin_srcs), base_file_prefix, decoder_name),
     ])
 
     # The rule for the generated sources.
@@ -171,26 +190,32 @@ def _strip_path(text):
         return text
     return text[pos + 1:]
 
-# Create the decoder_gen command with arguments, Since the srcs had all the files, including
-# those that will be included, the command includes creating a bash array from $(SRCS), then
-# instead of using $(SRCS) in the command, it uses only the first element of that array.
-def _make_isa_tool_invocation_command(prefix, isa_name):
-    cmd = "ARR=($(SRCS)); $(location //external:decoder_gen) " + \
-          "$${ARR[0]}" + \
-          " --prefix " + prefix + \
-          " --output_dir $(@D)"
+# Create the decoder_gen command with arguments, Since the srcs had all the
+# files, including those that will be included, the command includes creating
+# a bash array from $(SRCS), then instead of using $(SRCS) in the command, it
+# uses only the first element of that array.
+def _make_isa_tool_invocation_command(num_srcs, prefix, isa_name):
+    cmd = "ARR=($(SRCS)); $(location //external:decoder_gen) "
+
+    # Add the sources that are not in includes.
+    for i in range(0, num_srcs):
+        cmd += "$${ARR[" + str(i) + "]} "
+    cmd += "--prefix " + prefix + " --output_dir $(@D)"
     if isa_name != "":
         cmd += " --isa_name " + isa_name
+
     return cmd
 
 # Create the bin_format_gen command with arguments, Since the srcs had all the files, including
 # those that will be included, the command includes creating a bash array from $(SRCS), then
 # instead of using $(SRCS) in the command, it uses only the first element of that array.
-def _make_bin_tool_invocation_command(prefix, decoder_name):
-    cmd = "ARR=($(SRCS)); $(location //external:bin_format_gen) " + \
-          "$${ARR[0]}" + \
-          " --prefix " + prefix + \
-          " --output_dir $(@D)"
+def _make_bin_tool_invocation_command(num_srcs, prefix, decoder_name):
+    cmd = "ARR=($(SRCS)); $(location //external:bin_format_gen) "
+
+    # Add the sources that are not in includes.
+    for i in range(0, num_srcs):
+        cmd += "$${ARR[" + str(i) + "]} "
+    cmd += " --prefix " + prefix + " --output_dir $(@D)"
     if decoder_name != "":
         cmd += " --decoder_name " + decoder_name
     return cmd

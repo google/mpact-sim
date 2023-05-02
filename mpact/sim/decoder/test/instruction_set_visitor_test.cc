@@ -59,15 +59,15 @@ class InstructionSetParserTest : public testing::Test {
 // An empty file should fail.
 TEST_F(InstructionSetParserTest, NullFileParsing) {
   // Set up input and output file paths.
-  const std::string input_file =
-      absl::StrCat(kDepotPath, "testfiles/", kEmptyBaseName, ".isa");
-  ASSERT_TRUE(FileExists(input_file));
+  std::vector<std::string> input_files = {
+      absl::StrCat(kDepotPath, "testfiles/", kEmptyBaseName, ".isa")};
+  ASSERT_TRUE(FileExists(input_files[0]));
   std::string output_dir = OutputDir();
 
   InstructionSetVisitor visitor;
   // Parse and process the input file.
   EXPECT_FALSE(visitor
-                   .Process(input_file, kEmptyBaseName, kEmptyIsaName, paths_,
+                   .Process(input_files, kEmptyBaseName, kEmptyIsaName, paths_,
                             output_dir)
                    .ok());
 }
@@ -75,30 +75,30 @@ TEST_F(InstructionSetParserTest, NullFileParsing) {
 // Make sure recursive includes cause a failure.
 TEST_F(InstructionSetParserTest, RecursiveInclude) {
   // Set up input and output file paths.
-  const std::string input_file =
-      absl::StrCat(kDepotPath, "testfiles/", kRecursiveExampleBaseName, ".isa");
-  ASSERT_TRUE(FileExists(input_file));
+  std::vector<std::string> input_files = {absl::StrCat(
+      kDepotPath, "testfiles/", kRecursiveExampleBaseName, ".isa")};
+  ASSERT_TRUE(FileExists(input_files[0]));
   std::string output_dir = OutputDir();
 
   InstructionSetVisitor visitor;
   EXPECT_FALSE(visitor
-                   .Process(input_file, kRecursiveExampleBaseName,
+                   .Process(input_files, kRecursiveExampleBaseName,
                             kExampleIsaName, paths_, output_dir)
                    .ok());
-}
+}  // namespace
 
 // Make sure the visitor can read and parse the input file.
 TEST_F(InstructionSetParserTest, BasicParsing) {
   // Set up input and output file paths.
-  const std::string input_file =
-      absl::StrCat(kDepotPath, "testfiles/", kExampleBaseName, ".isa");
-  ASSERT_TRUE(FileExists(input_file));
+  std::vector<std::string> input_files = {
+      absl::StrCat(kDepotPath, "testfiles/", kExampleBaseName, ".isa")};
+  ASSERT_TRUE(FileExists(input_files[0]));
   std::string output_dir = getenv(kTestUndeclaredOutputsDir);
 
   InstructionSetVisitor visitor;
   // Parse and process the input file.
   EXPECT_TRUE(visitor
-                  .Process(input_file, kExampleBaseName, kExampleIsaName,
+                  .Process(input_files, kExampleBaseName, kExampleIsaName,
                            paths_, output_dir)
                   .ok());
   // Verify that the decoder files _decoder.{.h,.cc} files were generated.

@@ -272,7 +272,7 @@ void EncodingGroup::EmitInitializers(absl::string_view name,
                       "None,");
     }
 
-    // Break the line every 4 iterms.
+    // Break the line every 4 items.
     if ((i % per_line) == per_line - 1) {
       absl::StrAppend(initializers_ptr, "\n");
     }

@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <fstream>
 #include <iostream>
 #include <ostream>
 #include <string>
@@ -57,11 +56,10 @@ ABSL_FLAG(std::string, include, "", "include file root(s)");
 int main(int argc, char **argv) {
   auto arg_vec = absl::ParseCommandLine(argc, argv);
 
-  std::string file_name;
+  std::vector<std::string> file_names;
 
-  // Open input file as stream if specified.
-  if (arg_vec.size() > 1) {
-    file_name = arg_vec[1];
+  for (int i = 1; i < arg_vec.size(); ++i) {
+    file_names.push_back(arg_vec[i]);
   }
 
   mpact::sim::machine_description::instruction_set::InstructionSetVisitor
@@ -80,6 +78,11 @@ int main(int argc, char **argv) {
     exit(-1);
   }
   auto status =
-      visitor.Process(file_name, prefix, isa_name, include_roots, output_dir);
-  return status.ok() ? 0 : -1;
+      visitor.Process(file_names, prefix, isa_name, include_roots, output_dir);
+
+  if (!status.ok()) {
+    LOG(ERROR) << status.message();
+    return -1;
+  }
+  return 0;
 }

@@ -16,7 +16,6 @@
 #define MPACT_SIM_DECODER_BIN_FORMAT_VISITOR_H_
 
 #include <deque>
-#include <list>
 #include <memory>
 #include <string>
 #include <utility>
@@ -24,6 +23,7 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
+#include "antlr4-runtime/ParserRuleContext.h"
 #include "mpact/sim/decoder/BinFormatLexer.h"
 #include "mpact/sim/decoder/antlr_parser_wrapper.h"
 #include "mpact/sim/decoder/bin_encoding_info.h"
@@ -67,7 +67,7 @@ class BinFormatVisitor {
 
   // Entry point for processing a source_stream input, generating any output
   // files in the given directory. Returns OK if no errors were encountered.
-  absl::Status Process(const std::string &file_name,
+  absl::Status Process(const std::vector<std::string> &file_names,
                        const std::string &decoder_name,
                        absl::string_view prefix,
                        const std::vector<std::string> &include_roots,
@@ -88,14 +88,18 @@ class BinFormatVisitor {
   BitRange GetBitIndexRange(BitIndexRangeCtx *ctx);
   int ConvertToInt(NumberCtx *ctx);
   // Methods that visit the nodes of the parse tree.
-  std::unique_ptr<BinEncodingInfo> VisitTopLevel(
-      TopLevelCtx *ctx, const std::string &decoder_name);
+  void VisitTopLevel(TopLevelCtx *ctx);
+  std::unique_ptr<BinEncodingInfo> ProcessTopLevel(
+      const std::string &decoder_name);
   void PreProcessDeclarations(DeclarationListCtx *ctx);
   void VisitDeclarations(DeclarationListCtx *ctx,
                          BinEncodingInfo *encoding_info);
   void VisitFormatDef(FormatDefCtx *ctx, BinEncodingInfo *encoding_info);
   void VisitFieldDef(FieldDefCtx *ctx, Format *format);
   void VisitIncludeFile(IncludeFileCtx *ctx);
+  void ParseIncludeFile(antlr4::ParserRuleContext *ctx,
+                        const std::string &file_name,
+                        const std::vector<std::string> &dirs);
   void VisitOverlayDef(OverlayDefCtx *ctx, Format *format);
   void VisitOverlayBitField(BitFieldCtx *ctx, Overlay *overlay);
   InstructionGroup *VisitInstructionGroupDef(InstructionGroupDefCtx *ctx,
