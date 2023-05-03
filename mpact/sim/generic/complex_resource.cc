@@ -63,7 +63,6 @@ void ComplexResource::Advance() {
     for (int i = array_size_ - 1; i >= 0; i--) {
       int index = i - num_longwords;
 
-      LOG(INFO) << i << " gets " << index;
       bit_array_[i] = (index < 0) ? 0 : bit_array_[index];
     }
   }
