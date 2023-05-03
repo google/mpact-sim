@@ -15,6 +15,7 @@
 #include "mpact/sim/decoder/instruction_set_visitor.h"
 
 #include <cctype>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <istream>
