@@ -27,10 +27,8 @@
 #include <vector>
 
 #include "absl/container/flat_hash_set.h"
-#include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
-#include "antlr4-runtime/antlr4-runtime.h"
 #include "mpact/sim/decoder/decoder_error_listener.h"
 #include "mpact/sim/decoder/format_name.h"
 #include "mpact/sim/decoder/template_expression.h"
@@ -75,7 +73,7 @@ InstructionSetVisitor::~InstructionSetVisitor() {
 
 // Main entry point for processing the file.
 absl::Status InstructionSetVisitor::Process(
-    const std::string &file_name, const std::string &prefix,
+    const std::vector<std::string> &file_names, const std::string &prefix,
     const std::string &isa_name, const std::vector<std::string> &include_roots,
     absl::string_view directory) {
   if (isa_name.empty()) {
@@ -83,7 +81,6 @@ absl::Status InstructionSetVisitor::Process(
     return absl::InvalidArgumentError("Isa name cannot be empty");
   }
 
-  include_dir_vec_.push_back(".");
   for (auto &include_root : include_roots) {
     include_dir_vec_.push_back(include_root);
   }
@@ -91,21 +88,21 @@ absl::Status InstructionSetVisitor::Process(
   std::string isa_prefix = prefix;
   std::istream *source_stream = &std::cin;
 
-  if (!file_name.empty()) {
-    source_stream = new std::fstream(file_name, std::fstream::in);
+  if (!file_names.empty()) {
+    source_stream = new std::fstream(file_names[0], std::fstream::in);
   }
   // Create an antlr4 stream from the input stream.
   IsaAntlrParserWrapper parser_wrapper(source_stream);
   // Create and add the error listener.
   set_error_listener(std::make_unique<decoder::DecoderErrorListener>());
-  error_listener()->set_file_name(file_name);
+  error_listener()->set_file_name(file_names[0]);
   parser_wrapper.parser()->removeErrorListeners();
   parser_wrapper.parser()->addErrorListener(error_listener());
 
   // Parse the file and then create the data structures.
   TopLevelCtx *top_level = parser_wrapper.parser()->top_level();
 
-  if (!file_name.empty()) {
+  if (!file_names.empty()) {
     delete source_stream;
     source_stream = nullptr;
   }
@@ -115,7 +112,13 @@ absl::Status InstructionSetVisitor::Process(
   }
 
   // Visit the parse tree starting at the namespaces declaration.
-  auto instruction_set = VisitTopLevel(top_level, isa_name);
+  VisitTopLevel(top_level);
+  // Process additional source files.
+  for (int i = 1; i < file_names.size(); ++i) {
+    ParseIncludeFile(top_level, file_names[i], {});
+  }
+  // Now process the parse tree.
+  auto instruction_set = ProcessTopLevel(isa_name);
   // Include files may generate additional syntax errors.
   if (error_listener()->HasError() > 0) {
     return absl::InternalError("Errors encountered - terminating.");
@@ -135,8 +138,16 @@ absl::Status InstructionSetVisitor::Process(
   }
 
   // If the prefix is empty, use the source file name.
-  if (isa_prefix.empty()) {
-    isa_prefix = ToSnakeCase(std::filesystem::path(file_name).stem().string());
+  if (isa_prefix.empty() && file_names.empty()) {
+    error_listener()->semanticError(nullptr,
+                                    "No prefix or file name specified");
+  } else if (isa_prefix.empty()) {
+    isa_prefix =
+        ToSnakeCase(std::filesystem::path(file_names[0]).stem().string());
+  }
+  // Check for additional errors.
+  if (error_listener()->HasError() > 0) {
+    return absl::InternalError("Errors encountered - terminating.");
   }
   std::string encoding_type_name =
       absl::StrCat(ToPascalCase(isa_name), "EncodingBase");
@@ -220,8 +231,7 @@ absl::Status InstructionSetVisitor::PerformBundleReferenceChecks(
   return absl::OkStatus();
 }
 
-std::unique_ptr<InstructionSet> InstructionSetVisitor::VisitTopLevel(
-    TopLevelCtx *ctx, const std::string &isa_name) {
+void InstructionSetVisitor::VisitTopLevel(TopLevelCtx *ctx) {
   auto declarations = ctx->declaration();
 
   // Process disasm widths. Only the one in the top level file is used if there
@@ -243,7 +253,10 @@ std::unique_ptr<InstructionSet> InstructionSetVisitor::VisitTopLevel(
 
   // Parse, but don't process all the slots, bundles, isas and include files.
   PreProcessDeclarations(declarations);
+}
 
+std::unique_ptr<InstructionSet> InstructionSetVisitor::ProcessTopLevel(
+    absl::string_view isa_name) {
   // At this point we have the contexts for all isas, bundles, and slots.
   // First make sure that the named isa has been defined.
   auto isa_ptr = isa_decl_map_.find(isa_name);
@@ -455,17 +468,32 @@ void InstructionSetVisitor::VisitIncludeFile(IncludeFileCtx *ctx) {
       return;
     }
   }
+  ParseIncludeFile(ctx, file_name, include_dir_vec_);
+}
+
+void InstructionSetVisitor::ParseIncludeFile(
+    antlr4::ParserRuleContext *ctx, const std::string &file_name,
+    const std::vector<std::string> &dirs) {
   std::fstream include_file;
   // Open include file.
-  for (auto const &dir : include_dir_vec_) {
-    std::string include_name = absl::StrCat(dir, "/", file_name);
-    include_file.open(include_name, std::fstream::in);
-    if (include_file.is_open()) break;
-  }
+  include_file.open(file_name, std::fstream::in);
   if (!include_file.is_open()) {
-    error_listener()->semanticError(
-        ctx->start, absl::StrCat("Failed to open '", file_name, "'"));
-    return;
+    // Try each of the include file directories.
+    for (auto const &dir : dirs) {
+      std::string include_name = dir + "/" + file_name;
+      include_file.open(include_name, std::fstream::in);
+      if (include_file.is_open()) break;
+    }
+    if (!include_file.is_open()) {
+      if (ctx != nullptr) {
+        error_listener()->semanticError(
+            ctx->start, absl::StrCat("Failed to open '", file_name, "'"));
+      } else {
+        error_listener()->semanticError(
+            nullptr, absl::StrCat("Failed to open '", file_name, "'"));
+      }
+      return;
+    }
   }
   std::string previous_file_name = error_listener()->file_name();
   error_listener()->set_file_name(file_name);
@@ -477,9 +505,7 @@ void InstructionSetVisitor::VisitIncludeFile(IncludeFileCtx *ctx) {
   // Add the error listener.
   include_parser->parser()->removeErrorListeners();
   include_parser->parser()->addErrorListener(error_listener());
-  // Note, since include statements can only occur after the isa_def, don't
-  // parse starting at the top level rule, instead start at the
-  // declaration() rule.
+  // Start parsing at the include_top_level rule.
   auto declaration_vec =
       include_parser->parser()->include_top_level()->declaration();
   include_file.close();

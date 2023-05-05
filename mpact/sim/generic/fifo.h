@@ -20,6 +20,7 @@
 #include <deque>
 #include <memory>
 #include <string>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -258,13 +259,28 @@ using EnableIfNotIntegral =
     typename std::enable_if<!std::is_integral<T>::value, void>::type;
 
 // Helper function used in the partial specialization below.
-template <typename F, typename T>
+template <
+    typename F, typename T,
+    typename std::enable_if<std::is_signed<T>::value, T>::type * = nullptr>
 inline T HelperAs(const FifoBase *fifo, int i) {
   DataBuffer *db = fifo->Front();
   if (nullptr == db) {
     return static_cast<T>(0);
   }
-  return static_cast<T>(db->Get<F>(i));
+
+  return static_cast<T>(db->Get<typename std::make_signed<F>::type>(i));
+}
+
+template <
+    typename F, typename T,
+    typename std::enable_if<std::is_unsigned<T>::value, T>::type * = nullptr>
+inline T HelperAs(const FifoBase *fifo, int i) {
+  DataBuffer *db = fifo->Front();
+  if (nullptr == db) {
+    return static_cast<T>(0);
+  }
+
+  return static_cast<T>(db->Get<typename std::make_unsigned<F>::type>(i));
 }
 
 template <typename T, typename Enable>

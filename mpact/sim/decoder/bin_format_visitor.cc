@@ -27,7 +27,7 @@
 #include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
-#include "absl/strings/str_split.h"
+#include "antlr4-runtime/ParserRuleContext.h"
 #include "mpact/sim/decoder/bin_decoder.h"
 #include "mpact/sim/decoder/bin_encoding_info.h"
 #include "mpact/sim/decoder/bin_format_contexts.h"
@@ -93,7 +93,7 @@ BinFormatVisitor::~BinFormatVisitor() {
 using ::mpact::sim::machine_description::instruction_set::ToHeaderGuard;
 
 absl::Status BinFormatVisitor::Process(
-    const std::string &file_name, const std::string &decoder_name,
+    const std::vector<std::string> &file_names, const std::string &decoder_name,
     absl::string_view prefix, const std::vector<std::string> &include_roots,
     absl::string_view directory) {
   decoder_name_ = decoder_name;
@@ -105,22 +105,22 @@ absl::Status BinFormatVisitor::Process(
 
   std::istream *source_stream = &std::cin;
 
-  if (!file_name.empty()) {
-    source_stream = new std::fstream(file_name, std::fstream::in);
+  if (!file_names.empty()) {
+    source_stream = new std::fstream(file_names[0], std::fstream::in);
   }
   // Create an antlr4 stream from the input stream.
   BinFmtAntlrParserWrapper parser_wrapper(source_stream);
 
   // Create and add the error listener.
   set_error_listener(std::make_unique<decoder::DecoderErrorListener>());
-  error_listener_->set_file_name(file_name);
+  error_listener_->set_file_name(file_names[0]);
   parser_wrapper.parser()->removeErrorListeners();
   parser_wrapper.parser()->addErrorListener(error_listener());
 
   // Parse the file and then create the data structures.
   TopLevelCtx *top_level = parser_wrapper.parser()->top_level();
   (void)top_level;
-  if (!file_name.empty()) {
+  if (!file_names.empty()) {
     delete source_stream;
     source_stream = nullptr;
   }
@@ -129,7 +129,13 @@ absl::Status BinFormatVisitor::Process(
     return absl::InternalError("Errors encountered - terminating.");
   }
   // Visit the parse tree starting at the namespaces declaration.
-  auto encoding_info = VisitTopLevel(top_level, decoder_name);
+  VisitTopLevel(top_level);
+  // Process additional source files.
+  for (int i = 1; i < file_names.size(); ++i) {
+    ParseIncludeFile(top_level, file_names[i], {});
+  }
+  // Process the parse tree.
+  auto encoding_info = ProcessTopLevel(decoder_name);
   // Include files may generate additional syntax errors.
   if (encoding_info == nullptr) {
     LOG(ERROR) << "No encoding specified";
@@ -295,11 +301,14 @@ int BinFormatVisitor::ConvertToInt(NumberCtx *ctx) {
   return ret_val;
 }
 
-std::unique_ptr<BinEncodingInfo> BinFormatVisitor::VisitTopLevel(
-    TopLevelCtx *ctx, const std::string &decoder_name) {
+void BinFormatVisitor::VisitTopLevel(TopLevelCtx *ctx) {
   PreProcessDeclarations(ctx->declaration_list());
-  // At this point we have all the formats, instruction groups and decoders.
-  // First make sure that the named decoder exists.
+}
+
+std::unique_ptr<BinEncodingInfo> BinFormatVisitor::ProcessTopLevel(
+    const std::string &decoder_name) {
+  // At this point we have the contexts for all slots, bundles and isas.
+  // First make sure the named isa (decoder) has been defined.
   auto decoder_iter = decoder_decl_map_.find(decoder_name);
   if (decoder_iter == decoder_decl_map_.end()) {
     error_listener()->semanticError(
@@ -308,11 +317,7 @@ std::unique_ptr<BinEncodingInfo> BinFormatVisitor::VisitTopLevel(
   }
   // Visit the decoder.
   auto bin_encoding_info = VisitDecoderDef(decoder_iter->second);
-  auto status = bin_encoding_info->CheckFormats();
-  if (!status.ok()) {
-    error_listener_->semanticError(nullptr, status.message());
-    return nullptr;
-  }
+  bin_encoding_info->PropagateExtractors();
   return bin_encoding_info;
 }
 
@@ -386,20 +391,30 @@ void BinFormatVisitor::VisitIncludeFile(IncludeFileCtx *ctx) {
       return;
     }
   }
+  ParseIncludeFile(ctx, file_name, include_dir_vec_);
+}
+
+void BinFormatVisitor::ParseIncludeFile(antlr4::ParserRuleContext *ctx,
+                                        const std::string &file_name,
+                                        std::vector<std::string> const &dirs) {
   std::fstream include_file;
   // Open include file.
-  for (auto const &dir : include_dir_vec_) {
-    std::string include_name = absl::StrCat(dir, "/", file_name);
-    include_file.open(include_name, std::fstream::in);
-    if (include_file.is_open()) break;
-  }
+  include_file.open(file_name, std::fstream::in);
   if (!include_file.is_open()) {
-    // Try a local file.
-    include_file.open(file_name, std::fstream::in);
+    // Try each of the include file directories.
+    for (auto const &dir : dirs) {
+      std::string include_name = absl::StrCat(dir, "/", file_name);
+      include_file.open(include_name, std::fstream::in);
+      if (include_file.is_open()) break;
+    }
     if (!include_file.is_open()) {
-      error_listener()->semanticError(
-          ctx->start, absl::StrCat("Failed to open '", file_name, "'"));
-      return;
+      // Try a local file.
+      include_file.open(file_name, std::fstream::in);
+      if (!include_file.is_open()) {
+        error_listener()->semanticError(
+            ctx->start, absl::StrCat("Failed to open '", file_name, "'"));
+        return;
+      }
     }
   }
   std::string previous_file_name = error_listener()->file_name();
@@ -411,6 +426,7 @@ void BinFormatVisitor::VisitIncludeFile(IncludeFileCtx *ctx) {
   // Add the error listener.
   include_parser->parser()->removeErrorListeners();
   include_parser->parser()->addErrorListener(error_listener());
+  // Start parsing at the declaratition_list_w_eof rule.
   DeclarationListCtx *declaration_list =
       include_parser->parser()->declaration_list_w_eof()->declaration_list();
   include_file.close();
@@ -788,7 +804,7 @@ std::unique_ptr<BinEncodingInfo> BinFormatVisitor::VisitDecoderDef(
         continue;
       }
       group_name_set.insert(group_name);
-      decoder->SelectInstructionGroupForDecoder(inst_group);
+      decoder->AddInstructionGroup(inst_group);
       continue;
     }
 
@@ -868,7 +884,7 @@ std::unique_ptr<BinEncodingInfo> BinFormatVisitor::VisitDecoderDef(
         }
       }
       group_name_set.insert(parent_group->name());
-      decoder->SelectInstructionGroupForDecoder(parent_group);
+      decoder->AddInstructionGroup(parent_group);
       continue;
     }
   }

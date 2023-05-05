@@ -82,6 +82,21 @@ mpact_cc_test(
 )
 
 mpact_cc_test(
+    name = "resource_test",
+    size = "small",
+    srcs = [
+        "resource_test.cc",
+    ],
+    deps = [
+        "//mpact/sim/decoder:isa_parser",
+        "@com_google_absl//absl/container:btree",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_googletest//:gtest",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+mpact_cc_test(
     name = "template_expression_test",
     size = "small",
     srcs = [
@@ -137,6 +152,19 @@ mpact_isa_decoder(
     isa_name = "Example",
 )
 
+mpact_isa_decoder(
+    name = "combined_isa",
+    srcs = [
+        "testfiles/bundle_b.isa",
+        "testfiles/part1.isa",
+    ],
+    includes = [
+        "//mpact/sim/decoder/test/testfiles/include:bundle_a.isa",
+        "//mpact/sim/decoder/test/testfiles/include:empty_include.isa",
+    ],
+    isa_name = "Example",
+)
+
 mpact_cc_library(
     name = "riscv32i",
     hdrs = ["testfiles/riscv32i.h"],
@@ -155,10 +183,10 @@ mpact_isa_decoder(
     deps = ["riscv32i"],
 )
 
-# The point of this test is to actually run the generator on the testfiles/example.isa
-# grammar file, generate source files, and then compile the generated files and
-# link into this test case. Provided that succeeds, this test case succeeds. See the
-# :example_isa build rule for build options.
+# The point of this test is to actually run the generator on the
+# testfiles/example.isa grammar file, generate source files, and then compile
+# the generated files and link into this test case. Provided that succeeds,
+# this test case succeeds. See the :example_isa build rule for build options.
 mpact_cc_test(
     name = "example_decoder_test",
     size = "small",
@@ -167,6 +195,26 @@ mpact_cc_test(
     ],
     deps = [
         ":example_isa",
+        "//mpact/sim/generic:arch_state",
+        "//mpact/sim/generic:instruction",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_googletest//:gtest",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+# The point of this test is to actually run the generator on the
+# testfiles/part1.isa grammar file, generate source files, and then compile
+# the generated files and link into this test case. Provided that succeeds,
+# this test case succeeds. See the :example_isa build rule for build options.
+mpact_cc_test(
+    name = "combined_decoder_test",
+    size = "small",
+    srcs = [
+        "combined_decoder_test.cc",
+    ],
+    deps = [
+        ":combined_isa",
         "//mpact/sim/generic:arch_state",
         "//mpact/sim/generic:instruction",
         "@com_google_absl//absl/container:flat_hash_map",
@@ -227,6 +275,64 @@ mpact_cc_test(
         "//mpact/sim/decoder:bin_format_visitor",
         "//mpact/sim/decoder:decoder_error_listener",
         "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/strings",
+        "@com_google_googletest//:gtest",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+mpact_cc_test(
+    name = "bin_encoding_info_test",
+    size = "small",
+    srcs = [
+        "bin_encoding_info_test.cc",
+    ],
+    deps = [
+        "//mpact/sim/decoder:bin_format_visitor",
+        "//mpact/sim/decoder:decoder_error_listener",
+        "@com_google_absl//absl/container:btree",
+        "@com_google_absl//absl/log:check",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_googletest//:gtest",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+mpact_cc_test(
+    name = "instruction_encoding_test",
+    size = "small",
+    srcs = [
+        "instruction_encoding_test.cc",
+    ],
+    deps = [
+        "//mpact/sim/decoder:bin_format_visitor",
+        "//mpact/sim/decoder:decoder_error_listener",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_googletest//:gtest",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+mpact_cc_test(
+    name = "bin_format_visitor_test",
+    size = "small",
+    srcs = [
+        "bin_format_visitor_test.cc",
+    ],
+    data = [
+        # Local include files.
+        "testfiles/empty_file.bin_fmt",
+        "testfiles/riscv32_top.bin_fmt",
+        "testfiles/riscv32g.bin_fmt",
+        "testfiles/riscv32c.bin_fmt",
+    ],
+    deps = [
+        "//mpact/sim/decoder:bin_format_visitor",
+        "@com_google_absl//absl/flags:flag",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
         "@com_google_googletest//:gtest",

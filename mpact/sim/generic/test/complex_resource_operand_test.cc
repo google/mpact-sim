@@ -34,16 +34,18 @@ constexpr char kArchName[] = "test_architecture";
 // Bits 100-107 are cleared in this bit vector.
 constexpr uint64_t kFree100To107[] = {
     0xffff'ffff'ffff'ffff, 0xffff'f00f'ffff'ffff, 0xffff'ffff'ffff'ffff,
-    0x0000'03ff'ffff'ffff};
+    0xffff'ffff'ffc0'0000};
 
 // Longer than what is supported.
 constexpr uint64_t kTooLong[5] = {0xffff, 0, 0, 0, 0};
+// Longer than 234 bits.
+constexpr uint64_t kOnesTooFar[4] = {0, 0, 0, 0xffff'ffff'fff0'0000};
 // All zeros, no cycle is reserved.
 constexpr uint64_t kAllZeros[4] = {0};
 // The request vector corresponding to kFree100To107
-constexpr uint64_t kAcquire100To107[] = {~kFree100To107[0], ~kFree100To107[1],
-                                         ~kFree100To107[2],
-                                         ~kFree100To107[3] & 0x3ff'ffff'ffff};
+constexpr uint64_t kAcquire100To107[] = {
+    ~kFree100To107[0], ~kFree100To107[1], ~kFree100To107[2],
+    ~kFree100To107[3] & 0xffff'ffff'ffc0'0000};
 
 // ArchState derived class that is passed in to the resource (so that it can
 // access the clock.
@@ -76,6 +78,11 @@ class ComplexResourceOperandTest : public testing::Test {
   ComplexResourceOperand *operand_;
 };
 
+// Create and check name.
+TEST_F(ComplexResourceOperandTest, Create) {
+  EXPECT_EQ(operand_->AsString(), resource_->name());
+}
+
 // Check error status from setting the cycle mask.
 TEST_F(ComplexResourceOperandTest, CycleMask) {
   auto *op = new ComplexResourceOperand(nullptr);
@@ -89,7 +96,9 @@ TEST_F(ComplexResourceOperandTest, CycleMask) {
       testing::ElementsAreArray(absl::MakeSpan(kAcquire100To107)
                                     .first(operand_->bit_array().size())));
   // Now try setting using arrays.
+  EXPECT_TRUE(absl::IsInternal(op->SetCycleMask(kAcquire100To107)));
   EXPECT_TRUE(absl::IsInvalidArgument(operand_->SetCycleMask(kTooLong)));
+  EXPECT_TRUE(absl::IsInvalidArgument(operand_->SetCycleMask(kOnesTooFar)));
   EXPECT_TRUE(absl::IsInvalidArgument(operand_->SetCycleMask(kAllZeros)));
   EXPECT_TRUE(operand_->SetCycleMask(kAcquire100To107).ok());
   delete op;

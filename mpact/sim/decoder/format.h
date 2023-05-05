@@ -72,6 +72,7 @@ class FieldOrFormat {
   explicit FieldOrFormat(Field *field) : is_field_(true), field_(field) {}
   FieldOrFormat(std::string fmt_name, int size, antlr4::Token *ctx)
       : is_field_(false), format_name_(fmt_name), size_(size), ctx_(ctx) {}
+  ~FieldOrFormat();
 
   bool is_field() const { return is_field_; }
   Field *field() const { return field_; }

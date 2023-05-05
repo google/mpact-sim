@@ -16,7 +16,6 @@
 #define MPACT_SIM_DECODER_BIN_ENCODING_INFO_H_
 
 #include <string>
-#include <vector>
 
 #include "absl/container/btree_map.h"
 #include "absl/container/btree_set.h"
@@ -59,10 +58,8 @@ class BinEncodingInfo {
   absl::StatusOr<InstructionGroup *> AddInstructionGroup(
       std::string name, int width, std::string format_name);
 
-  // Performs a consistency check on the formats and handles any out of order
-  // declarations - there is no rule that a format has to be declared before it
-  // is used.
-  absl::Status CheckFormats();
+  // Propagates bitfield extractors where possible.
+  void PropagateExtractors();
 
   // Create and add binary decoder descriptor.
   BinDecoder *AddBinDecoder(std::string name);

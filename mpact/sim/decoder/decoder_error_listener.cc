@@ -67,16 +67,21 @@ void DecoderErrorListener::reportAmbiguity(antlr4::Parser *recognizer,
                                            bool exact,
                                            const antlrcpp::BitSet &ambigAlts,
                                            antlr4::atn::ATNConfigSet *configs) {
+  // Empty.
 }
 
 void DecoderErrorListener::reportAttemptingFullContext(
     antlr4::Parser *recognizer, const antlr4::dfa::DFA &dfa, size_t startIndex,
     size_t stopIndex, const antlrcpp::BitSet &conflictingAlts,
-    antlr4::atn::ATNConfigSet *configs) {}
+    antlr4::atn::ATNConfigSet *configs) {
+  // Empty.
+}
 
 void DecoderErrorListener::reportContextSensitivity(
     antlr4::Parser *recognizer, const antlr4::dfa::DFA &dfa, size_t startIndex,
-    size_t stopIndex, size_t prediction, antlr4::atn::ATNConfigSet *configs) {}
+    size_t stopIndex, size_t prediction, antlr4::atn::ATNConfigSet *configs) {
+  // Empty.
+}
 
 }  // namespace decoder
 }  // namespace sim

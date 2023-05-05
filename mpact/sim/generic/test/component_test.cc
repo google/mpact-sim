@@ -61,6 +61,48 @@ constexpr char kImportProto[] = R"pb(
   }
 )pb";
 
+constexpr char kImportProtoMalformed[] = R"pb(
+  name: "top"
+  configuration { sint64_value: -654 }
+  statistics { name: "int64_counter" sint64_value: -321 }
+  component_data {
+    name: "child"
+    configuration { name: "uint64_config" uint64_value: 321 }
+    statistics { name: "uint64_counter" uint64_value: 654 }
+  }
+)pb";
+
+constexpr char kImportProtoChildNameMissing[] = R"pb(
+  name: "top"
+  configuration { name: "int64_config" sint64_value: -654 }
+  statistics { name: "int64_counter" sint64_value: -321 }
+  component_data {
+    configuration { name: "uint64_config" uint64_value: 321 }
+    statistics { name: "uint64_counter" uint64_value: 654 }
+  }
+)pb";
+
+constexpr char kImportProtoNameMissing[] = R"pb(
+  configuration { name: "int64_config" sint64_value: -654 }
+  statistics { name: "int64_counter" sint64_value: -321 }
+  component_data {
+    name: "child"
+    configuration { name: "uint64_config" uint64_value: 321 }
+    statistics { name: "uint64_counter" uint64_value: 654 }
+  }
+)pb";
+
+constexpr char kImportProtoNameMismatch[] = R"pb(
+  name: "not_top"
+  configuration { name: "int64_config" sint64_value: -654 }
+  statistics { name: "int64_counter" sint64_value: -321 }
+  component_data {
+    name: "child"
+    configuration { name: "uint64_config" uint64_value: 321 }
+    statistics { name: "uint64_counter" uint64_value: 654 }
+  }
+)pb";
+
 // Test fixture. Allocates two components, two counters and two config items.
 // The counters and config items are not added to the components in the fixture,
 // but rather in each test as needed.
@@ -78,6 +120,9 @@ class ComponentTest : public testing::Test {
   Component &child() { return child_; }
   SimpleCounter<int64_t> &int64_counter() { return int64_counter_; }
   SimpleCounter<uint64_t> &uint64_counter() { return uint64_counter_; }
+  SimpleCounter<uint64_t> &uninitialized_counter() {
+    return uninitialized_counter_;
+  }
   Config<int64_t> &int64_config() { return int64_config_; }
   Config<uint64_t> &uint64_config() { return uint64_config_; }
 
@@ -86,6 +131,7 @@ class ComponentTest : public testing::Test {
   Component child_;
   SimpleCounter<int64_t> int64_counter_;
   SimpleCounter<uint64_t> uint64_counter_;
+  SimpleCounter<uint64_t> uninitialized_counter_;
   Config<int64_t> int64_config_;
   Config<uint64_t> uint64_config_;
 };
@@ -113,9 +159,11 @@ TEST_F(ComponentTest, ChildComponent) {
 TEST_F(ComponentTest, ComponentsWithCounters) {
   auto *top_counter = &int64_counter();
   auto *child_counter = &uint64_counter();
+  auto *uninit_counter = &uninitialized_counter();
 
   EXPECT_TRUE(top().AddCounter(top_counter).ok());
   EXPECT_TRUE(child().AddCounter(child_counter).ok());
+  EXPECT_TRUE(absl::IsInvalidArgument(top().AddCounter(uninit_counter)));
 
   EXPECT_EQ(top().GetCounter(kInt64CounterName), top_counter);
   EXPECT_EQ(top().GetCounter(kUint64CounterName), nullptr);
@@ -165,6 +213,84 @@ TEST_F(ComponentTest, ExportTest) {
 
   auto exported_proto = std::make_unique<ComponentData>();
   EXPECT_TRUE(top().Export(exported_proto.get()).ok());
+
+  EXPECT_TRUE(absl::IsInvalidArgument(top().Export(nullptr)));
+}
+
+// Failed import due to missing top-level name.
+TEST_F(ComponentTest, ImportTestNameMissing) {
+  auto *top_config = &int64_config();
+  auto *child_config = &uint64_config();
+  EXPECT_TRUE(top().AddConfig(top_config).ok());
+  EXPECT_TRUE(child().AddConfig(child_config).ok());
+
+  auto *top_counter = &int64_counter();
+  auto *child_counter = &uint64_counter();
+  EXPECT_TRUE(top().AddCounter(top_counter).ok());
+  EXPECT_TRUE(child().AddCounter(child_counter).ok());
+
+  ComponentData from_text;
+  EXPECT_TRUE(google::protobuf::TextFormat::ParseFromString(
+      kImportProtoNameMissing, &from_text));
+  // Perform the import, expect failure.
+  EXPECT_TRUE(absl::IsInternal(top().Import(from_text)));
+}
+
+// Failed import due to malformed component data.
+TEST_F(ComponentTest, ImportTestMalformed) {
+  auto *top_config = &int64_config();
+  auto *child_config = &uint64_config();
+  EXPECT_TRUE(top().AddConfig(top_config).ok());
+  EXPECT_TRUE(child().AddConfig(child_config).ok());
+
+  auto *top_counter = &int64_counter();
+  auto *child_counter = &uint64_counter();
+  EXPECT_TRUE(top().AddCounter(top_counter).ok());
+  EXPECT_TRUE(child().AddCounter(child_counter).ok());
+
+  ComponentData from_text;
+  EXPECT_TRUE(google::protobuf::TextFormat::ParseFromString(
+      kImportProtoMalformed, &from_text));
+  // Perform the import, expect failure.
+  EXPECT_TRUE(absl::IsInternal(top().Import(from_text)));
+}
+
+// Failed import due to missing child name.
+TEST_F(ComponentTest, ImportTestChildNameMissing) {
+  auto *top_config = &int64_config();
+  auto *child_config = &uint64_config();
+  EXPECT_TRUE(top().AddConfig(top_config).ok());
+  EXPECT_TRUE(child().AddConfig(child_config).ok());
+
+  auto *top_counter = &int64_counter();
+  auto *child_counter = &uint64_counter();
+  EXPECT_TRUE(top().AddCounter(top_counter).ok());
+  EXPECT_TRUE(child().AddCounter(child_counter).ok());
+
+  ComponentData from_text;
+  EXPECT_TRUE(google::protobuf::TextFormat::ParseFromString(
+      kImportProtoChildNameMissing, &from_text));
+  // Perform the import, expect failure.
+  EXPECT_TRUE(absl::IsInternal(top().Import(from_text)));
+}
+
+// Failed import due to top level name mismatch.
+TEST_F(ComponentTest, ImportTestNameMismatch) {
+  auto *top_config = &int64_config();
+  auto *child_config = &uint64_config();
+  EXPECT_TRUE(top().AddConfig(top_config).ok());
+  EXPECT_TRUE(child().AddConfig(child_config).ok());
+
+  auto *top_counter = &int64_counter();
+  auto *child_counter = &uint64_counter();
+  EXPECT_TRUE(top().AddCounter(top_counter).ok());
+  EXPECT_TRUE(child().AddCounter(child_counter).ok());
+
+  ComponentData from_text;
+  EXPECT_TRUE(google::protobuf::TextFormat::ParseFromString(
+      kImportProtoNameMismatch, &from_text));
+  // Perform the import, expect failure.
+  EXPECT_TRUE(absl::IsInternal(top().Import(from_text)));
 }
 
 // Import a proto into the components. Verify that the value of config entries

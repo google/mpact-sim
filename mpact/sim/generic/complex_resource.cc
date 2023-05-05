@@ -37,7 +37,7 @@ ComplexResource::ComplexResource(ArchState *state, std::string name,
   size_t mod = cycle_depth_ & kLowBitMask;
   if (mod > 0) {
     // Clear bits outside the cycle_depth from the last mask.
-    mask_array_[array_size_ - 1] >>= kNumBitsPerWord - mod;
+    mask_array_[array_size_ - 1] <<= kNumBitsPerWord - mod;
   }
 }
 
@@ -58,21 +58,21 @@ void ComplexResource::Advance() {
     return;
   }
   int num_longwords = cycles >> 6;
-  // If shift amount is greater than 64.
+  // If shift amount is greater or equal to 64.
   if (num_longwords > 0) {
-    for (unsigned i = 0; i < array_size_; i++) {
-      unsigned index = i + num_longwords;
-      bit_array_[i] = (index < array_size_) ? bit_array_[index] : 0;
+    for (int i = array_size_ - 1; i >= 0; i--) {
+      int index = i - num_longwords;
+
+      bit_array_[i] = (index < 0) ? 0 : bit_array_[index];
     }
   }
   cycles &= kLowBitMask;
   // If cycles is now zero, return (i.e., if cycles was a multiple of 64).
   if (cycles == 0) return;
 
-  // The number of words we have to shift within the array. Anything beyond
-  // bit_array_[max - 1] was zeroed in the previous step.
-  unsigned max = array_size_ - num_longwords;
-  for (unsigned i = 0; i < max; i++) {
+  // The number of remaining words we have to shift within the array.
+  // Anything before bit_array_[num_longwords] were zeroed in the previous step.
+  for (unsigned i = num_longwords; i < array_size_; i++) {
     // For each array word, shift right by the number of remaining cycles to
     // advance. This gets rid of resource reservations from 0..cycles - 1. Then
     // or in the low "cycles" bits from the next word into the high "cycles"

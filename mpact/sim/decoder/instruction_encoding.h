@@ -85,8 +85,8 @@ class InstructionEncoding {
   const std::vector<Constraint *> &equal_extracted_constraints() const {
     return equal_extracted_constraints_;
   }
-  // The vector of not-equal constraints that have to be satisfied for an
-  // instruction to match this encoding.
+  // The vector of not-equal, greater, less, etc., constraints that have to be
+  // satisfied for an instruction to match this encoding.
   const std::vector<Constraint *> &other_constraints() const {
     return other_constraints_;
   }

@@ -53,11 +53,37 @@ absl::StatusOr<Constraint *> InstructionEncoding::CreateConstraint(
   // Check if the field name is indeed a field.
   auto *field = format_->GetField(field_name);
   if (field != nullptr) {
-    if (value >= (1 << field->width)) {
-      return absl::InternalError(
-          absl::StrCat("Constraint value (", value,
-                       ") exceeds field width for field '", field_name, "'"));
+    bool is_signed = field->is_signed;
+    if (!is_signed) {
+      if (value >= (1 << field->width) || (value < 0)) {
+        return absl::OutOfRangeError(absl::StrCat(
+            "Constraint value (", value, ") out of range for unsigned field '",
+            field_name, "'"));
+      }
+    } else {  // Field is signed.
+      // Only eq and ne constraints are allowed on signed fields.
+      if (type != ConstraintType::kEq && type != ConstraintType::kNe) {
+        return absl::InvalidArgumentError(
+            absl::StrCat("Only eq and ne constraints allowed on signed field: ",
+                         field_name));
+      }
+      // Check that the value is in range.
+      if (value < 0) {
+        int64_t min_value = -(1 << (field->width - 1));
+        if (value < min_value) {
+          return absl::OutOfRangeError(absl::StrCat(
+              "Constraint value (", value, ") out of range for signed field '",
+              field_name, "'"));
+        }
+      } else {
+        if (value >= (1 << (field->width - 1))) {
+          return absl::OutOfRangeError(absl::StrCat(
+              "Constraint value (", value, ") out of range for signed field '",
+              field_name, "'"));
+        }
+      }
     }
+    value &= (1 << field->width) - 1;
     auto *constraint = new Constraint();
     constraint->type = type;
     constraint->field = field;
@@ -68,14 +94,40 @@ absl::StatusOr<Constraint *> InstructionEncoding::CreateConstraint(
   auto *overlay = format_->GetOverlay(field_name);
   if (overlay == nullptr) {
     // If neither, it's an error.
-    return absl::InternalError(absl::StrCat(
+    return absl::NotFoundError(absl::StrCat(
         "Format '", format_->name(),
         "' does not contain a field or overlay named ", field_name));
   }
-  if (value >= (1 << overlay->computed_width())) {
-    return absl::InternalError(absl::StrCat(
-        "Constraint value exceeds field width for field '", field_name, "'"));
+  int width = overlay->computed_width();
+  bool is_signed = overlay->is_signed();
+  if (!is_signed) {
+    if ((value >= (1 << width)) || (value < 0)) {
+      return absl::OutOfRangeError(absl::StrCat(
+          "Constraint value exceeds field width for field '", field_name, "'"));
+    }
+  } else {
+    if (type != ConstraintType::kEq && type != ConstraintType::kNe) {
+      return absl::InvalidArgumentError(
+          absl::StrCat("Only eq and ne constraints allowed on signed overlay: ",
+                       field_name));
+    }  // Check that the value is in range.
+    if (value < 0) {
+      int64_t min_value = -(1 << (width - 1));
+      if (value < min_value) {
+        return absl::OutOfRangeError(absl::StrCat(
+            "Constraint value (", value, ") out of range for signed overlay '",
+            field_name, "'"));
+      }
+      value = value & ((1 << width) - 1);
+    } else {
+      if (value >= (1 << (width - 1))) {
+        return absl::OutOfRangeError(absl::StrCat(
+            "Constraint value (", value, ") out of range for signed overlay '",
+            field_name, "'"));
+      }
+    }
   }
+  value &= (1 << width) - 1;
   auto *constraint = new Constraint();
   constraint->type = type;
   constraint->overlay = overlay;

@@ -97,7 +97,7 @@ class Count {
 TEST(CountersTest, CounterBaseInterface) {
   std::string myname("this_is_a_name");
   char myname2[] = "this_is_also_a_name";
-  SimpleCounter<int64_t> counterone(myname);
+  SimpleCounter<int64_t> counterone(myname, "about this counter");
   SimpleCounter<int64_t> countertwo(myname2);
   SimpleCounter<int64_t> int64_counter(kSimpleCounterName);
   EXPECT_EQ(int64_counter.GetName(), kSimpleCounterName);
@@ -157,6 +157,10 @@ TEST(CountersTest, SimpleCounterInitialValue) {
   CounterValue cv = int64_counter.GetCounterValue();
   EXPECT_EQ(std::get<int64_t>(cv), kMinusFive);
   EXPECT_EQ(int64_counter.ToString(), absl::StrCat(kMinusFive));
+  EXPECT_EQ(static_cast<mpact::sim::generic::CounterValueOutputBase<int64_t> *>(
+                &int64_counter)
+                ->ToString(),
+            absl::StrCat(kMinusFive));
 }
 
 // Tests the SetValue call in the input interface.
@@ -223,11 +227,13 @@ TEST(CountersTest, FunctionCountTest) {
   }
   // Verify that the element count is the same as the vector size.
   EXPECT_EQ(count.GetValue(), values.size());
+  EXPECT_EQ(count.ToString(), absl::StrCat(values.size()));
 }
 
 // Tests export of counter values to proto message.
 TEST(CountersTest, ExportTest) {
-  SimpleCounter<uint64_t> uint64_counter(kUint64CounterName, kUint64Value);
+  SimpleCounter<uint64_t> uint64_counter(kUint64CounterName,
+                                         "About this counter", kUint64Value);
   SimpleCounter<int64_t> int64_counter(kInt64CounterName, kInt64Value);
   SimpleCounter<double> double_counter(kDoubleCounterName, kDoubleValue);
 

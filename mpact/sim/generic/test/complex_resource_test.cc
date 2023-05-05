@@ -32,10 +32,12 @@ constexpr int kShiftMask = 63;
 constexpr int kWindow256 = 256;
 constexpr size_t kCycleDepth = 234;
 constexpr char kResourceName[] = "my_resource";
-uint64_t kAllOnes[] = {0xffff'ffff'ffff'ffff, 0xffff'ffff'ffff'ffff,
-                       0xffff'ffff'ffff'ffff, 0x0000'03ff'ffff'ffff};
+uint64_t kAllOnes234[] = {0xffff'ffff'ffff'ffff, 0xffff'ffff'ffff'ffff,
+                          0xffff'ffff'ffff'ffff, 0xffff'ffff'ffc0'0000};
 uint64_t kAllOnes256[] = {0xffff'ffff'ffff'ffff, 0xffff'ffff'ffff'ffff,
                           0xffff'ffff'ffff'ffff, 0xffff'ffff'ffff'ffff};
+uint64_t kAllOnes64[] = {0xffff'ffff'ffff'ffff, 0, 0, 0};
+uint64_t kAllOnes96[] = {0xffff'ffff'ffff'ffff, 0, 0, 0};
 
 class MockArchState : public ArchState {
  public:
@@ -58,19 +60,20 @@ TEST_F(ComplexResourceTest, Construct) {
   auto *resource = new ComplexResource(arch_state_, kResourceName, kCycleDepth);
   EXPECT_EQ(resource->bit_array().size(), (kCycleDepth + 63) / 64);
   EXPECT_EQ(resource->name(), kResourceName);
+  EXPECT_EQ(resource->AsString(), kResourceName);
   delete resource;
 }
 
 // Verify that all bits are free to start out with.
 TEST_F(ComplexResourceTest, IsFreeMarchingOne) {
   auto *resource = new ComplexResource(arch_state_, kResourceName, kCycleDepth);
-  uint64_t marching_one[4] = {1, 0, 0, 0};
+  uint64_t marching_one[4] = {0x8000'0000'0000'0000, 0, 0, 0};
   for (size_t i = 0; i < kCycleDepth; i++) {
     EXPECT_TRUE(resource->IsFree(marching_one)) << i;
     uint64_t prev_bit = 0;
     for (int j = 0; j < 4; j++) {
       uint64_t bit = (marching_one[j] >> 63) & 0x1;
-      marching_one[j] <<= 1;
+      marching_one[j] >>= 1;
       marching_one[j] |= prev_bit;
       prev_bit = bit;
     }
@@ -81,15 +84,15 @@ TEST_F(ComplexResourceTest, IsFreeMarchingOne) {
 // Reserve all bits, verify that they are set.
 TEST_F(ComplexResourceTest, IsBusyMarchingOne) {
   auto *resource = new ComplexResource(arch_state_, kResourceName, kCycleDepth);
-  resource->Acquire(kAllOnes);
-  uint64_t marching_one[4] = {1, 0, 0, 0};
+  resource->Acquire(kAllOnes234);
+  uint64_t marching_one[4] = {0x8000'0000'0000'0000, 0, 0, 0};
   for (size_t i = 0; i < kCycleDepth; i++) {
     EXPECT_FALSE(resource->IsFree(marching_one)) << i;
     uint64_t prev_bit = 0;
     for (int j = 0; j < 4; j++) {
-      uint64_t bit = (marching_one[j] >> 63) & 0x1;
-      marching_one[j] <<= 1;
-      marching_one[j] |= prev_bit;
+      uint64_t bit = (marching_one[j]) & 0x1;
+      marching_one[j] >>= 1;
+      marching_one[j] |= (prev_bit << 63);
       prev_bit = bit;
     }
   }
@@ -100,8 +103,8 @@ TEST_F(ComplexResourceTest, IsBusyMarchingOne) {
 // try to acquire it. Release the resource for that cycle, then try again.
 TEST_F(ComplexResourceTest, AcquireRelease) {
   auto *resource = new ComplexResource(arch_state_, kResourceName, kCycleDepth);
-  resource->Acquire(kAllOnes);
-  uint64_t marching_one[4] = {1, 0, 0, 0};
+  resource->Acquire(kAllOnes234);
+  uint64_t marching_one[4] = {0x8000'0000'0000'0000, 0, 0, 0};
   for (size_t i = 0; i < kCycleDepth; i++) {
     EXPECT_FALSE(resource->IsFree(marching_one)) << i;
     resource->Release(marching_one);
@@ -109,9 +112,9 @@ TEST_F(ComplexResourceTest, AcquireRelease) {
     resource->Acquire(marching_one);
     uint64_t prev_bit = 0;
     for (int j = 0; j < 4; j++) {
-      uint64_t bit = (marching_one[j] >> 63) & 0x1;
-      marching_one[j] <<= 1;
-      marching_one[j] |= prev_bit;
+      uint64_t bit = (marching_one[j]) & 0x1;
+      marching_one[j] >>= 1;
+      marching_one[j] |= (prev_bit << 63);
       prev_bit = bit;
     }
   }
@@ -123,9 +126,9 @@ TEST_F(ComplexResourceTest, AcquireRelease) {
 // the resource is free in the last cycle, next to last cycle, etc.
 TEST_F(ComplexResourceTest, SingleWordBy1) {
   auto *resource = new ComplexResource(arch_state_, kResourceName, 64);
-  EXPECT_TRUE(resource->IsFree(kAllOnes));
-  resource->Acquire(kAllOnes);
-  EXPECT_FALSE(resource->IsFree(kAllOnes));
+  EXPECT_TRUE(resource->IsFree(kAllOnes234));
+  resource->Acquire(kAllOnes234);
+  EXPECT_FALSE(resource->IsFree(kAllOnes234));
   uint64_t mask_array[1] = {0};
   uint64_t mask = 0xffff'ffff'ffff'ffff;
   // Increment cycle by 1.
@@ -145,16 +148,16 @@ TEST_F(ComplexResourceTest, SingleWordBy1) {
         << std::endl;
   }
   arch_state_->set_cycle(cycle);
-  EXPECT_TRUE(resource->IsFree(kAllOnes)) << cycle;
+  EXPECT_TRUE(resource->IsFree(kAllOnes234)) << cycle;
   delete resource;
 }
 
 // Same as above, but advanced the clock by 3.
 TEST_F(ComplexResourceTest, SingleWordBy3) {
   auto *resource = new ComplexResource(arch_state_, kResourceName, 64);
-  EXPECT_TRUE(resource->IsFree(kAllOnes));
-  resource->Acquire(kAllOnes);
-  EXPECT_FALSE(resource->IsFree(kAllOnes));
+  EXPECT_TRUE(resource->IsFree(kAllOnes234));
+  resource->Acquire(kAllOnes234);
+  EXPECT_FALSE(resource->IsFree(kAllOnes234));
   uint64_t mask_array[1] = {0};
   uint64_t mask = 0xffff'ffff'ffff'ffff;
   // Increment cycle by 3.
@@ -174,7 +177,7 @@ TEST_F(ComplexResourceTest, SingleWordBy3) {
         << std::endl;
   }
   arch_state_->set_cycle(cycle);
-  EXPECT_TRUE(resource->IsFree(kAllOnes)) << cycle;
+  EXPECT_TRUE(resource->IsFree(kAllOnes234)) << cycle;
   delete resource;
 }
 
@@ -210,7 +213,7 @@ TEST_F(ComplexResourceTest, QuadWordBy1) {
         << std::endl;
   }
   arch_state_->set_cycle(cycle);
-  EXPECT_TRUE(resource->IsFree(kAllOnes));
+  EXPECT_TRUE(resource->IsFree(kAllOnes234));
   delete resource;
 }
 
@@ -244,7 +247,29 @@ TEST_F(ComplexResourceTest, QuadWordBy5) {
         << std::endl;
   }
   arch_state_->set_cycle(cycle);
-  EXPECT_TRUE(resource->IsFree(kAllOnes));
+  EXPECT_TRUE(resource->IsFree(kAllOnes256));
+  delete resource;
+}
+
+// Check that advancing clock by more than 256 yields free resource.
+TEST_F(ComplexResourceTest, ShiftGreaterThan256) {
+  auto *resource = new ComplexResource(arch_state_, kResourceName, 256);
+  EXPECT_TRUE(resource->IsFree(kAllOnes256));
+  resource->Acquire(kAllOnes256);
+  EXPECT_FALSE(resource->IsFree(kAllOnes256));
+  arch_state_->set_cycle(300);
+  EXPECT_TRUE(resource->IsFree(kAllOnes256));
+  delete resource;
+}
+
+// Verify that shifts over 64 bits work.
+TEST_F(ComplexResourceTest, ShiftGreaterThan64) {
+  auto *resource = new ComplexResource(arch_state_, kResourceName, 256);
+  EXPECT_TRUE(resource->IsFree(kAllOnes256));
+  resource->Acquire(kAllOnes256);
+  EXPECT_FALSE(resource->IsFree(kAllOnes64));
+  arch_state_->set_cycle(96);
+  EXPECT_TRUE(resource->IsFree(kAllOnes96));
   delete resource;
 }
 

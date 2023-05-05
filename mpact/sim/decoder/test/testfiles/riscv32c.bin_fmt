@@ -1,0 +1,176 @@
+// Copyright 2023 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Compact instruction formats.
+
+format Inst16Format[16] {
+  fields:
+    unsigned func3[3];
+    unsigned bits[11];
+    unsigned op[2];
+};
+
+format CSS[16] : Inst16Format {
+  fields:
+    unsigned func3[3];
+    unsigned imm6[6];
+    unsigned rs2[5];
+    unsigned op[2];
+  overlays:
+    unsigned css_imm_w[8] = imm6[1..0], imm6[5..2], 0b00;
+    unsigned css_imm_d[9] = imm6[2..0], imm6[5..3], 0b000;
+};
+
+format CL[16] : Inst16Format {
+  fields:
+    unsigned func3[3];
+    unsigned imm3[3];
+    unsigned rs1p[3];
+    unsigned imm2[2];
+    unsigned rdp[3];
+    unsigned op[2];
+  overlays:
+    unsigned cl_rs1[5] = 0b01, rs1p;
+    unsigned cl_rd[5] = 0b01, rdp;
+    unsigned cl_imm_w[7] = imm2[0], imm3, imm2[1], 0b00;
+    unsigned cl_imm_d[8] = imm2, imm3, 0b000;
+};
+
+format CS[16] : Inst16Format {
+  fields:
+    unsigned func3[3];
+    unsigned imm3[3];
+    unsigned rs1p[3];
+    unsigned imm2[2];
+    unsigned rs2p[3];
+    unsigned op[2];
+  overlays:
+    unsigned cs_rs1[5] = 0b01, rs1p;
+    unsigned cs_rs2[5] = 0b01, rs2p;
+    unsigned cs_imm_w[7] = imm2[0], imm3, imm2[1], 0b00;
+    unsigned cs_imm_d[8] = imm2, imm3, 0b000;
+};
+
+format CJ[16] : Inst16Format {
+  fields:
+    unsigned func3[3];
+    unsigned imm11[11];
+    unsigned op[2];
+  overlays:
+    signed jimm[12] = imm11[10, 6, 8..7, 4, 5, 0, 9, 3..1], 0b0;
+};
+
+format CR[16] : Inst16Format {
+  fields:
+    unsigned func4[4];
+    unsigned rs1[5];
+    unsigned rs2[5];
+    unsigned op[2];
+};
+
+format CB[16] : Inst16Format {
+  fields:
+    unsigned func3[3];
+    unsigned imm3[3];
+    unsigned rs1p[3];
+    unsigned imm5[5];
+    unsigned op[2];
+  overlays:
+    unsigned func2[2] = [11, 10];
+    unsigned func5[5] = [12..10, 6..5];
+    unsigned shamt[6] = [12, 6..2];
+    unsigned rs2p[3] = [4..2];
+    unsigned rs2[5] = 0b10, [4..2];
+    signed bimm[9] = imm3[2], imm5[4..3, 0], imm3[1..0], imm5[2..1], 0b0;
+};
+
+format CI[16] : Inst16Format {
+  fields:
+    unsigned func3[3];
+    unsigned imm1[1];
+    unsigned rs1[5];
+    unsigned imm5[5];
+    unsigned op[2];
+  overlays:
+    unsigned rd[5] = rs1;
+    signed imm6[6] = imm1, imm5;
+    unsigned uimm6[6] = imm1, imm5;
+    signed imm18[18] = imm1, imm5, 0b0000'0000'0000;
+    signed ci_imm10[10] = imm1, imm5[2..1, 3, 0, 4], 0b0000;
+    unsigned ci_imm_w[8] = imm5[1..0], imm1, imm5[4..2], 0b00;
+    unsigned ci_imm_d[9] = imm5[2..0], imm1, imm5[4..3], 0b000;
+};
+
+format CIW[16] : Inst16Format {
+  fields:
+    unsigned func3[3];
+    unsigned imm8[8];
+    unsigned rdp[3];
+    unsigned op[2];
+  overlays:
+    unsigned rd[5] = 0b01, rdp;
+    unsigned ciw_imm10[10] = imm8[5..2, 7..6, 0, 1], 0b00;
+};
+
+format CA[16] : Inst16Format {
+  fields:
+    unsigned func6[6];
+    unsigned rs1p[3];
+    unsigned func2[2];
+    unsigned fs2p[3];
+    unsigned op[2];
+  overlays:
+    unsigned rs1[5] = 0b01, rs1p;
+    unsigned rs2[5] = 0b01, fs2p;
+    unsigned rd[5] = 0b01, rs1p;
+};
+
+// Compact instruction encodings.
+instruction group RiscVCInst16[16] : Inst16Format {
+  caddi4spn : CIW: func3 == 0b000, op == 0b00, imm8 != 0;
+  cfld      : CL : func3 == 0b001, op == 0b00;
+  clw       : CL : func3 == 0b010, op == 0b00;
+  cflw      : CL : func3 == 0b011, op == 0b00;
+  cfsd      : CS : func3 == 0b101, op == 0b00;
+  csw       : CS : func3 == 0b110, op == 0b00;
+  cfsw      : CS : func3 == 0b111, op == 0b00;
+  cnop      : CI : func3 == 0b000, imm1 == 0, rs1 == 0, imm5 == 0, op == 0b01;
+  caddi     : CI : func3 == 0b000, imm6 != 0, rd != 0, op == 0b01;
+  cjal      : CJ : func3 == 0b001, op == 0b01;
+  cli       : CI : func3 == 0b010, rd != 0, op == 0b01;
+  caddi16sp : CI : func3 == 0b011, rd == 2, op == 0b01;
+  clui      : CI : func3 == 0b011, rd != 0, rd != 2, op == 0b01;
+  csrli     : CB : func3 == 0b100, imm3 == 0b000, op == 0b01;
+  csrai     : CB : func3 == 0b100, imm3 == 0b001, op == 0b01;
+  candi     : CB : func3 == 0b100, func2 == 0b10, op == 0b01;
+  csub      : CA : func6 == 0b100'011, func2 == 0b00, op == 0b01;
+  cxor      : CA : func6 == 0b100'011, func2 == 0b01, op == 0b01;
+  cor       : CA : func6 == 0b100'011, func2 == 0b10, op == 0b01;
+  cand      : CA : func6 == 0b100'011, func2 == 0b11, op == 0b01;
+  cj        : CJ : func3 == 0b101, op == 0b01;
+  cbeqz     : CB : func3 == 0b110, op == 0b01;
+  cbnez     : CB : func3 == 0b111, op == 0b01;
+  cslli     : CI : func3 == 0b000, imm1 == 0, rs1 != 0, op == 0b10;
+  cfldsp    : CI : func3 == 0b001, op == 0b10;
+  clwsp     : CI : func3 == 0b010, rd != 0, op == 0b10;
+  cflwsp    : CI : func3 == 0b011, op == 0b10;
+  cjr       : CR : func4 == 0b1000, rs1 != 0, rs2 == 0, op == 0b10;
+  cmv       : CR : func4 == 0b1000, rs1 != 0, rs2 != 0, op == 0b10;
+  cebreak   : CR : func4 == 0b1001, rs1 == 0, rs2 == 0, op == 0b10;
+  cjalr     : CR : func4 == 0b1001, rs1 != 0, rs2 == 0, op == 0b10;
+  cadd      : CR : func4 == 0b1001, rs1 != 0, rs2 != 0, op == 0b10;
+  cfsdsp    : CSS: func3 == 0b101, op == 0b10;
+  cswsp     : CSS: func3 == 0b110, op == 0b10;
+  cfswsp    : CSS: func3 == 0b111, op == 0b10;
+};
