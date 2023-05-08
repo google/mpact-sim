@@ -111,8 +111,8 @@ def mpact_isa_decoder(name, includes, src = "", srcs = [], deps = [], isa_name =
         srcs = [f for f in out_files if f.endswith(".cc")],
         hdrs = [f for f in out_files if f.endswith(".h")],
         deps = [
-            Label("//mpact/sim/generic:arch_state"),
-            Label("//mpact/sim/generic:instruction"),
+            "@@com_google_mpact-sim//mpact/sim/generic:arch_state",
+            "@@com_google_mpact-sim//mpact/sim/generic:instruction",
             "@com_google_absl//absl/container:flat_hash_map",
             "@com_google_absl//absl/strings:str_format",
         ] + deps,
@@ -175,8 +175,8 @@ def mpact_bin_fmt_decoder(name, includes, src = "", srcs = [], deps = [], decode
         srcs = [f for f in out_files if f.endswith(".cc")],
         hdrs = [f for f in out_files if f.endswith(".h")],
         deps = [
-            Label("//mpact/sim/generic:arch_state"),
-            Label("//mpact/sim/generic:instruction"),
+            "@@com_google_mpact-sim//mpact/sim/generic:arch_state",
+            "@@com_google_mpact-sim//mpact/sim/generic:instruction",
             "@com_google_absl//absl/container:flat_hash_map",
             "@com_google_absl//absl/functional:any_invocable",
             "@com_google_absl//absl/strings:str_format",
