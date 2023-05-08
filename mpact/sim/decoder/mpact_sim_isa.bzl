@@ -102,7 +102,7 @@ def mpact_isa_decoder(name, includes, src = "", srcs = [], deps = [], isa_name =
         outs = out_files,
         cmd = command,
         heuristic_label_expansion = 0,
-        tools = ["//external:decoder_gen"],
+        tools = ["@@com_google_mpact-sim//mpact/sim/decoder:decoder_gen"],
     )
 
     # The rule for the lib that is built from the generated sources.
@@ -166,7 +166,7 @@ def mpact_bin_fmt_decoder(name, includes, src = "", srcs = [], deps = [], decode
         outs = out_files,
         cmd = command,
         heuristic_label_expansion = 0,
-        tools = ["//external:bin_format_gen"],
+        tools = ["@@com_google_mpact-sim//mpact/sim/decoder:bin_format_gen"],
     )
 
     # The rule for the lib that is built from the generated sources.
@@ -195,7 +195,7 @@ def _strip_path(text):
 # a bash array from $(SRCS), then instead of using $(SRCS) in the command, it
 # uses only the first element of that array.
 def _make_isa_tool_invocation_command(num_srcs, prefix, isa_name):
-    cmd = "ARR=($(SRCS)); $(location //external:decoder_gen) "
+    cmd = "ARR=($(SRCS)); $(location @@com_google_mpact-sim//mpact/sim/decoder:decoder_gen) "
 
     # Add the sources that are not in includes.
     for i in range(0, num_srcs):
@@ -210,7 +210,7 @@ def _make_isa_tool_invocation_command(num_srcs, prefix, isa_name):
 # those that will be included, the command includes creating a bash array from $(SRCS), then
 # instead of using $(SRCS) in the command, it uses only the first element of that array.
 def _make_bin_tool_invocation_command(num_srcs, prefix, decoder_name):
-    cmd = "ARR=($(SRCS)); $(location //external:bin_format_gen) "
+    cmd = "ARR=($(SRCS)); $(location @@com_google_mpact-sim//mpact/sim/decoder:bin_format_gen) "
 
     # Add the sources that are not in includes.
     for i in range(0, num_srcs):
