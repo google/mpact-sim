@@ -26,7 +26,7 @@ def mpact_cc_library(name, srcs = [], hdrs = [], copts = [], deps = [], features
         srcs = srcs,
         hdrs = hdrs,
         copts = copts + ["-iquote $(BINDIR)/external/org_antlr4_cpp_runtime/antlr4/include/antlr4-runtime"],
-        deps = deps,
+        deps = deps + ["@org_antlr4_cpp_runtime//:antlr4"],
         visibility = visibility,
         features = features,
     )
@@ -36,7 +36,7 @@ def mpact_cc_binary(name, srcs = [], copts = [], deps = [], features = [], visib
         name = name,
         srcs = srcs,
         copts = copts + ["-iquote $(BINDIR)/external/org_antlr4_cpp_runtime/antlr4/include/antlr4-runtime"],
-        deps = deps,
+        deps = deps + ["@org_antlr4_cpp_runtime//:antlr4"],
         visibility = visibility,
         features = features,
     )
@@ -47,7 +47,7 @@ def mpact_cc_test(name, size = "small", srcs = [], deps = [], copts = [], data =
         size = size,
         copts = copts + ["-iquote $(BINDIR)/external/org_antlr4_cpp_runtime/antlr4/include/antlr4-runtime"],
         srcs = srcs,
-        deps = deps,
+        deps = deps + ["@org_antlr4_cpp_runtime//:antlr4"],
         data = data,
     )
 

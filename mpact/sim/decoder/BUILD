@@ -65,16 +65,12 @@ mpact_cc_library(
     deps = [
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/strings",
-        "@org_antlr4_cpp_runtime//:antlr4",
     ],
 )
 
 mpact_cc_library(
     name = "antlr_parser_wrapper",
     hdrs = ["antlr_parser_wrapper.h"],
-    deps = [
-        "@org_antlr4_cpp_runtime//:antlr4",
-    ],
 )
 
 mpact_cc_library(
@@ -123,7 +119,6 @@ mpact_cc_library(
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
-        "@org_antlr4_cpp_runtime//:antlr4",
     ],
 )
 
@@ -225,7 +220,6 @@ mpact_cc_library(
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
-        "@org_antlr4_cpp_runtime//:antlr4",
     ],
 )
 
