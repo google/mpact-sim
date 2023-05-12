@@ -37,15 +37,6 @@ def mpact_sim_repos():
             urls = ["https://github.com/protocolbuffers/protobuf/releases/download/v21.12/protobuf-cpp-3.21.12.tar.gz"],
         )
 
-    # Bazel rules for proto.
-    if not native.existing_rule("rules_proto_grpc"):
-        http_archive(
-            name = "rules_proto_grpc",
-            sha256 = "fb7fc7a3c19a92b2f15ed7c4ffb2983e956625c1436f57a3430b897ba9864059",
-            strip_prefix = "rules_proto_grpc-4.3.0",
-            urls = ["https://github.com/rules-proto-grpc/rules_proto_grpc/archive/4.3.0.tar.gz"],
-        )
-
     # Google test.
     if not native.existing_rule("com_google_googletest"):
         http_archive(

@@ -14,11 +14,9 @@
 
 """Set up extra repositories with the dependencies"""
 
-load("@rules_proto_grpc//:repositories.bzl", "rules_proto_grpc_repos", "rules_proto_grpc_toolchains")
+load("@com_google_protobuf//:protobuf_deps.bzl", "protobuf_deps")
 
 def mpact_sim_deps():
     """ Extra dependencies to finish setting up Google repositories"""
 
-    rules_proto_grpc_toolchains()
-
-    rules_proto_grpc_repos()
+    protobuf_deps()
