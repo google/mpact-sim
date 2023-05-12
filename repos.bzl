@@ -65,15 +65,6 @@ def mpact_sim_repos():
             urls = ["https://github.com/google/re2/archive/d0b1f8f2ecc2ea74956c7608b6f915175314ff0e.zip"],
         )
 
-    # Additional rules for building non-bazel projects. Antlr4 builds using cmake.
-    if not native.existing_rule("rules_foreign_cc"):
-        http_archive(
-            name = "rules_foreign_cc",
-            sha256 = "2a4d07cd64b0719b39a7c12218a3e507672b82a97b98c6a89d38565894cf7c51",
-            strip_prefix = "rules_foreign_cc-0.9.0",
-            url = "https://github.com/bazelbuild/rules_foreign_cc/archive/refs/tags/0.9.0.tar.gz",
-        )
-
     # Additional rules for licenses
     if not native.existing_rule("rules_license"):
         http_archive(
@@ -101,7 +92,9 @@ def mpact_sim_repos():
     # Antlr4 c++ runtime.
     http_archive(
         name = "org_antlr4_cpp_runtime",
+        add_prefix = "antlr4-runtime",
         build_file = "@com_google_mpact-sim//:external/BUILD.antlr4",
         sha256 = "8018c335316e61bb768e5bd4a743a9303070af4e1a8577fa902cd053c17249da",
+        strip_prefix = "runtime/src",
         urls = ["https://www.antlr.org/download/antlr4-cpp-runtime-4.11.1-source.zip"],
     )

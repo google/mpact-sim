@@ -14,13 +14,10 @@
 
 """Set up extra repositories with the dependencies"""
 
-load("@rules_foreign_cc//foreign_cc:repositories.bzl", "rules_foreign_cc_dependencies")
 load("@rules_proto_grpc//:repositories.bzl", "rules_proto_grpc_repos", "rules_proto_grpc_toolchains")
 
 def mpact_sim_deps():
     """ Extra dependencies to finish setting up Google repositories"""
-
-    rules_foreign_cc_dependencies()
 
     rules_proto_grpc_toolchains()
 

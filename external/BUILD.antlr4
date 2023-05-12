@@ -12,25 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@rules_foreign_cc//foreign_cc:defs.bzl", "cmake")
-
 package(default_visibility = ["//visibility:public"])
 
-filegroup(
-  name = "all_srcs",
-  srcs = glob(["**"]),
-  visibility = ["//visibility:public"],
-)
-
-cmake(
+cc_library(
     name = "antlr4",
-    cache_entries = {
-        "CMAKE_CXX_FLAGS": "-std=c++17",
-    },
-    generate_args = [
-        "-G Ninja",
+    srcs = glob(["antlr4-runtime/**/*.cpp"]),
+    hdrs = ["antlr4-runtime/antlr4-runtime.h"],
+    copts = ["-fexceptions"],
+    defines = ["ANTLR4CPP_USING_ABSEIL"],
+    features = ["-use_header_modules"],
+    includes = ["antlr4-runtime/"],
+    textual_hdrs = glob(
+        ["antlr4-runtime/**/*.h"],
+        exclude = ["antlr4-runtime/antlr4-runtime.h"],
+    ),
+    deps = [
+        "@com_google_absl//absl/base",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/container:flat_hash_set",
+        "@com_google_absl//absl/synchronization",
     ],
-    lib_source = ":all_srcs",
-    tags = ["requires-network"],
-    out_static_libs = ["libantlr4-runtime.a"],
 )

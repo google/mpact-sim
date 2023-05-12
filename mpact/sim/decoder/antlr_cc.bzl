@@ -42,7 +42,7 @@ def antlr4_cc_lexer(
         # Use the first namespace, we'll add the others afterwards.
         _make_tool_invocation_command(namespaces[0]),
         _make_namespace_adjustment_command(namespaces, out_files),
-        _make_google3_cleanup_command(out_files),
+        _make_bazel_cleanup_command(out_files),
     ])
     native.genrule(
         name = name + "_source",
@@ -59,7 +59,7 @@ def antlr4_cc_lexer(
         deps = [Label("@org_antlr4_cpp_runtime//:antlr4")] + deps,
         copts = [
             "-fexceptions",
-            "-iquote $(BINDIR)/external/org_antlr4_cpp_runtime/antlr4/include/antlr4-runtime",
+            "-iquote external/org_antlr4_cpp_runtime",
         ],
         features = ["-use_header_modules"],  # Incompatible with -fexceptions.
     )
@@ -111,7 +111,7 @@ def antlr4_cc_parser(
         # Use the first namespace, we'll add the others afterward.
         _make_tool_invocation_command(namespaces[0], listener, visitor),
         _make_namespace_adjustment_command(namespaces, out_files),
-        _make_google3_cleanup_command(out_files),
+        _make_bazel_cleanup_command(out_files),
     ])
     native.genrule(
         name = name + "_source",
@@ -129,7 +129,7 @@ def antlr4_cc_parser(
         copts = [
             "-fexceptions",
             "-Wno-nonnull",
-            "-iquote $(BINDIR)/external/org_antlr4_cpp_runtime/antlr4/include/antlr4-runtime",
+            "-iquote external/org_antlr4_cpp_runtime",
         ],
         features = ["-use_header_modules"],
     )
@@ -144,7 +144,7 @@ def _make_tool_invocation_command(package, listener = False, visitor = False):
            " -o $(@D)" + \
            " -Xexact-output-dir"
 
-def _make_google3_cleanup_command(out_files):
+def _make_bazel_cleanup_command(out_files):
     # Clean up imports and usage of the #pragma once directive.
     return ";\n".join([
         ";\n".join([
