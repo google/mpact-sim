@@ -38,6 +38,10 @@ namespace generic {
 // only one root instance of a Component.
 class Component {
  public:
+  // Using btree_map to ensure proto exports are done in name order.
+  using ComponentMap = absl::btree_map<std::string, Component *>;
+  using CounterMap = absl::btree_map<std::string, CounterBaseInterface *>;
+  using ConfigMap = absl::btree_map<std::string, ConfigBase *>;
   // Type alias for import done callback function.
   using CallbackFunction = std::function<void()>;
   // Create a Component with no parent.
@@ -82,6 +86,11 @@ class Component {
   const std::string &component_name() const { return component_name_; }
   Component *parent() const { return parent_; }
 
+  // Map accessors.
+  const ComponentMap &child_map() const { return child_map_; }
+  const CounterMap &counter_map() const { return counter_map_; }
+  const ConfigMap &config_map() const { return config_map_; }
+
  protected:
   // The Import method is divided into import self and import children. Each
   // can be individually overridden.
@@ -91,11 +100,6 @@ class Component {
       const mpact::sim::proto::ComponentData &component_data);
 
  private:
-  // Using btree_map to ensure proto exports are done in name order.
-  using ComponentMap = absl::btree_map<std::string, Component *>;
-  using CounterMap = absl::btree_map<std::string, CounterBaseInterface *>;
-  using ConfigMap = absl::btree_map<std::string, ConfigBase *>;
-
   // Private accessor.
   void SetParent(Component *parent) { parent_ = parent; }
 
