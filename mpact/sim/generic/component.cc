@@ -54,7 +54,12 @@ Component::Component(std::string name) : component_name_(std::move(name)) {}
 Component::Component(std::string name, Component *parent)
     : component_name_(std::move(name)) {
   if (parent != nullptr) {
-    parent->AddChildComponent(*this).IgnoreError();
+    auto status = parent->AddChildComponent(*this);
+    if (!status.ok()) {
+      LOG(ERROR) << absl::StrCat(
+          "Failed to add child component '", component_name_, "' to parent: '",
+          parent->component_name(), "': ", status.message());
+    }
   }
 }
 
