@@ -33,3 +33,8 @@ cc_proto_library(
         ":component_data_proto",
     ],
 )
+
+filegroup(
+    name = "component_data_proto_files",
+    srcs = ["component_data.proto"],
+)
