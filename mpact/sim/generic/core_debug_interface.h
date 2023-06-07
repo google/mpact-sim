@@ -29,7 +29,7 @@ class Instruction;
 // This class defines an interface for controlling a simulator. This interface
 // should be implemented at the top level of the class hierarchy for a single
 // core. The intent is that this interface provides a uniform method for
-// controlling invidividual core simualtors, as well as providing a simplified
+// controlling individual core simulators, as well as providing a simplified
 // interface to help in debugging programs running on these cores.
 class CoreDebugInterface {
  public:
