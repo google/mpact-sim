@@ -84,6 +84,14 @@ absl::Status Component::AddConfig(ConfigBase *config) {
 Component *Component::GetChildComponent(absl::string_view name) const {
   return GetMapEntry<ComponentMap, Component>(child_map_, name);
 }
+absl::Status Component::RemoveChildComponent(absl::string_view name) {
+  auto iter = child_map_.find(name);
+  if (iter == child_map_.end())
+    return absl::NotFoundError(
+        absl::StrCat("No such child component '", name, "'"));
+  child_map_.erase(iter);
+  return absl::OkStatus();
+}
 CounterBaseInterface *Component::GetCounter(absl::string_view name) const {
   return GetMapEntry<CounterMap, CounterBaseInterface>(counter_map_, name);
 }

@@ -59,6 +59,7 @@ class Component {
   absl::Status AddCounter(CounterBaseInterface *counter);
   absl::Status AddConfig(ConfigBase *config);
   Component *GetChildComponent(absl::string_view name) const;
+  absl::Status RemoveChildComponent(absl::string_view name);
   CounterBaseInterface *GetCounter(absl::string_view name) const;
   ConfigBase *GetConfig(absl::string_view name) const;
 
