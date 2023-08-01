@@ -15,6 +15,7 @@
 #ifndef MPACT_SIM_DECODER_EXTRACT_H_
 #define MPACT_SIM_DECODER_EXTRACT_H_
 
+#include <cstdint>
 #include <string>
 #include <vector>
 
