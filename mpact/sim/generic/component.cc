@@ -17,6 +17,8 @@
 #include <string>
 #include <utility>
 
+#include "absl/log/log.h"
+
 namespace mpact {
 namespace sim {
 namespace generic {

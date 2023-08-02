@@ -216,6 +216,7 @@ cc_library(
         ":counters",
         "//mpact/sim/proto:component_data_cc_proto",
         "@com_google_absl//absl/container:btree",
+        "@com_google_absl//absl/log",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
     ],
