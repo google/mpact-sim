@@ -15,6 +15,8 @@
 #ifndef MPACT_SIM_GENERIC_CORE_DEBUG_INTERFACE_H_
 #define MPACT_SIM_GENERIC_CORE_DEBUG_INTERFACE_H_
 
+#include <cstddef>
+#include <cstdint>
 #include <string>
 
 #include "absl/status/status.h"
@@ -24,6 +26,7 @@ namespace mpact {
 namespace sim {
 namespace generic {
 
+class DataBuffer;
 class Instruction;
 
 // This class defines an interface for controlling a simulator. This interface
@@ -73,6 +76,19 @@ class CoreDebugInterface {
   virtual absl::StatusOr<uint64_t> ReadRegister(const std::string &name) = 0;
   virtual absl::Status WriteRegister(const std::string &name,
                                      uint64_t value) = 0;
+
+  // Some registers, including vector registers, have values that exceed the
+  // 64 bits supported in the Read/Write register API calls. This function
+  // obtains the DataBuffer structure for such registers, provided they use one.
+  // The data in the DataBuffer instance can be written as well as read.
+  // Note (1): DataBuffer instances are reference counted. If the simulator is
+  // advanced after obtaining the instance, it may become invalid if it isn't
+  // IncRef'ed appropriately (see data_buffer.h).
+  // Note (2): In some cases, a register write may replace the DataBuffer
+  // instance within a register so that any stored references to it become
+  // stale.
+  virtual absl::StatusOr<DataBuffer *> GetRegisterDataBuffer(
+      const std::string &name) = 0;
 
   // Read/write the buffers to memory.
   virtual absl::StatusOr<size_t> ReadMemory(uint64_t address, void *buf,
