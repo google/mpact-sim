@@ -23,7 +23,9 @@
 
 #include "absl/container/btree_set.h"
 #include "absl/container/flat_hash_map.h"
+#include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "mpact/sim/decoder/format_name.h"
 #include "mpact/sim/decoder/resource.h"
@@ -153,7 +155,20 @@ struct ResourceReference {
         dest_op(dest_op_),
         begin_expression(begin_expr_),
         end_expression(end_expr_) {}
-  ResourceReference(const ResourceReference &) = default;
+  ResourceReference(const ResourceReference &rhs) {
+    resource = rhs.resource;
+    dest_op = rhs.dest_op;
+    begin_expression = rhs.begin_expression->DeepCopy();
+    end_expression = rhs.end_expression->DeepCopy();
+  }
+  ~ResourceReference() {
+    resource = nullptr;
+    dest_op = nullptr;
+    delete begin_expression;
+    begin_expression = nullptr;
+    delete end_expression;
+    end_expression = nullptr;
+  }
 };
 
 using OpLocatorMap = absl::flat_hash_map<std::string, OperandLocator>;

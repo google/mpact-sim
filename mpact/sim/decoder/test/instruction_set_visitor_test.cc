@@ -14,15 +14,18 @@
 
 #include "mpact/sim/decoder/instruction_set_visitor.h"
 
+#include <cstdlib>
 #include <fstream>
+#include <istream>
+#include <iterator>
 #include <string>
 #include <vector>
 
-#include "absl/flags/flag.h"
+#include "absl/log/check.h"
 #include "absl/strings/str_cat.h"
-#include "absl/strings/str_split.h"
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
+#include "re2/re2.h"
 
 namespace mpact {
 namespace sim {
@@ -35,9 +38,11 @@ constexpr char kTestUndeclaredOutputsDir[] = "TEST_UNDECLARED_OUTPUTS_DIR";
 constexpr char kExampleBaseName[] = "example";
 constexpr char kRecursiveExampleBaseName[] = "example_with_recursive_include";
 constexpr char kEmptyBaseName[] = "empty_file";
+constexpr char kGeneratorBaseName[] = "generator";
 
 constexpr char kEmptyIsaName[] = "Empty";
 constexpr char kExampleIsaName[] = "Example";
+constexpr char kGeneratorIsaName[] = "Generator";
 
 // The depot path to the test directory.
 constexpr char kDepotPath[] = "mpact/sim/decoder/test/";
@@ -107,6 +112,46 @@ TEST_F(InstructionSetParserTest, BasicParsing) {
 
   EXPECT_TRUE(FileExists(
       absl::StrCat(output_dir, "/", kExampleBaseName, "_decoder.cc")));
+}
+
+TEST_F(InstructionSetParserTest, Generator) {
+  // Set up input and output file paths.
+  std::vector<std::string> input_files = {
+      absl::StrCat(kDepotPath, "testfiles/", kGeneratorBaseName, ".isa")};
+  ASSERT_TRUE(FileExists(input_files[0]));
+  std::string output_dir = getenv(kTestUndeclaredOutputsDir);
+
+  InstructionSetVisitor visitor;
+  // Parse and process the input file.
+  EXPECT_TRUE(visitor
+                  .Process(input_files, kGeneratorBaseName, kGeneratorIsaName,
+                           paths_, output_dir)
+                  .ok());
+  // Verify that the decoder files _decoder.{.h,.cc} files were generated.
+  EXPECT_TRUE(FileExists(
+      absl::StrCat(output_dir, "/", kGeneratorBaseName, "_decoder.h")));
+
+  EXPECT_TRUE(FileExists(
+      absl::StrCat(output_dir, "/", kGeneratorBaseName, "_decoder.cc")));
+
+  // Verify that the instruction enums and decoder entries include the
+  // instructions inside the GENERATE() construct.
+  std::ifstream enum_file(
+      absl::StrCat(output_dir, "/", kGeneratorBaseName, "_enums.h"));
+  CHECK(enum_file.good());
+  std::string enum_str((std::istreambuf_iterator<char>(enum_file)),
+                       (std::istreambuf_iterator<char>()));
+  std::ifstream decoder_file(
+      absl::StrCat(output_dir, "/", kGeneratorBaseName, "_decoder.cc"));
+  CHECK(decoder_file.good());
+  std::string decoder_str((std::istreambuf_iterator<char>(decoder_file)),
+                          (std::istreambuf_iterator<char>()));
+  for (auto name : {"kBeq", "kBeqW", "kBne", "kBneW", "kBlt", "kBltW", "kBltu",
+                    "kBltuW", "kBge", "kBgeW", "kBgeu", "kBgeuW"}) {
+    RE2 re(name);
+    EXPECT_TRUE(RE2::PartialMatch(enum_str, re)) << name;
+    EXPECT_TRUE(RE2::PartialMatch(decoder_str, re)) << name;
+  }
 }
 
 }  // namespace

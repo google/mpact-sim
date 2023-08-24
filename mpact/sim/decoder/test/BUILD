@@ -120,18 +120,21 @@ mpact_cc_test(
     ],
     data = [
         # Local include files.
+        "testfiles/bundle_b.isa",
         "testfiles/empty_file.isa",
         "testfiles/example.isa",
-        "testfiles/bundle_b.isa",
         "testfiles/example_with_recursive_include.isa",
+        "testfiles/generator.isa",
         "testfiles/recursive_include.isa",
         # Project exported include files.
-        "//mpact/sim/decoder/test/testfiles/include:empty_include.isa",
         "//mpact/sim/decoder/test/testfiles/include:bundle_a.isa",
+        "//mpact/sim/decoder/test/testfiles/include:empty_include.isa",
     ],
     deps = [
         "//mpact/sim/decoder:isa_parser",
+        "//third_party/re2",
         "@com_google_absl//absl/flags:flag",
+        "@com_google_absl//absl/log:check",
         "@com_google_absl//absl/memory",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
@@ -326,13 +329,16 @@ mpact_cc_test(
     data = [
         # Local include files.
         "testfiles/empty_file.bin_fmt",
+        "testfiles/generator.bin_fmt",
         "testfiles/riscv32_top.bin_fmt",
         "testfiles/riscv32g.bin_fmt",
         "testfiles/riscv32c.bin_fmt",
     ],
     deps = [
         "//mpact/sim/decoder:bin_format_visitor",
+        "//third_party/re2",
         "@com_google_absl//absl/flags:flag",
+        "@com_google_absl//absl/log:check",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
         "@com_google_googletest//:gtest",

@@ -16,6 +16,7 @@
 #define LEARNING_BRAIN_RESEARCH_MPACT_SIM_DECODER_ANTLR_PARSER_WRAPPER_H_
 
 #include <istream>
+#include <string>
 
 #include "antlr4-runtime/antlr4-runtime.h"
 
@@ -29,6 +30,13 @@ class AntlrParserWrapper {
  public:
   explicit AntlrParserWrapper(std::istream *source_stream) {
     instruction_set_input_.load(*source_stream, /*lenient=*/true);
+    lexer_ = new Lexer(&instruction_set_input_);
+    tokens_ = new antlr4::CommonTokenStream(lexer_);
+    parser_ = new Parser(tokens_);
+  }
+
+  explicit AntlrParserWrapper(const std::string &source) {
+    instruction_set_input_.load(source, /*lenient=*/true);
     lexer_ = new Lexer(&instruction_set_input_);
     tokens_ = new antlr4::CommonTokenStream(lexer_);
     parser_ = new Parser(tokens_);

@@ -14,8 +14,14 @@
 
 #include "mpact/sim/decoder/instruction.h"
 
+#include "absl/status/status.h"
+#include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
 #include "mpact/sim/decoder/instruction_set.h"
+#include "mpact/sim/decoder/opcode.h"
 #include "mpact/sim/decoder/slot.h"
+#include "mpact/sim/decoder/template_expression.h"
 
 namespace mpact {
 namespace sim {
@@ -89,7 +95,7 @@ void Instruction::AppendDisasmFormat(DisasmFormat *disasm_format) {
   disasm_format_vec_.push_back(disasm_format);
 }
 
-// Creating a derived instruction involves copying attributes and re-evaulating
+// Creating a derived instruction involves copying attributes and re-evaluating
 // any expressions that depend on any slot template instantiation values.
 absl::StatusOr<Instruction *> Instruction::CreateDerivedInstruction(
     TemplateInstantiationArgs *args) const {

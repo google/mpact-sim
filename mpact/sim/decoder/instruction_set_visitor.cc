@@ -15,6 +15,7 @@
 #include "mpact/sim/decoder/instruction_set_visitor.h"
 
 #include <cctype>
+#include <cstddef>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -26,12 +27,20 @@
 #include <variant>
 #include <vector>
 
+#include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
+#include "mpact/sim/decoder/bundle.h"
 #include "mpact/sim/decoder/decoder_error_listener.h"
 #include "mpact/sim/decoder/format_name.h"
+#include "mpact/sim/decoder/instruction_set.h"
+#include "mpact/sim/decoder/opcode.h"
+#include "mpact/sim/decoder/slot.h"
 #include "mpact/sim/decoder/template_expression.h"
+#include "re2/re2.h"
 
 namespace mpact {
 namespace sim {
@@ -69,6 +78,8 @@ InstructionSetVisitor::~InstructionSetVisitor() {
     delete wrapper;
   }
   antlr_parser_wrappers_.clear();
+  for (auto *expr : disasm_field_widths_) delete expr;
+  disasm_field_widths_.clear();
 }
 
 // Main entry point for processing the file.
@@ -843,8 +854,9 @@ TemplateExpression *InstructionSetVisitor::VisitExpression(ExpressionCtx *ctx,
   }
 
   if (ctx->NUMBER() != nullptr) {
-    return new TemplateConstant(
-        std::stoi(ctx->NUMBER()->getText(), nullptr, 0));
+    auto *expr =
+        new TemplateConstant(std::stoi(ctx->NUMBER()->getText(), nullptr, 0));
+    return expr;
   }
 
   if (ctx->IDENT() != nullptr) {
@@ -1187,10 +1199,10 @@ void InstructionSetVisitor::VisitResourceDetails(ResourceDetailsCtx *ctx,
   ResourceSpec spec;
   VisitResourceDetailsLists(ctx, slot, inst, &spec);
   for (auto *use : spec.use_vec) {
-    inst->AppendResourceUse(new ResourceReference(*use));
+    inst->AppendResourceUse(use);
   }
   for (auto *acquire : spec.acquire_vec) {
-    inst->AppendResourceAcquire(new ResourceReference(*acquire));
+    inst->AppendResourceAcquire(acquire);
   }
 }
 
@@ -1307,137 +1319,154 @@ void InstructionSetVisitor::ProcessOpcodeList(
     OpcodeListCtx *ctx, Slot *slot, std::vector<Instruction *> &instruction_vec,
     absl::flat_hash_set<std::string> &deleted_ops_set,
     absl::flat_hash_set<OpcodeSpecCtx *> &overridden_ops_set) {
-  auto *opcode_factory = slot->instruction_set()->opcode_factory();
   // Obtain the list of opcodes specifications.
   auto opcode_spec = ctx->opcode_spec();
-  for (auto opcode_ctx : opcode_spec) {
-    // Process the regular opcode specification.
-    std::string opcode_name = opcode_ctx->name->getText();
-    // Check to see if this opcode is deleted, meaning it should not be
-    // inherited from a base slot.
-    if (opcode_ctx->deleted != nullptr) {
-      // If there is no base slot, this is an error.
-      if (slot->base_slots().empty()) {
-        error_listener()->semanticError(
-            opcode_ctx->deleted,
-            "Invalid deleted opcode, the slot does not inherit");
-        continue;
-      }
-      bool found = false;
-      // Check to see if one of the base slots has this opcode.
-      for (auto const &base_slot : slot->base_slots()) {
-        found |= base_slot.base->HasInstruction(opcode_name);
-        if (found) break;
-      }
-      // If the opcode was not defined in any of the base slots, it is an error.
-      if (!found) {
-        error_listener()->semanticError(
-            opcode_ctx->deleted,
-            absl::StrCat("Base slot does not define or inherit opcode: ",
-                         opcode_name));
-        continue;
-      }
-      deleted_ops_set.insert(opcode_name);
-      continue;
-    }
-
-    // Check to see if this opcode is overridden, this means that some of the
-    // "attributes" (semfunc, disasm, etc.) are changed.
-    if (opcode_ctx->overridden != nullptr) {
-      int found = 0;
-      for (auto const &base_slot : slot->base_slots()) {
-        found += base_slot.base->HasInstruction(opcode_name);
-      }
-      // Check that the opcode is indeed inherited from one base class only.
-      // Multiple inheritance is not supported.
-      if (found == 0) {
-        error_listener()->semanticError(
-            opcode_ctx->deleted,
-            absl::StrCat("Base slot does not define or inherit opcode: ",
-                         opcode_name));
-        continue;
-      } else if (found > 1) {
-        error_listener()->semanticError(
-            opcode_ctx->deleted,
-            absl::StrCat("Multiple inheritance of opcodes is not supported: ",
-                         opcode_name));
-        continue;
-      }
-      overridden_ops_set.insert(opcode_ctx);
-      continue;
-    }
-
-    // This is a new opcode, so let's create it. Signal failure if error.
-    absl::StatusOr<Opcode *> result = opcode_factory->CreateOpcode(opcode_name);
-    if (!result.ok()) {
-      error_listener()->semanticError(opcode_ctx->name,
-                                      result.status().message());
-      continue;
-    }
-
-    Opcode *top = result.value();
-    auto inst = new Instruction(top, slot);
-
-    // Get the size of the instruction if specified, otherwise use default size.
-    if (opcode_ctx->size_spec() != nullptr) {
-      int size =
-          std::stoi(opcode_ctx->size_spec()->NUMBER()->getText(), nullptr, 0);
-      top->set_instruction_size(size);
-    } else {
-      top->set_instruction_size(slot->default_instruction_size());
-    }
-    if (top->instruction_size() < slot->min_instruction_size()) {
-      slot->set_min_instruction_size(top->instruction_size());
-    }
-
-    int op_spec_number = 0;
-    auto op_spec = opcode_ctx->operand_spec();
-    // Process the top instruction.
-    for (auto &[name, expr] : slot->attribute_map()) {
-      inst->AddInstructionAttribute(name, expr->DeepCopy());
-    }
-
-    // Visit the opcode specification of the top instruction.
-    if (op_spec->opcode_operands() != nullptr) {
-      VisitOpcodeOperands(op_spec->opcode_operands(), op_spec_number, inst,
-                          inst, slot);
-    } else {
-      VisitOpcodeOperands(op_spec->opcode_operands_list()->opcode_operands()[0],
-                          op_spec_number, inst, inst, slot);
-    }
-    op_spec_number++;
-
-    // If there are child instructions process them.
-    if (opcode_ctx->operand_spec()->opcode_operands_list() != nullptr) {
-      Opcode *parent = top;
-      auto opcode_operands = op_spec->opcode_operands_list()->opcode_operands();
-
-      Instruction *child_inst = nullptr;
-      // Process child instructions.
-      for (size_t i = 1; i < opcode_operands.size(); ++i) {
-        // Create child opcode.
-        result = opcode_factory->CreateChildOpcode(parent);
-        if (!result.ok()) {
-          error_listener()->semanticError(opcode_ctx->name,
-                                          result.status().message());
-          break;
-        }
-        auto *op = result.value();
-        // Create child instruction.
-        child_inst = new Instruction(op, slot);
-        inst->AppendChild(child_inst);
-        // Add default attributes.
-        for (auto &[name, expr] : slot->attribute_map()) {
-          child_inst->AddInstructionAttribute(name, expr->DeepCopy());
-        }
-        VisitOpcodeOperands(opcode_operands[i], op_spec_number, inst,
-                            child_inst, slot);
-        op_spec_number++;
-      }
-    }
-    instruction_vec.push_back(inst);
-    VisitOpcodeAttributes(opcode_ctx->opcode_attribute_list(), inst, slot);
+  for (auto *opcode_ctx : opcode_spec) {
+    ProcessOpcodeSpec(opcode_ctx, slot, instruction_vec, deleted_ops_set,
+                      overridden_ops_set);
   }
+}
+
+void InstructionSetVisitor::ProcessOpcodeSpec(
+    OpcodeSpecCtx *opcode_ctx, Slot *slot,
+    std::vector<Instruction *> &instruction_vec,
+    absl::flat_hash_set<std::string> &deleted_ops_set,
+    absl::flat_hash_set<OpcodeSpecCtx *> &overridden_ops_set) {
+  auto *opcode_factory = slot->instruction_set()->opcode_factory();
+  if (opcode_ctx->generate != nullptr) {
+    auto status = ProcessOpcodeGenerator(opcode_ctx, slot, instruction_vec,
+                                         deleted_ops_set, overridden_ops_set);
+    if (!status.ok()) {
+      error_listener()->semanticError(opcode_ctx->name, status.message());
+    }
+    return;
+  }
+  // Process the regular opcode specification.
+  std::string opcode_name = opcode_ctx->name->getText();
+  // Check to see if this opcode is deleted, meaning it should not be
+  // inherited from a base slot.
+  if (opcode_ctx->deleted != nullptr) {
+    // If there is no base slot, this is an error.
+    if (slot->base_slots().empty()) {
+      error_listener()->semanticError(
+          opcode_ctx->deleted,
+          "Invalid deleted opcode, the slot does not inherit");
+      return;
+    }
+    bool found = false;
+    // Check to see if one of the base slots has this opcode.
+    for (auto const &base_slot : slot->base_slots()) {
+      found |= base_slot.base->HasInstruction(opcode_name);
+      if (found) break;
+    }
+    // If the opcode was not defined in any of the base slots, it is an error.
+    if (!found) {
+      error_listener()->semanticError(
+          opcode_ctx->deleted,
+          absl::StrCat("Base slot does not define or inherit opcode: ",
+                       opcode_name));
+      return;
+    }
+    deleted_ops_set.insert(opcode_name);
+    return;
+  }
+
+  // Check to see if this opcode is overridden, this means that some of the
+  // "attributes" (semantic function, disasm, etc.) are changed.
+  if (opcode_ctx->overridden != nullptr) {
+    int found = 0;
+    for (auto const &base_slot : slot->base_slots()) {
+      found += base_slot.base->HasInstruction(opcode_name);
+    }
+    // Check that the opcode is indeed inherited from one base class only.
+    // Multiple inheritance is not supported.
+    if (found == 0) {
+      error_listener()->semanticError(
+          opcode_ctx->deleted,
+          absl::StrCat("Base slot does not define or inherit opcode: ",
+                       opcode_name));
+      return;
+    } else if (found > 1) {
+      error_listener()->semanticError(
+          opcode_ctx->deleted,
+          absl::StrCat("Multiple inheritance of opcodes is not supported: ",
+                       opcode_name));
+      return;
+    }
+    overridden_ops_set.insert(opcode_ctx);
+    return;
+  }
+
+  // This is a new opcode, so let's create it. Signal failure if error.
+  absl::StatusOr<Opcode *> result = opcode_factory->CreateOpcode(opcode_name);
+  if (!result.ok()) {
+    error_listener()->semanticError(opcode_ctx->name,
+                                    result.status().message());
+    return;
+  }
+
+  Opcode *top = result.value();
+  auto inst = new Instruction(top, slot);
+
+  // Get the size of the instruction if specified, otherwise use default size.
+  if (opcode_ctx->size_spec() != nullptr) {
+    int size =
+        std::stoi(opcode_ctx->size_spec()->NUMBER()->getText(), nullptr, 0);
+    top->set_instruction_size(size);
+  } else {
+    top->set_instruction_size(slot->default_instruction_size());
+  }
+  if (top->instruction_size() < slot->min_instruction_size()) {
+    slot->set_min_instruction_size(top->instruction_size());
+  }
+
+  int op_spec_number = 0;
+  auto op_spec = opcode_ctx->operand_spec();
+  // Process the top instruction.
+  for (auto &[name, expr] : slot->attribute_map()) {
+    inst->AddInstructionAttribute(name, expr->DeepCopy());
+  }
+
+  // Visit the opcode specification of the top instruction.
+  if (op_spec->opcode_operands() != nullptr) {
+    VisitOpcodeOperands(op_spec->opcode_operands(), op_spec_number, inst, inst,
+                        slot);
+  } else {
+    VisitOpcodeOperands(op_spec->opcode_operands_list()->opcode_operands()[0],
+                        op_spec_number, inst, inst, slot);
+  }
+  op_spec_number++;
+
+  // If there are child instructions process them.
+  if (opcode_ctx->operand_spec()->opcode_operands_list() != nullptr) {
+    Opcode *parent = top;
+    auto opcode_operands = op_spec->opcode_operands_list()->opcode_operands();
+
+    Instruction *child_inst = nullptr;
+    // Process child instructions.
+    for (size_t i = 1; i < opcode_operands.size(); ++i) {
+      // Create child opcode.
+      result = opcode_factory->CreateChildOpcode(parent);
+      if (!result.ok()) {
+        error_listener()->semanticError(opcode_ctx->name,
+                                        result.status().message());
+        break;
+      }
+      auto *op = result.value();
+      // Create child instruction.
+      child_inst = new Instruction(op, slot);
+      inst->AppendChild(child_inst);
+      // Add default attributes.
+      for (auto &[name, expr] : slot->attribute_map()) {
+        child_inst->AddInstructionAttribute(name, expr->DeepCopy());
+      }
+      VisitOpcodeOperands(opcode_operands[i], op_spec_number, inst, child_inst,
+                          slot);
+      op_spec_number++;
+    }
+  }
+  instruction_vec.push_back(inst);
+  VisitOpcodeAttributes(opcode_ctx->opcode_attribute_list(), inst, slot);
 }
 
 void InstructionSetVisitor::VisitOpcodeOperands(OpcodeOperandsCtx *ctx,
@@ -1487,6 +1516,141 @@ void InstructionSetVisitor::VisitOpcodeOperands(OpcodeOperandsCtx *ctx,
   }
 }
 
+absl::Status InstructionSetVisitor::ProcessOpcodeGenerator(
+    OpcodeSpecCtx *ctx, Slot *slot, std::vector<Instruction *> &instruction_vec,
+    absl::flat_hash_set<std::string> &deleted_ops_set,
+    absl::flat_hash_set<OpcodeSpecCtx *> &overridden_ops_set) {
+  if (ctx == nullptr) return absl::InternalError("OpcodeSpecCtx is null");
+  absl::flat_hash_set<std::string> range_variable_names;
+  std::vector<RangeAssignmentInfo *> range_info_vec;
+  // Process range assignment lists. The range assignment is either a single
+  // value or a structured binding assignment. If it's a binding assignment we
+  // need to make sure each tuple has the same number of values as there are
+  // idents to assign them to.
+  for (auto *assign_ctx : ctx->range_assignment()) {
+    auto *range_info = new RangeAssignmentInfo();
+    range_info_vec.push_back(range_info);
+    for (auto *ident_ctx : assign_ctx->IDENT()) {
+      std::string name = ident_ctx->getText();
+      if (range_variable_names.contains(name)) {
+        error_listener()->semanticError(
+            assign_ctx->start,
+            absl::StrCat("Duplicate binding variable name '", name, "'"));
+        continue;
+      }
+      range_variable_names.insert(name);
+      range_info->range_names.push_back(ident_ctx->getText());
+      range_info->range_values.push_back({});
+    }
+    // See if it's a list of simple values.
+    if (!assign_ctx->gen_value().empty()) {
+      if (range_info->range_names.size() != 1) {
+        for (auto *info : range_info_vec) delete info;
+        return absl::InternalError(
+            "Tuples required for structured binding assignment");
+      }
+      for (auto *gen_value_ctx : assign_ctx->gen_value()) {
+        if (gen_value_ctx->simple != nullptr) {
+          range_info->range_values[0].push_back(
+              gen_value_ctx->simple->getText());
+        } else {
+          // Strip off double quotes.
+          std::string value = gen_value_ctx->string->getText();
+          range_info->range_values[0].push_back(
+              value.substr(1, value.size() - 2));
+        }
+      }
+      continue;
+    }
+    // It's a list of tuples with a structured binding assignment.
+    for (auto *tuple_ctx : assign_ctx->tuple()) {
+      if (tuple_ctx->gen_value().size() != range_info->range_names.size()) {
+        for (auto *info : range_info_vec) delete info;
+        return absl::InternalError(
+            "Number of values differs from number of identifiers");
+      }
+      for (int i = 0; i < tuple_ctx->gen_value().size(); ++i) {
+        if (tuple_ctx->gen_value(i)->simple != nullptr) {
+          range_info->range_values[i].push_back(
+              tuple_ctx->gen_value(i)->simple->getText());
+        } else {
+          // Strip off double quotes.
+          std::string value = tuple_ctx->gen_value(i)->string->getText();
+          range_info->range_values[i].push_back(
+              value.substr(1, value.size() - 2));
+        }
+      }
+    }
+  }
+  // Check that all binding variable references are valid.
+  std::string input_text = ctx->generator_opcode_spec_list()->getText();
+  std::string::size_type start_pos = 0;
+  int count = 0;
+  auto pos = input_text.find_first_of('$', start_pos);
+  while (pos != std::string::npos) {
+    // Skip past the '$('
+    start_pos = pos + 2;
+    auto end_pos = input_text.find_first_of(')', pos);
+    // Extract the ident.
+    auto ident = input_text.substr(start_pos, end_pos - start_pos);
+    if (!range_variable_names.contains(ident)) {
+      error_listener()->semanticError(
+          ctx->generator_opcode_spec_list()->start,
+          absl::StrCat("Undefined binding variable name '", ident, "'"));
+    }
+    start_pos = end_pos;
+    if (count++ > 10) break;
+    pos = input_text.find_first_of('$', start_pos);
+  }
+  if (error_listener()->HasError()) {
+    for (auto *info : range_info_vec) delete info;
+    return absl::InternalError("Undefined binding variable name(s)");
+  }
+  // Now we need to iterate over the range_info instances and substitution
+  // ranges. This will produce new text that will be parsed and processed.
+  std::string generated_text =
+      GenerateOpcodeSpec(range_info_vec, 0, input_text);
+  // Parse and process the generated text.
+  auto *parser = new IsaAntlrParserWrapper(generated_text);
+  antlr_parser_wrappers_.push_back(parser);
+  // Parse the text starting at the opcode_spec_list rule.
+  auto opcode_spec_vec = parser->parser()->opcode_spec_list()->opcode_spec();
+  // Process the opcode spec.
+  for (auto *opcode_spec : opcode_spec_vec) {
+    ProcessOpcodeSpec(opcode_spec, slot, instruction_vec, deleted_ops_set,
+                      overridden_ops_set);
+  }
+  // Clean up.
+  for (auto *info : range_info_vec) delete info;
+  return absl::OkStatus();
+}
+
+// Helper function to recursively generate the text for the GENERATE opcode
+// spec.
+std::string InstructionSetVisitor::GenerateOpcodeSpec(
+    const std::vector<RangeAssignmentInfo *> &range_info_vec, int index,
+    const std::string &template_str_in) const {
+  std::string generated;
+  // Iterate for the number of values.
+  for (int i = 0; i < range_info_vec[index]->range_values[0].size(); ++i) {
+    // For each ident, perform substitution.
+    std::string template_str = template_str_in;
+    for (int j = 0; j < range_info_vec[index]->range_names.size(); ++j) {
+      RE2 re(
+          absl::StrCat("\\$\\(", range_info_vec[index]->range_names[j], "\\)"));
+      RE2::GlobalReplace(&template_str, re,
+                         range_info_vec[index]->range_values[j][i]);
+    }
+    if (range_info_vec.size() > index + 1) {
+      absl::StrAppend(&generated, GenerateOpcodeSpec(range_info_vec, index + 1,
+                                                     template_str));
+    } else {
+      absl::StrAppend(&generated, template_str);
+    }
+  }
+  return generated;
+}
+
 static absl::StatusOr<std::pair<std::string, std::string::size_type>> get_ident(
     std::string str, std::string::size_type pos) {
   // If the next character is not an alpha or '_' it's an error.
@@ -1506,7 +1670,6 @@ static absl::StatusOr<std::pair<std::string, std::string::size_type>> get_ident(
   }
   return std::make_pair(op_name, pos);
 }
-
 // This method parses the disasm format string.
 absl::Status InstructionSetVisitor::ParseDisasmFormat(std::string format,
                                                       Instruction *inst) {

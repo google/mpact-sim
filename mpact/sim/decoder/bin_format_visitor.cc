@@ -14,6 +14,7 @@
 
 #include "mpact/sim/decoder/bin_format_visitor.h"
 
+#include <cstdint>
 #include <deque>
 #include <fstream>
 #include <iostream>
@@ -26,16 +27,20 @@
 #include "absl/container/flat_hash_set.h"
 #include "absl/log/log.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
 #include "antlr4-runtime/ParserRuleContext.h"
 #include "mpact/sim/decoder/bin_decoder.h"
 #include "mpact/sim/decoder/bin_encoding_info.h"
 #include "mpact/sim/decoder/bin_format_contexts.h"
+#include "mpact/sim/decoder/decoder_error_listener.h"
 #include "mpact/sim/decoder/format.h"
 #include "mpact/sim/decoder/format_name.h"
 #include "mpact/sim/decoder/instruction_encoding.h"
 #include "mpact/sim/decoder/instruction_group.h"
 #include "mpact/sim/decoder/overlay.h"
+#include "re2/re2.h"
 
 namespace mpact {
 namespace sim {
@@ -640,7 +645,7 @@ InstructionGroup *BinFormatVisitor::VisitInstructionGroupDef(
   }
   // Parse the instruction encoding definitions in the instruction group.
   auto inst_group = inst_group_res.value();
-  for (auto *inst_def : ctx->instruction_def()) {
+  for (auto *inst_def : ctx->instruction_def_list()->instruction_def()) {
     VisitInstructionDef(inst_def, inst_group);
   }
   return inst_group_res.value();
@@ -650,6 +655,10 @@ void BinFormatVisitor::VisitInstructionDef(InstructionDefCtx *ctx,
                                            InstructionGroup *inst_group) {
   if (ctx == nullptr) return;
 
+  if (ctx->generate != nullptr) {
+    ProcessInstructionDefGenerator(ctx, inst_group);
+    return;
+  }
   // Get the instruction name and the format it refers to.
   std::string name = ctx->name->getText();
   std::string format_name = ctx->format_name->getText();
@@ -684,6 +693,145 @@ void BinFormatVisitor::VisitInstructionDef(InstructionDefCtx *ctx,
   for (auto *constraint : ctx->field_constraint_list()->field_constraint()) {
     VisitConstraint(constraint, inst_encoding);
   }
+}
+
+void BinFormatVisitor::ProcessInstructionDefGenerator(
+    InstructionDefCtx *ctx, InstructionGroup *inst_group) {
+  if (ctx == nullptr) return;
+  absl::flat_hash_set<std::string> range_variable_names;
+  std::vector<RangeAssignmentInfo *> range_info_vec;
+  // Process range assignment lists. The range assignment is either a single
+  // value or a structured binding assignment. If it's a binding assignment we
+  // need to make sure each tuple has the same number of values as there are
+  // idents to assign them to.
+  for (auto *assign_ctx : ctx->range_assignment()) {
+    auto *range_info = new RangeAssignmentInfo();
+    range_info_vec.push_back(range_info);
+    for (auto *ident_ctx : assign_ctx->IDENT()) {
+      std::string name = ident_ctx->getText();
+      if (range_variable_names.contains(name)) {
+        error_listener()->semanticError(
+            assign_ctx->start,
+            absl::StrCat("Duplicate binding variable name '", name, "'"));
+        continue;
+      }
+      range_variable_names.insert(name);
+      range_info->range_names.push_back(ident_ctx->getText());
+      range_info->range_values.push_back({});
+    }
+    // See if it's a list of simple values.
+    if (!assign_ctx->gen_value().empty()) {
+      if (range_info->range_names.size() != 1) {
+        for (auto *info : range_info_vec) delete info;
+        error_listener_->semanticError(
+            ctx->start, "Tuples required for structured binding assignment");
+        return;
+      }
+      for (auto *gen_value_ctx : assign_ctx->gen_value()) {
+        if (gen_value_ctx->IDENT() != nullptr) {
+          range_info->range_values[0].push_back(
+              gen_value_ctx->IDENT()->getText());
+        } else if (gen_value_ctx->number() != nullptr) {
+          range_info->range_values[0].push_back(
+              gen_value_ctx->number()->getText());
+        } else {
+          // Strip off double quotes.
+          std::string value = gen_value_ctx->string->getText();
+          range_info->range_values[0].push_back(
+              value.substr(1, value.size() - 2));
+        }
+      }
+      continue;
+    }
+    // It's a list of tuples with a structured binding assignment.
+    for (auto *tuple_ctx : assign_ctx->tuple()) {
+      if (tuple_ctx->gen_value().size() != range_info->range_names.size()) {
+        for (auto *info : range_info_vec) delete info;
+        error_listener_->semanticError(
+            assign_ctx->start,
+            "Number of values differs from number of identifiers");
+        return;
+      }
+      for (int i = 0; i < tuple_ctx->gen_value().size(); ++i) {
+        if (tuple_ctx->gen_value(i)->IDENT() != nullptr) {
+          range_info->range_values[i].push_back(
+              tuple_ctx->gen_value(i)->IDENT()->getText());
+        } else if (tuple_ctx->gen_value(i)->number() != nullptr) {
+          range_info->range_values[i].push_back(
+              tuple_ctx->gen_value(i)->number()->getText());
+        } else {
+          // Strip off double quotes.
+          std::string value = tuple_ctx->gen_value(i)->string->getText();
+          range_info->range_values[i].push_back(
+              value.substr(1, value.size() - 2));
+        }
+      }
+    }
+  }
+  // Check that all binding variable references are valid.
+  std::string input_text = ctx->generator_instruction_def_list()->getText();
+  std::string::size_type start_pos = 0;
+  auto pos = input_text.find_first_of('$', start_pos);
+  while (pos != std::string::npos) {
+    // Skip past the '$('
+    start_pos = pos + 2;
+    auto end_pos = input_text.find_first_of(')', pos);
+    // Extract the ident.
+    auto ident = input_text.substr(start_pos, end_pos - start_pos);
+    if (!range_variable_names.contains(ident)) {
+      error_listener()->semanticError(
+          ctx->generator_instruction_def_list()->start,
+          absl::StrCat("Undefined binding variable name '", ident, "'"));
+    }
+    start_pos = end_pos;
+    pos = input_text.find_first_of('$', start_pos);
+  }
+  if (error_listener()->HasError()) {
+    return;
+  }
+
+  // Now we need to iterate over the range_info instances and substitution
+  // ranges. This will produce new text that will be parsed and processed.
+  std::string generated_text =
+      GenerateInstructionDefList(range_info_vec, 0, input_text);
+  // Parse and process the generated text.
+  auto *parser = new BinFmtAntlrParserWrapper(generated_text);
+  LOG(INFO) << generated_text;
+  antlr_parser_wrappers_.push_back(parser);
+  // Parse the text starting at the opcode_spec_list rule.
+  auto instruction_defs =
+      parser->parser()->instruction_def_list()->instruction_def();
+  // Process the opcode spec.
+  for (auto *inst_def : instruction_defs) {
+    LOG(INFO) << inst_def->getText();
+    VisitInstructionDef(inst_def, inst_group);
+  }
+  // Clean up.
+  for (auto *info : range_info_vec) delete info;
+}
+
+std::string BinFormatVisitor::GenerateInstructionDefList(
+    const std::vector<RangeAssignmentInfo *> &range_info_vec, int index,
+    const std::string &template_str_in) const {
+  std::string generated;
+  // Iterate for the number of values.
+  for (int i = 0; i < range_info_vec[index]->range_values[0].size(); ++i) {
+    // For each ident, perform substitution.
+    std::string template_str = template_str_in;
+    for (int j = 0; j < range_info_vec[index]->range_names.size(); ++j) {
+      RE2 re(
+          absl::StrCat("\\$\\(", range_info_vec[index]->range_names[j], "\\)"));
+      RE2::GlobalReplace(&template_str, re,
+                         range_info_vec[index]->range_values[j][i]);
+    }
+    if (range_info_vec.size() > index + 1) {
+      absl::StrAppend(&generated, GenerateInstructionDefList(
+                                      range_info_vec, index + 1, template_str));
+    } else {
+      absl::StrAppend(&generated, template_str);
+    }
+  }
+  return generated;
 }
 
 void BinFormatVisitor::VisitConstraint(FieldConstraintCtx *ctx,

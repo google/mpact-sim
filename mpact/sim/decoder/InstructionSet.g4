@@ -74,6 +74,10 @@
 
 grammar InstructionSet;
 
+start
+  : top_level
+  ;
+
 top_level
   : declaration* EOF
   ;
@@ -272,6 +276,11 @@ opcode_list
   : OPCODES '{' (opcode_spec ';')* '}'
   ;
 
+// This rule is used as a start rule when parsing generated opcode specs.
+opcode_spec_list
+  : (opcode_spec ';') *
+  ;
+
 // An opcode has a name, an optional predicate operand name, followed by
 // optional lists of source and destination operand names. Each is separated
 // by a colon. The colon between the predicate operand name and the source
@@ -289,8 +298,9 @@ opcode_spec
       | size_spec? '{' operand_spec '}' (',' opcode_attribute_list)?
       | '=' overridden=OVERRIDE ',' opcode_attribute_list
     )
+  | generate=GENERATE '(' range_assignment (',' range_assignment)* ')'
+   '{' generator_opcode_spec_list '}'
   ;
-
 
 operand_spec
   : opcode_operands
@@ -313,6 +323,50 @@ dest_list
 
 dest_operand
   : dest=IDENT ( '(' (expression | wildcard='*' ) ')' )?
+  ;
+
+// Special rules for generator instruction descriptions.
+range_assignment
+  : IDENT '=' '[' gen_value (',' gen_value)* ']'
+  | '[' IDENT (',' IDENT)* ']' '=' '[' tuple (',' tuple)* ']'
+  ;
+
+tuple
+  : '{' gen_value (',' gen_value)* '}'
+  ;
+
+gen_value
+  : simple=(IDENT | NUMBER)
+  | string=STRING_LITERAL
+  ;
+
+generator_opcode_spec_list
+  : generator_opcode_spec (generator_opcode_spec)*
+  ;
+
+generator_opcode_spec
+  : name=(VAR_IDENT | IDENT) size_spec?
+    '{' generator_operand_spec '}'
+     (',' opcode_attribute_list)? ';'
+  ;
+
+generator_operand_spec
+  : generator_opcode_operands
+  | '(' generator_opcode_operands ')' (',' '(' generator_opcode_operands ')' )*
+  ;
+
+generator_opcode_operands
+  : pred=(VAR_IDENT | IDENT)?
+    (':' source=var_ident_list?
+    ( ':' generator_dest_list? )? )?
+  ;
+
+generator_dest_list
+  : dest=(VAR_IDENT | IDENT) ('(' (expression | wildcard='*' ) ')' )?
+  ;
+
+var_ident_list
+  : var_ident=(VAR_IDENT | IDENT) (',' var_ident=(VAR_IDENT | IDENT)) *
   ;
 
 // An opcode attribute list is a comma separated list with at least one member.
@@ -433,6 +487,7 @@ BUNDLES : 'bundles';
 DEFAULT : 'default';
 DELETE : 'delete';
 DISASM : 'disasm';
+GENERATE: 'GENERATE';
 WIDTHS : 'widths';
 SIZE : 'size';
 INCLUDE : '#include';
@@ -452,15 +507,17 @@ TEMPLATE : 'template';
 
 // Other tokens.
 STRING_LITERAL : UNTERMINATED_STRING_LITERAL '"';
-UNTERMINATED_STRING_LITERAL : '"' (~["\\\r\n] | '\\' (. | EOF))*;
+fragment UNTERMINATED_STRING_LITERAL : '"' (~["\\\r\n] | '\\' (. | EOF))*;
 IDENT : [_a-zA-Z][_a-zA-Z0-9]*;
+VAR_IDENT : ([_a-zA-Z] | VAR_REF) ([_a-zA-Z0-9] | VAR_REF)*;
+fragment VAR_REF: '$(' IDENT ')';
 NUMBER: HEX_NUMBER | OCT_NUMBER | DEC_NUMBER | BIN_NUMBER;
-HEX_NUMBER: '0x' HEX_DIGIT (HEX_DIGIT | '\'')*;
-HEX_DIGIT: [0-9a-fA-F];
-OCT_NUMBER: '0'(OCT_DIGIT | '\'')*;
-OCT_DIGIT: [0-7];
-DEC_NUMBER: ('0' | [1-9] ([0-9] | '\'')*);
-BIN_NUMBER: '0b' [0-1] ([0-1] | '\'')*;
+fragment HEX_NUMBER: '0x' HEX_DIGIT (HEX_DIGIT | '\'')*;
+fragment HEX_DIGIT: [0-9a-fA-F];
+fragment OCT_NUMBER: '0' (OCT_DIGIT | '\'')*;
+fragment OCT_DIGIT: [0-7];
+fragment DEC_NUMBER: ('0' | [1-9] ([0-9] | '\'')*);
+fragment BIN_NUMBER: '0b' [0-1] ([0-1] | '\'')*;
 DOTDOT : '..' ;
 
 BLOCK_COMMENT : '/*' .*? '*/' -> channel(HIDDEN);

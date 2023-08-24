@@ -14,10 +14,16 @@
 
 #include "mpact/sim/decoder/bin_format_visitor.h"
 
+#include <cstdlib>
+#include <fstream>
+#include <iterator>
 #include <string>
+#include <vector>
 
+#include "absl/log/check.h"
 #include "absl/strings/str_cat.h"
 #include "googletest/include/gtest/gtest.h"
+#include "re2/re2.h"
 
 namespace {
 
@@ -30,6 +36,8 @@ constexpr char kRiscVBaseName[] = "riscv32";
 constexpr char kRiscVTopName[] = "riscv32_top.bin_fmt";
 constexpr char kRiscV32GName[] = "riscv32g.bin_fmt";
 constexpr char kRiscV32CName[] = "riscv32c.bin_fmt";
+constexpr char kGeneratorBaseName[] = "generator";
+constexpr char kGeneratorDecoderName[] = "Generator";
 
 using ::mpact::sim::decoder::bin_format::BinFormatVisitor;
 
@@ -90,6 +98,33 @@ TEST_F(BinFormatParserTest, BasicParsing) {
 
   EXPECT_TRUE(FileExists(
       absl::StrCat(output_dir, "/", kRiscVBaseName, "_bin_decoder.cc")));
+}
+
+TEST_F(BinFormatParserTest, Generator) {
+  std::string input_file =
+      absl::StrCat(kDepotPath, "testfiles/", kGeneratorBaseName, ".bin_fmt");
+  ASSERT_TRUE(FileExists(input_file));
+  std::string output_dir = getenv(kTestUndeclaredOutputsDir);
+
+  BinFormatVisitor visitor;
+  EXPECT_TRUE(visitor
+                  .Process({input_file}, kGeneratorDecoderName,
+                           kGeneratorBaseName, paths_, output_dir)
+                  .ok());
+  EXPECT_TRUE(FileExists(
+      absl::StrCat(output_dir, "/", kGeneratorBaseName, "_bin_decoder.h")));
+  EXPECT_TRUE(FileExists(
+      absl::StrCat(output_dir, "/", kGeneratorBaseName, "_bin_decoder.cc")));
+
+  std::ifstream decoder_file(
+      absl::StrCat(output_dir, "/", kGeneratorBaseName, "_bin_decoder.cc"));
+  CHECK(decoder_file.good());
+  std::string decoder_str((std::istreambuf_iterator<char>(decoder_file)),
+                          (std::istreambuf_iterator<char>()));
+  for (auto name : {"kBeq", "kBne", "kBlt", "kBltu", "kBge", "kBgeu"}) {
+    RE2 re(name);
+    EXPECT_TRUE(RE2::PartialMatch(decoder_str, re)) << name;
+  }
 }
 
 }  // namespace

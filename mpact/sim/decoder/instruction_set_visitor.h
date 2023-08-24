@@ -15,6 +15,7 @@
 #ifndef MPACT_SIM_DECODER_INSTRUCTION_SET_VISITOR_H_
 #define MPACT_SIM_DECODER_INSTRUCTION_SET_VISITOR_H_
 
+#include <cstddef>
 #include <deque>
 #include <memory>
 #include <optional>
@@ -26,6 +27,7 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "antlr4-runtime/ParserRuleContext.h"
 #include "mpact/sim/decoder/InstructionSetLexer.h"
@@ -47,6 +49,13 @@ namespace mpact {
 namespace sim {
 namespace machine_description {
 namespace instruction_set {
+
+// This struct holds information about a range assignment in an instruction
+// generator.
+struct RangeAssignmentInfo {
+  std::vector<std::string> range_names;
+  std::vector<std::vector<std::string>> range_values;
+};
 
 using InstructionSetParser = ::sim::machine_description::instruction_set::
     generated::InstructionSetParser;
@@ -115,6 +124,13 @@ class InstructionSetVisitor {
   using SemfuncSpecCtx = InstructionSetParser::Semfunc_specContext;
   using ResourceItemCtx = InstructionSetParser::Resource_itemContext;
   using ResourceDetailsCtx = InstructionSetParser::Resource_detailsContext;
+  // Type aliases for antlr4 types for generator related contexts.
+  using GeneratorOpcodeSpecListCtx =
+      InstructionSetParser::Generator_opcode_spec_listContext;
+  using RangeAssignmentCtx = InstructionSetParser::Range_assignmentContext;
+  using TupleCtx = InstructionSetParser::TupleContext;
+  using GenValueCtxt = InstructionSetParser::Gen_valueContext;
+
   // Checks that any references to slots or bundles within a bundle
   // declaration are to valid slots/bundles.
   absl::Status PerformBundleReferenceChecks(InstructionSet *instruction_set,
@@ -166,7 +182,21 @@ class InstructionSetVisitor {
       std::vector<Instruction *> &instruction_vec,
       absl::flat_hash_set<std::string> &deleted_ops_set,
       absl::flat_hash_set<OpcodeSpecCtx *> &overridden_ops_set);
-
+  void ProcessOpcodeSpec(
+      OpcodeSpecCtx *opcode_ctx, Slot *slot,
+      std::vector<Instruction *> &instruction_vec,
+      absl::flat_hash_set<std::string> &deleted_ops_set,
+      absl::flat_hash_set<OpcodeSpecCtx *> &overridden_ops_set);
+  // Process the GENERATE() directive.
+  absl::Status ProcessOpcodeGenerator(
+      OpcodeSpecCtx *ctx, Slot *slot,
+      std::vector<Instruction *> &instruction_vec,
+      absl::flat_hash_set<std::string> &deleted_ops_set,
+      absl::flat_hash_set<OpcodeSpecCtx *> &overridden_ops_set);
+  // Helper function fused by ProcessOpcodeGenerator.
+  std::string GenerateOpcodeSpec(
+      const std::vector<RangeAssignmentInfo *> &range_info_vec, int index,
+      const std::string &template_str_in) const;
   // These methods parses the disassembly format string.
   absl::Status ParseDisasmFormat(std::string format, Instruction *inst);
   absl::StatusOr<std::string> ParseNumberFormat(std::string format);

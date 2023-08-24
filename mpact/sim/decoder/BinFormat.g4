@@ -126,13 +126,47 @@ bit_index_range
 // derive from the same format.
 instruction_group_def
   : INSTRUCTION GROUP name=IDENT '[' number ']' ':' format=IDENT
-    '{' instruction_def* '}' ';'
+    '{' instruction_def_list '}' ';'
+  ;
+
+instruction_def_list
+  : instruction_def*
   ;
 
 // An instruction encoding contains a name, the format it refers to, and a list
 // of binary field constraints.
 instruction_def
   : name=IDENT ':' format_name=IDENT ':' field_constraint_list ';'
+  | generate=GENERATE '(' range_assignment (',' range_assignment)* ')'
+    '{' generator_instruction_def_list '}' ';'
+  ;
+
+
+range_assignment
+  : IDENT '=' '[' gen_value (',' gen_value)* ']'
+  | '[' IDENT (',' IDENT)* ']' '=' '[' tuple (',' tuple)* ']'
+  ;
+
+tuple
+  : '{' gen_value (',' gen_value)* '}'
+  ;
+
+gen_value
+  : (IDENT | number)
+  | string=STRING_LITERAL
+  ;
+
+generator_instruction_def_list
+  : generator_instruction_def*
+  ;
+
+generator_instruction_def
+  : name=(VAR_IDENT | IDENT) ':' format_name=(VAR_IDENT | IDENT) ':'
+    generator_field_constraint (',' generator_field_constraint) * ';'
+  ;
+
+generator_field_constraint
+  : (VAR_IDENT | IDENT) constraint_op (number | VAR_IDENT)
   ;
 
 field_constraint_list
@@ -226,6 +260,7 @@ OPCODE_ENUM : 'opcode_enum';
 BINARY : 'binary';
 FORMAT : 'format';
 FIELDS : 'fields';
+GENERATE: 'GENERATE';
 NAMESPACES : 'namespaces';
 OVERLAYS : 'overlays';
 INSTRUCTION : 'instruction';
@@ -234,8 +269,10 @@ DECODER : 'decoder';
 
 // Other tokens.
 STRING_LITERAL : UNTERMINATED_STRING_LITERAL '"';
-UNTERMINATED_STRING_LITERAL : '"' (~["\\\r\n] | '\\' (. | EOF))*;
+fragment UNTERMINATED_STRING_LITERAL : '"' (~["\\\r\n] | '\\' (. | EOF))*;
 IDENT : [_a-zA-Z][_a-zA-Z0-9]*;
+VAR_IDENT : ([_a-zA-Z] | VAR_REF) ([_a-zA-Z0-9] | VAR_REF)*;
+fragment VAR_REF: '$(' IDENT ')';
 HEX_NUMBER: '0x' [0-9a-fA-F][0-9a-fA-F']*;
 BIN_NUMBER: '0b'[01]([01'])*;
 OCT_NUMBER: '0'[0-7']*;

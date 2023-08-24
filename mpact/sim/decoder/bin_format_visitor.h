@@ -15,6 +15,7 @@
 #ifndef MPACT_SIM_DECODER_BIN_FORMAT_VISITOR_H_
 #define MPACT_SIM_DECODER_BIN_FORMAT_VISITOR_H_
 
+#include <cstdint>
 #include <deque>
 #include <memory>
 #include <string>
@@ -23,6 +24,7 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
+#include "absl/strings/string_view.h"
 #include "antlr4-runtime/ParserRuleContext.h"
 #include "mpact/sim/decoder/BinFormatLexer.h"
 #include "mpact/sim/decoder/antlr_parser_wrapper.h"
@@ -34,6 +36,13 @@ namespace mpact {
 namespace sim {
 namespace decoder {
 namespace bin_format {
+
+// This struct holds information about a range assignment in an instruction
+// generator.
+struct RangeAssignmentInfo {
+  std::vector<std::string> range_names;
+  std::vector<std::vector<std::string>> range_values;
+};
 
 struct BinaryNum {
   int64_t value;
@@ -107,6 +116,11 @@ class BinFormatVisitor {
   std::unique_ptr<BinEncodingInfo> VisitDecoderDef(DecoderDefCtx *ctx);
   void VisitInstructionDef(InstructionDefCtx *ctx,
                            InstructionGroup *inst_group);
+  void ProcessInstructionDefGenerator(InstructionDefCtx *ctx,
+                                      InstructionGroup *inst_group);
+  std::string GenerateInstructionDefList(
+      const std::vector<RangeAssignmentInfo *> &range_info_vec, int index,
+      const std::string &template_str_in) const;
   void VisitConstraint(FieldConstraintCtx *ctx,
                        InstructionEncoding *inst_encoding);
 

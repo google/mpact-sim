@@ -19,7 +19,10 @@
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
+#include "absl/status/statusor.h"
+#include "absl/strings/string_view.h"
 #include "mpact/sim/decoder/opcode.h"
+#include "mpact/sim/decoder/template_expression.h"
 
 namespace mpact {
 namespace sim {
@@ -45,7 +48,7 @@ class Instruction {
   // Append a child instruction.
   void AppendChild(Instruction *child);
   // Create an instruction object that inherits from another. This may require
-  // evaluatioin of expressions within the instruction/opcode that rely on
+  // evaluation of expressions within the instruction/opcode that rely on
   // template instantiation arguments.
   absl::StatusOr<Instruction *> CreateDerivedInstruction(
       TemplateInstantiationArgs *args) const;

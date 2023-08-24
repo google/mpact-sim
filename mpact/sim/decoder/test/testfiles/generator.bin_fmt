@@ -1,0 +1,44 @@
+// Copyright 2023 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+decoder Generator {
+  namespace sim::generator::encoding;
+  opcode_enum = "isa::OpcodeEnum";
+  RiscVGInst32;
+};
+
+format Inst32Format[32] {
+  fields:
+    unsigned bits[25];
+    unsigned opcode[7];
+};
+
+format BType[32] : Inst32Format {
+  fields:
+    unsigned imm7[7];
+    unsigned rs2[5];
+    unsigned rs1[5];
+    unsigned func3[3];
+    unsigned imm5[5];
+    unsigned opcode[7];
+  overlays:
+    signed b_imm[13] = imm7[6], imm5[0], imm7[5..0], imm5[4..1], 0b0;
+};
+
+instruction group RiscVGInst32[32] : Inst32Format {
+  GENERATE( [ btype, func3] = [{"eq", 0b000}, {"ne", 0b001}, {lt, 0b100}, 
+                               {ge, 0b101}, {ltu, 0b110}, {geu, 0b111}]) {
+    b$(btype) : BType : func3 == $(func3), opcode == 0b110'0011;
+  };
+};
