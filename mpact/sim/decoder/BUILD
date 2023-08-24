@@ -109,7 +109,6 @@ mpact_cc_library(
         ":antlr_isa_parser",
         ":antlr_parser_wrapper",
         ":decoder_error_listener",
-        "//third_party/re2",
         "@com_google_absl//absl/container:btree",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
@@ -119,6 +118,7 @@ mpact_cc_library(
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
+        "@com_googlesource_code_re2//:re2",
     ],
 )
 
@@ -211,7 +211,6 @@ mpact_cc_library(
         ":bin_format_lexer",
         ":bin_format_parser",
         ":decoder_error_listener",
-        "//third_party/re2",
         "@com_google_absl//absl/container:btree",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
@@ -221,6 +220,7 @@ mpact_cc_library(
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
+        "@com_googlesource_code_re2//:re2",
     ],
 )
 
