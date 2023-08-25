@@ -718,6 +718,8 @@ void BinFormatVisitor::ProcessInstructionDefGenerator(
       range_variable_names.insert(name);
       range_info->range_names.push_back(ident_ctx->getText());
       range_info->range_values.push_back({});
+      range_info->range_regexes.emplace_back(
+          absl::StrCat("\\$\\(", name, "\\)"));
     }
     // See if it's a list of simple values.
     if (!assign_ctx->gen_value().empty()) {
@@ -816,14 +818,18 @@ std::string BinFormatVisitor::GenerateInstructionDefList(
   std::string generated;
   // Iterate for the number of values.
   for (int i = 0; i < range_info_vec[index]->range_values[0].size(); ++i) {
-    // For each ident, perform substitution.
+    // Copy the template string.
     std::string template_str = template_str_in;
-    for (int j = 0; j < range_info_vec[index]->range_names.size(); ++j) {
-      RE2 re(
-          absl::StrCat("\\$\\(", range_info_vec[index]->range_names[j], "\\)"));
+    // For each ident, perform substitutions in the template copy with the
+    // current set of values.
+    int var_index = 0;
+    for (auto &re : range_info_vec[index]->range_regexes) {
       RE2::GlobalReplace(&template_str, re,
-                         range_info_vec[index]->range_values[j][i]);
+                         range_info_vec[index]->range_values[var_index++][i]);
     }
+    // If there are multiple range specifications, then recursively call to
+    // generate the cartesian product with the values of the next value range
+    // substitutions.
     if (range_info_vec.size() > index + 1) {
       absl::StrAppend(&generated, GenerateInstructionDefList(
                                       range_info_vec, index + 1, template_str));

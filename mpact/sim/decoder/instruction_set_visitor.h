@@ -17,6 +17,7 @@
 
 #include <cstddef>
 #include <deque>
+#include <list>
 #include <memory>
 #include <optional>
 #include <string>
@@ -40,6 +41,7 @@
 #include "mpact/sim/decoder/opcode.h"
 #include "mpact/sim/decoder/slot.h"
 #include "mpact/sim/decoder/template_expression.h"
+#include "re2/re2.h"
 
 // This file declares the classes that interact with the antlr4 library
 // to parse an input stream and generate the parse tree, then visiting the
@@ -54,6 +56,7 @@ namespace instruction_set {
 // generator.
 struct RangeAssignmentInfo {
   std::vector<std::string> range_names;
+  std::list<RE2> range_regexes;
   std::vector<std::vector<std::string>> range_values;
 };
 

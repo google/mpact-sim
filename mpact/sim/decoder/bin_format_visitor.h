@@ -17,6 +17,7 @@
 
 #include <cstdint>
 #include <deque>
+#include <list>
 #include <memory>
 #include <string>
 #include <utility>
@@ -31,6 +32,7 @@
 #include "mpact/sim/decoder/bin_encoding_info.h"
 #include "mpact/sim/decoder/bin_format_contexts.h"
 #include "mpact/sim/decoder/decoder_error_listener.h"
+#include "re2/re2.h"
 
 namespace mpact {
 namespace sim {
@@ -41,6 +43,7 @@ namespace bin_format {
 // generator.
 struct RangeAssignmentInfo {
   std::vector<std::string> range_names;
+  std::list<RE2> range_regexes;
   std::vector<std::vector<std::string>> range_values;
 };
 
