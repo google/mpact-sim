@@ -720,15 +720,16 @@ void BinFormatVisitor::ProcessInstructionDefGenerator(
       range_info->range_values.push_back({});
       range_info->range_regexes.emplace_back(
           absl::StrCat("\\$\\(", name, "\\)"));
+      // Verify that the range variable is used in the string.
+      if (!RE2::PartialMatch(ctx->generator_instruction_def_list()->getText(),
+                             range_info->range_regexes.back())) {
+        error_listener()->semanticWarning(
+            assign_ctx->start,
+            absl::StrCat("Unreferenced binding variable '", name, "'."));
+      }
     }
     // See if it's a list of simple values.
     if (!assign_ctx->gen_value().empty()) {
-      if (range_info->range_names.size() != 1) {
-        for (auto *info : range_info_vec) delete info;
-        error_listener_->semanticError(
-            ctx->start, "Tuples required for structured binding assignment");
-        return;
-      }
       for (auto *gen_value_ctx : assign_ctx->gen_value()) {
         if (gen_value_ctx->IDENT() != nullptr) {
           range_info->range_values[0].push_back(
@@ -783,7 +784,7 @@ void BinFormatVisitor::ProcessInstructionDefGenerator(
     if (!range_variable_names.contains(ident)) {
       error_listener()->semanticError(
           ctx->generator_instruction_def_list()->start,
-          absl::StrCat("Undefined binding variable name '", ident, "'"));
+          absl::StrCat("Undefined binding variable '", ident, "'"));
     }
     start_pos = end_pos;
     pos = input_text.find_first_of('$', start_pos);
@@ -798,14 +799,12 @@ void BinFormatVisitor::ProcessInstructionDefGenerator(
       GenerateInstructionDefList(range_info_vec, 0, input_text);
   // Parse and process the generated text.
   auto *parser = new BinFmtAntlrParserWrapper(generated_text);
-  LOG(INFO) << generated_text;
   antlr_parser_wrappers_.push_back(parser);
   // Parse the text starting at the opcode_spec_list rule.
   auto instruction_defs =
       parser->parser()->instruction_def_list()->instruction_def();
   // Process the opcode spec.
   for (auto *inst_def : instruction_defs) {
-    LOG(INFO) << inst_def->getText();
     VisitInstructionDef(inst_def, inst_group);
   }
   // Clean up.
@@ -823,9 +822,11 @@ std::string BinFormatVisitor::GenerateInstructionDefList(
     // For each ident, perform substitutions in the template copy with the
     // current set of values.
     int var_index = 0;
+    int replace_count = 0;
     for (auto &re : range_info_vec[index]->range_regexes) {
-      RE2::GlobalReplace(&template_str, re,
-                         range_info_vec[index]->range_values[var_index++][i]);
+      replace_count += RE2::GlobalReplace(
+          &template_str, re,
+          range_info_vec[index]->range_values[var_index++][i]);
     }
     // If there are multiple range specifications, then recursively call to
     // generate the cartesian product with the values of the next value range
@@ -836,6 +837,11 @@ std::string BinFormatVisitor::GenerateInstructionDefList(
     } else {
       absl::StrAppend(&generated, template_str);
     }
+    // If there were no replacements, then the range variables weren't used,
+    // and the template string won't change for any other values in the range.
+    // This can happen if there range variables aren't referenced in the string.
+    // Thus, break out of the loop.
+    if (replace_count == 0) break;
   }
   return generated;
 }

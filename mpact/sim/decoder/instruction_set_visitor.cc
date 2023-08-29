@@ -1543,14 +1543,16 @@ absl::Status InstructionSetVisitor::ProcessOpcodeGenerator(
       range_info->range_values.push_back({});
       range_info->range_regexes.emplace_back(
           absl::StrCat("\\$\\(", name, "\\)"));
+      // Verify that the range variable is used in the string.
+      if (!RE2::PartialMatch(ctx->generator_opcode_spec_list()->getText(),
+                             range_info->range_regexes.back())) {
+        error_listener()->semanticWarning(
+            assign_ctx->start,
+            absl::StrCat("Unreferenced binding variable '", name, "'"));
+      }
     }
     // See if it's a list of simple values.
     if (!assign_ctx->gen_value().empty()) {
-      if (range_info->range_names.size() != 1) {
-        for (auto *info : range_info_vec) delete info;
-        return absl::InternalError(
-            "Tuples required for structured binding assignment");
-      }
       for (auto *gen_value_ctx : assign_ctx->gen_value()) {
         if (gen_value_ctx->simple != nullptr) {
           range_info->range_values[0].push_back(
@@ -1587,7 +1589,6 @@ absl::Status InstructionSetVisitor::ProcessOpcodeGenerator(
   // Check that all binding variable references are valid.
   std::string input_text = ctx->generator_opcode_spec_list()->getText();
   std::string::size_type start_pos = 0;
-  int count = 0;
   auto pos = input_text.find_first_of('$', start_pos);
   while (pos != std::string::npos) {
     // Skip past the '$('
@@ -1598,15 +1599,14 @@ absl::Status InstructionSetVisitor::ProcessOpcodeGenerator(
     if (!range_variable_names.contains(ident)) {
       error_listener()->semanticError(
           ctx->generator_opcode_spec_list()->start,
-          absl::StrCat("Undefined binding variable name '", ident, "'"));
+          absl::StrCat("Undefined binding variable '", ident, "'"));
     }
     start_pos = end_pos;
-    if (count++ > 10) break;
     pos = input_text.find_first_of('$', start_pos);
   }
   if (error_listener()->HasError()) {
     for (auto *info : range_info_vec) delete info;
-    return absl::InternalError("Undefined binding variable name(s)");
+    return absl::InternalError("Found undefined binding variable name(s)");
   }
   // Now we need to iterate over the range_info instances and substitution
   // ranges. This will produce new text that will be parsed and processed.
@@ -1640,9 +1640,11 @@ std::string InstructionSetVisitor::GenerateOpcodeSpec(
     // For each ident, perform substitutions in the template copy with the
     // current set of values.
     int var_index = 0;
+    int replace_count = 0;
     for (auto &re : range_info_vec[index]->range_regexes) {
-      RE2::GlobalReplace(&template_str, re,
-                         range_info_vec[index]->range_values[var_index++][i]);
+      replace_count += RE2::GlobalReplace(
+          &template_str, re,
+          range_info_vec[index]->range_values[var_index++][i]);
     }
     // If there are multiple range specifications, then recursively call to
     // generate the cartesian product with the values of the next value range
@@ -1653,6 +1655,11 @@ std::string InstructionSetVisitor::GenerateOpcodeSpec(
     } else {
       absl::StrAppend(&generated, template_str);
     }
+    // If there were no replacements, then the range variables weren't used,
+    // and the template string won't change for any other values in the range.
+    // This can happen if the range variables aren't referenced in the string.
+    // Thus, break out of the loop.
+    if (replace_count == 0) break;
   }
   return generated;
 }

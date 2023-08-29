@@ -15,6 +15,7 @@
 #ifndef MPACT_SIM_DECODER_DECODER_ERROR_LISTENER_H_
 #define MPACT_SIM_DECODER_DECODER_ERROR_LISTENER_H_
 
+#include <cstddef>
 #include <exception>
 #include <string>
 #include <utility>
@@ -52,9 +53,10 @@ class DecoderErrorListener : public antlr4::BaseErrorListener {
   bool HasError() const {
     return (syntax_error_count_ + semantic_error_count_) > 0;
   }
-
+  // Counts of syntax/semantic errors.
   int syntax_error_count() const { return syntax_error_count_; }
   int semantic_error_count() const { return semantic_error_count_; }
+  // Current active file.
   const std::string &file_name() const { return file_name_; }
   void set_file_name(std::string file_name) {
     file_name_ = std::move(file_name);

@@ -14,11 +14,13 @@
 
 #include "mpact/sim/decoder/decoder_error_listener.h"
 
+#include <cstddef>
 #include <exception>
 #include <string>
 
 #include "absl/log/log.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
 
 namespace mpact {
 namespace sim {

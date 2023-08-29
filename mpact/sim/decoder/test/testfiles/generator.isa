@@ -30,7 +30,7 @@ slot branches {
     // with the "W" types with the appropriate string substitutions for 
     // $(btype), $(w) and $(fcn_w).
     GENERATE( btype = [ "eq", "ne", "lt", ltu, ge, geu],
-             [w, fcn_w] = [{"", ""}, {".w", _w}] ) {
+             [w, fcn_w, unused] = [{"", "", 1}, {".w", _w, 2}] ) {
       b$(btype)$(fcn_w){: rs1, rs2, B_imm12 : next_pc},
         resources: { next_pc, rs1, rs2 : next_pc[0..]},
         disasm: "b$(btype)$(w)", "%rs1, %rs2, %(@+B_imm12:08x)",

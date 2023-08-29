@@ -20,6 +20,18 @@ package(
     default_applicable_licenses = ["//:license"],
 )
 
+cc_library(
+    name = "log_sink",
+    testonly = True,
+    hdrs = ["log_sink.h"],
+    deps = [
+        "@com_google_absl//absl/base:log_severity",
+        "@com_google_absl//absl/log:log_entry",
+        "@com_google_absl//absl/log:log_sink",
+        "@com_google_absl//absl/strings",
+    ],
+)
+
 mpact_cc_test(
     name = "instruction_set_test",
     size = "small",
@@ -131,9 +143,11 @@ mpact_cc_test(
         "//mpact/sim/decoder/test/testfiles/include:empty_include.isa",
     ],
     deps = [
+        ":log_sink",
         "//mpact/sim/decoder:isa_parser",
         "@com_google_absl//absl/flags:flag",
         "@com_google_absl//absl/log:check",
+        "@com_google_absl//absl/log:log_sink_registry",
         "@com_google_absl//absl/memory",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
@@ -335,10 +349,13 @@ mpact_cc_test(
         "testfiles/riscv32c.bin_fmt",
     ],
     deps = [
+        ":log_sink",
         "//mpact/sim/decoder:bin_format_visitor",
         "@com_google_absl//absl/flags:flag",
         "@com_google_absl//absl/log:check",
+        "@com_google_absl//absl/log:log_sink_registry",
         "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_googletest//:gtest",
         "@com_google_googletest//:gtest_main",
