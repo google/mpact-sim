@@ -15,13 +15,14 @@
 #ifndef MPACT_SIM_GENERIC_TYPE_HELPERS_H_
 #define MPACT_SIM_GENERIC_TYPE_HELPERS_H_
 
+#include <cstdint>
 #include <type_traits>
 
 #include "absl/numeric/int128.h"
 
 namespace mpact {
 namespace sim {
-namespace riscv {
+namespace generic {
 
 // Helper template type to get the int type twice as wide.
 template <typename T>
@@ -315,7 +316,7 @@ constexpr auto operator*(T e) noexcept ->
   return static_cast<typename std::underlying_type<T>::type>(e);
 }
 
-}  // namespace riscv
+}  // namespace generic
 }  // namespace sim
 }  // namespace mpact
 
