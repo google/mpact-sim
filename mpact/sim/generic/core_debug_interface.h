@@ -18,6 +18,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <string>
+#include <type_traits>
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -45,13 +46,19 @@ class CoreDebugInterface {
   };
 
   // The reason for the last halt request.
-  enum class HaltReason {
+  enum class HaltReason : uint32_t {
     kSoftwareBreakpoint = 0,
     kHardwareBreakpoint = 1,
     kUserRequest = 2,
     kSemihostHaltRequest = 3,
-    kNone,
+    kNone = 0x7fff'ffff,
+    // Custom halt reason limits.
+    kUserSpecifiedMin = 0x8000'0000,
+    kUserSpecifiedMax = 0xffff'ffff,
   };
+
+  // Underlying integer value type for HaltReason.
+  using HaltReasonValueType = std::underlying_type_t<HaltReason>;
 
   virtual ~CoreDebugInterface() = default;
 
@@ -70,7 +77,7 @@ class CoreDebugInterface {
   // Returns the current run status.
   virtual absl::StatusOr<RunStatus> GetRunStatus() = 0;
   // Returns the reason for the most recent halt.
-  virtual absl::StatusOr<HaltReason> GetLastHaltReason() = 0;
+  virtual absl::StatusOr<HaltReasonValueType> GetLastHaltReason() = 0;
 
   // Read/write the named registers.
   virtual absl::StatusOr<uint64_t> ReadRegister(const std::string &name) = 0;
