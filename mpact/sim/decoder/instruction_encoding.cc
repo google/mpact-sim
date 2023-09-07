@@ -14,9 +14,13 @@
 
 #include "mpact/sim/decoder/instruction_encoding.h"
 
+#include <cstdint>
 #include <string>
 
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
+#include "mpact/sim/decoder/format.h"
 
 namespace mpact {
 namespace sim {

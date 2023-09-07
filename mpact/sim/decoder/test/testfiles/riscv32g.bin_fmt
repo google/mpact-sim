@@ -140,11 +140,13 @@ instruction group RiscVGInst32[32] : Inst32Format {
   sb     : SType  : func3 == 0b000, opcode == 0b010'0011;
   sh     : SType  : func3 == 0b001, opcode == 0b010'0011;
   sw     : SType  : func3 == 0b010, opcode == 0b010'0011;
-  addi   : IType  : func3 == 0b000, opcode == 0b001'0011;
+  addi   : IType  : func3 == 0b000, imm12 != 0, opcode == 0b001'0011;
+  mv     : IType  : func3 == 0b000, imm12 == 0, opcode == 0b001'0011;
   slti   : IType  : func3 == 0b010, opcode == 0b001'0011;
   sltiu  : IType  : func3 == 0b011, opcode == 0b001'0011;
   xori   : IType  : func3 == 0b100, opcode == 0b001'0011;
-  ori    : IType  : func3 == 0b110, opcode == 0b001'0011;
+  ori    : IType  : func3 == 0b110, imm12 != 0, opcode == 0b001'0011;
+  mv     : IType  : func3 == 0b110, imm12 == 0, opcode == 0b001'0011;
   andi   : IType  : func3 == 0b111, opcode == 0b001'0011;
   slli   : RType  : func7 == 0b000'0000, func3==0b001, opcode == 0b001'0011;
   srli   : RType  : func7 == 0b000'0000, func3==0b101, opcode == 0b001'0011;

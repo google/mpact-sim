@@ -15,6 +15,7 @@
 #include "mpact/sim/decoder/instruction_group.h"
 
 #include <algorithm>
+#include <cstdint>
 #include <string>
 #include <tuple>
 #include <utility>
@@ -22,6 +23,7 @@
 #include "absl/strings/str_cat.h"
 #include "mpact/sim/decoder/bin_encoding_info.h"
 #include "mpact/sim/decoder/decoder_error_listener.h"
+#include "mpact/sim/decoder/encoding_group.h"
 #include "mpact/sim/decoder/extract.h"
 #include "mpact/sim/decoder/instruction_encoding.h"
 
@@ -80,10 +82,9 @@ InstructionEncoding *InstructionGroup::AddInstructionEncoding(std::string name,
     return nullptr;
   }
   if (encoding_name_set_.contains(name)) {
-    encoding_info_->error_listener()->semanticError(
-        nullptr, absl::StrCat("Duplicate encoding name '", name, "' in group '",
-                              this->name(), "' - ignored."));
-    return nullptr;
+    encoding_info_->error_listener()->semanticWarning(
+        nullptr, absl::StrCat("Duplicate instruction opcode name '", name,
+                              "' in group '", this->name(), "'."));
   }
   encoding_name_set_.insert(name);
   auto *encoding = new InstructionEncoding(name, format);
@@ -93,10 +94,9 @@ InstructionEncoding *InstructionGroup::AddInstructionEncoding(std::string name,
 
 void InstructionGroup::AddInstructionEncoding(InstructionEncoding *encoding) {
   if (encoding_name_set_.contains(encoding->name())) {
-    encoding_info_->error_listener()->semanticError(
-        nullptr, absl::StrCat("Duplicate encoding name '", encoding->name(),
-                              "' in group '", name(), "' - ignored."));
-    return;
+    encoding_info_->error_listener()->semanticWarning(
+        nullptr, absl::StrCat("Duplicate instruction opcode name '",
+                              encoding->name(), "' in group '", name(), "'."));
   }
   encoding_name_set_.insert(encoding->name());
   encoding_vec_.push_back(encoding);

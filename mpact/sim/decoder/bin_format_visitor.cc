@@ -849,6 +849,7 @@ std::string BinFormatVisitor::GenerateInstructionDefList(
 void BinFormatVisitor::VisitConstraint(FieldConstraintCtx *ctx,
                                        InstructionEncoding *inst_encoding) {
   if (ctx == nullptr) return;
+  if (inst_encoding == nullptr) return;
 
   // Constraints are based on field names ==/!=/>/>=/</<= to a value.
   std::string field_name = ctx->field_name->getText();
