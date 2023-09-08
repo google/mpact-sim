@@ -15,10 +15,13 @@
 #ifndef MPACT_SIM_DECODER_ENCODING_GROUP_H_
 #define MPACT_SIM_DECODER_ENCODING_GROUP_H_
 
+#include <cstddef>
+#include <cstdint>
 #include <string>
 #include <vector>
 
 #include "absl/container/flat_hash_set.h"
+#include "absl/strings/string_view.h"
 #include "mpact/sim/decoder/extract.h"
 
 namespace mpact {
@@ -105,7 +108,16 @@ class EncodingGroup {
   void EmitComplexDecoderBody(std::string *definitions_ptr,
                               absl::string_view index_extraction,
                               absl::string_view opcode_enum) const;
-  void EmitExtractions(const std::vector<Constraint *> &constraints,
+  void EmitComplexDecoderBodyIfSequence(std::string *definitions_ptr,
+                                        absl::string_view opcode_enum) const;
+  int EmitEncodingIfStatement(int indent, const InstructionEncoding *encoding,
+                              absl::string_view opcode_enum,
+                              absl::flat_hash_set<std::string> &extracted,
+                              std::string *definitions_ptr) const;
+  void ProcessConstraint(const absl::flat_hash_set<std::string> &extracted,
+                         Constraint *constraint,
+                         std::string *definitions_ptr) const;
+  void EmitExtractions(int indent, const std::vector<Constraint *> &constraints,
                        absl::flat_hash_set<std::string> &extracted,
                        std::string *definitions_ptr) const;
   int EmitConstraintConditions(const std::vector<Constraint *> &constraints,

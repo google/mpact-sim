@@ -15,6 +15,7 @@
 #include "mpact/sim/decoder/instruction_group.h"
 
 #include <algorithm>
+#include <cstddef>
 #include <cstdint>
 #include <string>
 #include <tuple>

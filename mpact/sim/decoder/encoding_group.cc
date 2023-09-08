@@ -15,9 +15,12 @@
 #include "mpact/sim/decoder/encoding_group.h"
 
 #include <algorithm>
+#include <cstddef>
+#include <cstdint>
 #include <string>
 #include <vector>
 
+#include "absl/container/btree_map.h"
 #include "absl/container/flat_hash_set.h"
 #include "absl/functional/bind_front.h"
 #include "absl/log/log.h"
@@ -28,6 +31,7 @@
 #include "mpact/sim/decoder/format_name.h"
 #include "mpact/sim/decoder/instruction_encoding.h"
 #include "mpact/sim/decoder/instruction_group.h"
+#include "mpact/sim/decoder/overlay.h"
 
 namespace mpact {
 namespace sim {
@@ -386,6 +390,42 @@ void EncodingGroup::EmitDecoders(absl::string_view name,
 void EncodingGroup::EmitComplexDecoderBody(
     std::string *definitions_ptr, absl::string_view index_extraction,
     absl::string_view opcode_enum) const {
+  // If the index_extraction is empty, use a series of if statements.
+  if (index_extraction.empty()) {
+    EmitComplexDecoderBodyIfSequence(definitions_ptr, opcode_enum);
+    return;
+  }
+  // Group the encodings by index value.
+  absl::btree_map<uint64_t, std::vector<InstructionEncoding *>> encoding_map;
+  for (auto *encoding : encoding_vec_) {
+    // Get the discriminator value.
+    uint64_t index_value =
+        ExtractValue(encoding->GetValue(), discriminator_recipe_);
+    encoding_map[index_value].push_back(encoding);
+  }
+  absl::StrAppend(definitions_ptr, "  switch (index) {\n");
+  // For each index value, generate the 'case' statement.
+  for (auto &[index_value, encodings] : encoding_map) {
+    absl::flat_hash_set<std::string> extracted;
+    absl::StrAppend(definitions_ptr, "    case 0x", absl::Hex(index_value),
+                    ": {\n");
+    int if_count = 0;
+    for (auto *encoding : encodings) {
+      for (auto *constraint : encoding->equal_constraints()) {
+        ProcessConstraint(extracted, constraint, definitions_ptr);
+      }
+      if_count += EmitEncodingIfStatement(/*indent*/ 4, encoding, opcode_enum,
+                                          extracted, definitions_ptr);
+    }
+    if (if_count > 0) absl::StrAppend(definitions_ptr, "      break;\n");
+    absl::StrAppend(definitions_ptr, "    }\n");
+  }
+  absl::StrAppend(definitions_ptr, "    default: break;\n", "  }\n",
+                  "  return ", opcode_enum, "::kNone;\n");
+}
+
+void EncodingGroup::EmitComplexDecoderBodyIfSequence(
+    std::string *definitions_ptr, absl::string_view opcode_enum) const {
   // For each instruction in the encoding vec, generate the if statement
   // to see if the instruction is matched.
   absl::flat_hash_set<std::string> extracted;
@@ -393,95 +433,98 @@ void EncodingGroup::EmitComplexDecoderBody(
   // considered by the parent groups or the discriminator.
   for (auto *encoding : encoding_vec_) {
     for (auto *constraint : encoding->equal_constraints()) {
-      if (constraint->field != nullptr) {
-        // Field constraint.
-        Field *field = constraint->field;
-        std::string name = absl::StrCat(field->name, "_value");
-        if (extracted.contains(name)) continue;
-        uint64_t mask = ((1ULL << field->width) - 1);
-        // If the bits in the field are already handled by a parent or
-        // the discriminator, ignore the field. There is no need to emit
-        // a check for it.
-        if (((mask << field->low) & ~(ignore_ | discriminator_)) == 0) {
-          constraint->can_ignore = true;
-        }
-        continue;
-      }
-
-      // It's an overlay constraint.
-      Overlay *overlay = constraint->overlay;
-      std::string name = absl::StrCat(overlay->name(), "_value");
-      uint64_t mask = 0;
-      // Get the bits that correspond to the overlay.
-      auto result = overlay->GetBitField((1 << overlay->declared_width()) - 1);
-      if (result.ok()) {
-        mask = result.value();
-      } else {
-        absl::StrAppend(definitions_ptr,
-                        "#error Internal error: cannot extract value from ",
-                        overlay->name());
-        continue;
-      }
-      // If the bits in the overlay are already handled by a parent or
-      // the discriminator, ignore the field. There is no need to emit
-      // a check for it.
-      if ((mask & ~(ignore_ | discriminator_)) == 0) {
-        constraint->can_ignore = true;
-      }
+      ProcessConstraint(extracted, constraint, definitions_ptr);
     }
-    // Write any field/overlay extractions needed for the encoding (that
-    // haven't already been extracted).
-    EmitExtractions(encoding->equal_constraints(), extracted, definitions_ptr);
-    EmitExtractions(encoding->equal_extracted_constraints(), extracted,
-                    definitions_ptr);
-    EmitExtractions(encoding->other_constraints(), extracted, definitions_ptr);
-
-    // Get the discriminator value.
-    uint64_t index_value =
-        ExtractValue(encoding->GetValue(), discriminator_recipe_);
-    // Construct the if statement. First the discriminator value (index).
-    std::string condition;
-    std::string connector;
-    int count = 0;
-    // Equal constraints.
-    count += EmitConstraintConditions(encoding->equal_constraints(),
-                                      "==", connector, &condition);
-    count += EmitConstraintConditions(encoding->equal_extracted_constraints(),
-                                      "==", connector, &condition);
-    count += EmitConstraintConditions(encoding->other_constraints(),
-                                      "!=", connector, &condition);
-    // Write out the full if statement.
-    if (!index_extraction.empty()) {
-      // If there is an index extraction, then add that to the if statement.
-      // Check to see how many additional conjunctions in the if statement and
-      // adjust the number of parentheses required.
-      if (count > 0) {
-        absl::StrAppend(definitions_ptr, "  if ((index == 0x",
-                        absl::Hex(index_value), ") &&\n      ", condition,
-                        ")\n");
-      } else {
-        absl::StrAppend(definitions_ptr, "  if (index == 0x",
-                        absl::Hex(index_value), ")\n");
-      }
-    } else {
-      // There is no index extraction. Ensure the number of parentheses are
-      // appropriate to the number of conjunctions in the if statement.
-      if (count > 1) {
-        absl::StrAppend(definitions_ptr, "  if (", condition, ")\n");
-      } else {
-        absl::StrAppend(definitions_ptr, "  if ", condition, "\n");
-      }
-    }
-    absl::StrAppend(definitions_ptr, "    return ", opcode_enum, "::k",
-                    ToPascalCase(encoding->name()), ";\n");
+    EmitEncodingIfStatement(/*indent*/ 0, encoding, opcode_enum, extracted,
+                            definitions_ptr);
   }
   absl::StrAppend(definitions_ptr, "  return ", opcode_enum, "::kNone;\n");
 }
 
+void EncodingGroup::ProcessConstraint(
+    const absl::flat_hash_set<std::string> &extracted, Constraint *constraint,
+    std::string *definitions_ptr) const {
+  if (constraint->field != nullptr) {
+    // Field constraint.
+    Field *field = constraint->field;
+    std::string name = absl::StrCat(field->name, "_value");
+    if (extracted.contains(name)) return;
+    uint64_t mask = ((1ULL << field->width) - 1);
+    // If the bits in the field are already handled by a parent or
+    // the discriminator, ignore the field. There is no need to emit
+    // a check for it.
+    if (((mask << field->low) & ~(ignore_ | discriminator_)) == 0) {
+      constraint->can_ignore = true;
+    }
+    return;
+  }
+
+  // It's an overlay constraint.
+  Overlay *overlay = constraint->overlay;
+  std::string name = absl::StrCat(overlay->name(), "_value");
+  uint64_t mask = 0;
+  // Get the bits that correspond to the overlay.
+  auto result = overlay->GetBitField((1 << overlay->declared_width()) - 1);
+  if (result.ok()) {
+    mask = result.value();
+  } else {
+    absl::StrAppend(definitions_ptr,
+                    "#error Internal error: cannot extract value from ",
+                    overlay->name());
+    return;
+  }
+  // If the bits in the overlay are already handled by a parent or
+  // the discriminator, ignore the field. There is no need to emit
+  // a check for it.
+  if ((mask & ~(ignore_ | discriminator_)) == 0) {
+    constraint->can_ignore = true;
+  }
+}
+
+int EncodingGroup::EmitEncodingIfStatement(
+    int indent, const InstructionEncoding *encoding,
+    absl::string_view opcode_enum, absl::flat_hash_set<std::string> &extracted,
+    std::string *definitions_ptr) const {
+  std::string indent_str(indent + 2, ' ');
+  // Write any field/overlay extractions needed for the encoding (that
+  // haven't already been extracted).
+  EmitExtractions(indent, encoding->equal_constraints(), extracted,
+                  definitions_ptr);
+  EmitExtractions(indent, encoding->equal_extracted_constraints(), extracted,
+                  definitions_ptr);
+  EmitExtractions(indent, encoding->other_constraints(), extracted,
+                  definitions_ptr);
+  // Construct the if statement.
+  std::string condition;
+  std::string connector;
+  int count = 0;
+  // Equal constraints.
+  count += EmitConstraintConditions(encoding->equal_constraints(),
+                                    "==", connector, &condition);
+  count += EmitConstraintConditions(encoding->equal_extracted_constraints(),
+                                    "==", connector, &condition);
+  count += EmitConstraintConditions(encoding->other_constraints(),
+                                    "!=", connector, &condition);
+
+  // Ensure the number of parentheses are appropriate to the number of
+  // conjunctions in the if statement.
+  if (count > 1) {
+    absl::StrAppend(definitions_ptr, indent_str, "if (", condition, ")\n");
+    indent_str.append("  ");
+  } else if (count == 1) {
+    absl::StrAppend(definitions_ptr, indent_str, "if ", condition, "\n");
+    indent_str.append("  ");
+  }
+  absl::StrAppend(definitions_ptr, indent_str, "return ", opcode_enum, "::k",
+                  ToPascalCase(encoding->name()), ";\n");
+  return count != 0 ? 1 : 0;
+}
+
 void EncodingGroup::EmitExtractions(
-    const std::vector<Constraint *> &constraints,
+    int indent, const std::vector<Constraint *> &constraints,
     absl::flat_hash_set<std::string> &extracted,
     std::string *definitions_ptr) const {
+  std::string indent_str(indent + 2, ' ');
   // Write any field/overlay extractions needed for the constraints.
   // Note, the extractions may be wider than the instruction word width, due
   // to constant bits being added, so make sure to use appropriate type for each
@@ -509,7 +552,7 @@ void EncodingGroup::EmitExtractions(
           data_type = inst_word_type_;
         }
         uint64_t mask = ((1ULL << field->width) - 1);
-        absl::StrAppend(definitions_ptr, "  ", data_type, " ", name,
+        absl::StrAppend(definitions_ptr, indent_str, data_type, " ", name,
                         " = (inst_word >> ", field->low, ") & 0x",
                         absl::Hex(mask), ";\n");
         extracted.insert(name);
@@ -535,8 +578,9 @@ void EncodingGroup::EmitExtractions(
         } else {
           data_type = inst_word_type_;
         }
-        absl::StrAppend(definitions_ptr, "  ", data_type, " ", name, ";\n");
-        absl::StrAppend(definitions_ptr,
+        absl::StrAppend(definitions_ptr, indent_str, data_type, " ", name,
+                        ";\n");
+        absl::StrAppend(definitions_ptr, indent_str,
                         overlay->WriteSimpleValueExtractor("inst_word", name));
         extracted.insert(name);
       }
