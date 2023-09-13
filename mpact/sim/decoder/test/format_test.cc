@@ -14,6 +14,7 @@
 
 #include "mpact/sim/decoder/format.h"
 
+#include "absl/status/status.h"
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
 #include "mpact/sim/decoder/bin_encoding_info.h"

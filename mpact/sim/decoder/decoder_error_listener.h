@@ -21,7 +21,9 @@
 #include <utility>
 
 #include "absl/strings/string_view.h"
-#include "antlr4-runtime/antlr4-runtime.h"
+#include "antlr4-runtime/BaseErrorListener.h"
+#include "antlr4-runtime/Token.h"
+#include "antlr4-runtime/support/Declarations.h"
 
 namespace mpact {
 namespace sim {

@@ -15,13 +15,14 @@
 #ifndef _MPACT_SIM_DECODER_OVERLAY_H_
 #define _MPACT_SIM_DECODER_OVERLAY_H_
 
+#include <cstdint>
 #include <string>
 #include <vector>
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/string_view.h"
 #include "mpact/sim/decoder/bin_format_visitor.h"
-#include "mpact/sim/decoder/extract.h"
 
 // This file defines classes necessary to handle reinterpretation of bitfields
 // in a format. These are known as overlays. This allows new usable "fields" to
@@ -103,12 +104,13 @@ class Overlay {
   absl::Status ComputeHighLow();
   // Given input as the bit value of the format, returns the unsigned bit value
   // of the overlay as specified by the components.
-  absl::StatusOr<uint64_t> GetValue(uint64_t input);
+  absl::StatusOr<uint64_t> GetValue(uint64_t input) const;
   std::string WriteSimpleValueExtractor(absl::string_view value,
                                         absl::string_view result) const;
   absl::StatusOr<uint64_t> GetValue(uint8_t *input);
   std::string WriteComplexValueExtractor(absl::string_view value,
-                                         absl::string_view result) const;
+                                         absl::string_view result,
+                                         absl::string_view return_type) const;
   absl::StatusOr<uint64_t> GetBitField(uint64_t input);
 
   bool operator==(const Overlay &rhs) const;
@@ -120,7 +122,7 @@ class Overlay {
   int declared_width() const { return declared_width_; }
   int computed_width() const { return computed_width_; }
   uint64_t mask() const { return mask_; }
-  const std::vector<BitsOrField *> component_vec() const {
+  const std::vector<BitsOrField *> &component_vec() const {
     return component_vec_;
   }
   bool must_be_extracted() const { return must_be_extracted_; }

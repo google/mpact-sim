@@ -14,6 +14,11 @@
 
 #include "mpact/sim/decoder/overlay.h"
 
+#include <cstdint>
+#include <vector>
+
+#include "absl/status/status.h"
+#include "absl/strings/str_cat.h"
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
 #include "mpact/sim/decoder/bin_format_visitor.h"
@@ -108,6 +113,22 @@ TEST_F(OverlayTest, AddFieldRangeReference) {
           ->AddFieldReference("immXYZ", std::vector<BitRange>{BitRange{3, 2}})
           .code(),
       absl::StatusCode::kInternal);
+  // Fail to add a reference with an illegal bit range.
+  EXPECT_EQ(
+      overlay
+          ->AddFieldReference(kImm2Name, std::vector<BitRange>{BitRange{0, 1}})
+          .code(),
+      absl::StatusCode::kInternal);
+  EXPECT_EQ(
+      overlay
+          ->AddFieldReference(kImm2Name, std::vector<BitRange>{BitRange{10, 0}})
+          .code(),
+      absl::StatusCode::kInternal);
+  EXPECT_EQ(
+      overlay
+          ->AddFieldReference(kImm2Name, std::vector<BitRange>{BitRange{0, 10}})
+          .code(),
+      absl::StatusCode::kInternal);
   ASSERT_TRUE(
       overlay
           ->AddFieldReference(kImm2Name, std::vector<BitRange>{BitRange{0, 0}})
@@ -126,6 +147,13 @@ TEST_F(OverlayTest, AddFormatReference) {
       new Overlay(kOverlayName, /*is_signed=*/false, kOverlayWidth, format_);
   // Fail to add a reference to an unknown field.
   EXPECT_EQ(overlay->AddFormatReference(std::vector<BitRange>{BitRange{18, 16}})
+                .code(),
+            absl::StatusCode::kInternal);
+  // Fail to add a reference with an illegal bit range.
+  EXPECT_EQ(overlay->AddFormatReference(std::vector<BitRange>{BitRange{10, 12}})
+                .code(),
+            absl::StatusCode::kInternal);
+  EXPECT_EQ(overlay->AddFormatReference(std::vector<BitRange>{BitRange{10, 18}})
                 .code(),
             absl::StatusCode::kInternal);
   ASSERT_TRUE(
@@ -193,7 +221,7 @@ TEST_F(OverlayTest, WriteSimpleExtractor) {
       overlay
           ->AddFieldReference(kImm2Name, std::vector<BitRange>{BitRange{1, 1}})
           .ok());
-  overlay->AddBitConstant(BinaryNum{0b00, 2});
+  overlay->AddBitConstant(BinaryNum{0b11, 2});
 
   ASSERT_TRUE(overlay->ComputeHighLow().ok());
 
@@ -207,4 +235,33 @@ TEST_F(OverlayTest, WriteSimpleExtractor) {
   delete overlay;
 }
 
+TEST_F(OverlayTest, WriteComplexExtractor) {
+  auto *overlay =
+      new Overlay(kOverlayName, /*is_signed=*/false, kOverlayWidth, format_);
+  overlay->AddBitConstant(BinaryNum{0b11, 2});
+  ASSERT_TRUE(
+      overlay
+          ->AddFieldReference(kImm2Name, std::vector<BitRange>{BitRange{0, 0}})
+          .ok());
+  ASSERT_TRUE(overlay->AddFieldReference(kImm3Name).ok());
+  ASSERT_TRUE(
+      overlay
+          ->AddFieldReference(kImm2Name, std::vector<BitRange>{BitRange{1, 1}})
+          .ok());
+
+  ASSERT_TRUE(overlay->ComputeHighLow().ok());
+
+  auto c_code =
+      overlay->WriteComplexValueExtractor("value", "result", "uint64_t");
+  EXPECT_THAT(c_code, testing::HasSubstr("result = 3 << 5;"));
+  EXPECT_THAT(
+      c_code,
+      testing::HasSubstr("result |= ExtractBits<uint64_t>(value, 5, 1) << 4;"));
+  EXPECT_THAT(c_code,
+              testing::HasSubstr(
+                  "result |= ExtractBits<uint64_t>(value, 12, 3) << 1;"));
+  EXPECT_THAT(c_code, testing::HasSubstr(
+                          "result |= ExtractBits<uint64_t>(value, 6, 1);"));
+  delete overlay;
+}
 }  // namespace

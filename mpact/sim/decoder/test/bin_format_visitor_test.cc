@@ -42,6 +42,10 @@ constexpr char kRiscV32GName[] = "riscv32g.bin_fmt";
 constexpr char kRiscV32CName[] = "riscv32c.bin_fmt";
 constexpr char kGeneratorBaseName[] = "generator";
 constexpr char kGeneratorDecoderName[] = "Generator";
+constexpr char kVliwBaseName[] = "vliw";
+constexpr char kVliwDecoderName[] = "Vliw24";
+constexpr char kInstructionGroupBaseName[] = "instruction_group";
+constexpr char kInstructionGroupDecoderName[] = "InstructionGroup";
 
 using ::mpact::sim::decoder::bin_format::BinFormatVisitor;
 
@@ -283,6 +287,55 @@ TEST_F(BinFormatParserTest, GeneratorErrorUndefinedBindingVariable) {
   // Make sure the error about duplicate binding variable 'btype' is found.
   auto ptr = log_sink.error_log().find("Undefined binding variable 'funcX'");
   EXPECT_TRUE(ptr != std::string::npos);
+}
+
+TEST_F(BinFormatParserTest, Vliw) {
+  // Set up input and output file paths.
+  std::vector<std::string> input_files = {
+      absl::StrCat(kDepotPath, "testfiles/", kVliwBaseName, ".bin_fmt")};
+  ASSERT_TRUE(FileExists(input_files[0]));
+  std::string output_dir = getenv(kTestUndeclaredOutputsDir);
+  BinFormatVisitor visitor;
+  // Parse and process the input file, capturing the log.
+  LogSink log_sink;
+  absl::AddLogSink(&log_sink);
+  auto success = visitor
+                     .Process(input_files, kVliwDecoderName, kVliwBaseName,
+                              paths_, output_dir)
+                     .ok();
+  absl::RemoveLogSink(&log_sink);
+  EXPECT_TRUE(success);
+
+  // Verify that the extraction functions for the vliw format were generated.
+  std::ifstream decoder_file(
+      absl::StrCat(output_dir, "/", kVliwBaseName, "_bin_decoder.h"));
+  CHECK(decoder_file.good());
+  // Verify that decoder entries include extraction functions for the vliw
+  // format.
+  std::string decoder_str((std::istreambuf_iterator<char>(decoder_file)),
+                          (std::istreambuf_iterator<char>()));
+  for (auto name : {"ExtractI0", "ExtractI1", "ExtractI2"}) {
+    RE2 re(name);
+    EXPECT_TRUE(RE2::PartialMatch(decoder_str, re)) << name;
+  }
+}
+
+TEST_F(BinFormatParserTest, InstructionGroupGrouping) {
+  // Set up input and output file paths.
+  std::vector<std::string> input_files = {absl::StrCat(
+      kDepotPath, "testfiles/", kInstructionGroupBaseName, ".bin_fmt")};
+  ASSERT_TRUE(FileExists(input_files[0]));
+  std::string output_dir = getenv(kTestUndeclaredOutputsDir);
+  BinFormatVisitor visitor;
+  // Parse and process the input file, capturing the log.
+  LogSink log_sink;
+  absl::AddLogSink(&log_sink);
+  auto success = visitor
+                     .Process(input_files, kInstructionGroupDecoderName,
+                              kInstructionGroupBaseName, paths_, output_dir)
+                     .ok();
+  absl::RemoveLogSink(&log_sink);
+  EXPECT_TRUE(success);
 }
 
 }  // namespace

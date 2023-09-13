@@ -15,12 +15,16 @@
 #include "mpact/sim/decoder/format.h"
 
 #include <algorithm>
+#include <cstdint>
 #include <string>
 #include <utility>
 
 #include "absl/numeric/bits.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
+#include "antlr4-runtime/Token.h"
 #include "mpact/sim/decoder/format_name.h"
 #include "mpact/sim/decoder/overlay.h"
 
@@ -34,8 +38,6 @@ using ::mpact::sim::machine_description::instruction_set::ToSnakeCase;
 FieldOrFormat::~FieldOrFormat() {
   if (is_field_) {
     delete field_;
-  } else {
-    delete format_;
   }
   field_ = nullptr;
   format_ = nullptr;
@@ -101,9 +103,10 @@ absl::Status Format::AddField(std::string name, bool is_signed, int width) {
 
 // Add a format reference field - name of another format - to the current
 // format. This will be resolved once all the formats have been parsed.
-void Format::AddFormatReferenceField(std::string name, int size,
+void Format::AddFormatReferenceField(std::string format_alias,
+                                     std::string format_name, int size,
                                      antlr4::Token *ctx) {
-  field_vec_.push_back(new FieldOrFormat(name, size, ctx));
+  field_vec_.push_back(new FieldOrFormat(format_alias, format_name, size, ctx));
 }
 
 // Add an overlay to the current format. An overlay is a named alias for a
@@ -140,14 +143,14 @@ Overlay *Format::GetOverlay(absl::string_view overlay_name) const {
 
 // Return the string containing the integer type used to contain the current
 // format. If it is greater than 64 bits, will use a byte array (int8_t *).
-std::string Format::GetIntType(int bitwidth) {
+std::string Format::GetIntType(int bitwidth) const {
   if (bitwidth > 64) return "int8_t *";
   return absl::StrCat("int", GetIntTypeBitWidth(bitwidth), "_t");
 }
 
 // Return the int type byte width (1, 2, 4, 8) or (-1 if it's bigger), of the
 // integer type that would fit this format.
-int Format::GetIntTypeBitWidth(int bitwidth) {
+int Format::GetIntTypeBitWidth(int bitwidth) const {
   auto shift = absl::bit_width(static_cast<unsigned>(bitwidth)) - 1;
   if (absl::popcount(static_cast<unsigned>(bitwidth)) > 1) shift++;
   shift = std::max(shift, 3);
@@ -198,7 +201,7 @@ absl::Status Format::ComputeAndCheckFormatWidth() {
         format = encoding_info_->GetFormat(fmt_name);
         if (format == nullptr) {
           return absl::InternalError(absl::StrCat(
-              "Format ", name(), " refers to undefined format ", fmt_name));
+              "Format '", name(), "' refers to undefined format ", fmt_name));
         }
         field_or_format->set_format(format);
       }
@@ -207,9 +210,9 @@ absl::Status Format::ComputeAndCheckFormatWidth() {
       extractors_.insert(std::make_pair(format->name(), field_or_format));
     }
     if (computed_width_ != declared_width_) {
-      return absl::InternalError(
-          absl::StrCat("Format '", name_, "': computed width ", computed_width_,
-                       " differs from declared width ", declared_width_));
+      return absl::InternalError(absl::StrCat(
+          "Format '", name_, "' declared width (", declared_width_,
+          ") differs from computed width (", computed_width_, ")"));
     }
   }
   for (auto &[name, overlay_ptr] : overlay_map_) {
@@ -342,7 +345,7 @@ bool Format::HasOverlayExtract(const std::string &name) const {
 
 // This method generates the C++ code for the field extractors for the current
 // format.
-std::string Format::GenerateFieldExtractor(Field *field) {
+std::string Format::GenerateFieldExtractor(const Field *field) const {
   std::string h_output;
   int return_width = GetIntTypeBitWidth(field->width);
   std::string result_type_name =
@@ -386,8 +389,9 @@ std::string Format::GenerateFieldExtractor(Field *field) {
 
 // This method generates the format extractors for the current format (for when
 // a format contains other formats).
-std::string Format::GenerateFormatExtractor(Format *format, int high,
-                                            int size) {
+std::string Format::GenerateFormatExtractor(absl::string_view format_alias,
+                                            const Format *format, int high,
+                                            int size) const {
   std::string h_output;  // For each format generate am extractor.
   int width = format->declared_width();
   // An extraction can only be for 64 bits or less.
@@ -400,7 +404,7 @@ std::string Format::GenerateFormatExtractor(Format *format, int high,
   }
   std::string return_type = absl::StrCat("u", GetIntType(width));
   std::string signature = absl::StrCat("inline ", return_type, " Extract",
-                                       ToPascalCase(format->name()), "(");
+                                       ToPascalCase(format_alias), "(");
   if (declared_width_ <= 64) {
     // If the source format is <= 64 bits, then use an int type.
     std::string arg_type = absl::StrCat("u", GetIntType(declared_width_));
@@ -444,7 +448,7 @@ std::string Format::GenerateFormatExtractor(Format *format, int high,
 }
 
 // Generates the C++ code for the overlay extractors in the current format.
-std::string Format::GenerateOverlayExtractor(Overlay *overlay) {
+std::string Format::GenerateOverlayExtractor(Overlay *overlay) const {
   std::string h_output;
 
   std::string return_type = absl::StrCat(overlay->is_signed() ? "" : "u",
@@ -463,8 +467,8 @@ std::string Format::GenerateOverlayExtractor(Overlay *overlay) {
     absl::StrAppend(&h_output,
                     overlay->WriteSimpleValueExtractor("value", "result"));
   } else {
-    absl::StrAppend(&h_output,
-                    overlay->WriteComplexValueExtractor("value", "result"));
+    absl::StrAppend(&h_output, overlay->WriteComplexValueExtractor(
+                                   "value", "result", return_type));
   }
   if (overlay->is_signed()) {
     int shift = GetIntTypeBitWidth(overlay->declared_width()) -
@@ -494,10 +498,11 @@ std::string Format::GenerateExtractors() {
       absl::StrAppend(&h_output,
                       GenerateFieldExtractor(field_or_format_ptr->field()));
     } else {
-      absl::StrAppend(&h_output,
-                      GenerateFormatExtractor(field_or_format_ptr->format(),
-                                              field_or_format_ptr->high(),
-                                              field_or_format_ptr->size()));
+      absl::StrAppend(&h_output, GenerateFormatExtractor(
+                                     field_or_format_ptr->format_alias(),
+                                     field_or_format_ptr->format(),
+                                     field_or_format_ptr->high(),
+                                     field_or_format_ptr->size()));
     }
   }
 

@@ -18,6 +18,8 @@
 #include <utility>
 
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "mpact/sim/decoder/bin_decoder.h"
 #include "mpact/sim/decoder/decoder_error_listener.h"

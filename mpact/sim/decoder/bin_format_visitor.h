@@ -107,7 +107,8 @@ class BinFormatVisitor {
   void VisitDeclarations(DeclarationListCtx *ctx,
                          BinEncodingInfo *encoding_info);
   void VisitFormatDef(FormatDefCtx *ctx, BinEncodingInfo *encoding_info);
-  void VisitFieldDef(FieldDefCtx *ctx, Format *format);
+  void VisitFieldDef(FieldDefCtx *ctx, Format *format,
+                     BinEncodingInfo *encoding_info);
   void VisitIncludeFile(IncludeFileCtx *ctx);
   void ParseIncludeFile(antlr4::ParserRuleContext *ctx,
                         const std::string &file_name,

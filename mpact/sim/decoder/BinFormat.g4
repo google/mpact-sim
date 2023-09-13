@@ -73,7 +73,7 @@ format_field_defs
 // will include code to sign-extend the value.
 field_def
   : sign_spec field_name=IDENT width=index field_assign? ';'
-  | FORMAT format_name=IDENT index? ';'
+  | FORMAT format_name=IDENT field_name=IDENT index? ';'
   ;
 
 field_assign

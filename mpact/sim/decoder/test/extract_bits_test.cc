@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <cstdint>
+#include <ios>
 
 #include "absl/numeric/bits.h"
 #include "googlemock/include/gmock/gmock.h"
@@ -25,36 +26,37 @@ namespace {
 // out to a source file as part of a code generator, so it is not included.
 
 template <typename T>
-T ExtractBits(const uint8_t *data, int byte_size, int bit_index, int width) {
+static inline T ExtractBits(const uint8_t *data, int data_size, int msb,
+                            int width) {
   if (width == 0) return 0;
-  if (bit_index < width - 1) return 0;
 
-  int byte_pos = byte_size - 1 - (bit_index >> 3);
-  int end_byte = byte_size - 1 - ((bit_index - width + 1) >> 3);
-  int start_bit = bit_index & 0x7;
+  int byte_low = data_size - ((msb - width) >> 3) - 1;
+  int byte_high = data_size - (msb >> 3) - 1;
+  int high_bit = msb & 0x7;
 
   // If it is only from one byte, extract and return.
-  if (byte_pos == end_byte) {
-    int low_bit = start_bit - width + 1;
-    uint8_t mask = ((1 << width) - 1);
-    return (data[byte_pos] >> low_bit) & mask;
+  if (byte_low == byte_high) {
+    uint8_t mask = (1 << (high_bit + 1)) - 1;
+    return (mask & data[byte_high]) >> (high_bit - width + 1);
   }
 
-  // Extract from the first byte.
+  // Extract from the high order byte.
   T val = 0;
-  val = data[byte_pos++] & ((1 << (start_bit + 1)) - 1);
-  int remainder = width - (start_bit + 1);
+  uint8_t mask = 0xff >> (7 - high_bit);
+  val = (mask & data[byte_high++]);
+  int remainder = width - (1 + high_bit);
+
   while (remainder >= 8) {
-    val = (val << 8) | data[byte_pos++];
+    val = (val << 8) | data[byte_high++];
     remainder -= 8;
   }
 
-  // Extract any remaining bits.
+  // Extract any remaining bits from the high end of the last byte.
   if (remainder > 0) {
     val <<= remainder;
-    uint8_t mask = (1 << remainder) - 1;
     int shift = 8 - remainder;
-    val |= (data[byte_pos] >> shift) & mask;
+    uint8_t mask = 0xff << shift;
+    val |= (data[byte_high] & mask) >> shift;
   }
   return val;
 }
@@ -68,27 +70,29 @@ uint8_t kBitString1[] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 TEST(ExtractBitsTest, FieldWidths) {
   // Vary across offsets, 0..16, and widths, 0..64.
   for (int offset = 100; offset <= 100 + 16; offset++) {
-    for (int width = 0; width <= 64; width++) {
+    for (int width = 1; width <= 64; width++) {
       uint64_t value = ExtractBits<uint64_t>(kBitString0, sizeof(kBitString0),
                                              offset, width);
       uint64_t match = (1ULL << (width & 0x3f)) - 1;
       if (width == 64) {
         match--;
       }
-      EXPECT_EQ(absl::popcount(value), width);
-      EXPECT_EQ(value, match);
+      EXPECT_EQ(absl::popcount(value), width)
+          << offset << " " << width << " 0x" << std::hex << value;
+      EXPECT_EQ(value, match)
+          << offset << " " << width << " 0x" << std::hex << value;
     }
   }
 }
 
 // Extract just the first one in kBitString1, the offset of the bitfield for
-// each width. The bit is the msb bit of 0x7f, which is at position (counting
-// right to left) at 8 * 8 + 7 - 1.
+// each width. The bit is the msb bit of 0x7f, which is at bit position
+// (counting right to left) at 8 * 8 + 6.
 TEST(ExtractBitsTest, One) {
   for (int width = 1; width <= 64; width++) {
     uint64_t value = ExtractBits<uint64_t>(kBitString1, sizeof(kBitString1),
                                            8 * 8 + 6 + width - 1, width);
-    EXPECT_EQ(value, 1);
+    EXPECT_EQ(value, 1) << "width: " << width;
   }
 }
 

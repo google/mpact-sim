@@ -14,11 +14,15 @@
 
 #include "mpact/sim/decoder/overlay.h"
 
+#include <cstdint>
 #include <string>
 #include <vector>
 
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
+#include "mpact/sim/decoder/bin_format_visitor.h"
 #include "mpact/sim/decoder/format.h"
 
 namespace mpact {
@@ -78,23 +82,28 @@ absl::Status Overlay::AddFieldReference(std::string field_name,
   auto field = format_->GetField(field_name);
   if (field == nullptr) {
     return absl::InternalError(
-        absl::StrCat("'", field_name, "' does not name a field in format '",
-                     format_->name(), "'"));
+        absl::StrCat("Overlay '", name(), "' reference to '", field_name,
+                     "' does not name a field in '", format_->name(), "'"));
   }
   // Scan the ranges.
   for (auto &range : ranges) {
     // Verify that the ranges don't refer to bits that don't exist.
-    if (range.first >= field->width) {
+    if (range.first < 0 || range.first >= field->width) {
       return absl::InternalError(absl::StrCat("bit index '", range.first,
                                               "' out of range for field '",
-                                              field->name));
+                                              field->name, "'"));
     }
-    if (range.last >= field->width) {
+    if (range.last < 0 || range.last >= field->width) {
       return absl::InternalError(absl::StrCat("bit index '", range.last,
                                               "' out of range for field '",
-                                              field->name));
+                                              field->name, "'"));
     }
     int width = range.first - range.last + 1;
+    // Verify that width is positive.
+    if (width <= 0) {
+      return absl::InternalError(absl::StrCat(
+          "bitrange has non-positive width for field '", field->name, ","));
+    }
     component_vec_.push_back(
         new BitsOrField(field, range.first, range.last, width));
     computed_width_ += width;
@@ -105,17 +114,23 @@ absl::Status Overlay::AddFieldReference(std::string field_name,
 absl::Status Overlay::AddFormatReference(const std::vector<BitRange> &ranges) {
   for (auto &range : ranges) {
     // Check that the range is legal for the format.
-    if (range.first >= format_->declared_width()) {
+    if (range.first < 0 || range.first >= format_->declared_width()) {
       return absl::InternalError(absl::StrCat("bit index '", range.first,
                                               "' out of range for format '",
                                               format_->name(), "'"));
     }
-    if (range.last >= format_->declared_width()) {
+    if (range.last < 0 || range.last >= format_->declared_width()) {
       return absl::InternalError(absl::StrCat("bit index '", range.last,
                                               "' out of range for format '",
                                               format_->name(), "'"));
     }
     int width = range.first - range.last + 1;
+    // Verify that width is positive.
+    if (width <= 0) {
+      return absl::InternalError(
+          absl::StrCat("bitrange has non-positive width for format '",
+                       format_->name(), "',"));
+    }
     // Translate into bit positions relative to the bit format that contains
     // the field.
     component_vec_.push_back(
@@ -147,7 +162,7 @@ absl::Status Overlay::ComputeHighLow() {
 
 // Extract the bits from the input value according to the component
 // specification of the overlay.
-absl::StatusOr<uint64_t> Overlay::GetValue(uint64_t input) {
+absl::StatusOr<uint64_t> Overlay::GetValue(uint64_t input) const {
   if (declared_width_ != computed_width_)
     return absl::InternalError(
         "Overlay definition incomplete: declared width != computed width");
@@ -159,9 +174,6 @@ absl::StatusOr<uint64_t> Overlay::GetValue(uint64_t input) {
       // If value == 0, nothing to or in - it just takes space.
       if (bin_num.value == 0) continue;
       int shift = component->position() - bin_num.width + 1;
-      if (shift < 0)
-        return absl::InternalError("Illegal shift amount in Overlay::GetValue");
-
       value |= bin_num.value << shift;
     } else {
       uint64_t mask = ((1ULL << component->width()) - 1) << component->low();
@@ -189,8 +201,8 @@ absl::StatusOr<uint64_t> Overlay::GetBitField(uint64_t input) {
 
 bool Overlay::operator==(const Overlay &rhs) const {
   if (declared_width_ > 64) {
-    return WriteComplexValueExtractor("value", "result") ==
-           rhs.WriteComplexValueExtractor("value", "result");
+    return WriteComplexValueExtractor("value", "result", "") ==
+           rhs.WriteComplexValueExtractor("value", "result", "");
   } else {
     return WriteSimpleValueExtractor("value", "result") ==
            rhs.WriteSimpleValueExtractor("value", "result");
@@ -218,8 +230,6 @@ std::string Overlay::WriteSimpleValueExtractor(absl::string_view value,
       absl::StrAppend(&output, "  ", result, assign, bin_num.value);
       if (shift > 0) {
         absl::StrAppend(&output, " << ", shift);
-      } else if (shift < 0) {
-        absl::StrAppend(&output, ";\n#error Illegal shift amount < 0");
       }
       absl::StrAppend(&output, ";\n");
     } else {
@@ -245,7 +255,8 @@ std::string Overlay::WriteSimpleValueExtractor(absl::string_view value,
 // a variable 'value' and storing it into the variable 'result'. This extractor
 // works when the source format is => 64 bits wide.
 std::string Overlay::WriteComplexValueExtractor(
-    absl::string_view value, absl::string_view result) const {
+    absl::string_view value, absl::string_view result,
+    absl::string_view return_type) const {
   std::string output;
   std::string assign = " = ";
   for (auto *component : component_vec_) {
@@ -258,15 +269,18 @@ std::string Overlay::WriteComplexValueExtractor(
       absl::StrAppend(&output, "  ", result, assign, bin_num.value);
       if (shift > 0) {
         absl::StrAppend(&output, " << ", shift);
-      } else if (shift < 0) {
-        absl::StrAppend(&output, ";\n#error Illegal shift amount < 0");
       }
       absl::StrAppend(&output, ";\n");
     } else {
-      absl::StrAppend(&output, "  ", result, assign, "ExtractValue<>(", value,
-                      component->high(), component->width(), ")");
+      absl::StrAppend(&output, "  ", result, assign, "ExtractBits<",
+                      return_type, ">(", value, ", ", component->high(), ", ",
+                      component->width(), ")");
       if (component->low() > 0) {
-        absl::StrAppend(&output, " << ", component->low());
+        int shift = component->position() - component->width() + 1;
+        if (shift > 0) {
+          absl::StrAppend(&output, " << ",
+                          component->position() - component->width() + 1);
+        }
       }
       absl::StrAppend(&output, ";\n");
     }

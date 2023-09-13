@@ -22,6 +22,7 @@
 #include <utility>
 
 #include "absl/strings/str_cat.h"
+#include "antlr4-runtime/Token.h"
 #include "mpact/sim/decoder/bin_encoding_info.h"
 #include "mpact/sim/decoder/decoder_error_listener.h"
 #include "mpact/sim/decoder/encoding_group.h"
@@ -43,11 +44,6 @@ InstructionGroup::InstructionGroup(std::string name, int width,
       opcode_enum_(opcode_enum),
       encoding_info_(encoding_info) {
   format_ = encoding_info->GetFormat(format_name);
-  if (format_ == nullptr) {
-    encoding_info_->error_listener()->semanticError(
-        nullptr, absl::StrCat("Undefined format '", format_name,
-                              "' used by instruction group '", name, "'"));
-  }
 }
 
 InstructionGroup::~InstructionGroup() {
@@ -65,27 +61,26 @@ InstructionGroup::~InstructionGroup() {
 // Add an instruction encoding into the current group. Check that the format
 // has the correct width, and that the format the encoding is defined in, or
 // derives from the format associated with the instruction group.
-InstructionEncoding *InstructionGroup::AddInstructionEncoding(std::string name,
-                                                              Format *format) {
-  if ((format_ == nullptr) || (!format->IsDerivedFrom(format_))) {
+InstructionEncoding *InstructionGroup::AddInstructionEncoding(
+    antlr4::Token *token, std::string name, Format *format) {
+  if ((format != nullptr) &&
+      ((format_ == nullptr) || (!format->IsDerivedFrom(format_)))) {
     encoding_info_->error_listener()->semanticError(
-        nullptr, absl::StrCat("Format '", format->name(),
-                              "' used by instruction encoding '", name,
-                              "' is not derived from '", format_name_, "'"));
-    return nullptr;
+        token, absl::StrCat("Format '", format->name(),
+                            "' used by instruction encoding '", name,
+                            "' is not derived from '", format_name_, "'"));
   }
-  if (format->declared_width() != width_) {
-    encoding_info_->error_listener()->semanticError(
-        nullptr, absl::StrCat("Format '", format->name(),
-                              "' used by instruction encoding '", name,
-                              "' has width diffrerent from encoding group '",
-                              name_, "'"));
-    return nullptr;
-  }
+
+  // No need to double check width, since the format at this point derives
+  // from the the instruction group format.
+
+  // Warn if the instruction name has been seen before. It might be fully valid
+  // that an instruction name has multiple encodings, but warn about it, in
+  // case it is an error.
   if (encoding_name_set_.contains(name)) {
     encoding_info_->error_listener()->semanticWarning(
-        nullptr, absl::StrCat("Duplicate instruction opcode name '", name,
-                              "' in group '", this->name(), "'."));
+        token, absl::StrCat("Duplicate instruction opcode name '", name,
+                            "' in group '", this->name(), "'."));
   }
   encoding_name_set_.insert(name);
   auto *encoding = new InstructionEncoding(name, format);

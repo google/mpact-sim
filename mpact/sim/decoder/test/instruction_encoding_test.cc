@@ -29,6 +29,7 @@ namespace {
 // This file contains the unit tests for the InstructionEncoding class.
 
 using ::mpact::sim::decoder::DecoderErrorListener;
+using ::mpact::sim::decoder::bin_format::BinaryNum;
 using ::mpact::sim::decoder::bin_format::BinEncodingInfo;
 using ::mpact::sim::decoder::bin_format::ConstraintType;
 using ::mpact::sim::decoder::bin_format::Format;
@@ -60,6 +61,11 @@ class InstructionEncodingTest : public ::testing::Test {
     (void)overlay->AddFieldReference("rd");
     (void)i_type_fmt_->ComputeAndCheckFormatWidth();
     i_type_ = new InstructionEncoding(kITypeEncodingName, i_type_fmt_);
+    (void)i_type_fmt_->AddFieldOverlay("extract", /*is_signed*/ false, 12);
+    overlay = i_type_fmt_->GetOverlay("extract");
+    (void)overlay->AddFieldReference("rs1");
+    (void)overlay->AddBitConstant(BinaryNum{0b11, 2});
+    (void)overlay->AddFieldReference("rd");
   }
 
   ~InstructionEncodingTest() override {
@@ -195,6 +201,21 @@ TEST_F(InstructionEncodingTest, AddEqualUnsignedConstraint) {
   // Other constraints are unaffected.
   EXPECT_TRUE(i_type_->equal_extracted_constraints().empty());
   EXPECT_TRUE(i_type_->other_constraints().empty());
+}
+
+TEST_F(InstructionEncodingTest, AddEqualExtractedConstraints) {
+  auto status = i_type_->AddEqualConstraint("extract", 0b11011'11'00100);
+  EXPECT_TRUE(status.ok());
+  EXPECT_EQ(i_type_->GetValue(), 0);
+  EXPECT_EQ(i_type_->GetMask(), 0);
+  EXPECT_EQ(i_type_->GetCombinedMask(), 0);
+  EXPECT_EQ(i_type_->equal_extracted_constraints().size(), 1);
+  auto *constraint = i_type_->equal_extracted_constraints()[0];
+  EXPECT_EQ(constraint->type, ConstraintType::kEq);
+  EXPECT_EQ(constraint->field, i_type_fmt_->GetField("extract"));
+  EXPECT_EQ(constraint->value, 0b11011'11'00100);
+  EXPECT_NE(constraint->overlay, nullptr);
+  EXPECT_EQ(constraint->can_ignore, false);
 }
 
 TEST_F(InstructionEncodingTest, AddOtherConstraints) {

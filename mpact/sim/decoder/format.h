@@ -22,7 +22,8 @@
 #include "absl/container/btree_map.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
-#include "antlr4-runtime/antlr4-runtime.h"
+#include "absl/strings/string_view.h"
+#include "antlr4-runtime/Token.h"
 
 // This file declares the classes necessary to manage instruction formats,
 // defined as a sequence of fields (or sub-formats) as well as a set of
@@ -70,8 +71,13 @@ struct FormatReference {
 class FieldOrFormat {
  public:
   explicit FieldOrFormat(Field *field) : is_field_(true), field_(field) {}
-  FieldOrFormat(std::string fmt_name, int size, antlr4::Token *ctx)
-      : is_field_(false), format_name_(fmt_name), size_(size), ctx_(ctx) {}
+  FieldOrFormat(std::string format_alias, std::string fmt_name, int size,
+                antlr4::Token *ctx)
+      : is_field_(false),
+        format_name_(fmt_name),
+        format_alias_(format_alias),
+        size_(size),
+        ctx_(ctx) {}
   ~FieldOrFormat();
 
   bool is_field() const { return is_field_; }
@@ -81,6 +87,7 @@ class FieldOrFormat {
   const std::string &format_name() const { return format_name_; }
   antlr4::Token *ctx() const { return ctx_; }
   Format *format() const { return format_; }
+  absl::string_view format_alias() const { return format_alias_; }
   int size() const { return size_; }
   void set_format(Format *fmt) { format_ = fmt; }
 
@@ -91,6 +98,7 @@ class FieldOrFormat {
   bool is_field_;
   Field *field_ = nullptr;
   std::string format_name_;
+  std::string format_alias_;
   int high_ = 0;
   int size_ = 0;
   antlr4::Token *ctx_ = nullptr;
@@ -109,7 +117,9 @@ class Format {
   absl::Status AddField(std::string name, bool is_signed, int width);
   // Adds a format reference to the current format. It will be resolved to
   // another format later, or generate an error at that time.
-  void AddFormatReferenceField(std::string name, int size, antlr4::Token *ctx);
+  void AddFormatReferenceField(std::string format_alias,
+                               std::string format_name, int size,
+                               antlr4::Token *ctx);
   // Adds an overlay to the format. An overlay is an alias to a set of bits
   // in the instruction format.
   absl::StatusOr<Overlay *> AddFieldOverlay(std::string name, bool is_signed,
@@ -149,12 +159,14 @@ class Format {
   bool HasExtract(const std::string &name) const;
   bool HasOverlayExtract(const std::string &name) const;
 
-  std::string GenerateFieldExtractor(Field *field);
-  std::string GenerateFormatExtractor(Format *format, int high, int size);
-  std::string GenerateOverlayExtractor(Overlay *overlay);
+  std::string GenerateFieldExtractor(const Field *field) const;
+  std::string GenerateFormatExtractor(std::string_view format_alias,
+                                      const Format *format, int high,
+                                      int size) const;
+  std::string GenerateOverlayExtractor(Overlay *overlay) const;
   // Return string representation of the int type that contains bitwidth bits.
-  std::string GetIntType(int bitwidth);
-  int GetIntTypeBitWidth(int bitwidth);
+  std::string GetIntType(int bitwidth) const;
+  int GetIntTypeBitWidth(int bitwidth) const;
 
   std::string name_;
   std::string base_format_name_;

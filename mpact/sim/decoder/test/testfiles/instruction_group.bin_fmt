@@ -1,0 +1,297 @@
+// Copyright 2023 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+decoder InstructionGroup {
+  namespace sim::instruction_group;
+  opcode_enum = "sim::OpcodeEnum";
+  RiscVGInst32 = { RiscVIInst32, RiscVMInst32, RiscVSInst32,
+                   RiscVDInst32, RiscVCsrInst32, RiscVPrivInst32};
+};
+
+// RiscV 32 bit instructions.
+format Inst32Format[32] {
+  fields:
+    unsigned bits[25];
+    unsigned opcode[7];
+};
+
+format RType[32] : Inst32Format {
+  fields:
+    unsigned func7[7];
+    unsigned rs2[5];
+    unsigned rs1[5];
+    unsigned func3[3];
+    unsigned rd[5];
+    unsigned opcode[7];
+  overlays:
+    unsigned r_uimm5[5] = rs2;
+};
+
+format R4Type[32] : Inst32Format {
+  fields:
+    unsigned rs3[5];
+    unsigned func2[2];
+    unsigned rs2[5];
+    unsigned rs1[5];
+    unsigned func3[3];
+    unsigned rd[5];
+    unsigned opcode[7];
+};
+
+format IType[32] : Inst32Format {
+  fields:
+    signed imm12[12];
+    unsigned rs1[5];
+    unsigned func3[3];
+    unsigned rd[5];
+    unsigned opcode[7];
+  overlays:
+    unsigned u_imm12[12] = imm12;
+    unsigned i_uimm5[5] = rs1;
+};
+
+format SType[32] : Inst32Format {
+  fields:
+    unsigned imm7[7];
+    unsigned rs2[5];
+    unsigned rs1[5];
+    unsigned func3[3];
+    unsigned imm5[5];
+    unsigned opcode[7];
+  overlays:
+    signed s_imm[12] = imm7, imm5;
+};
+
+format BType[32] : Inst32Format {
+  fields:
+    unsigned imm7[7];
+    unsigned rs2[5];
+    unsigned rs1[5];
+    unsigned func3[3];
+    unsigned imm5[5];
+    unsigned opcode[7];
+  overlays:
+    signed b_imm[13] = imm7[6], imm5[0], imm7[5..0], imm5[4..1], 0b0;
+};
+
+format UType[32] : Inst32Format {
+  fields:
+    unsigned imm20[20];
+    unsigned rd[5];
+    unsigned opcode[7];
+  overlays:
+    unsigned u_imm[32] = imm20, 0b0000'0000'0000;
+};
+
+format JType[32] : Inst32Format {
+  fields:
+    unsigned imm20[20];
+    unsigned rd[5];
+    unsigned opcode[7];
+  overlays:
+    signed j_imm[21] = imm20[19, 7..0, 8, 18..9], 0b0;
+};
+
+format Fence[32] : Inst32Format {
+  fields:
+    unsigned fm[4];
+    unsigned pred[4];
+    unsigned succ[4];
+    unsigned rs1[5];
+    unsigned func3[3];
+    unsigned rd[5];
+    unsigned opcode[7];
+};
+
+format AType[32] : Inst32Format {
+  fields:
+    unsigned func5[5];
+    unsigned aq[1];
+    unsigned rl[1];
+    unsigned rs2[5];
+    unsigned rs1[5];
+    unsigned func3[3];
+    unsigned rd[5];
+    unsigned opcode[7];
+};
+
+
+
+instruction group RiscVIInst32[32] : Inst32Format {
+  lui    : UType  : opcode == 0b011'0111;
+  auipc  : UType  : opcode == 0b001'0111;
+  jal    : JType  : rd != 0, opcode == 0b110'1111;
+  j      : JType  : rd == 0, opcode == 0b110'1111;
+  jalr   : IType  : rd != 0, func3 == 0b000, opcode == 0b110'0111;
+  jr     : IType  : rd == 0, func3 == 0b000, opcode == 0b110'0111;
+  beq    : BType  : func3 == 0b000, opcode == 0b110'0011;
+  bne    : BType  : func3 == 0b001, opcode == 0b110'0011;
+  blt    : BType  : func3 == 0b100, opcode == 0b110'0011;
+  bge    : BType  : func3 == 0b101, opcode == 0b110'0011;
+  bltu   : BType  : func3 == 0b110, opcode == 0b110'0011;
+  bgeu   : BType  : func3 == 0b111, opcode == 0b110'0011;
+  lb     : BType  : func3 == 0b000, opcode == 0b000'0011;
+  lh     : BType  : func3 == 0b001, opcode == 0b000'0011;
+  lw     : BType  : func3 == 0b010, opcode == 0b000'0011;
+  lbu    : BType  : func3 == 0b100, opcode == 0b000'0011;
+  lhu    : BType  : func3 == 0b101, opcode == 0b000'0011;
+  sb     : SType  : func3 == 0b000, opcode == 0b010'0011;
+  sh     : SType  : func3 == 0b001, opcode == 0b010'0011;
+  sw     : SType  : func3 == 0b010, opcode == 0b010'0011;
+  addi   : IType  : func3 == 0b000, imm12 != 0, opcode == 0b001'0011;
+  mv     : IType  : func3 == 0b000, imm12 == 0, opcode == 0b001'0011;
+  slti   : IType  : func3 == 0b010, opcode == 0b001'0011;
+  sltiu  : IType  : func3 == 0b011, opcode == 0b001'0011;
+  xori   : IType  : func3 == 0b100, opcode == 0b001'0011;
+  ori    : IType  : func3 == 0b110, imm12 != 0, opcode == 0b001'0011;
+  mv     : IType  : func3 == 0b110, imm12 == 0, opcode == 0b001'0011;
+  andi   : IType  : func3 == 0b111, opcode == 0b001'0011;
+  slli   : RType  : func7 == 0b000'0000, func3==0b001, opcode == 0b001'0011;
+  srli   : RType  : func7 == 0b000'0000, func3==0b101, opcode == 0b001'0011;
+  srai   : RType  : func7 == 0b010'0000, func3==0b101, opcode == 0b001'0011;
+  add    : RType  : func7 == 0b000'0000, func3==0b000, opcode == 0b011'0011;
+  sub    : RType  : func7 == 0b010'0000, func3==0b000, opcode == 0b011'0011;
+  sll    : RType  : func7 == 0b000'0000, func3==0b001, opcode == 0b011'0011;
+  slt    : RType  : func7 == 0b000'0000, func3==0b010, opcode == 0b011'0011;
+  sltu   : RType  : func7 == 0b000'0000, func3==0b011, opcode == 0b011'0011;
+  xor    : RType  : func7 == 0b000'0000, func3==0b100, opcode == 0b011'0011;
+  srl    : RType  : func7 == 0b000'0000, func3==0b101, opcode == 0b011'0011;
+  sra    : RType  : func7 == 0b010'0000, func3==0b101, opcode == 0b011'0011;
+  or     : RType  : func7 == 0b000'0000, func3==0b110, opcode == 0b011'0011;
+  and    : RType  : func7 == 0b000'0000, func3==0b111, opcode == 0b011'0011;
+  fence  : Fence  : func3 == 0b000, opcode == 0b000'1111;
+  ecall  : Inst32Format : bits == 0b0000'0000'0000'00000'000'00000, opcode == 0b111'0011;
+  ebreak : Inst32Format : bits == 0b0000'0000'0001'00000'000'00000, opcode == 0b111'0011;
+  // RiscV32 Instruction fence.
+  fencei : IType  : func3 == 001, opcode == 0b000'1111;
+};
+
+// RiscV32 multiply divide.
+instruction group RiscVMInst32[32] : Inst32Format {
+  mul    : RType  : func7 == 0b000'0001, func3 == 0b000, opcode == 0b011'0011;
+  mulh   : RType  : func7 == 0b000'0001, func3 == 0b001, opcode == 0b011'0011;
+  mulhsu : RType  : func7 == 0b000'0001, func3 == 0b010, opcode == 0b011'0011;
+  mulhu  : RType  : func7 == 0b000'0001, func3 == 0b011, opcode == 0b011'0011;
+  div    : RType  : func7 == 0b000'0001, func3 == 0b100, opcode == 0b011'0011;
+  divu   : RType  : func7 == 0b000'0001, func3 == 0b101, opcode == 0b011'0011;
+  rem    : RType  : func7 == 0b000'0001, func3 == 0b110, opcode == 0b011'0011;
+  remu   : RType  : func7 == 0b000'0001, func3 == 0b111, opcode == 0b011'0011;
+};
+
+// RiscV32 atomic instructions.
+instruction group RiscVAInst32[32] : Inst32Format {
+  lrw       : AType  : func5 == 0b0'0010, rs2 == 0, func3 == 0b010, opcode == 0b010'1111;
+  scw       : AType  : func5 == 0b0'0011, func3 == 0b010, opcode == 0b010'1111;
+  amoswapw : AType  : func5 == 0b0'0001,  func3 == 0b010, opcode == 0b010'1111;
+  amoaddw  : AType  : func5 == 0b0'0000, func3 == 0b010, opcode == 0b010'1111;
+  amoxorw  : AType  : func5 == 0b0'0100, func3 == 0b010, opcode == 0b010'1111;
+  amoandw  : AType  : func5 == 0b0'1100, func3 == 0b010, opcode == 0b010'1111;
+  amoorw   : AType  : func5 == 0b0'1000, func3 == 0b010, opcode == 0b010'1111;
+  amominw  : AType  : func5 == 0b1'0000, func3 == 0b010, opcode == 0b010'1111;
+  amomaxw  : AType  : func5 == 0b1'0100, func3 == 0b010, opcode == 0b010'1111;
+  amominuw : AType  : func5 == 0b1'1000, func3 == 0b010, opcode == 0b010'1111;
+  amomaxuw : AType  : func5 == 0b1'1100, func3 == 0b010, opcode == 0b010'1111;
+};
+
+// RiscV32 single precision floating point instructions.
+instruction group RiscVSInst32[32] : Inst32Format {
+  flw      : IType  : func3 == 0b010, opcode == 0b000'0111;
+  fsw      : SType  : func3 == 0b010, opcode == 0b010'0111;
+  fmadd_s  : R4Type : func2 == 0b00,  opcode == 0b100'0011;
+  fmsub_s  : R4Type : func2 == 0b00,  opcode == 0b100'0111;
+  fnmsub_s : R4Type : func2 == 0b00,  opcode == 0b100'1011;
+  fnmadd_s : R4Type : func2 == 0b00,  opcode == 0b100'1111;
+  fadd_s   : RType  : func7 == 0b000'0000, opcode == 0b101'0011;
+  fsub_s   : RType  : func7 == 0b000'0100, opcode == 0b101'0011;
+  fmul_s   : RType  : func7 == 0b000'1000, opcode == 0b101'0011;
+  fdiv_s   : RType  : func7 == 0b000'1100, opcode == 0b101'0011;
+  fsqrt_s  : RType  : func7 == 0b010'1100, rs2 == 0, opcode == 0b101'0011;
+  fsgnj_s  : RType  : func7 == 0b001'0000, func3 == 0b000, opcode == 0b101'0011;
+  fsgnjn_s : RType  : func7 == 0b001'0000, func3 == 0b001, opcode == 0b101'0011;
+  fsgnjx_s : RType  : func7 == 0b001'0000, func3 == 0b010, opcode == 0b101'0011;
+  fmin_s   : RType  : func7 == 0b001'0100, func3 == 0b000, opcode == 0b101'0011;
+  fmax_s   : RType  : func7 == 0b001'0100, func3 == 0b001, opcode == 0b101'0011;
+  fcvt_ws  : RType  : func7 == 0b110'0000, rs2 == 0, opcode == 0b101'0011;
+  fcvt_wus : RType  : func7 == 0b110'0000, rs2 == 1, opcode == 0b101'0011;
+  fmv_xw   : RType  : func7 == 0b111'0000, rs2 == 0, func3 == 0b000, opcode == 0b101'0011;
+  fcmpeq_s : RType  : func7 == 0b101'0000, func3 == 0b010, opcode == 0b101'0011;
+  fcmplt_s : RType  : func7 == 0b101'0000, func3 == 0b001, opcode == 0b101'0011;
+  fcmple_s : RType  : func7 == 0b101'0000, func3 == 0b000, opcode == 0b101'0011;
+  fclass_s : RType  : func7 == 0b111'0000, rs2 == 0, func3 == 0b001, opcode == 0b101'0011;
+  fcvt_sw  : RType  : func7 == 0b110'1000, rs2 == 0, opcode == 0b101'0011;
+  fcvt_swu : RType  : func7 == 0b110'1000, rs2 == 1, opcode == 0b101'0011;
+  fmv_wx   : RType  : func7 == 0b111'1000, rs2 == 0, func3 == 0b000, opcode == 0b101'0011;
+};
+
+// RiscV32 double precision floating point instructions.
+instruction group RiscVDInst32[32] : Inst32Format {
+  fld      : IType  : func3 == 0b011, opcode == 0b000'0111;
+  fsd      : SType  : func3 == 0b011, opcode == 0b010'0111;
+  fmadd_d  : R4Type : func2 == 0b01,  opcode == 0b100'0011;
+  fmsub_d  : R4Type : func2 == 0b01,  opcode == 0b100'0111;
+  fnmsub_d : R4Type : func2 == 0b01,  opcode == 0b100'1011;
+  fnmadd_d : R4Type : func2 == 0b01,  opcode == 0b100'1111;
+  fadd_d   : RType  : func7 == 0b000'0001, opcode == 0b101'0011;
+  fsub_d   : RType  : func7 == 0b000'0101, opcode == 0b101'0011;
+  fmul_d   : RType  : func7 == 0b000'1001, opcode == 0b101'0011;
+  fdiv_d   : RType  : func7 == 0b000'1101, opcode == 0b101'0011;
+  fsqrt_d  : RType  : func7 == 0b010'1101, rs2 == 0, opcode == 0b101'0011;
+  fsgnj_d  : RType  : func7 == 0b001'0001, func3 == 0b000, opcode == 0b101'0011;
+  fsgnjn_d : RType  : func7 == 0b001'0001, func3 == 0b001, opcode == 0b101'0011;
+  fsgnjx_d : RType  : func7 == 0b001'0001, func3 == 0b010, opcode == 0b101'0011;
+  fmin_d   : RType  : func7 == 0b001'0101, func3 == 0b000, opcode == 0b101'0011;
+  fmax_d   : RType  : func7 == 0b001'0101, func3 == 0b001, opcode == 0b101'0011;
+  fcvt_sd  : RType  : func7 == 0b010'0000, rs2 == 1, opcode == 0b101'0011;
+  fcvt_ds  : RType   : func7 == 0b010'0001, rs2 == 0, opcode == 0b101'0011;
+  fcmpeq_d : RType  : func7 == 0b101'0001, func3 == 0b010, opcode == 0b101'0011;
+  fcmplt_d : RType  : func7 == 0b101'0001, func3 == 0b001, opcode == 0b101'0011;
+  fcmple_d : RType  : func7 == 0b101'0001, func3 == 0b000, opcode == 0b101'0011;
+  fclass_d : RType  : func7 == 0b111'0001, rs2 == 0, func3 == 0b001, opcode == 0b101'0011;
+  fcvt_wd  : RType  : func7 == 0b110'0001, rs2 == 0, opcode == 0b101'0011;
+  fcvt_wud : RType  : func7 == 0b110'0001, rs2 == 1, opcode == 0b101'0011;
+  fcvt_dw  : RType  : func7 == 0b110'1001, rs2 == 0, opcode == 0b101'0011;
+  fcvt_dwu : RType  : func7 == 0b110'1001, rs2 == 1, opcode == 0b101'0011;
+};
+
+// RiscV32 CSR manipulation instructions.
+instruction group RiscVCsrInst32[32] : Inst32Format {
+  csrrw    : IType  : func3 == 0b001, rd != 0,  opcode == 0b111'0011;
+  csrrs    : IType  : func3 == 0b010, rs1 != 0, rd != 0, opcode == 0b111'0011;
+  csrrc    : IType  : func3 == 0b011, rs1 != 0, rd != 0, opcode == 0b111'0011;
+  csrrs_nr : IType  : func3 == 0b010, rs1 != 0, rd == 0, opcode == 0b111'0011;
+  csrrc_nr : IType  : func3 == 0b011, rs1 != 0, rd == 0, opcode == 0b111'0011;
+  csrrw_nr : IType  : func3 == 0b001, rd == 0,  opcode == 0b111'0011;
+  csrrs_nw : IType  : func3 == 0b010, rs1 == 0, opcode == 0b111'0011;
+  csrrc_nw : IType  : func3 == 0b011, rs1 == 0, opcode == 0b111'0011;
+  csrrwi   : IType  : func3 == 0b101, rd != 0,  opcode == 0b111'0011;
+  csrrsi   : IType  : func3 == 0b110, rs1 != 0, rd != 0, opcode == 0b111'0011;
+  csrrci   : IType  : func3 == 0b111, rs1 != 0, rd != 0, opcode == 0b111'0011;
+  csrrsi_nr: IType  : func3 == 0b110, rs1 != 0, rd == 0, opcode == 0b111'0011;
+  csrrci_nr: IType  : func3 == 0b111, rs1 != 0, rd == 0, opcode == 0b111'0011;
+  csrrwi_nr: IType  : func3 == 0b101, rd == 0,  opcode == 0b111'0011;
+  csrrsi_nw: IType  : func3 == 0b110, rs1 == 0, opcode == 0b111'0011;
+  csrrci_nw: IType  : func3 == 0b111, rs1 == 0, opcode == 0b111'0011;
+};
+
+// RiscV32 Privileged instructions.
+instruction group RiscVPrivInst32[32] : Inst32Format {
+  uret    : Inst32Format  : bits == 0b000'0000'00010'00000'000'00000, opcode == 0b111'0011;
+  sret    : Inst32Format  : bits == 0b000'1000'00010'00000'000'00000, opcode == 0b111'0011;
+  mret    : Inst32Format  : bits == 0b001'1000'00010'00000'000'00000, opcode == 0b111'0011;
+  wfi     : Inst32Format  : bits == 0b000'1000'00101'00000'000'00000, opcode == 0b111'0011;
+  sfence_vma_zz : RType : func7 == 0b000'1001, rs2 == 0, rs1 == 0, func3 == 0, rd == 0, opcode == 0b111'0011;
+  sfence_vma_zn : RType : func7 == 0b000'1001, rs2 != 0, rs1 == 0, func3 == 0, rd == 0, opcode == 0b111'0011;
+  sfence_vma_nz : RType : func7 == 0b000'1001, rs2 == 0, rs1 != 0, func3 == 0, rd == 0, opcode == 0b111'0011;
+  sfence_vma_nn : RType : func7 == 0b000'1001, rs2 != 0, rs1 != 0, func3 == 0, rd == 0, opcode == 0b111'0011;
+};

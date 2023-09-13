@@ -15,12 +15,14 @@
 #ifndef MPACT_SIM_DECODER_INSTRUCTION_GROUP_H_
 #define MPACT_SIM_DECODER_INSTRUCTION_GROUP_H_
 
+#include <cstdint>
 #include <string>
 #include <tuple>
 #include <vector>
 
 #include "absl/container/btree_map.h"
 #include "absl/container/flat_hash_set.h"
+#include "antlr4-runtime/Token.h"
 #include "mpact/sim/decoder/bin_encoding_info.h"
 #include "mpact/sim/decoder/encoding_group.h"
 
@@ -43,7 +45,8 @@ class InstructionGroup {
                    std::string opcode_enum, BinEncodingInfo *encoding_info);
   ~InstructionGroup();
 
-  InstructionEncoding *AddInstructionEncoding(std::string name, Format *format);
+  InstructionEncoding *AddInstructionEncoding(antlr4::Token *token,
+                                              std::string name, Format *format);
   void AddInstructionEncoding(InstructionEncoding *encoding);
   // Process the encodings in the group, partitioning them into subgroups
   // according to their opcode bits to make it easy to generate a hierarchical

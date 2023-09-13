@@ -344,9 +344,37 @@ mpact_cc_test(
         # Local include files.
         "testfiles/empty_file.bin_fmt",
         "testfiles/generator.bin_fmt",
+        "testfiles/instruction_group.bin_fmt",
         "testfiles/riscv32_top.bin_fmt",
-        "testfiles/riscv32g.bin_fmt",
         "testfiles/riscv32c.bin_fmt",
+        "testfiles/riscv32g.bin_fmt",
+        "testfiles/vliw.bin_fmt",
+    ],
+    deps = [
+        ":log_sink",
+        "//mpact/sim/decoder:bin_format_visitor",
+        "@com_google_absl//absl/flags:flag",
+        "@com_google_absl//absl/log:check",
+        "@com_google_absl//absl/log:log_sink_registry",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_googletest//:gtest",
+        "@com_google_googletest//:gtest_main",
+        "@com_googlesource_code_re2//:re2",
+    ],
+)
+
+mpact_cc_test(
+    name = "bin_format_error_test",
+    size = "small",
+    srcs = [
+        "bin_format_error_test.cc",
+    ],
+    data = [
+        "testfiles/format_error.bin_fmt",
+        "testfiles/format_error_undef.bin_fmt",
+        "testfiles/syntax_error.bin_fmt",
     ],
     deps = [
         ":log_sink",

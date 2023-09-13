@@ -19,11 +19,13 @@
 #include <fstream>
 #include <iostream>
 #include <istream>
+#include <list>
 #include <memory>
 #include <string>
 #include <utility>
 #include <vector>
 
+#include "./third_party/absl/container/btree_map.h"
 #include "absl/container/flat_hash_set.h"
 #include "absl/log/log.h"
 #include "absl/status/status.h"
@@ -50,36 +52,42 @@ namespace bin_format {
 constexpr char kTemplatedExtractBits[] = R"foo(
 namespace internal {
 
+// This function extracts a bitfield width bits wide from the byte vector,
+// starting at bit_index bits from the end of data. The lsb has index 0. The
+// byte vector is data_size bytes long. There is no error checking that T
+// can accommodate width bits.
 template <typename T>
-static inline T ExtractBits(const uint8_t *data, int data_size,
-                            int bit_index, int width) {
+static inline T ExtractBits(const uint8_t *data, int data_size, int msb,
+                            int width) {
   if (width == 0) return 0;
 
-  int byte_pos = bit_index >> 3;
-  int end_byte = (bit_index + width - 1) >> 3;
-  int start_bit = bit_index & 0x7;
+  int byte_low = data_size - ((msb - width) >> 3) - 1;
+  int byte_high = data_size - (msb >> 3) - 1;
+  int high_bit = msb & 0x7;
 
   // If it is only from one byte, extract and return.
-  if (byte_pos == end_byte) {
-    uint8_t mask = 0xff >> start_bit;
-    return (mask & data[byte_pos]) >> (8 - start_bit - width);
+  if (byte_low == byte_high) {
+    uint8_t mask = (1 << (high_bit + 1)) - 1;
+    return (mask & data[byte_high]) >> (high_bit - width + 1);
   }
 
-  // Extract from the first byte.
+  // Extract from the high order byte.
   T val = 0;
-  val = data[byte_pos++] & 0xff >> start_bit;
-  int remainder = width - (8 - start_bit);
+  uint8_t mask = 0xff >> (7 - high_bit);
+  val = (mask & data[byte_high++]);
+  int remainder = width - (1 + high_bit);
+
   while (remainder >= 8) {
-    val = (val << 8) | data[byte_pos++];
+    val = (val << 8) | data[byte_high++];
     remainder -= 8;
   }
 
-  // Extract any remaining bits.
+  // Extract any remaining bits from the high end of the last byte.
   if (remainder > 0) {
     val <<= remainder;
     int shift = 8 - remainder;
-    uint8_t mask = 0b1111'1111 << shift;
-    val |= (data[byte_pos] & mask) >> shift;
+    uint8_t mask = 0xff << shift;
+    val |= (data[byte_high] & mask) >> shift;
   }
   return val;
 }
@@ -146,10 +154,6 @@ absl::Status BinFormatVisitor::Process(
     LOG(ERROR) << "No encoding specified";
     return absl::InternalError("No encoding specified");
   }
-  if (error_listener_->HasError() > 0) {
-    return absl::InternalError("Errors encountered - terminating.");
-  }
-
   PerformEncodingChecks(encoding_info.get());
   // Fail if there are errors.
   if (error_listener_->HasError() > 0) {
@@ -322,6 +326,37 @@ std::unique_ptr<BinEncodingInfo> BinFormatVisitor::ProcessTopLevel(
   }
   // Visit the decoder.
   auto bin_encoding_info = VisitDecoderDef(decoder_iter->second);
+  // Now visit any formats that references any formats that have been visited.
+  // Formats are visited lazily, so only those "reachable" from the decoder
+  // will have been visited. Build a multi-map from referenced format to parent
+  // format.
+  absl::btree_multimap<std::string, std::string> reference_map;
+  for (auto &[format_name, ctx_ptr] : format_decl_map_) {
+    // Skip those that have already been visited.
+    if (bin_encoding_info->GetFormat(format_name) != nullptr) continue;
+    for (auto *field_ctx : ctx_ptr->format_field_defs()->field_def()) {
+      if (field_ctx->format_name != nullptr) {
+        reference_map.emplace(field_ctx->format_name->getText(), format_name);
+      }
+    }
+  }
+  // Now, starting at each visited format, traverse links in the reference_map
+  // to transitively visit any "parent" formats.
+  std::list<Format *> format_list;
+  for (auto &[unused, fmt_ptr] : bin_encoding_info->format_map()) {
+    format_list.push_back(fmt_ptr);
+  }
+  while (!format_list.empty()) {
+    auto *format = format_list.front();
+    format_list.pop_front();
+    for (auto iter = reference_map.lower_bound(format->name());
+         iter != reference_map.upper_bound(format->name()); iter++) {
+      std::string parent_format_name = iter->second;
+      VisitFormatDef(format_decl_map_[parent_format_name],
+                     bin_encoding_info.get());
+      format_list.push_back(bin_encoding_info->GetFormat(parent_format_name));
+    }
+  }
   bin_encoding_info->PropagateExtractors();
   return bin_encoding_info;
 }
@@ -484,11 +519,12 @@ void BinFormatVisitor::VisitFormatDef(FormatDefCtx *ctx,
       if ((format_width != -1) && (format_width != parent_width)) {
         error_listener_->semanticError(
             ctx->inherits_from()->start,
-            absl::StrCat("Format '", format_name, "': declared width (",
-                         format_width, ") differs from inherited width (",
-                         parent_width, ")"));
+            absl::StrCat("Format '", format_name, "' declared width (",
+                         format_width, ") differs from width inherited from '",
+                         parent_name, "' (", parent_width, ")"));
         return;
       }
+      if (format_width == -1) format_width = parent_width;
     }
     format_res =
         encoding_info->AddFormat(format_name, format_width, parent_name);
@@ -502,7 +538,7 @@ void BinFormatVisitor::VisitFormatDef(FormatDefCtx *ctx,
   // Parse the fields in the format.
   auto format = format_res.value();
   for (auto field : ctx->format_field_defs()->field_def()) {
-    VisitFieldDef(field, format);
+    VisitFieldDef(field, format, encoding_info);
   }
   // Parse the overlays in the format.
   for (auto overlay : ctx->format_field_defs()->overlay_def()) {
@@ -514,35 +550,40 @@ void BinFormatVisitor::VisitFormatDef(FormatDefCtx *ctx,
   }
 }
 
-void BinFormatVisitor::VisitFieldDef(FieldDefCtx *ctx, Format *format) {
+void BinFormatVisitor::VisitFieldDef(FieldDefCtx *ctx, Format *format,
+                                     BinEncodingInfo *encoding_info) {
   if (ctx == nullptr) return;
 
-  std::string name(ctx->IDENT()->getText());
+  std::string field_name(ctx->field_name->getText());
   if (ctx->FORMAT() == nullptr) {
     // If it's a field definition, add the field.
     bool is_signed = ctx->sign_spec()->SIGNED() != nullptr;
     int width = ConvertToInt(ctx->index()->number());
-    // For now, only support fields <= 64 bit wide.
-    if (width > 64) {
-      error_listener_->semanticError(
-          ctx->width->number()->start,
-          "Only fields <= 64 bits are supported for now.");
-      return;
-    }
-    auto status = format->AddField(name, is_signed, width);
+    auto status = format->AddField(field_name, is_signed, width);
     if (!status.ok()) {
-      error_listener_->semanticError(ctx->IDENT()->getSymbol(),
-                                     status.message());
+      error_listener_->semanticError(ctx->field_name, status.message());
     }
-  } else {
-    // Otherwise it is a reference to a format (which may be defined later
-    // in the file). Add it and adjust the width later.
-    int size = 1;
-    if (ctx->index() != nullptr) {
-      size = ConvertToInt(ctx->index()->number());
-    }
-    format->AddFormatReferenceField(name, size, ctx->start);
+    return;
   }
+
+  // Otherwise it is a reference to a format (which may be defined later
+  // in the file). Add it and adjust the width later.
+  int size = 1;
+  if (ctx->index() != nullptr) {
+    size = ConvertToInt(ctx->index()->number());
+  }
+  std::string format_ref_name = ctx->format_name->getText();
+  // Make sure that the referred to format is fully parsed.
+  auto *format_ref = encoding_info->GetFormat(format_ref_name);
+  if (format_ref == nullptr) {
+    auto iter = format_decl_map_.find(format_ref_name);
+    if (iter != format_decl_map_.end()) {
+      VisitFormatDef(iter->second, encoding_info);
+    }
+    format_ref = encoding_info->GetFormat(format_ref_name);
+  }
+  format->AddFormatReferenceField(field_name, format_ref_name, size,
+                                  ctx->start);
 }
 
 void BinFormatVisitor::VisitOverlayDef(OverlayDefCtx *ctx, Format *format) {
@@ -562,6 +603,7 @@ void BinFormatVisitor::VisitOverlayDef(OverlayDefCtx *ctx, Format *format) {
   auto overlay_res = format->AddFieldOverlay(name, is_signed, width);
   if (!overlay_res.ok()) {
     error_listener_->semanticError(ctx->start, overlay_res.status().message());
+    return;
   }
   auto *overlay = overlay_res.value();
   for (auto *bit_field : ctx->bit_field_list()->bit_field_spec()) {
@@ -632,10 +674,28 @@ InstructionGroup *BinFormatVisitor::VisitInstructionGroupDef(
   auto iter = format_decl_map_.find(format_name);
   if (iter == format_decl_map_.end()) {
     error_listener_->semanticError(
-        ctx->start, absl::StrCat("No such format '", format_name, "'"));
-    return nullptr;
+        ctx->start,
+        absl::StrCat("Undefined format '", format_name,
+                     "' used by instruction group '", group_name, "'"));
+  } else {
+    VisitFormatDef(iter->second, encoding_info);
+    auto *format = encoding_info->GetFormat(format_name);
+    // Verify that the format width = declared width and also <= 64 bits wide.
+    if (format->declared_width() != width) {
+      error_listener_->semanticError(
+          ctx->start,
+          absl::StrCat("Width of format '", format_name, "' (",
+                       format->declared_width(),
+                       ") differs from the declared width of instruction "
+                       "group '",
+                       group_name, "' (", width, ")"));
+    }
+    if (format->declared_width() > 64) {
+      error_listener_->semanticError(
+          ctx->start, absl::StrCat("Instruction group '", group_name,
+                                   ": width must be <= 64 bits"));
+    }
   }
-  VisitFormatDef(iter->second, encoding_info);
   auto inst_group_res =
       encoding_info->AddInstructionGroup(group_name, width, format_name);
   if (!inst_group_res.ok()) {
@@ -667,28 +727,26 @@ void BinFormatVisitor::VisitInstructionDef(InstructionDefCtx *ctx,
     auto iter = format_decl_map_.find(format_name);
     if (iter == format_decl_map_.end()) {
       error_listener_->semanticError(
-          ctx->start, absl::StrCat("Format '", format_name, "' not found"));
-      return;
+          ctx->start,
+          absl::StrCat("Format '", format_name, "' referenced by instruction '",
+                       name, "' not defined"));
+    } else {
+      VisitFormatDef(iter->second, inst_group->encoding_info());
+      format = inst_group->encoding_info()->GetFormat(format_name);
     }
-    VisitFormatDef(iter->second, inst_group->encoding_info());
-    format = inst_group->encoding_info()->GetFormat(format_name);
-    if (format == nullptr) return;
   }
-  if (format->declared_width() != inst_group->width()) {
+  if ((format != nullptr) &&
+      (format->declared_width() != inst_group->width())) {
     error_listener_->semanticError(
         ctx->start,
         absl::StrCat(
             "Length of format '", format_name, "' (", format->declared_width(),
             ") differs from the declared width of the instruction group (",
             inst_group->width(), ")"));
-    return;
   }
-  if (format->declared_width() > 64) {
-    error_listener_->semanticError(
-        ctx->start, "Instruction encoding cannot depend on format > 64bits");
-    return;
-  }
-  auto *inst_encoding = inst_group->AddInstructionEncoding(name, format);
+  auto *inst_encoding =
+      inst_group->AddInstructionEncoding(ctx->format_name, name, format);
+  if (format == nullptr) return;
   // Add constraints to the instruction encoding.
   for (auto *constraint : ctx->field_constraint_list()->field_constraint()) {
     VisitConstraint(constraint, inst_encoding);
@@ -749,6 +807,7 @@ void BinFormatVisitor::ProcessInstructionDefGenerator(
     // It's a list of tuples with a structured binding assignment.
     for (auto *tuple_ctx : assign_ctx->tuple()) {
       if (tuple_ctx->gen_value().size() != range_info->range_names.size()) {
+        // Clean up.
         for (auto *info : range_info_vec) delete info;
         error_listener_->semanticError(
             assign_ctx->start,
@@ -790,6 +849,8 @@ void BinFormatVisitor::ProcessInstructionDefGenerator(
     pos = input_text.find_first_of('$', start_pos);
   }
   if (error_listener()->HasError()) {
+    // Clean up.
+    for (auto *info : range_info_vec) delete info;
     return;
   }
 
@@ -1046,6 +1107,8 @@ std::unique_ptr<BinEncodingInfo> BinFormatVisitor::VisitDecoderDef(
       }
       group_name_set.insert(parent_group->name());
       decoder->AddInstructionGroup(parent_group);
+      // Clean up.
+      for (auto *child_group : child_groups) delete child_group;
       continue;
     }
   }
