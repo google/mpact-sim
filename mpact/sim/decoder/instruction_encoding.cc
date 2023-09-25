@@ -59,7 +59,7 @@ absl::StatusOr<Constraint *> InstructionEncoding::CreateConstraint(
   if (field != nullptr) {
     bool is_signed = field->is_signed;
     if (!is_signed) {
-      if (value >= (1 << field->width) || (value < 0)) {
+      if ((value < 0) || (value >= (1ULL << field->width))) {
         return absl::OutOfRangeError(absl::StrCat(
             "Constraint value (", value, ") out of range for unsigned field '",
             field_name, "'"));

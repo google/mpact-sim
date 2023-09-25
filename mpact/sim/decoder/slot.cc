@@ -14,6 +14,7 @@
 
 #include "mpact/sim/decoder/slot.h"
 
+#include <cstddef>
 #include <map>
 #include <stack>
 #include <string>
@@ -24,9 +25,14 @@
 #include "absl/container/flat_hash_set.h"
 #include "absl/log/log.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
 #include "mpact/sim/decoder/format_name.h"
 #include "mpact/sim/decoder/instruction.h"
 #include "mpact/sim/decoder/instruction_set.h"
+#include "mpact/sim/decoder/instruction_set_contexts.h"
+#include "mpact/sim/decoder/opcode.h"
 #include "mpact/sim/decoder/resource.h"
 #include "mpact/sim/decoder/template_expression.h"
 
@@ -84,8 +90,9 @@ static std::string ExpandExpression(const FormatInfo &format,
 }
 
 Slot::Slot(absl::string_view name, InstructionSet *instruction_set,
-           bool is_templated)
+           bool is_templated, SlotDeclCtx *ctx)
     : instruction_set_(instruction_set),
+      ctx_(ctx),
       is_templated_(is_templated),
       name_(name),
       pascal_name_(ToPascalCase(name)) {}
@@ -743,6 +750,12 @@ TemplateExpression *Slot::GetConstExpression(const std::string &ident) const {
 
 absl::Status Slot::AddTemplateFormal(const std::string &par_name) {
   if (template_parameter_map_.contains(par_name)) {
+    // Push it into the vector, but not the map. Have the formal name refer to
+    // the previous index. Signal error. This allows us to properly match the
+    // number of parameters in each use of the templated slot, even though there
+    // is an error in the parameter names.
+    int indx = template_parameter_map_.at(par_name);
+    template_parameters_.push_back(new TemplateFormal(par_name, indx));
     return absl::InternalError(
         absl::StrCat("Duplicate parameter name '", par_name, "'"));
   }

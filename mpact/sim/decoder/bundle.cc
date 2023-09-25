@@ -18,16 +18,21 @@
 #include <string>
 #include <vector>
 
+#include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
 #include "mpact/sim/decoder/format_name.h"
 #include "mpact/sim/decoder/instruction_set.h"
+#include "mpact/sim/decoder/instruction_set_contexts.h"
 
 namespace mpact {
 namespace sim {
 namespace machine_description {
 namespace instruction_set {
 
-Bundle::Bundle(absl::string_view name, InstructionSet *instruction_set)
-    : instruction_set_(instruction_set),
+Bundle::Bundle(absl::string_view name, InstructionSet *instruction_set,
+               BundleDeclCtx *ctx)
+    : ctx_(ctx),
+      instruction_set_(instruction_set),
       name_(name),
       pascal_name_(ToPascalCase(name)) {}
 

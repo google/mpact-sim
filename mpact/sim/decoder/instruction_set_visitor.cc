@@ -33,10 +33,12 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
+#include "antlr4-runtime/ParserRuleContext.h"
 #include "mpact/sim/decoder/bundle.h"
 #include "mpact/sim/decoder/decoder_error_listener.h"
 #include "mpact/sim/decoder/format_name.h"
 #include "mpact/sim/decoder/instruction_set.h"
+#include "mpact/sim/decoder/instruction_set_contexts.h"
 #include "mpact/sim/decoder/opcode.h"
 #include "mpact/sim/decoder/slot.h"
 #include "mpact/sim/decoder/template_expression.h"
@@ -87,6 +89,8 @@ absl::Status InstructionSetVisitor::Process(
     const std::vector<std::string> &file_names, const std::string &prefix,
     const std::string &isa_name, const std::vector<std::string> &include_roots,
     absl::string_view directory) {
+  // Create and add the error listener.
+  set_error_listener(std::make_unique<decoder::DecoderErrorListener>());
   if (isa_name.empty()) {
     error_listener()->semanticError(nullptr, "Isa name cannot be empty");
     return absl::InvalidArgumentError("Isa name cannot be empty");
@@ -104,8 +108,6 @@ absl::Status InstructionSetVisitor::Process(
   }
   // Create an antlr4 stream from the input stream.
   IsaAntlrParserWrapper parser_wrapper(source_stream);
-  // Create and add the error listener.
-  set_error_listener(std::make_unique<decoder::DecoderErrorListener>());
   error_listener()->set_file_name(file_names[0]);
   parser_wrapper.parser()->removeErrorListeners();
   parser_wrapper.parser()->addErrorListener(error_listener());
@@ -131,19 +133,18 @@ absl::Status InstructionSetVisitor::Process(
   // Now process the parse tree.
   auto instruction_set = ProcessTopLevel(isa_name);
   // Include files may generate additional syntax errors.
-  if (error_listener()->HasError() > 0) {
+  if (instruction_set == nullptr) {
     return absl::InternalError("Errors encountered - terminating.");
   }
   // Verify that all referenced bundles and slots were defined.
-  auto status = PerformBundleReferenceChecks(instruction_set.get(),
-                                             instruction_set->bundle());
-  if (!status.ok()) {
-    error_listener()->semanticError(nullptr, status.message());
-    return status;
+  PerformBundleReferenceChecks(instruction_set.get(),
+                               instruction_set->bundle());
+  if (error_listener()->HasError() > 0) {
+    return absl::InternalError("Errors encountered - terminating.");
   }
   // Analyze resource use and partition resources into simple and complex
   // resources.
-  status = instruction_set->AnalyzeResourceUse();
+  auto status = instruction_set->AnalyzeResourceUse();
   if (!status.ok()) {
     error_listener()->semanticError(nullptr, status.message());
   }
@@ -204,42 +205,40 @@ absl::Status InstructionSetVisitor::Process(
   return absl::OkStatus();
 }
 
-absl::Status InstructionSetVisitor::PerformBundleReferenceChecks(
+void InstructionSetVisitor::PerformBundleReferenceChecks(
     InstructionSet *instruction_set, Bundle *bundle) {
   // Verify that all referenced bundles were declared.
   for (const auto &bundle_name : bundle->bundle_names()) {
-    Bundle *bundle = instruction_set->GetBundle(bundle_name);
-    if (bundle == nullptr) {
-      return absl::InternalError(
-          absl::StrCat("Undefined bundle '", bundle_name, "'"));
-    }
+    Bundle *bundle_ref = instruction_set->GetBundle(bundle_name);
     // Perform the check recursively on the referenced bundles.
-    auto status = PerformBundleReferenceChecks(instruction_set, bundle);
-    if (!status.ok()) return status;
+    PerformBundleReferenceChecks(instruction_set, bundle_ref);
   }
   // Verify that all the slot uses were declared.
   for (auto [slot_name, instance_vec] : bundle->slot_uses()) {
     Slot *slot = instruction_set->GetSlot(slot_name);
-    if (slot == nullptr) {
-      return absl::InternalError(
-          absl::StrCat("Undefined slot '", slot_name, "'"));
-    }
     // Verify that the instance number of the slot falls within valid range.
     for (auto &instance_number : instance_vec) {
       if (instance_number >= slot->size()) {
-        return absl::InternalError(absl::StrCat(
-            "Index ", instance_number, " out of range for slot ", slot_name));
+        auto *token = bundle->ctx() == nullptr ? nullptr : bundle->ctx()->start;
+        error_listener()->semanticError(
+            token,
+            absl::StrCat("Index ", instance_number, " out of range for slot ",
+                         slot_name, "' referenced in bundle '", bundle->name(),
+                         "'"));
+        continue;
       }
     }
+    if (slot->is_referenced()) continue;
     if ((slot->default_instruction() == nullptr) ||
         slot->default_instruction()->semfunc_code_string().empty()) {
-      return absl::InternalError(absl::StrCat(
-          "Slot '", slot->name(), "' lacks a default semantic action"));
+      error_listener()->semanticError(
+          slot->ctx()->start,
+          absl::StrCat("Slot '", slot->name(),
+                       "' lacks a default semantic action"));
     }
     slot->set_is_referenced(true);
   }
   instruction_set->ComputeSlotAndBundleOrders();
-  return absl::OkStatus();
 }
 
 void InstructionSetVisitor::VisitTopLevel(TopLevelCtx *ctx) {
@@ -366,7 +365,7 @@ std::unique_ptr<InstructionSet> InstructionSetVisitor::VisitIsaDeclaration(
   // An InstructionSet also acts as (has-a bundle) - it's the top level
   // bundle.
   instruction_set->set_bundle(
-      new Bundle(instruction_set->name(), instruction_set.get()));
+      new Bundle(instruction_set->name(), instruction_set.get(), nullptr));
   // Visit the namespace declaration, and the bundle and slot references that
   // are part of the instruction_set declaration.
   VisitNamespaceDecl(ctx->namespace_decl(), instruction_set.get());
@@ -460,6 +459,7 @@ void InstructionSetVisitor::VisitConstantDef(ConstantDefCtx *ctx) {
   auto *expr = VisitExpression(ctx->expression(), nullptr, nullptr);
   auto status = AddConstant(ident, type, expr);
   if (!status.ok()) {
+    delete expr;
     error_listener()->semanticError(ctx->ident()->start, status.message());
   }
 }
@@ -496,13 +496,9 @@ void InstructionSetVisitor::ParseIncludeFile(
       if (include_file.is_open()) break;
     }
     if (!include_file.is_open()) {
-      if (ctx != nullptr) {
-        error_listener()->semanticError(
-            ctx->start, absl::StrCat("Failed to open '", file_name, "'"));
-      } else {
-        error_listener()->semanticError(
-            nullptr, absl::StrCat("Failed to open '", file_name, "'"));
-      }
+      error_listener()->semanticError(
+          ctx == nullptr ? nullptr : ctx->start,
+          absl::StrCat("Failed to open '", file_name, "'"));
       return;
     }
   }
@@ -532,7 +528,8 @@ void InstructionSetVisitor::ParseIncludeFile(
 void InstructionSetVisitor::VisitBundleDeclaration(
     BundleDeclCtx *ctx, InstructionSet *instruction_set) {
   if (ctx == nullptr) return;
-  Bundle *bundle = new Bundle(ctx->bundle_name->getText(), instruction_set);
+  Bundle *bundle =
+      new Bundle(ctx->bundle_name->getText(), instruction_set, ctx);
   instruction_set->AddBundle(bundle);
   VisitBundleList(ctx->bundle_list(), bundle);
   VisitSlotList(ctx->slot_list(), bundle);
@@ -542,7 +539,7 @@ void InstructionSetVisitor::VisitSlotDeclaration(
     SlotDeclCtx *ctx, InstructionSet *instruction_set) {
   bool is_templated = ctx->template_decl() != nullptr;
   Slot *slot =
-      new Slot(ctx->slot_name->getText(), instruction_set, is_templated);
+      new Slot(ctx->slot_name->getText(), instruction_set, is_templated, ctx);
   if (is_templated) {
     for (auto const &param : ctx->template_decl()->template_parameter_decl()) {
       auto status = slot->AddTemplateFormal(param->IDENT()->getText());
@@ -595,7 +592,7 @@ void InstructionSetVisitor::VisitSlotDeclaration(
           error_listener()->semanticError(
               template_spec->start,
               absl::StrCat("Wrong number of arguments: ", param_count,
-                           " were expected, ", arg_count, " were provided."));
+                           " were expected, ", arg_count, " were provided"));
           continue;
         }
         bool has_error = false;
@@ -647,7 +644,7 @@ void InstructionSetVisitor::VisitSlotDeclaration(
 void InstructionSetVisitor::VisitDisasmWidthsDecl(DisasmWidthsCtx *ctx) {
   for (auto *expr : ctx->expression()) {
     auto *width_expr = VisitExpression(expr, nullptr, nullptr);
-    if (!width_expr->IsConstant()) {
+    if ((width_expr == nullptr) || (!width_expr->IsConstant())) {
       error_listener()->semanticError(expr->start,
                                       "Expression must be constant");
       continue;
@@ -665,8 +662,15 @@ void InstructionSetVisitor::VisitConstAndDefaultDecls(ConstAndDefaultCtx *ctx,
     std::string ident = const_def->ident()->getText();
     std::string type = const_def->template_parameter_type()->getText();
     auto *expr = VisitExpression(const_def->expression(), slot, nullptr);
+    if (expr == nullptr) {
+      delete expr;
+      error_listener()->semanticError(const_def->expression()->start,
+                                      "Error in expression");
+      return;
+    }
     auto status = slot->AddConstant(ident, type, expr);
     if (!status.ok()) {
+      delete expr;
       error_listener()->semanticError(const_def->ident()->start,
                                       status.message());
     }
@@ -679,6 +683,12 @@ void InstructionSetVisitor::VisitConstAndDefaultDecls(ConstAndDefaultCtx *ctx,
   }
   if (ctx->LATENCY() != nullptr) {  // Default latency.
     auto *expr = VisitExpression(ctx->expression(), slot, nullptr);
+    if (expr == nullptr) {
+      delete expr;
+      error_listener()->semanticError(ctx->expression()->start,
+                                      "Error in expression");
+      return;
+    }
     slot->set_default_latency(expr);
     return;
   }
@@ -708,10 +718,11 @@ void InstructionSetVisitor::VisitConstAndDefaultDecls(ConstAndDefaultCtx *ctx,
     bool has_disasm = false;
     bool has_semfunc = false;
     for (auto *attribute : ctx->opcode_attribute_list()->opcode_attribute()) {
+      // Disasm spec.
       if (attribute->disasm_spec() != nullptr) {
         if (has_disasm) {
           error_listener()->semanticError(attribute->start,
-                                          "Duplicate disasm declaration.");
+                                          "Duplicate disasm declaration");
           continue;
         }
         has_disasm = true;
@@ -726,30 +737,29 @@ void InstructionSetVisitor::VisitConstAndDefaultDecls(ConstAndDefaultCtx *ctx,
                                             status.message());
           }
         }
-      } else if (attribute->semfunc_spec() != nullptr) {
-        // If a semfunc has already been declared, signal an error.
-        if (has_semfunc) {
-          error_listener()->semanticError(attribute->start,
-                                          "Duplicate semfunc declaration.");
-          continue;
-        }
-        has_semfunc = true;
-        auto semfunc_code = attribute->semfunc_spec()->STRING_LITERAL();
-        // Only one semfunc specification (no child instructions) for default
-        // opcode.
-        if (semfunc_code.size() > 1) {
-          error_listener()->semanticError(
-              ctx->start, "Only one semfunc specification per default opcode");
-          continue;
-        }
-        std::string string_literal = semfunc_code[0]->getText();
-        // Strip double quotes.
-        std::string code_string =
-            string_literal.substr(1, string_literal.length() - 2);
-        default_instruction->set_semfunc_code_string(code_string);
-      } else {
-        error_listener()->semanticError(ctx->start, "Unknown attribute type");
+        continue;
       }
+      // Semfunc spec.
+      // If a semfunc has already been declared, signal an error.
+      if (has_semfunc) {
+        error_listener()->semanticError(attribute->start,
+                                        "Duplicate semfunc declaration");
+        continue;
+      }
+      has_semfunc = true;
+      auto semfunc_code = attribute->semfunc_spec()->STRING_LITERAL();
+      // Only one semfunc specification (no child instructions) for default
+      // opcode.
+      if (semfunc_code.size() > 1) {
+        error_listener()->semanticError(
+            ctx->start, "Only one semfunc specification per default opcode");
+        continue;
+      }
+      std::string string_literal = semfunc_code[0]->getText();
+      // Strip double quotes.
+      std::string code_string =
+          string_literal.substr(1, string_literal.length() - 2);
+      default_instruction->set_semfunc_code_string(code_string);
     }
     if (has_semfunc) {
       slot->set_default_instruction(default_instruction);
@@ -767,8 +777,6 @@ void InstructionSetVisitor::VisitConstAndDefaultDecls(ConstAndDefaultCtx *ctx,
           absl::StrCat("Resources '", ident, "': duplicate definition"));
       return;
     }
-    ResourceSpec *spec = new ResourceSpec;
-    spec->name = ident;
     // Save the context. It will be re-visited at each point of use.
     slot->resource_spec_map().insert(
         std::make_pair(ident, ctx->resource_details()));
@@ -827,7 +835,7 @@ TemplateExpression *InstructionSetVisitor::VisitExpression(ExpressionCtx *ctx,
       error_listener()->semanticError(
           ctx->start, absl::StrCat("Function '", function, "' takes ",
                                    evaluator.arity, " parameters, but ",
-                                   ctx->expression().size(), " where given"));
+                                   ctx->expression().size(), " were given"));
     }
     auto *args = new TemplateInstantiationArgs;
     bool has_error = false;
@@ -862,7 +870,7 @@ TemplateExpression *InstructionSetVisitor::VisitExpression(ExpressionCtx *ctx,
   if (ctx->IDENT() != nullptr) {
     std::string ident = ctx->IDENT()->getText();
     // Four possibilities. A global constant, a slot local constant, a
-    // template format, or a reference ot a destination operand.
+    // template formal, or a reference to a destination operand.
     if (slot != nullptr) {
       TemplateFormal *param = slot->GetTemplateFormal(ident);
       if (param != nullptr) return new TemplateParam(param);
@@ -1015,15 +1023,7 @@ void InstructionSetVisitor::PerformOpcodeOverrides(
     absl::flat_hash_set<OpcodeSpecCtx *> overridden_ops_set, Slot *slot) {
   for (auto *override_ctx : overridden_ops_set) {
     std::string name = override_ctx->name->getText();
-    auto iter = slot->instruction_map().find(name);
-    if (iter == slot->instruction_map().end()) {
-      error_listener()->semanticError(
-          override_ctx->start,
-          absl::StrCat("opcode '", name,
-                       "' listed as override but is not inherited"));
-      continue;
-    }
-    auto *inst = iter->second;
+    auto *inst = slot->instruction_map().at(name);
     VisitOpcodeAttributes(override_ctx->opcode_attribute_list(), inst, slot);
   }
 }
@@ -1175,7 +1175,7 @@ void InstructionSetVisitor::VisitSemfuncSpec(SemfuncSpecCtx *semfunc_spec,
   }
   // Are there fewer specifier strings than child instructions?
   if (child != nullptr) {
-    error_listener()->semanticWarning(
+    error_listener()->semanticError(
         semfunc_spec->start,
         absl::StrCat("Fewer semfunc specifiers than expected for opcode '",
                      inst->opcode()->name(), "'"));
@@ -1350,7 +1350,8 @@ void InstructionSetVisitor::ProcessOpcodeSpec(
     if (slot->base_slots().empty()) {
       error_listener()->semanticError(
           opcode_ctx->deleted,
-          "Invalid deleted opcode, the slot does not inherit");
+          absl::StrCat("Invalid deleted opcode '", opcode_name, "', slot '",
+                       slot->name(), "' does not inherit from a base slot"));
       return;
     }
     bool found = false;
@@ -1363,8 +1364,8 @@ void InstructionSetVisitor::ProcessOpcodeSpec(
     if (!found) {
       error_listener()->semanticError(
           opcode_ctx->deleted,
-          absl::StrCat("Base slot does not define or inherit opcode: ",
-                       opcode_name));
+          absl::StrCat("Base slot does not define or inherit opcode '",
+                       opcode_name, "'"));
       return;
     }
     deleted_ops_set.insert(opcode_name);
@@ -1383,8 +1384,8 @@ void InstructionSetVisitor::ProcessOpcodeSpec(
     if (found == 0) {
       error_listener()->semanticError(
           opcode_ctx->deleted,
-          absl::StrCat("Base slot does not define or inherit opcode: ",
-                       opcode_name));
+          absl::StrCat("Base slot does not define or inherit opcode '",
+                       opcode_name, "'"));
       return;
     } else if (found > 1) {
       error_listener()->semanticError(
@@ -1689,6 +1690,7 @@ absl::Status InstructionSetVisitor::ParseDisasmFormat(std::string format,
   std::string::size_type pos = 0;
   std::string::size_type prev = 0;
   std::string::size_type length = format.size();
+  FormatInfo *format_info = nullptr;
   // Extract raw text without (between) the '%' specifiers.
   DisasmFormat *disasm_fmt = new DisasmFormat();
   while ((pos != std::string::npos) &&
@@ -1726,7 +1728,7 @@ absl::Status InstructionSetVisitor::ParseDisasmFormat(std::string format,
         return res.status();
       }
 
-      auto *format_info = res.value();
+      format_info = res.value();
 
       pos = end_pos;
 
@@ -1738,19 +1740,14 @@ absl::Status InstructionSetVisitor::ParseDisasmFormat(std::string format,
 
         end_pos = format.find_first_of(')', pos);
         if (end_pos == std::string::npos) break;
-
         auto res = ParseNumberFormat(format.substr(pos, end_pos - pos));
         if (!res.ok()) {
+          delete format_info;
           delete disasm_fmt;
           return res.status();
         }
         format_info->number_format = res.value();
         pos = end_pos;
-      }
-      if (format[pos] != ')') {
-        delete disasm_fmt;
-        return absl::InternalError(absl::StrCat(
-            "Expected ')' at end of operand specifier in '", format, "'"));
       }
       pos++;
       if (pos >= format.size()) {
@@ -1781,6 +1778,7 @@ absl::Status InstructionSetVisitor::ParseDisasmFormat(std::string format,
     prev = pos;
   }
   if (pos != std::string::npos) {
+    delete format_info;
     delete disasm_fmt;
     return absl::InternalError(
         absl::StrCat("Unexpected end of format string in '", format, "'"));
@@ -1828,8 +1826,8 @@ absl::StatusOr<FormatInfo *> InstructionSetVisitor::ParseFormatExpression(
   std::string::size_type pos = 0;
   pos = skip_space(expr, pos);
   if (pos == std::string::npos) {
-    return absl::InternalError(
-        absl::StrCat("Malformed expression: '", expr, "'"));
+    delete format_info;
+    return absl::InternalError("Empty format expression");
   }
 
   if (expr[pos] == '@') {
@@ -1845,17 +1843,18 @@ absl::StatusOr<FormatInfo *> InstructionSetVisitor::ParseFormatExpression(
     } else if (expr[pos] == '+') {
       format_info->operation = "+";
     } else {
-      return absl::InternalError(absl::StrCat(
-          "Expression error: @ must be followed by a '+' or a '-' in '", expr,
-          "'"));
+      delete format_info;
+      return absl::InternalError(
+          absl::StrCat("@ must be followed by a '+' or a '-' in '", expr, "'"));
     }
     pos++;
   }
 
   pos = skip_space(expr, pos);
   if (pos == std::string::npos) {
+    delete format_info;
     return absl::InternalError(
-        absl::StrCat("Malformed expression: '", expr, "'"));
+        absl::StrCat("Malformed expression '", expr, "'"));
   }
 
   if (expr[pos] != '(') {  // No shift expression.
@@ -1867,6 +1866,7 @@ absl::StatusOr<FormatInfo *> InstructionSetVisitor::ParseFormatExpression(
     }
     auto [ident, new_pos] = res.value();
     if (!op->op_locator_map().contains(ident)) {
+      delete format_info;
       return absl::InternalError(absl::StrCat("Invalid operand '", ident,
                                               "' used in format for opcode'",
                                               op->name(), "'"));
@@ -1875,74 +1875,65 @@ absl::StatusOr<FormatInfo *> InstructionSetVisitor::ParseFormatExpression(
     // Verify that there are no more characters in the expression.
     pos = skip_space(expr, new_pos);
     if (pos != std::string::npos) {
+      delete format_info;
       return absl::InternalError(
-          absl::StrCat("Malformed expression: '", expr, "'"));
+          absl::StrCat("Malformed expression '", expr, "'"));
     }
-  } else {
+  } else {  // expr[pos] == '('
     pos++;
     pos = skip_space(expr, pos);
-    if (pos == std::string::npos) {
-      return absl::InternalError(
-          absl::StrCat("Malformed expression: '", expr, "'"));
-    }
+    // The input expression has balanced parens, so we don't have to check for
+    // end of string.
 
     // Get the field identifier.
     auto res = get_ident(expr, pos);
-    if (!res.ok()) return res.status();
+    if (!res.ok()) {
+      delete format_info;
+      return res.status();
+    }
     auto [ident, new_pos] = res.value();
     format_info->op_name = ident;
 
     pos = skip_space(expr, new_pos);
-    if (pos != std::string::npos) {
-      return absl::InternalError(
-          absl::StrCat("Malformed expression: '", expr, "'"));
-    }
 
     // Get the shift direction.
     if (expr.substr(pos, 2) == "<<") {
       format_info->do_left_shift = true;
     } else if (expr.substr(pos, 2) != ">>") {
+      delete format_info;
       return absl::InternalError(
-          absl::StrCat("Malformed expression: '", expr, "'"));
+          absl::StrCat("Missing shift in expression '", expr, "'"));
     }
+    pos += 2;
 
     // Get the shift amount.
     pos = skip_space(expr, pos);
-    if (pos != std::string::npos) {
-      return absl::InternalError(
-          absl::StrCat("Malformed expression: '", expr, "'"));
-    }
 
     std::string num;
     while (std::isdigit(expr[pos])) {
       num.push_back(expr[pos]);
       pos++;
-      if (pos >= expr.size()) {
-        return absl::InternalError(
-            absl::StrCat("Malformed expression: '", expr, "'"));
-      }
     }
     if (num.empty()) {
+      delete format_info;
       return absl::InternalError(
-          absl::StrCat("Malformed expression: '", expr, "'"));
+          absl::StrCat("Malformed expression '", expr, "'"));
     }
     format_info->shift_amount = std::stoi(num);
 
     // Verify close paren, and that there aren't any other characters after
     // that.
     pos = skip_space(expr, pos);
-    if (pos != std::string::npos) {
+    if (expr[pos] != ')') {
+      delete format_info;
       return absl::InternalError(
-          absl::StrCat("Malformed expression: '", expr, "'"));
-    }
-    if (pos != ')') {
-      return absl::InternalError(
-          absl::StrCat("Malformed expression: '", expr, "'"));
+          absl::StrCat("Malformed expression '", expr, "'"));
     }
     pos = skip_space(expr, pos);
     if (pos != std::string::npos) {
+      delete format_info;
       return absl::InternalError(
-          absl::StrCat("Malformed expression: '", expr, "'"));
+          absl::StrCat("Malformed expression '", expr, "'"));
     }
   }
   return format_info;
@@ -1973,7 +1964,7 @@ absl::StatusOr<std::string> InstructionSetVisitor::ParseNumberFormat(
       number.push_back(format[pos++]);
       if (std::isdigit(format[pos])) {
         return absl::InternalError(
-            absl::StrCat("Format width > than 3 digits not allowed: '",
+            absl::StrCat("Format width > than 3 digits not allowed '",
                          format.substr(0, pos + 1), "'"));
       }
     }
@@ -1983,13 +1974,13 @@ absl::StatusOr<std::string> InstructionSetVisitor::ParseNumberFormat(
   if ((format[pos] != 'o') && (format[pos] != 'd') && (format[pos] != 'x') &&
       (format[pos] != 'X')) {
     return absl::InternalError(
-        absl::StrCat("Illegal format specifier '", std::string(format[pos], 1),
+        absl::StrCat("Illegal format specifier '", std::string(1, format[pos]),
                      "' in '", format.substr(0, pos + 1), "'"));
   }
   format_string.push_back(format[pos++]);
   if (pos < format.size()) {
     return absl::InternalError(
-        absl::StrCat("Too many characters in format specifier: ", format, "'"));
+        absl::StrCat("Too many characters in format specifier '", format, "'"));
   }
   return format_string;
 }

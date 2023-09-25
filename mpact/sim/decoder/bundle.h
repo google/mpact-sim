@@ -22,6 +22,7 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/strings/string_view.h"
+#include "mpact/sim/decoder/instruction_set_contexts.h"
 #include "mpact/sim/decoder/opcode.h"
 #include "mpact/sim/decoder/slot.h"
 
@@ -40,7 +41,8 @@ class InstructionSet;
 class Bundle {
  public:
   // Constructor and destructor.
-  Bundle(absl::string_view name, InstructionSet *instruction_set);
+  Bundle(absl::string_view name, InstructionSet *instruction_set,
+         BundleDeclCtx *ctx);
   virtual ~Bundle() = default;
 
   // Append a slot to the bundle. In case the slot has multiple instances,
@@ -56,6 +58,7 @@ class Bundle {
   std::string GenerateClassDefinition(absl::string_view encoding_type) const;
 
   // Getters and setters.
+  const BundleDeclCtx *ctx() const { return ctx_; }
   const std::string &name() const { return name_; }
   const std::string &pascal_name() const { return pascal_name_; }
   const std::vector<std::pair<std::string, const std::vector<int>>> &slot_uses()
@@ -68,6 +71,7 @@ class Bundle {
   void set_is_marked(bool value) { is_marked_ = value; }
 
  private:
+  BundleDeclCtx *ctx_;
   // The is_marked flag is used to ensure bundle classes are only added once.
   bool is_marked_ = false;
   // Parent instruction set.

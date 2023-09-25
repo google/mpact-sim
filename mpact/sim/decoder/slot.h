@@ -17,7 +17,6 @@
 
 #include <limits>
 #include <string>
-#include <utility>
 #include <vector>
 
 #include "absl/container/btree_map.h"
@@ -27,6 +26,7 @@
 #include "absl/strings/string_view.h"
 #include "mpact/sim/decoder/InstructionSetParser.h"
 #include "mpact/sim/decoder/base_class.h"
+#include "mpact/sim/decoder/instruction_set_contexts.h"
 #include "mpact/sim/decoder/opcode.h"
 #include "mpact/sim/decoder/template_expression.h"
 
@@ -60,7 +60,7 @@ class Slot {
 
   // Constructor and destructor.
   Slot(absl::string_view name, InstructionSet *instruction_set,
-       bool is_templated);
+       bool is_templated, SlotDeclCtx *ctx);
   ~Slot();
 
   // Add declared opcode to the current slot.
@@ -96,6 +96,7 @@ class Slot {
 
   // Getters and setters.
   InstructionSet *instruction_set() const { return instruction_set_; }
+  const SlotDeclCtx *ctx() const { return ctx_; }
   int default_instruction_size() const { return default_instruction_size_; }
   void set_default_instruction_size(int val) {
     default_instruction_size_ = val;
@@ -157,6 +158,8 @@ class Slot {
   absl::Status CheckPredecessors(const Slot *base) const;
   // Parent instruction_set class.
   InstructionSet *instruction_set_;
+  // Parser context.
+  SlotDeclCtx *ctx_ = nullptr;
   // The default and minimum opcode size specified for the slot.
   int default_instruction_size_ = 1;
   int min_instruction_size_ = std::numeric_limits<int>::max();

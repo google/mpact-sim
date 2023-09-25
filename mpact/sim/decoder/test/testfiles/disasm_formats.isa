@@ -1,0 +1,73 @@
+// Copyright 2023 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+isa DisasmFormats {
+  namespace sim::disasm_formats;
+  slots {
+    slot_a;
+    slot_b;
+  }
+}
+
+slot slot_a {
+  default opcode =
+    semfunc: "[](Instruction *) {}";
+  opcodes {
+    zero{},
+      disasm: "%(()";  // Error: unexpected end of expression.
+    one{a:b:c},
+      disasm: "%()";  // Error: empty expression.
+    two{},
+      disasm: "%(@*)";  // Error: @ must be followed by + or - expression.
+    three{},
+      disasm: "%(@-)";  // Error: Malformed expression @-.
+    four{},
+      disasm: "%(@+(5a))";  // Error: Invalid character in operand name.
+    five{},
+      disasm: "%(@+5a)";  // Error: Invalid character in operand name.
+    six{},
+      disasm: "%(@+rs1)";  // Error: Invalid operand 'rs1' used in format.
+    seven{: rs1 :},
+      disasm: "%(@+rs1 x)";  // Error: Malformed expression.
+    eight{: rs1 : },
+      disasm: "%(@+(rs1 +-))"; // Error: Missing shift in expression.
+    nine{: rs1 : },
+      disasm: "%(@+(rs1 << 5x))"; // Error: Malformed expression.
+    ten{: rs1 : },
+      disasm: "%(@+(rs1 >> ))"; // Error: Malformed expression.
+    eleven{: rs1 : },
+      disasm: "%(@+(rs1 << 5 x))"; // Error: Malformed expression.
+    twelve{: rs1 : },
+      disasm: "%(@+(rs1 << 5) x)"; // Error: Malformed expression.
+  }
+}
+
+slot slot_b {
+  default opcode =
+    semfunc: "[](Instruction *) {}";
+  opcodes {
+    b_one{: rs1 : },
+      disasm: "%(rs1:0x)";  // Error: must specify field width.
+    b_two{: rs1 : },
+      disasm: "%(rs1:0123x)";  // Error: width can't be more than 3 digits.
+    b_three{: rs1 : },
+      disasm: "%(rs1:08Y)"; // Error: wrong format specifier 'Y'.
+    b_four{: rs1 : },
+      disasm: "%(rs1:08xY)"; // Error: too many letters in format specifier.
+    b_five{: rs1 : },
+      disasm: "%2rs";  // Error:
+    b_six{: rs1 : },
+      disasm: "%rs2";  // Error:
+  }
+}

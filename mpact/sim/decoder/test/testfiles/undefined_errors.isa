@@ -1,0 +1,161 @@
+// Copyright 2023 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+disasm widths = { 18, y};
+
+// Error - only one disasm widths declaration allowed.
+disasm widths = { 20, 30};
+
+int x = 0;
+
+int x = 1;
+
+isa UndefinedErrors {
+  namespace sim::undefined_errors::isa;
+  bundles {
+    bundle_a;
+    bundle_x;  // Error - undefined bundle.
+  }
+}
+
+bundle bundle_a {
+  slots {
+    slot_a[3];  // Error - reference to instance [3] which doesn't exist.
+    slot_b;
+    slot_c;
+    slot_d;
+    slot_e;
+    slot_x;     // Error - undefined slot.
+    derived_a;
+  }
+}
+
+slot slot_a[2] {
+  // Error - no default opcode declaration.
+  opcodes {
+    add{: rs2, rs1 : rd};
+    xxx = delete;  // Error: slot_a does not inherit from a base slot.
+  }
+}
+
+isa UndefinedErrors {
+  namespace sim::undefined_errors::isa;
+  bundles {
+    bundle_a;
+  }
+}
+
+bundle bundle_a {
+  slots {
+    slot_a[0];
+  }
+}
+
+slot slot_a {  // Error: slot_a already declared
+  opcodes {
+    add{: rs2, rs1 : rd};
+  }
+}
+
+slot slot_b : slot_x {  // Error: inherit from undefined slot.
+  default opcode =
+    semfunc: "[](Instruction *) {}";
+  opcodes {
+    add{: rs2, rs1 : rd};
+  }
+}
+
+slot slot_c : slot_a<5> {  // Error: slot_a is not a templated slot.
+  default opcode =
+    semfunc: "[](Instruction *) {}";
+  opcodes {
+    add_c{: rs2, rs1 : rd};
+  }
+}
+
+template <int a, int a>  // Error: duplicate parameter names.
+slot slot_base_x {
+  default opcode =
+    semfunc: "[](Instruction *) {}";
+  int a = 3;
+  opcodes {
+    add_x{: rs2, rs1 : rd};
+  }
+}
+
+slot slot_d : slot_base_x<5, 2, 3> {  // Error: wrong number of parameters.
+  default opcode =
+    semfunc: "[](Instruction *) {}";
+  int a = 3;
+  int a = 5;
+}
+
+slot slot_e : slot_base_x {  // Error: no template parameters provided.
+  default opcode =
+    semfunc: "[](Instruction *) {}", "[](Instruction *) {}",  // Error
+    semfunc: "[](Instruction *) {}",  // Error: duplicate semfunc
+    disasm: "illegal insruction",
+    disasm: "illegal instruction";  // Error: duplicate disasm.
+  default opcode =
+    semfunc: "[](Instruction *) {}";  // Error: duplicate default_opcode
+}
+
+template <int x, int y>
+slot slot_base_a {
+  default opcode =
+    disasm: "Illegal instruction";  // Error: missing semfunc.
+  resources res_a = {: x, y: z};
+  resources res_a = {: m, n: p};
+  int b = x * 3;
+  int c = abs(x, z);  // Error: wrong number of parameters.
+  int d = foo(x);     // Error: No function 'foo' supported.
+  int e = (x - y);
+  int f = absl(e);
+  int g = x / 2;
+  int h = a + z;  // Error: z is not defined.
+  opcodes {
+    add_a[4]{: rs2, rs1 : rd(*)},
+      disasm: "disasm",
+      disasm: "disasm2",  // Error: multiple disasm specifications.
+      semfunc: "[](Instruction *) {}",
+      semfunc: "[](Instruction *) {}",  // Multiple semfunc specifications.
+      resources: res_a,
+      resources: {: x: },  // Multiple resource specifications.
+      attributes: {attr_a, attr_b = 2, attr_c = xyz, attr_d=rd}, // Error: rd.
+      attributes: {attr_x};  // Multiple resource specificiations.
+  }
+}
+
+template <int c>
+slot slot_base_b : slot_base_a<c + 1, c + 2> {
+}
+
+// Error: multiple inheritance from slot_base_a 
+slot derived_ab_x : slot_base_a<5, 2>, slot_base_b<3> {
+  opcodes {
+    sub_b{: rs2, rs1 : rd};
+  }
+}
+
+slot derived_a : slot_base_a<1,1> {
+  opcodes {
+    sub_b = override,
+      disasm: "disasm";  // Error: sub_b not inherited.
+    mul_a = delete; // Error: not inherited.
+    ld_x{(:rs1, rs2:), (: :rd)},
+      semfunc: "[](Instruction *) {}";  // Error: missing second semfunc.
+    or_a{:rs1, rs2, rd},
+      semfunc: "[](Instruction *) {}", "[](Instruction *) {}"; // Error: extra.
+  }
+}

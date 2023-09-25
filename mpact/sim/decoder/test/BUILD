@@ -138,6 +138,8 @@ mpact_cc_test(
         "testfiles/example_with_recursive_include.isa",
         "testfiles/generator.isa",
         "testfiles/recursive_include.isa",
+        "testfiles/undefined_errors.isa",
+        "testfiles/disasm_formats.isa",
         # Project exported include files.
         "//mpact/sim/decoder/test/testfiles/include:bundle_a.isa",
         "//mpact/sim/decoder/test/testfiles/include:empty_include.isa",

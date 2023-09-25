@@ -45,7 +45,7 @@ class InstructionSetTest : public testing::Test {
 TEST_F(InstructionSetTest, Basic) {
   EXPECT_STREQ(instruction_set_->name().c_str(), kInstructionSetName);
   EXPECT_EQ(nullptr, instruction_set_->bundle());
-  Bundle *bundle = new Bundle(kBundleName, instruction_set_.get());
+  Bundle *bundle = new Bundle(kBundleName, instruction_set_.get(), nullptr);
   instruction_set_->set_bundle(bundle);
   EXPECT_EQ(instruction_set_->bundle(), bundle);
 }
@@ -54,7 +54,7 @@ TEST_F(InstructionSetTest, Basic) {
 // name.
 TEST_F(InstructionSetTest, SingleBundle) {
   EXPECT_EQ(nullptr, instruction_set_->GetBundle(kBundleName));
-  Bundle *bundle = new Bundle(kBundleName, instruction_set_.get());
+  Bundle *bundle = new Bundle(kBundleName, instruction_set_.get(), nullptr);
   instruction_set_->AddBundle(bundle);
   EXPECT_EQ(bundle, instruction_set_->GetBundle(kBundleName));
   EXPECT_EQ(nullptr, instruction_set_->GetBundle(kSlotName));
@@ -65,8 +65,8 @@ TEST_F(InstructionSetTest, SingleBundle) {
 // name.
 TEST_F(InstructionSetTest, SingleSlot) {
   EXPECT_EQ(nullptr, instruction_set_->GetSlot(kSlotName));
-  Slot *slot =
-      new Slot(kSlotName, instruction_set_.get(), /* is_templated */ false);
+  Slot *slot = new Slot(kSlotName, instruction_set_.get(),
+                        /* is_templated */ false, nullptr);
   instruction_set_->AddSlot(slot);
   EXPECT_EQ(slot, instruction_set_->GetSlot(kSlotName));
   EXPECT_EQ(nullptr, instruction_set_->GetSlot(kBundleName));

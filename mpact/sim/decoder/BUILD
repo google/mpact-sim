@@ -91,6 +91,7 @@ mpact_cc_library(
         "format_name.h",
         "instruction.h",
         "instruction_set.h",
+        "instruction_set_contexts.h",
         "instruction_set_visitor.h",
         "opcode.h",
         "resource.h",

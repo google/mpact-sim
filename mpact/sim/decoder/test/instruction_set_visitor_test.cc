@@ -43,10 +43,14 @@ constexpr char kExampleBaseName[] = "example";
 constexpr char kRecursiveExampleBaseName[] = "example_with_recursive_include";
 constexpr char kEmptyBaseName[] = "empty_file";
 constexpr char kGeneratorBaseName[] = "generator";
+constexpr char kUndefinedErrorsBaseName[] = "undefined_errors";
+constexpr char kDisasmFormatsBaseName[] = "disasm_formats";
 
 constexpr char kEmptyIsaName[] = "Empty";
 constexpr char kExampleIsaName[] = "Example";
 constexpr char kGeneratorIsaName[] = "Generator";
+constexpr char kUndefinedErrorsIsaName[] = "UndefinedErrors";
+constexpr char kDisasmFormatsIsaName[] = "DisasmFormats";
 
 // The depot path to the test directory.
 constexpr char kDepotPath[] = "mpact/sim/decoder/test/";
@@ -86,6 +90,17 @@ class InstructionSetParserTest : public testing::Test {
 
   std::vector<std::string> paths_;
 };
+
+TEST_F(InstructionSetParserTest, EmptyIsaName) {
+  // Set up input and output file paths.
+  std::vector<std::string> input_files = {
+      absl::StrCat(kDepotPath, "testfiles/", kEmptyBaseName, ".isa")};
+  ASSERT_TRUE(FileExists(input_files[0]));
+  std::string output_dir = OutputDir();
+  InstructionSetVisitor visitor;
+  EXPECT_FALSE(
+      visitor.Process({}, kEmptyBaseName, "", paths_, output_dir).ok());
+}
 
 // An empty file should fail.
 TEST_F(InstructionSetParserTest, NullFileParsing) {
@@ -301,6 +316,204 @@ TEST_F(InstructionSetParserTest, GeneratorErrorUndefinedBindingVariable) {
 
   // Make sure the error about duplicate binding variable 'btype' is found.
   auto ptr = log_sink.error_log().find("Undefined binding variable 'btype2'");
+  EXPECT_TRUE(ptr != std::string::npos);
+}
+
+TEST_F(InstructionSetParserTest, Undefined) {
+  std::string file_name =
+      absl::StrCat(kDepotPath, "testfiles/", kUndefinedErrorsBaseName, ".isa");
+  std::vector<std::string> input_files = {file_name};
+  ASSERT_TRUE(FileExists(input_files[0]));
+  std::string output_dir = getenv(kTestUndeclaredOutputsDir);
+  InstructionSetVisitor visitor;
+  // Parse and process the input file, capturing the log.
+  LogSink log_sink;
+  absl::AddLogSink(&log_sink);
+  auto success = visitor
+                     .Process(input_files, kUndefinedErrorsBaseName,
+                              kUndefinedErrorsIsaName, paths_, output_dir)
+                     .ok();
+  absl::RemoveLogSink(&log_sink);
+  EXPECT_FALSE(success);
+
+  // Make sure the requisite error messages are present.
+  auto ptr =
+      log_sink.error_log().find("Error: Reference to undefined slot: 'slot_x'");
+  EXPECT_TRUE(ptr != std::string::npos);
+  ptr = log_sink.error_log().find(
+      "Error: Reference to undefined bundle: 'bundle_x'");
+  EXPECT_TRUE(ptr != std::string::npos);
+  ptr = log_sink.error_log().find(
+      "Error: Index 3 out of range for slot slot_a' referenced in bundle "
+      "'bundle_a'");
+  EXPECT_TRUE(ptr != std::string::npos);
+  ptr = log_sink.error_log().find(
+      "Error: Slot 'slot_a' lacks a default semantic action");
+  EXPECT_TRUE(ptr != std::string::npos);
+  ptr = log_sink.error_log().find(
+      "Error: Only one `disasm width` declaration allowed - previous "
+      "declaration on line:");
+  EXPECT_TRUE(ptr != std::string::npos);
+  ptr = log_sink.error_log().find(
+      "Error: Isa 'UndefinedErrors' already declared - previous declaration on "
+      "line:");
+  EXPECT_TRUE(ptr != std::string::npos);
+  ptr = log_sink.error_log().find(
+      "Error: Bundle 'bundle_a' already declared - previous declaration on "
+      "line:");
+  EXPECT_TRUE(ptr != std::string::npos);
+  ptr = log_sink.error_log().find(
+      "Error: Slot 'slot_a' already declared - previous declaration on line:");
+  EXPECT_TRUE(ptr != std::string::npos);
+  ptr = log_sink.error_log().find("Error: Undefined base slot: slot_x");
+  EXPECT_TRUE(ptr != std::string::npos);
+  ptr = log_sink.error_log().find("Error: Opcode 'add' already declared");
+  EXPECT_TRUE(ptr != std::string::npos);
+  ptr = log_sink.error_log().find("Error: 'slot_a' is not a templated slot");
+  EXPECT_TRUE(ptr != std::string::npos);
+  ptr = log_sink.error_log().find("Error: Duplicate parameter name 'a'");
+  EXPECT_TRUE(ptr != std::string::npos);
+  ptr = log_sink.error_log().find(
+      "Error: Wrong number of arguments: 2 were expected, 3 were provided");
+  EXPECT_TRUE(ptr != std::string::npos);
+  ptr = log_sink.error_log().find(
+      "Error: Missing template arguments for slot 'slot_base_x'");
+  EXPECT_TRUE(ptr != std::string::npos);
+  ptr = log_sink.error_log().find("Error: Unable to evaluate expression: 'y'");
+  EXPECT_TRUE(ptr != std::string::npos);
+  ptr = log_sink.error_log().find("Error: Expression must be constant");
+  EXPECT_TRUE(ptr != std::string::npos);
+  ptr = log_sink.error_log().find("Error: Constant redefinition of 'x'");
+  EXPECT_TRUE(ptr != std::string::npos);
+  ptr = log_sink.error_log().find(
+      "Error: Slot constant 'a' conflicts with template formal with same name");
+  EXPECT_TRUE(ptr != std::string::npos);
+  ptr = log_sink.error_log().find("Error: Redefinition of slot constant 'a'");
+  EXPECT_TRUE(ptr != std::string::npos);
+  ptr = log_sink.error_log().find(
+      "Error: Multiple definitions of 'default' opcode");
+  EXPECT_TRUE(ptr != std::string::npos);
+  ptr = log_sink.error_log().find("Error: Duplicate disasm declaration");
+  EXPECT_TRUE(ptr != std::string::npos);
+  ptr = log_sink.error_log().find("Error: Duplicate semfunc declaration");
+  EXPECT_TRUE(ptr != std::string::npos);
+  ptr = log_sink.error_log().find(
+      "Error: Only one semfunc specification per default opcode");
+  EXPECT_TRUE(ptr != std::string::npos);
+  ptr = log_sink.error_log().find(
+      "Error: Default opcode lacks mandatory semfunc specification");
+  EXPECT_TRUE(ptr != std::string::npos);
+  ptr = log_sink.error_log().find(
+      "Error: Resources 'res_a': duplicate definition");
+  EXPECT_TRUE(ptr != std::string::npos);
+  ptr = log_sink.error_log().find("Error: No function 'foo' supported");
+  EXPECT_TRUE(ptr != std::string::npos);
+  ptr = log_sink.error_log().find(
+      "Error: Function 'abs' takes 1 parameters, but 2 were given");
+  EXPECT_TRUE(ptr != std::string::npos);
+  ptr = log_sink.error_log().find("Error: Multiple disasm specifications");
+  EXPECT_TRUE(ptr != std::string::npos);
+  ptr = log_sink.error_log().find("Error: Multiple semfunc specifications");
+  EXPECT_TRUE(ptr != std::string::npos);
+  ptr = log_sink.error_log().find("Error: Multiple resource specifications");
+  EXPECT_TRUE(ptr != std::string::npos);
+  ptr = log_sink.error_log().find("Error: Multiple attribute specifications");
+  EXPECT_TRUE(ptr != std::string::npos);
+  ptr = log_sink.error_log().find(
+      "Error: 'xyz' is not a valid destination operand for opcode 'add_a'");
+  EXPECT_TRUE(ptr != std::string::npos);
+  ptr = log_sink.error_log().find(
+      "Error: Decode time evaluation of latency expression not supported for "
+      "resources");
+  EXPECT_TRUE(ptr != std::string::npos);
+  ptr = log_sink.error_log().find(
+      "Error: Base slot does not define or inherit opcode 'sub_b'");
+  EXPECT_TRUE(ptr != std::string::npos);
+  ptr = log_sink.error_log().find(
+      "Error: Base slot does not define or inherit opcode 'mul_a'");
+  EXPECT_TRUE(ptr != std::string::npos);
+  ptr = log_sink.error_log().find(
+      "Error: Invalid deleted opcode 'xxx', slot 'slot_a' does not inherit "
+      "from a base slot");
+  EXPECT_TRUE(ptr != std::string::npos);
+  ptr = log_sink.warning_log().find("Warning: Ignoring extra semfunc spec");
+  EXPECT_TRUE(ptr != std::string::npos);
+  ptr = log_sink.error_log().find(
+      "Error: Fewer semfunc specifiers than expected for opcode 'ld_x'");
+  EXPECT_TRUE(ptr != std::string::npos);
+}
+
+// Test disassembly format expressions.
+TEST_F(InstructionSetParserTest, DisasmFormats) {
+  std::string file_name =
+      absl::StrCat(kDepotPath, "testfiles/", kDisasmFormatsBaseName, ".isa");
+  std::vector<std::string> input_files = {file_name};
+  ASSERT_TRUE(FileExists(input_files[0]));
+  std::string output_dir = getenv(kTestUndeclaredOutputsDir);
+  InstructionSetVisitor visitor;
+  // Parse and process the input file, capturing the log.
+  LogSink log_sink;
+  absl::AddLogSink(&log_sink);
+  auto success = visitor
+                     .Process(input_files, kDisasmFormatsBaseName,
+                              kDisasmFormatsIsaName, paths_, output_dir)
+                     .ok();
+  absl::RemoveLogSink(&log_sink);
+  EXPECT_FALSE(success);
+
+  // Make sure the requisite error messages are present.
+  auto ptr = log_sink.error_log().find(
+      "Error: Unexpected end of format string in '%(()'");
+  EXPECT_TRUE(ptr != std::string::npos);
+  ptr = log_sink.error_log().find("Error: Empty format expression");
+  EXPECT_TRUE(ptr != std::string::npos);
+  ptr = log_sink.error_log().find(
+      "Error: @ must be followed by a '+' or a '-' in '@*'");
+  EXPECT_TRUE(ptr != std::string::npos);
+  ptr = log_sink.error_log().find("Error: Malformed expression '@-'");
+  EXPECT_TRUE(ptr != std::string::npos);
+  ptr = log_sink.error_log().find(
+      "Error: Invalid character in operand name at position 3 in '@+(5a)'");
+  EXPECT_TRUE(ptr != std::string::npos);
+  ptr = log_sink.error_log().find(
+      "Error: Invalid character in operand name at position 2 in '@+5a'");
+  EXPECT_TRUE(ptr != std::string::npos);
+  ptr = log_sink.error_log().find(
+      "Error: Invalid operand 'rs1' used in format for opcode'six'");
+  EXPECT_TRUE(ptr != std::string::npos);
+  ptr = log_sink.error_log().find("Error: Malformed expression '@+rs1 x'");
+  EXPECT_TRUE(ptr != std::string::npos);
+  ptr = log_sink.error_log().find(
+      "Error: Missing shift in expression '@+(rs1 +-)'");
+  EXPECT_TRUE(ptr != std::string::npos);
+  ptr =
+      log_sink.error_log().find("Error: Malformed expression '@+(rs1 << 5x)'");
+  EXPECT_TRUE(ptr != std::string::npos);
+  ptr = log_sink.error_log().find("Error: Malformed expression '@+(rs1 >> )'");
+  EXPECT_TRUE(ptr != std::string::npos);
+  ptr =
+      log_sink.error_log().find("Error: Malformed expression '@+(rs1 << 5 x)'");
+  EXPECT_TRUE(ptr != std::string::npos);
+  ptr =
+      log_sink.error_log().find("Error: Malformed expression '@+(rs1 << 5) x'");
+  EXPECT_TRUE(ptr != std::string::npos);
+  ptr = log_sink.error_log().find(
+      "Error: Format width required when a leading 0 is specified - '0x'");
+  EXPECT_TRUE(ptr != std::string::npos);
+  ptr = log_sink.error_log().find(
+      "Error: Format width > than 3 digits not allowed '0123'");
+  EXPECT_TRUE(ptr != std::string::npos);
+  ptr =
+      log_sink.error_log().find("Error: Illegal format specifier 'Y' in '08Y'");
+  EXPECT_TRUE(ptr != std::string::npos);
+  ptr = log_sink.error_log().find(
+      "Error: Too many characters in format specifier '08xY'");
+  EXPECT_TRUE(ptr != std::string::npos);
+  ptr = log_sink.error_log().find(
+      "Error: Invalid character in operand name at position 1 in '%2rs'");
+  EXPECT_TRUE(ptr != std::string::npos);
+  ptr = log_sink.error_log().find(
+      "Error: Invalid operand 'rs2' used in format '%rs2'");
   EXPECT_TRUE(ptr != std::string::npos);
 }
 

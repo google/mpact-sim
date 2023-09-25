@@ -44,7 +44,8 @@ class BundleTest : public testing::Test {
  protected:
   BundleTest() {
     instruction_set_ = std::make_unique<InstructionSet>(kInstructionSetName);
-    bundle_ = std::make_unique<Bundle>(kBundleName, instruction_set_.get());
+    bundle_ =
+        std::make_unique<Bundle>(kBundleName, instruction_set_.get(), nullptr);
   }
 
   ~BundleTest() override{};

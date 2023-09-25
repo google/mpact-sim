@@ -38,6 +38,7 @@
 #include "mpact/sim/decoder/decoder_error_listener.h"
 #include "mpact/sim/decoder/instruction.h"
 #include "mpact/sim/decoder/instruction_set.h"
+#include "mpact/sim/decoder/instruction_set_contexts.h"
 #include "mpact/sim/decoder/opcode.h"
 #include "mpact/sim/decoder/slot.h"
 #include "mpact/sim/decoder/template_expression.h"
@@ -99,45 +100,10 @@ class InstructionSetVisitor {
         : function(std::move(function_)), arity(arity_) {}
   };
 
-  // Type aliases for antlr4 context types.
-  using TopLevelCtx = InstructionSetParser::Top_levelContext;
-  using NamespaceDeclCtx = InstructionSetParser::Namespace_declContext;
-  using ConstantDefCtx = InstructionSetParser::Constant_defContext;
-  using IncludeFileCtx = InstructionSetParser::Include_fileContext;
-  using DeclarationCtx = InstructionSetParser::DeclarationContext;
-  using IsaDeclCtx = InstructionSetParser::Isa_declarationContext;
-  using BundleDeclCtx = InstructionSetParser::Bundle_declarationContext;
-  using SlotDeclCtx = InstructionSetParser::Slot_declarationContext;
-  using BaseItemListCtx = InstructionSetParser::Base_item_listContext;
-  using ExpressionCtx = InstructionSetParser::ExpressionContext;
-  using ArraySpecCtx = InstructionSetParser::Array_specContext;
-  using OpcodeSpecCtx = InstructionSetParser::Opcode_specContext;
-  using BundleListCtx = InstructionSetParser::Bundle_listContext;
-  using SlotListCtx = InstructionSetParser::Slot_listContext;
-  using OpcodeListCtx = InstructionSetParser::Opcode_listContext;
-  using OpcodeOperandsCtx = InstructionSetParser::Opcode_operandsContext;
-  using IdentListCtx = InstructionSetParser::Ident_listContext;
-  using DisasmWidthsCtx = InstructionSetParser::Disasm_widthsContext;
-  using ConstAndDefaultCtx =
-      InstructionSetParser::Const_and_default_declContext;
-  using OpcodeAttributeListCtx =
-      InstructionSetParser::Opcode_attribute_listContext;
-  using InstructionAttributeListCtx =
-      InstructionSetParser::Instruction_attribute_listContext;
-  using SemfuncSpecCtx = InstructionSetParser::Semfunc_specContext;
-  using ResourceItemCtx = InstructionSetParser::Resource_itemContext;
-  using ResourceDetailsCtx = InstructionSetParser::Resource_detailsContext;
-  // Type aliases for antlr4 types for generator related contexts.
-  using GeneratorOpcodeSpecListCtx =
-      InstructionSetParser::Generator_opcode_spec_listContext;
-  using RangeAssignmentCtx = InstructionSetParser::Range_assignmentContext;
-  using TupleCtx = InstructionSetParser::TupleContext;
-  using GenValueCtxt = InstructionSetParser::Gen_valueContext;
-
   // Checks that any references to slots or bundles within a bundle
   // declaration are to valid slots/bundles.
-  absl::Status PerformBundleReferenceChecks(InstructionSet *instruction_set,
-                                            Bundle *bundle);
+  void PerformBundleReferenceChecks(InstructionSet *instruction_set,
+                                    Bundle *bundle);
   // The following methods visits the parts of the parse tree indicated by
   // the method name and builds up the internal representation used for
   // decoder generation.

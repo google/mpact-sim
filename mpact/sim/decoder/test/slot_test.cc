@@ -17,6 +17,7 @@
 #include <memory>
 #include <string>
 
+#include "absl/strings/str_cat.h"
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
 #include "mpact/sim/decoder/instruction.h"
@@ -37,7 +38,7 @@ class SlotTest : public testing::Test {
   SlotTest() {
     instruction_set_ = std::make_unique<InstructionSet>(kInstructionSetName);
     slot_ = std::make_unique<Slot>(kSlotName, instruction_set_.get(),
-                                   /* is_templated */ false);
+                                   /* is_templated */ false, nullptr);
   }
 
   ~SlotTest() override = default;
@@ -77,7 +78,7 @@ TEST_F(SlotTest, IsReferenced) {
 TEST_F(SlotTest, BaseSlot) {
   EXPECT_EQ(slot_->base_slots().size(), 0);
   auto base_slot = std::make_unique<Slot>(kBaseName, instruction_set_.get(),
-                                          /* is_templated */ false);
+                                          /* is_templated */ false, nullptr);
   EXPECT_TRUE(slot_->AddBase(base_slot.get()).ok());
   EXPECT_EQ(slot_->base_slots().size(), 1);
   EXPECT_EQ(slot_->base_slots()[0].base, base_slot.get());
