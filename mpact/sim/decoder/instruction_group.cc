@@ -69,6 +69,7 @@ InstructionEncoding *InstructionGroup::AddInstructionEncoding(
         token, absl::StrCat("Format '", format->name(),
                             "' used by instruction encoding '", name,
                             "' is not derived from '", format_name_, "'"));
+    return nullptr;
   }
 
   // No need to double check width, since the format at this point derives

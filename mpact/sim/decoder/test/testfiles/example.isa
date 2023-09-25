@@ -25,9 +25,12 @@ int const1 = 1;
 int my_const = const1 + 2;
 
 // Try some include files.
+// Include file relative to test execution directory.
 #include "mpact/sim/decoder/test/testfiles/include/empty_include.isa"
 #include "mpact/sim/decoder/test/testfiles/include/bundle_a.isa"
-#include "mpact/sim/decoder/test/testfiles/bundle_b.isa"
+
+// This file is passed as another source file in invocation arguments.
+// #include "mpact/sim/decoder/test/testfiles/bundle_b.isa"
 
 template<int base, int mult>
 slot a_side_ops {

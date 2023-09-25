@@ -162,13 +162,17 @@ mpact_cc_test(
 
 mpact_isa_decoder(
     name = "example_isa",
-    src = "testfiles/example.isa",
+    srcs = [
+        "testfiles/bundle_b.isa",
+        "testfiles/example.isa",
+    ],
     includes = [
-        ":testfiles/bundle_b.isa",
+        #":testfiles/bundle_b.isa",
         "//mpact/sim/decoder/test/testfiles/include:bundle_a.isa",
         "//mpact/sim/decoder/test/testfiles/include:empty_include.isa",
     ],
     isa_name = "Example",
+    prefix = "example_isa",
 )
 
 mpact_isa_decoder(
@@ -182,6 +186,7 @@ mpact_isa_decoder(
         "//mpact/sim/decoder/test/testfiles/include:empty_include.isa",
     ],
     isa_name = "Example",
+    prefix = "combined_isa",
 )
 
 mpact_cc_library(
@@ -344,39 +349,20 @@ mpact_cc_test(
     ],
     data = [
         # Local include files.
+        "testfiles/constraints.bin_fmt",
         "testfiles/empty_file.bin_fmt",
+        "testfiles/example_with_recursive_include.bin_fmt",
+        "testfiles/format_error.bin_fmt",
+        "testfiles/format_error_undef.bin_fmt",
         "testfiles/generator.bin_fmt",
         "testfiles/instruction_group.bin_fmt",
+        "testfiles/instruction_group_errors.bin_fmt",
+        "testfiles/recursive_include.bin_fmt",
         "testfiles/riscv32_top.bin_fmt",
         "testfiles/riscv32c.bin_fmt",
         "testfiles/riscv32g.bin_fmt",
-        "testfiles/vliw.bin_fmt",
-    ],
-    deps = [
-        ":log_sink",
-        "//mpact/sim/decoder:bin_format_visitor",
-        "@com_google_absl//absl/flags:flag",
-        "@com_google_absl//absl/log:check",
-        "@com_google_absl//absl/log:log_sink_registry",
-        "@com_google_absl//absl/status",
-        "@com_google_absl//absl/status:statusor",
-        "@com_google_absl//absl/strings",
-        "@com_google_googletest//:gtest",
-        "@com_google_googletest//:gtest_main",
-        "@com_googlesource_code_re2//:re2",
-    ],
-)
-
-mpact_cc_test(
-    name = "bin_format_error_test",
-    size = "small",
-    srcs = [
-        "bin_format_error_test.cc",
-    ],
-    data = [
-        "testfiles/format_error.bin_fmt",
-        "testfiles/format_error_undef.bin_fmt",
         "testfiles/syntax_error.bin_fmt",
+        "testfiles/vliw.bin_fmt",
     ],
     deps = [
         ":log_sink",

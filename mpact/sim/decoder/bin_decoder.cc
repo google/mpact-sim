@@ -17,6 +17,7 @@
 #include <string>
 
 #include "mpact/sim/decoder/bin_encoding_info.h"
+#include "mpact/sim/decoder/decoder_error_listener.h"
 #include "mpact/sim/decoder/instruction_group.h"
 
 namespace mpact {
@@ -30,12 +31,7 @@ BinDecoder::BinDecoder(std::string name, BinEncodingInfo *encoding_info,
       encoding_info_(encoding_info),
       error_listener_(error_listener) {}
 
-BinDecoder::~BinDecoder() {
-  for (auto *group : instruction_group_vec_) {
-    delete group;
-  }
-  instruction_group_vec_.clear();
-}
+BinDecoder::~BinDecoder() { instruction_group_vec_.clear(); }
 
 void BinDecoder::AddInstructionGroup(InstructionGroup *group) {
   instruction_group_vec_.push_back(group);

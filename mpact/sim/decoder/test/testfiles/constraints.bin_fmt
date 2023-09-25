@@ -1,0 +1,39 @@
+// Copyright 2023 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+decoder Constraints {
+  namespace sim::constraints;
+  opcode_enum = "sim::OpcodeEnum";
+  InstGroup;
+};
+
+format Inst32Format[32] {
+  fields:
+    unsigned field0[4];
+    unsigned field1[4];
+    unsigned field2[4];
+    unsigned field3[4];
+    unsigned field4[4];
+    unsigned field5[4];
+    unsigned opcode[3];
+    unsigned inst[5];
+};
+
+instruction group InstGroup[32] : Inst32Format {
+  not_equal     : Inst32Format : opcode == 0b001, field1 != 1;
+  greater       : Inst32Format : opcode == 0b010, field2 > 2;
+  greater_equal : Inst32Format : opcode == 0b011, field3 >= 3;
+  less          : Inst32Format : opcode == 0b100, field4 < 4;
+  less_equal    : Inst32Format : opcode == 0b101, field5 <= 5;
+};

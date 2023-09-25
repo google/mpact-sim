@@ -498,7 +498,7 @@ void InstructionSetVisitor::ParseIncludeFile(
     if (!include_file.is_open()) {
       error_listener()->semanticError(
           ctx == nullptr ? nullptr : ctx->start,
-          absl::StrCat("Failed to open '", file_name, "'"));
+          absl::StrCat("Failed to open '", file_name, "'", " ", dirs.size()));
       return;
     }
   }
@@ -920,11 +920,9 @@ TemplateExpression *InstructionSetVisitor::VisitExpression(ExpressionCtx *ctx,
 DestinationOperand *InstructionSetVisitor::FindDestinationOpInExpression(
     ExpressionCtx *ctx, const Slot *slot, const Instruction *inst) const {
   if (ctx == nullptr) return nullptr;
-
   if (ctx->negop() != nullptr) {
     return FindDestinationOpInExpression(ctx->expr, slot, inst);
   }
-
   if ((ctx->mulop() != nullptr) || (ctx->addop() != nullptr)) {
     auto *lhs = FindDestinationOpInExpression(ctx->lhs, slot, inst);
     auto *rhs = FindDestinationOpInExpression(ctx->rhs, slot, inst);
@@ -936,16 +934,14 @@ DestinationOperand *InstructionSetVisitor::FindDestinationOpInExpression(
         ctx->start,
         "Resource reference can only reference a single "
         "destination operand");
+    return nullptr;
   }
-
   if (ctx->paren_expr != nullptr) {
     return FindDestinationOpInExpression(ctx->paren_expr, slot, inst);
   }
-
   if (ctx->NUMBER() != nullptr) {
     return nullptr;
   }
-
   if (ctx->func != nullptr) {
     DestinationOperand *dest_op = nullptr;
     DestinationOperand *tmp_op;
@@ -966,17 +962,14 @@ DestinationOperand *InstructionSetVisitor::FindDestinationOpInExpression(
     }
     return dest_op;
   }
-
   std::string ident = ctx->IDENT()->getText();
   // It is either a slot local constant, a template formal, or a reference
   // to a destination operand.
   TemplateFormal *param = slot->GetTemplateFormal(ident);
   if (param != nullptr) return nullptr;
-
   // Check if it's a slot const expression.
   auto *expr = slot->GetConstExpression(ident);
   if (expr != nullptr) return nullptr;
-
   // It should be an opcode operand term.
   return inst->GetDestOp(ident);
 }
@@ -1190,8 +1183,11 @@ void InstructionSetVisitor::VisitResourceDetails(ResourceDetailsCtx *ctx,
     std::string name = ctx->ident()->getText();
     auto iter = slot->resource_spec_map().find(name);
     if (iter == slot->resource_spec_map().end()) {
+      // This should never happen.
       error_listener()->semanticError(
-          ctx->start, absl::StrCat("Undefined resources name: '", name, "'"));
+          ctx->start,
+          absl::StrCat("Internal error: Undefined resources name: '", name,
+                       "'"));
       return;
     }
     ctx = iter->second;
@@ -1447,13 +1443,7 @@ void InstructionSetVisitor::ProcessOpcodeSpec(
     // Process child instructions.
     for (size_t i = 1; i < opcode_operands.size(); ++i) {
       // Create child opcode.
-      result = opcode_factory->CreateChildOpcode(parent);
-      if (!result.ok()) {
-        error_listener()->semanticError(opcode_ctx->name,
-                                        result.status().message());
-        break;
-      }
-      auto *op = result.value();
+      auto *op = opcode_factory->CreateChildOpcode(parent);
       // Create child instruction.
       child_inst = new Instruction(op, slot);
       inst->AppendChild(child_inst);

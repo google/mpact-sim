@@ -53,7 +53,10 @@ constexpr char kUndefinedErrorsIsaName[] = "UndefinedErrors";
 constexpr char kDisasmFormatsIsaName[] = "DisasmFormats";
 
 // The depot path to the test directory.
-constexpr char kDepotPath[] = "mpact/sim/decoder/test/";
+constexpr char kDepotPath[] = "mpact/sim/decoder/test";
+
+// Include file to add on command line.
+constexpr char kBundleBFile[] = "mpact/sim/decoder/test/testfiles/bundle_b.isa";
 
 // isa file fragments.
 constexpr char kIsaPrefix[] = R"pre(disasm widths = {-18};
@@ -86,7 +89,10 @@ static bool FileExists(const std::string &name) {
 
 class InstructionSetParserTest : public testing::Test {
  protected:
-  InstructionSetParserTest() {}
+  InstructionSetParserTest() {
+    paths_.push_back(kDepotPath);
+    paths_.push_back(kDepotPath + std::string("/testfiles"));
+  }
 
   std::vector<std::string> paths_;
 };
@@ -94,7 +100,7 @@ class InstructionSetParserTest : public testing::Test {
 TEST_F(InstructionSetParserTest, EmptyIsaName) {
   // Set up input and output file paths.
   std::vector<std::string> input_files = {
-      absl::StrCat(kDepotPath, "testfiles/", kEmptyBaseName, ".isa")};
+      absl::StrCat(kDepotPath, "/testfiles/", kEmptyBaseName, ".isa")};
   ASSERT_TRUE(FileExists(input_files[0]));
   std::string output_dir = OutputDir();
   InstructionSetVisitor visitor;
@@ -106,7 +112,7 @@ TEST_F(InstructionSetParserTest, EmptyIsaName) {
 TEST_F(InstructionSetParserTest, NullFileParsing) {
   // Set up input and output file paths.
   std::vector<std::string> input_files = {
-      absl::StrCat(kDepotPath, "testfiles/", kEmptyBaseName, ".isa")};
+      absl::StrCat(kDepotPath, "/testfiles/", kEmptyBaseName, ".isa")};
   ASSERT_TRUE(FileExists(input_files[0]));
   std::string output_dir = OutputDir();
 
@@ -122,7 +128,7 @@ TEST_F(InstructionSetParserTest, NullFileParsing) {
 TEST_F(InstructionSetParserTest, RecursiveInclude) {
   // Set up input and output file paths.
   std::vector<std::string> input_files = {absl::StrCat(
-      kDepotPath, "testfiles/", kRecursiveExampleBaseName, ".isa")};
+      kDepotPath, "/testfiles/", kRecursiveExampleBaseName, ".isa")};
   ASSERT_TRUE(FileExists(input_files[0]));
   std::string output_dir = OutputDir();
 
@@ -131,13 +137,14 @@ TEST_F(InstructionSetParserTest, RecursiveInclude) {
                    .Process(input_files, kRecursiveExampleBaseName,
                             kExampleIsaName, paths_, output_dir)
                    .ok());
-}  // namespace
+}
 
 // Make sure the visitor can read and parse the input file.
 TEST_F(InstructionSetParserTest, BasicParsing) {
   // Set up input and output file paths.
   std::vector<std::string> input_files = {
-      absl::StrCat(kDepotPath, "testfiles/", kExampleBaseName, ".isa")};
+      absl::StrCat(kDepotPath, "/testfiles/", kExampleBaseName, ".isa"),
+      kBundleBFile};
   ASSERT_TRUE(FileExists(input_files[0]));
   std::string output_dir = getenv(kTestUndeclaredOutputsDir);
 
@@ -158,7 +165,7 @@ TEST_F(InstructionSetParserTest, BasicParsing) {
 TEST_F(InstructionSetParserTest, Generator) {
   // Set up input and output file paths.
   std::vector<std::string> input_files = {
-      absl::StrCat(kDepotPath, "testfiles/", kGeneratorBaseName, ".isa")};
+      absl::StrCat(kDepotPath, "/testfiles/", kGeneratorBaseName, ".isa")};
   ASSERT_TRUE(FileExists(input_files[0]));
   std::string output_dir = getenv(kTestUndeclaredOutputsDir);
 
@@ -321,7 +328,7 @@ TEST_F(InstructionSetParserTest, GeneratorErrorUndefinedBindingVariable) {
 
 TEST_F(InstructionSetParserTest, Undefined) {
   std::string file_name =
-      absl::StrCat(kDepotPath, "testfiles/", kUndefinedErrorsBaseName, ".isa");
+      absl::StrCat(kDepotPath, "/testfiles/", kUndefinedErrorsBaseName, ".isa");
   std::vector<std::string> input_files = {file_name};
   ASSERT_TRUE(FileExists(input_files[0]));
   std::string output_dir = getenv(kTestUndeclaredOutputsDir);
@@ -441,12 +448,21 @@ TEST_F(InstructionSetParserTest, Undefined) {
   ptr = log_sink.error_log().find(
       "Error: Fewer semfunc specifiers than expected for opcode 'ld_x'");
   EXPECT_TRUE(ptr != std::string::npos);
+  ptr = log_sink.error_log().find(
+      "Error: Resource reference can only reference a single destination "
+      "operand");
+  EXPECT_TRUE(ptr != std::string::npos);
+  ptr = log_sink.error_log().find(
+      "Error: Duplicate attribute name 'attr_a' in list");
+  EXPECT_TRUE(ptr != std::string::npos);
+  ptr = log_sink.error_log().find("Error: No function 'func' supported");
+  EXPECT_TRUE(ptr != std::string::npos);
 }
 
 // Test disassembly format expressions.
 TEST_F(InstructionSetParserTest, DisasmFormats) {
   std::string file_name =
-      absl::StrCat(kDepotPath, "testfiles/", kDisasmFormatsBaseName, ".isa");
+      absl::StrCat(kDepotPath, "/testfiles/", kDisasmFormatsBaseName, ".isa");
   std::vector<std::string> input_files = {file_name};
   ASSERT_TRUE(FileExists(input_files[0]));
   std::string output_dir = getenv(kTestUndeclaredOutputsDir);

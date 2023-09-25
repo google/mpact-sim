@@ -426,8 +426,7 @@ void BinFormatVisitor::VisitIncludeFile(IncludeFileCtx *ctx) {
   for (auto const &name : include_file_stack_) {
     if (name == file_name) {
       error_listener()->semanticError(
-          ctx->start,
-          absl::StrCat(": ", "Recursive include of '", file_name, "'"));
+          ctx->start, absl::StrCat("Recursive include of '", file_name, "'"));
       return;
     }
   }
@@ -596,7 +595,7 @@ void BinFormatVisitor::VisitOverlayDef(OverlayDefCtx *ctx, Format *format) {
   if (width > 64) {
     error_listener_->semanticError(
         ctx->width->number()->start,
-        "Only overlays <= 64 bits are supported for now.");
+        "Only overlays <= 64 bits are supported for now");
     return;
   }
   // Visit the bitfield spec items.
@@ -665,7 +664,8 @@ InstructionGroup *BinFormatVisitor::VisitInstructionGroupDef(
 
   // Create the named instruction group.
   std::string group_name = ctx->name->getText();
-  if (encoding_info->GetFormat(group_name) != nullptr) {
+  auto format_iter = format_decl_map_.find(group_name);
+  if (format_iter != format_decl_map_.end()) {
     error_listener_->semanticError(
         ctx->start, absl::StrCat(group_name, ": illegal use of format name"));
   }
@@ -677,6 +677,7 @@ InstructionGroup *BinFormatVisitor::VisitInstructionGroupDef(
         ctx->start,
         absl::StrCat("Undefined format '", format_name,
                      "' used by instruction group '", group_name, "'"));
+    return nullptr;
   } else {
     VisitFormatDef(iter->second, encoding_info);
     auto *format = encoding_info->GetFormat(format_name);
@@ -693,7 +694,7 @@ InstructionGroup *BinFormatVisitor::VisitInstructionGroupDef(
     if (format->declared_width() > 64) {
       error_listener_->semanticError(
           ctx->start, absl::StrCat("Instruction group '", group_name,
-                                   ": width must be <= 64 bits"));
+                                   "': width must be <= 64 bits"));
     }
   }
   auto inst_group_res =
@@ -993,7 +994,6 @@ std::unique_ptr<BinEncodingInfo> BinFormatVisitor::VisitDecoderDef(
       namespace_count++;
       continue;
     }
-
     // Instruction groups are listed as either a single instruction group,
     // or a parent group that contains several individual groups.
 
@@ -1022,14 +1022,13 @@ std::unique_ptr<BinEncodingInfo> BinFormatVisitor::VisitDecoderDef(
       if (group_name_set.contains(group_name)) {
         error_listener_->semanticError(
             attr_ctx->start,
-            absl::StrCat("Instruction group listed twice: ", group_name, "'"));
+            absl::StrCat("Instruction group '", group_name, "' listed twice"));
         continue;
       }
       group_name_set.insert(group_name);
       decoder->AddInstructionGroup(inst_group);
       continue;
     }
-
     // If it is a parent group, process it here.
     if ((attr_ctx->group_name() != nullptr) &&
         (attr_ctx->group_name()->group_name_list() != nullptr)) {
@@ -1038,8 +1037,8 @@ std::unique_ptr<BinEncodingInfo> BinFormatVisitor::VisitDecoderDef(
       std::string group_name = attr_ctx->group_name()->IDENT()->getText();
       if (group_name_set.contains(group_name)) {
         error_listener_->semanticError(
-            attr_ctx->start,
-            absl::StrCat("Instruction group listed twice: ", group_name, "'"));
+            attr_ctx->start, absl::StrCat("Instruction group '", group_name,
+                                          "' listed twice - ignored"));
         continue;
       }
       std::vector<InstructionGroup *> child_groups;
@@ -1049,15 +1048,31 @@ std::unique_ptr<BinEncodingInfo> BinFormatVisitor::VisitDecoderDef(
         auto child_name = ident->getText();
         if (group_name_set.contains(child_name)) {
           error_listener_->semanticError(
-              attr_ctx->start, absl::StrCat("Instruction group listed twice: ",
-                                            child_name, "'"));
+              attr_ctx->start, absl::StrCat("Instruction group listed twice: '",
+                                            child_name, "' - ignored"));
           continue;
         }
-        auto map_iter = encoding_info->instruction_group_map().find(child_name);
         InstructionGroup *child_group = nullptr;
+        auto map_iter = encoding_info->instruction_group_map().find(child_name);
         if (map_iter != encoding_info->instruction_group_map().end()) {
+          LOG(INFO) << "Group map found: " << child_name;
           child_group = map_iter->second;
+          bool exists = false;
+          for (auto const *group : child_groups) {
+            if (child_name == group->name()) {
+              exists = true;
+              break;
+            }
+          }
+          if (exists) {
+            error_listener_->semanticError(
+                attr_ctx->start, absl::StrCat("Instruction group '", child_name,
+                                              "' listed twice"));
+            continue;
+          }
         } else {
+          // The instruction group hasn't been visited yet, so look up the
+          // declaration and visit it now.
           auto iter = group_decl_map_.find(child_name);
           if (iter != group_decl_map_.end()) {
             child_group =
@@ -1066,8 +1081,7 @@ std::unique_ptr<BinEncodingInfo> BinFormatVisitor::VisitDecoderDef(
           if (child_group == nullptr) {
             error_listener_->semanticError(
                 attr_ctx->start,
-                absl::StrCat("No such instruction group found: '", child_name,
-                             "'"));
+                absl::StrCat("Instruction group '", child_name, "' not found"));
             continue;
           }
         }
@@ -1079,12 +1093,13 @@ std::unique_ptr<BinEncodingInfo> BinFormatVisitor::VisitDecoderDef(
           error_listener_->semanticError(
               attr_ctx->start,
               absl::StrCat("Instruction group '", child_name,
-                           "must use format '", group_format_name,
+                           "' must use format '", group_format_name,
                            ", to be merged into group '", group_name, "'"));
           continue;
         }
         child_groups.push_back(child_group);
       }
+
       if (child_groups.empty()) {
         error_listener_->semanticError(attr_ctx->start, "No child groups");
         continue;
@@ -1107,9 +1122,6 @@ std::unique_ptr<BinEncodingInfo> BinFormatVisitor::VisitDecoderDef(
       }
       group_name_set.insert(parent_group->name());
       decoder->AddInstructionGroup(parent_group);
-      // Clean up.
-      for (auto *child_group : child_groups) delete child_group;
-      continue;
     }
   }
   if (group_name_set.empty()) {

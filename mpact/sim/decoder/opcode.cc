@@ -19,6 +19,8 @@
 #include <utility>
 
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "mpact/sim/decoder/format_name.h"
 #include "mpact/sim/decoder/template_expression.h"
@@ -92,9 +94,8 @@ absl::StatusOr<Opcode *> OpcodeFactory::CreateOpcode(absl::string_view name) {
   return opcode;
 }
 
-absl::StatusOr<Opcode *> OpcodeFactory::CreateChildOpcode(
-    Opcode *opcode) const {
-  if (opcode == nullptr) return absl::InvalidArgumentError("nullptr parameter");
+Opcode *OpcodeFactory::CreateChildOpcode(Opcode *opcode) const {
+  if (opcode == nullptr) return nullptr;
   auto *child = new Opcode(opcode->name(), -1);
   return child;
 }

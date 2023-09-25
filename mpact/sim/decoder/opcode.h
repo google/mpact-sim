@@ -245,7 +245,7 @@ class OpcodeFactory {
   // pointer, otherwise return an error code.
   absl::StatusOr<Opcode *> CreateOpcode(absl::string_view name);
   Opcode *CreateDefaultOpcode();
-  absl::StatusOr<Opcode *> CreateChildOpcode(Opcode *opcode) const;
+  Opcode *CreateChildOpcode(Opcode *opcode) const;
   // Duplicate the opcode, but evaluate the destination latency expressions
   // with the template argument expression vector.
   absl::StatusOr<Opcode *> CreateDerivedOpcode(const Opcode *opcode,

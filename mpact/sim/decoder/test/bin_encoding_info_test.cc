@@ -36,10 +36,6 @@ class BinEncodingInfoTest : public ::testing::Test {
     bin_encoding_info_ = new BinEncodingInfo(kOpcodeEnumName, error_listener_);
   }
   ~BinEncodingInfoTest() override {
-    for (auto &[name, instruction_group_ptr] :
-         bin_encoding_info_->instruction_group_map()) {
-      delete instruction_group_ptr;
-    }
     delete bin_encoding_info_;
     delete error_listener_;
   }

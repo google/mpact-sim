@@ -12,6 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+includes {
+  #include "an/include/file"
+  #include "another/include/file"
+}
+
 disasm widths = { 18, y};
 
 // Error - only one disasm widths declaration allowed.
@@ -118,14 +123,14 @@ slot slot_base_a {
   resources res_a = {: x, y: z};
   resources res_a = {: m, n: p};
   int b = x * 3;
-  int c = abs(x, z);  // Error: wrong number of parameters.
-  int d = foo(x);     // Error: No function 'foo' supported.
+  int c = x * abs(x, z);  // Error: wrong number of parameters.
+  int d = y + foo(x);     // Error: No function 'foo' supported.
   int e = (x - y);
   int f = absl(e);
   int g = x / 2;
   int h = a + z;  // Error: z is not defined.
   opcodes {
-    add_a[4]{: rs2, rs1 : rd(*)},
+    add_a[4]{: rs2, rs1 : rd(*), rd2},
       disasm: "disasm",
       disasm: "disasm2",  // Error: multiple disasm specifications.
       semfunc: "[](Instruction *) {}",
@@ -133,7 +138,7 @@ slot slot_base_a {
       resources: res_a,
       resources: {: x: },  // Multiple resource specifications.
       attributes: {attr_a, attr_b = 2, attr_c = xyz, attr_d=rd}, // Error: rd.
-      attributes: {attr_x};  // Multiple resource specificiations.
+      attributes: {attr_x};  // Multiple attribute specificiations.
   }
 }
 
@@ -149,12 +154,31 @@ slot derived_ab_x : slot_base_a<5, 2>, slot_base_b<3> {
 }
 
 slot derived_a : slot_base_a<1,1> {
+  includes {
+    #include "include/file/a"
+    #include "include/file/b"
+  }
+  default attributes = {def_attr_1};
   opcodes {
     sub_b = override,
       disasm: "disasm";  // Error: sub_b not inherited.
+    add_1{:rs1 : rd, rd2},
+      attributes: {attr_a, attr_a},  // Error: duplicate attribute names.
+      resources: {: : x[-(rd+rd2)..rd*rd2]};  // Error: resource ref of 2 dst
+                                              // ops, complex expr.
+    sub_1{: rs1 : rd},
+      resources: {: : x[rd..rd]};
+    inst_1{: rs1, rs2 : rd1, rd2},
+      resources: { : : x[func(rd1, rd2)..rd2]};  // Error: resource ref of 2 dst
+                                                 // operands in function
+                                                 // invocation.
+    inst_2{: : rd1, rd2},
+      resources: {: : rd1[rd2..rd2], x[0..rd2]};  // Additional expressions to
+                                                  // improve test coverage.
     mul_a = delete; // Error: not inherited.
     ld_x{(:rs1, rs2:), (: :rd)},
-      semfunc: "[](Instruction *) {}";  // Error: missing second semfunc.
+      semfunc: "[](Instruction *) {}",  // Error: missing second semfunc.
+      resources: {: : };
     or_a{:rs1, rs2, rd},
       semfunc: "[](Instruction *) {}", "[](Instruction *) {}"; // Error: extra.
   }

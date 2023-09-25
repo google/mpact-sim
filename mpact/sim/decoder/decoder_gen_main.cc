@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <cstdlib>
 #include <iostream>
 #include <ostream>
 #include <string>
@@ -51,7 +52,7 @@ ABSL_FLAG(std::string, output_dir, "./", "output file directory");
 ABSL_FLAG(std::string, prefix, "", "prefix for generated files");
 // Name of isa to generate for.
 ABSL_FLAG(std::string, isa_name, "", "isa name");
-ABSL_FLAG(std::string, include, "", "include file root(s)");
+ABSL_FLAG(std::string, include, "", "include file directories");
 
 int main(int argc, char **argv) {
   auto arg_vec = absl::ParseCommandLine(argc, argv);
@@ -68,17 +69,17 @@ int main(int argc, char **argv) {
   std::string output_dir = absl::GetFlag(FLAGS_output_dir);
   std::string prefix = absl::GetFlag(FLAGS_prefix);
   std::string isa_name = absl::GetFlag(FLAGS_isa_name);
-  std::vector<std::string> include_roots;
-  auto include_roots_string = absl::GetFlag(FLAGS_include);
-  include_roots =
-      absl::StrSplit(include_roots_string, ',', absl::SkipWhitespace());
+  std::vector<std::string> include_dirs;
+  auto include_dirs_string = absl::GetFlag(FLAGS_include);
+  include_dirs =
+      absl::StrSplit(include_dirs_string, ',', absl::SkipWhitespace());
 
   if (prefix.empty()) {
     std::cerr << "Error: prefix must be specified and non-empty" << std::endl;
     exit(-1);
   }
   auto status =
-      visitor.Process(file_names, prefix, isa_name, include_roots, output_dir);
+      visitor.Process(file_names, prefix, isa_name, include_dirs, output_dir);
 
   if (!status.ok()) {
     LOG(ERROR) << status.message();

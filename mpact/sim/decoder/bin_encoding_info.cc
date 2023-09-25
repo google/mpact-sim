@@ -41,6 +41,10 @@ BinEncodingInfo::~BinEncodingInfo() {
     delete format_ptr;
   }
   format_map_.clear();
+  for (auto &[unused, group_ptr] : instruction_group_map_) {
+    delete group_ptr;
+  }
+  instruction_group_map_.clear();
 }
 
 // Add name of an include file to be included in the generated code.

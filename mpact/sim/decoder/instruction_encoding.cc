@@ -57,6 +57,11 @@ absl::StatusOr<Constraint *> InstructionEncoding::CreateConstraint(
   // Check if the field name is indeed a field.
   auto *field = format_->GetField(field_name);
   if (field != nullptr) {
+    if (field->width >= 64) {
+      return absl::OutOfRangeError(absl::StrCat(
+          "Field '", field->name,
+          "' is too wide to create constraint - ust be <= 64 bits"));
+    }
     bool is_signed = field->is_signed;
     if (!is_signed) {
       if ((value < 0) || (value >= (1ULL << field->width))) {
