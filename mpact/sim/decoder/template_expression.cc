@@ -17,6 +17,9 @@
 #include <functional>
 #include <variant>
 
+#include "absl/status/status.h"
+#include "absl/status/statusor.h"
+
 namespace mpact {
 namespace sim {
 namespace machine_description {
@@ -130,7 +133,7 @@ absl::StatusOr<TemplateValue> TemplateParam::GetValue() const {
   return absl::InternalError("Cannot return value of template parameter");
 }
 
-// Returns an Evaluate'd copy of the corresponding argument expression tree.
+// Returns an evaluated copy of the corresponding argument expression tree.
 absl::StatusOr<TemplateExpression *> TemplateParam::Evaluate(
     TemplateInstantiationArgs *args) {
   // No template arguments available, so just return the template parameter.
@@ -162,6 +165,7 @@ TemplateNegate::~TemplateNegate() {
 }
 
 absl::StatusOr<TemplateValue> TemplateNegate::GetValue() const {
+  auto res = expr_->GetValue();
   return -expr_->GetValue();
 }
 

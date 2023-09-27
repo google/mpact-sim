@@ -15,8 +15,8 @@
 #ifndef MPACT_SIM_DECODER_TEMPLATE_EXPRESSION_H_
 #define MPACT_SIM_DECODER_TEMPLATE_EXPRESSION_H_
 
+#include <cstddef>
 #include <functional>
-#include <list>
 #include <string>
 #include <utility>
 #include <variant>
@@ -99,7 +99,7 @@ class TemplateConstant : public TemplateExpression {
 };
 
 // Using the "curiously recurring template pattern" to define a templated
-// baseclass for binary expression node classes. Each binary operator class
+// base class for binary expression node classes. Each binary operator class
 // will inherit from this class, while passing itself as the template argument.
 template <typename T>
 class BinaryTemplateExpression : public TemplateExpression {
@@ -117,7 +117,7 @@ class BinaryTemplateExpression : public TemplateExpression {
       delete lhs.value();
       return rhs.status();
     }
-    // Return a constant node if hte right and left subexpressions are constan.
+    // Return a constant node if the right and left subexpressions are constant.
     if (lhs.value()->IsConstant() && rhs.value()->IsConstant()) {
       auto result =
           T::Operator(lhs.value()->GetValue(), rhs.value()->GetValue());
