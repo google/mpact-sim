@@ -138,6 +138,7 @@ mpact_cc_test(
         "testfiles/example_with_recursive_include.isa",
         "testfiles/generator.isa",
         "testfiles/recursive_include.isa",
+        "testfiles/resource.isa",
         "testfiles/undefined_errors.isa",
         "testfiles/disasm_formats.isa",
         # Project exported include files.

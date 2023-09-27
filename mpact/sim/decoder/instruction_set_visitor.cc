@@ -1238,8 +1238,14 @@ InstructionSetVisitor::ProcessResourceReference(
   }
 
   if (resource_item->end_cycle == nullptr) {
-    end_expr = (dest_op == nullptr) ? new TemplateConstant(0)
-                                    : dest_op->expression()->DeepCopy();
+    // If there is no end_cycle specified, then it inherits from the dest_op
+    // if available.
+    // TODO(torerik): Handle case where the dest latency is '*'.
+    if ((dest_op != nullptr) && (dest_op->expression() != nullptr)) {
+      end_expr = dest_op->expression()->DeepCopy();
+    } else {
+      end_expr = new TemplateConstant(0);
+    }
   } else {
     tmp_op =
         FindDestinationOpInExpression(resource_item->end_cycle, slot, inst);
@@ -1295,8 +1301,18 @@ void InstructionSetVisitor::VisitResourceDetailsLists(ResourceDetailsCtx *ctx,
     for (auto *resource_item : acquire_list->resource_item()) {
       auto ref_optional = ProcessResourceReference(slot, inst, resource_item);
       if (!ref_optional) continue;
-      spec->use_vec.push_back(ref_optional.value());
-      spec->acquire_vec.push_back(new ResourceReference(*ref_optional.value()));
+      // Only add to use_vec if it isn't already there.
+      bool found = false;
+      for (auto *ref : spec->use_vec) {
+        if (ref->resource->name() == ref_optional.value()->resource->name()) {
+          found = true;
+          break;
+        }
+      }
+      if (!found) {
+        spec->use_vec.push_back(new ResourceReference(*ref_optional.value()));
+      }
+      spec->acquire_vec.push_back(ref_optional.value());
     }
   }
 

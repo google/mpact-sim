@@ -20,6 +20,7 @@ decoder ErrorTest {
   Z;
   ZFormat;
   RiscVGInst32;                      // Error: multiple references to one group.
+  GroupA;
   opcode_enum = "";                  // Error: empty opcode enum string.
   opcode_enum = "sim::OpcodeEnum";   // Error: multiple opcode_enums.
   namespace sim::errors;             // Error: multiple namespace decls.
@@ -136,3 +137,20 @@ format Inst72Format[72] {
 instruction group X[72] : Inst72Format {
   none_6 : Inst72Format : bits == 0;
 };
+
+format TypeA {    // No width or inherited format specified.
+  fields:
+    unsigned bits[25];
+    unsigned opcode[7];
+}
+
+format TypeB : TypeX {    // Parent format does not exist.
+  fields:
+    unsigned bits[25];
+    unsigned opcode[7];
+}
+
+instruction group GroupA[32] : Inst32Format {
+  inst_0 : TypeA : opcode == 0b000'0000;
+  inst_1 : TypeB : opcode == 0b000'0001;
+}

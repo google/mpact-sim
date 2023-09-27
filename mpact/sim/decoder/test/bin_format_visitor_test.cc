@@ -536,6 +536,11 @@ TEST_F(BinFormatVisitorTest, InstDefFormatError) {
   EXPECT_TRUE(ptr != std::string::npos);
   ptr = log_sink.error_log().find("Error: More than one namespace declaration");
   EXPECT_TRUE(ptr != std::string::npos);
+  ptr = log_sink.error_log().find("Error: Parent format 'TypeX' not defined");
+  EXPECT_TRUE(ptr != std::string::npos);
+  ptr = log_sink.error_log().find(
+      "Error: Format 'TypeA': must specify a width or inherited format");
+  EXPECT_TRUE(ptr != std::string::npos);
 }
 
 TEST_F(BinFormatVisitorTest, InstDefFormatErrorUndef) {

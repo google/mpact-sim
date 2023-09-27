@@ -492,7 +492,7 @@ void BinFormatVisitor::VisitFormatDef(FormatDefCtx *ctx,
     // Must specify either a width or it must inherit from a format that has
     // a width.
     error_listener_->semanticError(
-        ctx->inherits_from()->start,
+        ctx->start,
         absl::StrCat("Format '", format_name,
                      "': must specify a width or inherited format"));
     return;
@@ -1055,7 +1055,6 @@ std::unique_ptr<BinEncodingInfo> BinFormatVisitor::VisitDecoderDef(
         InstructionGroup *child_group = nullptr;
         auto map_iter = encoding_info->instruction_group_map().find(child_name);
         if (map_iter != encoding_info->instruction_group_map().end()) {
-          LOG(INFO) << "Group map found: " << child_name;
           child_group = map_iter->second;
           bool exists = false;
           for (auto const *group : child_groups) {

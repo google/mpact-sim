@@ -45,12 +45,14 @@ constexpr char kEmptyBaseName[] = "empty_file";
 constexpr char kGeneratorBaseName[] = "generator";
 constexpr char kUndefinedErrorsBaseName[] = "undefined_errors";
 constexpr char kDisasmFormatsBaseName[] = "disasm_formats";
+constexpr char kResourceBaseName[] = "resource";
 
 constexpr char kEmptyIsaName[] = "Empty";
 constexpr char kExampleIsaName[] = "Example";
 constexpr char kGeneratorIsaName[] = "Generator";
 constexpr char kUndefinedErrorsIsaName[] = "UndefinedErrors";
 constexpr char kDisasmFormatsIsaName[] = "DisasmFormats";
+constexpr char kResourceIsaName[] = "Resource";
 
 // The depot path to the test directory.
 constexpr char kDepotPath[] = "mpact/sim/decoder/test";
@@ -531,6 +533,69 @@ TEST_F(InstructionSetParserTest, DisasmFormats) {
   ptr = log_sink.error_log().find(
       "Error: Invalid operand 'rs2' used in format '%rs2'");
   EXPECT_TRUE(ptr != std::string::npos);
+}
+
+TEST_F(InstructionSetParserTest, Resource) {
+  // Set up input and output file paths.
+  std::vector<std::string> input_files = {
+      absl::StrCat(kDepotPath, "/testfiles/", kResourceBaseName, ".isa")};
+  ASSERT_TRUE(FileExists(input_files[0]));
+  std::string output_dir = getenv(kTestUndeclaredOutputsDir);
+
+  InstructionSetVisitor visitor;
+  // Parse and process the input file, capturing the log.
+  LogSink log_sink;
+  absl::AddLogSink(&log_sink);
+  auto success = visitor
+                     .Process(input_files, kResourceBaseName, kResourceIsaName,
+                              paths_, output_dir)
+                     .ok();
+  absl::RemoveLogSink(&log_sink);
+  EXPECT_TRUE(success);
+  // Verify that the decoder files _decoder.{.h,.cc} files were generated.
+  EXPECT_TRUE(FileExists(
+      absl::StrCat(output_dir, "/", kResourceBaseName, "_decoder.h")));
+
+  EXPECT_TRUE(FileExists(
+      absl::StrCat(output_dir, "/", kResourceBaseName, "_decoder.cc")));
+
+  // Verify that the instruction enums and decoder entries include  the two
+  // instructions.
+  std::ifstream enum_file(
+      absl::StrCat(output_dir, "/", kResourceBaseName, "_enums.h"));
+  CHECK(enum_file.good());
+  std::string enum_str((std::istreambuf_iterator<char>(enum_file)),
+                       (std::istreambuf_iterator<char>()));
+  std::ifstream decoder_file(
+      absl::StrCat(output_dir, "/", kResourceBaseName, "_decoder.cc"));
+  CHECK(decoder_file.good());
+  std::string decoder_str((std::istreambuf_iterator<char>(decoder_file)),
+                          (std::istreambuf_iterator<char>()));
+  // Extract the OpcodeEnum content.
+  std::string opcodes;
+  RE2 opcodes_re("(?msU:\\s*OpcodeEnum[\\s\\n]*\\{([^\\}]*)\\})");
+  EXPECT_TRUE(RE2::PartialMatch(enum_str, opcodes_re, &opcodes));
+  for (auto &name : {"kInst0", "kInst1"}) {
+    RE2 re(name);
+    EXPECT_TRUE(RE2::PartialMatch(opcodes, re)) << name;
+    EXPECT_TRUE(RE2::PartialMatch(decoder_str, re)) << name;
+  }
+  // Complex resource enum.
+  std::string complex_resources;
+  RE2 complex_resources_re(
+      "(?msU:\\s*ComplexResourceEnum[\\s\\n]*\\{([^\\}]*)\\})");
+  EXPECT_TRUE(
+      RE2::PartialMatch(enum_str, complex_resources_re, &complex_resources));
+  EXPECT_TRUE(RE2::PartialMatch(complex_resources, "kDest0"));
+  EXPECT_FALSE(RE2::PartialMatch(complex_resources, "kDest1"));
+  // Simple resource enum.
+  std::string simple_resources;
+  RE2 simple_resources_re(
+      "(?msU:\\s*SimpleResourceEnum[\\s\\n]*\\{([^\\}]*)\\})");
+  EXPECT_TRUE(
+      RE2::PartialMatch(enum_str, simple_resources_re, &simple_resources));
+  EXPECT_FALSE(RE2::PartialMatch(simple_resources, "kDest0"));
+  EXPECT_TRUE(RE2::PartialMatch(simple_resources, "kDest1"));
 }
 
 }  // namespace

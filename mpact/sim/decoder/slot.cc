@@ -23,7 +23,6 @@
 #include <vector>
 
 #include "absl/container/flat_hash_set.h"
-#include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
@@ -369,34 +368,32 @@ std::string Slot::GenerateResourceSetter(
                     "    }\n");
   }
   // Complex resources.
-  if (!complex_refs.empty()) {
-    for (auto const *complex : complex_refs) {
-      // Get the expression values for the begin and end expressions.
-      auto begin_value = complex->begin_expression->GetValue();
-      auto end_value = complex->end_expression->GetValue();
-      if (!begin_value.ok() || !end_value.ok()) {
-        absl::StrAppend(&output,
-                        "#error Unable to evaluate begin or end expression\n");
-        continue;
-      }
-      // Get the integer values from the begin and end expression values.
-      int *begin = std::get_if<int>(&begin_value.value());
-      int *end = std::get_if<int>(&end_value.value());
-      if ((begin == nullptr) || (end == nullptr)) {
-        absl::StrAppend(
-            &output, "#error Unable to get value of begin or end expression\n");
-        continue;
-      }
-      absl::StrAppend(
-          &output, "    res_op = enc->GetComplexResourceOperand(slot, entry, ",
-          opcode_enum, ", ComplexResourceEnum::k",
-          complex->resource->pascal_name(), ", ");
-      absl::StrAppend(&output, *begin, ", ", *end, ");\n");
+  for (auto const *complex : complex_refs) {
+    // Get the expression values for the begin and end expressions.
+    auto begin_value = complex->begin_expression->GetValue();
+    auto end_value = complex->end_expression->GetValue();
+    if (!begin_value.ok() || !end_value.ok()) {
       absl::StrAppend(&output,
-                      "    if (res_op != nullptr) {\n"
-                      "      inst->AppendResourceHold(res_op);\n"
-                      "    }\n");
+                      "#error Unable to evaluate begin or end expression\n");
+      continue;
     }
+    // Get the integer values from the begin and end expression values.
+    int *begin = std::get_if<int>(&begin_value.value());
+    int *end = std::get_if<int>(&end_value.value());
+    if ((begin == nullptr) || (end == nullptr)) {
+      absl::StrAppend(
+          &output, "#error Unable to get value of begin or end expression\n");
+      continue;
+    }
+    absl::StrAppend(&output,
+                    "    res_op = enc->GetComplexResourceOperand(slot, entry, ",
+                    opcode_enum, ", ComplexResourceEnum::k",
+                    complex->resource->pascal_name(), ", ");
+    absl::StrAppend(&output, *begin, ", ", *end, ");\n");
+    absl::StrAppend(&output,
+                    "    if (res_op != nullptr) {\n"
+                    "      inst->AppendResourceHold(res_op);\n"
+                    "    }\n");
   }
 
   // Get all the simple resources that need to be reserved, then all the complex

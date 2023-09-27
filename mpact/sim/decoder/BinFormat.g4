@@ -47,7 +47,7 @@ declaration
 // "inheritance" in this context only refers to the width, and helps group
 // formats in a hierarchy.
 format_def
-  : FORMAT name=IDENT width=index? inherits_from? '{' format_field_defs'}' ';'
+  : FORMAT name=IDENT width=index? inherits_from? '{' format_field_defs'}' ';'?
   ;
 
 inherits_from
@@ -126,7 +126,7 @@ bit_index_range
 // derive from the same format.
 instruction_group_def
   : INSTRUCTION GROUP name=IDENT '[' number ']' ':' format=IDENT
-    '{' instruction_def_list '}' ';'
+    '{' instruction_def_list '}' ';'?
   ;
 
 instruction_def_list
@@ -195,7 +195,7 @@ constraint_op
 // than one is specified, the name of the decoder to generate code for must be
 // passed to the tool.
 decoder_def
-  : DECODER name=IDENT '{'  decoder_attribute* '}' ';'
+  : DECODER name=IDENT '{'  decoder_attribute* '}' ';'?
   ;
 
 decoder_attribute
