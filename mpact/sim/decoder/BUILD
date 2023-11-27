@@ -29,14 +29,12 @@ package(
 antlr4_cc_parser(
     name = "antlr_isa_parser",
     src = "InstructionSet.g4",
-    #listener = True,
     namespaces = [
         "sim",
         "machine_description",
         "instruction_set",
         "generated",
     ],
-    #visitor = True,
 )
 
 antlr4_cc_lexer(
@@ -73,10 +71,18 @@ mpact_cc_library(
 )
 
 mpact_cc_library(
+    name = "format_name",
+    srcs = ["format_name.cc"],
+    hdrs = ["format_name.h"],
+    deps = [
+        "@com_google_absl//absl/strings",
+    ],
+)
+
+mpact_cc_library(
     name = "isa_parser",
     srcs = [
         "bundle.cc",
-        "format_name.cc",
         "instruction.cc",
         "instruction_set.cc",
         "instruction_set_visitor.cc",
@@ -88,7 +94,6 @@ mpact_cc_library(
     hdrs = [
         "base_class.h",
         "bundle.h",
-        "format_name.h",
         "instruction.h",
         "instruction_set.h",
         "instruction_set_contexts.h",
@@ -110,6 +115,7 @@ mpact_cc_library(
         ":antlr_isa_parser",
         ":antlr_parser_wrapper",
         ":decoder_error_listener",
+        ":format_name",
         "@com_google_absl//absl/container:btree",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
@@ -239,6 +245,104 @@ mpact_cc_binary(
     visibility = ["//visibility:public"],
     deps = [
         ":bin_format_visitor",
+        "@com_google_absl//absl/flags:flag",
+        "@com_google_absl//absl/flags:parse",
+        "@com_google_absl//absl/log",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/strings",
+    ],
+)
+
+antlr4_cc_parser(
+    name = "proto_format_parser",
+    src = "ProtoFormat.g4",
+    namespaces = [
+        "mpact",
+        "sim",
+        "decoder",
+        "proto_fmt",
+        "generated",
+    ],
+)
+
+antlr4_cc_lexer(
+    name = "proto_format_lexer",
+    src = "ProtoFormat.g4",
+    namespaces = [
+        "mpact",
+        "sim",
+        "decoder",
+        "proto_fmt",
+        "generated",
+    ],
+    deps = [
+    ],
+)
+
+mpact_cc_library(
+    name = "proto_format_visitor",
+    srcs = [
+        "proto_constraint_expression.cc",
+        "proto_encoding_group.cc",
+        "proto_encoding_info.cc",
+        "proto_format_visitor.cc",
+        "proto_instruction_decoder.cc",
+        "proto_instruction_encoding.cc",
+        "proto_instruction_group.cc",
+    ],
+    hdrs = [
+        "proto_constraint_expression.h",
+        "proto_encoding_group.h",
+        "proto_encoding_info.h",
+        "proto_format_contexts.h",
+        "proto_format_visitor.h",
+        "proto_instruction_decoder.h",
+        "proto_instruction_encoding.h",
+        "proto_instruction_group.h",
+    ],
+    copts = [
+        "-fexceptions",
+    ],
+    features = [
+        "-use_header_modules",
+    ],
+    visibility = [":__subpackages__"],
+    deps = [
+        ":antlr_parser_wrapper",
+        ":decoder_error_listener",
+        ":format_name",
+        ":proto_format_lexer",
+        ":proto_format_parser",
+        "//mpact/sim/generic:type_helpers",
+        "@com_google_absl//absl/container:btree",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/container:flat_hash_set",
+        "@com_google_absl//absl/functional:bind_front",
+        "@com_google_absl//absl/log",
+        "@com_google_absl//absl/numeric:bits",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_protobuf//:protobuf",
+        "@com_google_protobuf//:protobuf/compiler:importer",
+        "@com_googlesource_code_re2//:re2",
+    ],
+)
+
+mpact_cc_binary(
+    name = "proto_format_gen",
+    srcs = [
+        "proto_format_gen_main.cc",
+    ],
+    copts = [
+        "-fexceptions",
+    ],
+    features = [
+        "-use_header_modules",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":proto_format_visitor",
         "@com_google_absl//absl/flags:flag",
         "@com_google_absl//absl/flags:parse",
         "@com_google_absl//absl/log",

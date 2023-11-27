@@ -24,8 +24,6 @@
 
 #include "absl/status/statusor.h"
 
-// TODO(b/176244171)
-
 // This file contains classes that represent and can evaluate expressions
 // consisting of literals, template parameters, and operations: unary minus,
 // add, subtract, multiply and divide. The value of the expression is

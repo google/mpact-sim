@@ -14,7 +14,8 @@
 
 # This contains the test projects for the decoder.
 
-load("//mpact/sim/decoder:mpact_sim_isa.bzl", "mpact_cc_library", "mpact_cc_test", "mpact_isa_decoder")
+load("//mpact/sim/decoder:mpact_sim_isa.bzl", "mpact_cc_library", "mpact_cc_test", "mpact_isa_decoder", "mpact_proto_fmt_decoder")
+load("//tools/build_defs/proto/cpp:cc_proto_library.bzl", "cc_proto_library")
 
 package(
     default_applicable_licenses = ["//:license"],
@@ -380,4 +381,80 @@ mpact_cc_test(
         "@com_google_googletest//:gtest_main",
         "@com_googlesource_code_re2//:re2",
     ],
+)
+
+mpact_cc_test(
+    name = "proto_format_visitor_test",
+    size = "small",
+    srcs = [
+        "proto_format_visitor_test.cc",
+    ],
+    data = [
+        # Local include files.
+        "testfiles/empty_file.proto_fmt",
+        "testfiles/riscv32g.proto_fmt",
+        "testfiles/riscv32g.proto",
+    ],
+    deps = [
+        ":log_sink",
+        "//mpact/sim/decoder:proto_format_visitor",
+        "@com_google_absl//absl/flags:flag",
+        "@com_google_absl//absl/log",
+        "@com_google_absl//absl/log:check",
+        "@com_google_absl//absl/log:log_sink_registry",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_googletest//:gtest",
+        "@com_google_googletest//:gtest_main",
+        "@com_googlesource_code_re2//:re2",
+    ],
+)
+
+mpact_cc_test(
+    name = "proto_constraint_expression_test",
+    size = "small",
+    srcs = [
+        "proto_constraint_expression_test.cc",
+    ],
+    data = [
+        "testfiles/riscv32g.proto",
+    ],
+    deps = [
+        "//mpact/sim/decoder:proto_format_visitor",
+        "//mpact/sim/generic:type_helpers",
+        "@com_google_absl//absl/log",
+        "@com_google_absl//absl/log:check",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_googletest//:gtest",
+        "@com_google_googletest//:gtest_main",
+        "@com_google_protobuf//:protobuf",
+        "@com_google_protobuf//:protobuf/compiler:importer",
+    ],
+)
+
+mpact_proto_fmt_decoder(
+    name = "riscv32g_proto_decoder",
+    srcs = ["testfiles/riscv32g.proto_fmt"],
+    decoder_name = "RiscV32GProto",
+    includes = [],
+    prefix = "riscv32g_proto",
+    proto_files = ["testfiles/riscv32g.proto"],
+    deps = [
+        ":riscv32g_cc_proto",
+        "//third_party/mpact_riscv:riscv32g_isa",
+    ],
+)
+
+proto_library(
+    name = "riscv32g_proto",
+    srcs = ["testfiles/riscv32g.proto"],
+    cc_api_version = 2,
+)
+
+cc_proto_library(
+    name = "riscv32g_cc_proto",
+    deps = [":riscv32g_proto"],
 )

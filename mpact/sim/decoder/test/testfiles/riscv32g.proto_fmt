@@ -1,0 +1,86 @@
+// Copyright 2023 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// This file defines the decoder for RiscV32G instructions represented in
+// protobuf format. It should work with the standard RiscV32G .isa file.
+
+decoder RiscV32GProto {
+  namespace mpact_sim::decoder::test;
+  opcode_enum = "mpact::sim::riscv::isa32::OpcodeEnum";
+  includes {
+    #include "third_party/mpact_riscv/riscv32g_enums.h"
+  }
+  g_instructions;
+}
+
+// From package mpact_sim.decoder.test.
+using mpact_sim.decoder.test.RiscVInstruction;
+
+instruction group g_instructions : RiscVInstruction {
+  setter btype_setter:
+    B_imm12 = btype.immediate;
+    rs1 = btype.rs1;
+    rs2 = btype.rs2;
+  lui: opcode == OPCODE_LOAD_UPPER_IMM, HAS(utype);
+    U_imm20 = utype.immediate;
+    rd = utype.rd;
+  auipc: opcode == OPCODE_ADD_UPPER_IMM_PC, HAS(utype);
+    U_imm20 = utype.immediate;
+    rd = utype.rd;
+  jal: opcode == OPCODE_JUMP_AND_LINK, HAS(utype);
+    J_imm20 = utype.immediate;
+    rd = utype.rd;
+  j: opcode == OPCODE_JUMP, HAS(utype);
+    J_imm20 = utype.immediate;
+    rd = utype.rd;
+  jr: opcode == OPCODE_JUMP_REG, HAS(jregtype);
+    J_imm12 = jregtype.immediate;
+    rs1 = jregtype.rs1;
+  jalr: opcode == OPCODE_JUMP_AND_LINK_REG, HAS(itype);
+    J_imm12 = itype.immediate;
+    rs1 = itype.rs1;
+    rd = itype.rd;
+  beq: opcode == OPCODE_BEQ, HAS(btype);
+    btype_setter;
+  bne: opcode == OPCODE_BNE, HAS(btype);
+    btype_setter;
+  blt: opcode == OPCODE_BLT, HAS(btype);
+    btype_setter;
+  bltu: opcode == OPCODE_BLTU, HAS(btype);
+    btype_setter;
+  bge: opcode == OPCODE_BGE, HAS(btype);
+    btype_setter;
+  bgeu: opcode == OPCODE_BGEU, HAS(btype);
+    btype_setter;
+  lw: opcode == OPCODE_LOAD_WORD, HAS(itype);
+    I_imm12 = itype.immediate;
+    rs1 = itype.rs1;
+    rd = itype.rd;
+  lh: opcode == OPCODE_LOAD_HALF, HAS(itype);
+    I_imm12 = itype.immediate;
+    rs1 = itype.rs1;
+    rd = itype.rd;
+  lb: opcode == OPCODE_LOAD_BYTE, HAS(itype);
+    I_imm12 = itype.immediate;
+    rs1 = itype.rs1;
+    rd = itype.rd;
+  lhu: opcode == OPCODE_LOAD_HALF_UNSIGNED, HAS(itype);
+    I_imm12 = itype.immediate;
+    rs1 = itype.rs1;
+    rd = itype.rd;
+  lbu: opcode == OPCODE_LOAD_BYTE_UNSIGNED, HAS(itype);
+    I_imm12 = itype.immediate;
+    rs1 = itype.rs1;
+    rd = itype.rd;
+}

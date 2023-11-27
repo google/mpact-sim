@@ -14,6 +14,7 @@
 
 #include "mpact/sim/decoder/format_name.h"
 
+#include <cctype>
 #include <string>
 
 #include "absl/strings/string_view.h"

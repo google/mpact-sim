@@ -142,7 +142,7 @@ absl::Status BinFormatVisitor::Process(
     return absl::InternalError("Errors encountered - terminating.");
   }
   // Visit the parse tree starting at the namespaces declaration.
-  VisitTopLevel(top_level);
+  PreProcessDeclarations(top_level->declaration_list());
   // Process additional source files.
   for (int i = 1; i < file_names.size(); ++i) {
     ParseIncludeFile(top_level, file_names[i], {});
@@ -310,10 +310,6 @@ int BinFormatVisitor::ConvertToInt(NumberCtx *ctx) {
   return ret_val;
 }
 
-void BinFormatVisitor::VisitTopLevel(TopLevelCtx *ctx) {
-  PreProcessDeclarations(ctx->declaration_list());
-}
-
 std::unique_ptr<BinEncodingInfo> BinFormatVisitor::ProcessTopLevel(
     const std::string &decoder_name) {
   // At this point we have the contexts for all slots, bundles and isas.
@@ -467,7 +463,7 @@ void BinFormatVisitor::ParseIncludeFile(antlr4::ParserRuleContext *ctx,
   include_parser->parser()->addErrorListener(error_listener());
   // Start parsing at the declaratition_list_w_eof rule.
   DeclarationListCtx *declaration_list =
-      include_parser->parser()->declaration_list_w_eof()->declaration_list();
+      include_parser->parser()->top_level()->declaration_list();
   include_file.close();
   error_listener()->set_file_name(previous_file_name);
   if (error_listener()->syntax_error_count() > 0) {
@@ -705,7 +701,7 @@ InstructionGroup *BinFormatVisitor::VisitInstructionGroupDef(
     return nullptr;
   }
   // Parse the instruction encoding definitions in the instruction group.
-  auto inst_group = inst_group_res.value();
+  auto *inst_group = inst_group_res.value();
   for (auto *inst_def : ctx->instruction_def_list()->instruction_def()) {
     VisitInstructionDef(inst_def, inst_group);
   }

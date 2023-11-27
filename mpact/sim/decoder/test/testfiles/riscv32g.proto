@@ -1,0 +1,145 @@
+// Copyright 2023 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// This file defines a protobuf for representing a subset of RiscV32G
+// instructions.
+
+syntax = "proto2";
+
+package mpact_sim.decoder.test;
+
+option java_multiple_files = true;
+
+enum RiscVOpcode {
+  OPCODE_NOP = 0;
+  OPCODE_LOAD_UPPER_IMM = 1;
+  OPCODE_ADD_UPPER_IMM_PC = 2;
+  OPCODE_JUMP_AND_LINK = 3;
+  OPCODE_JUMP = 4;
+  OPCODE_JUMP_AND_LINK_REG = 5;
+  OPCODE_JUMP_REG = 6;
+  OPCODE_BEQ = 7;
+  OPCODE_BNE = 8;
+  OPCODE_BLT = 9;
+  OPCODE_BLTU = 10;
+  OPCODE_BGE = 11;
+  OPCODE_BGEU = 12;
+  OPCODE_LOAD_BYTE = 13;
+  OPCODE_LOAD_HALF = 14;
+  OPCODE_LOAD_WORD = 15;
+  OPCODE_LOAD_BYTE_UNSIGNED = 16;
+  OPCODE_LOAD_HALF_UNSIGNED = 17;
+  OPCODE_STORE_BYTE = 18;
+  OPCODE_STORE_HALF = 19;
+  OPCODE_STORE_WORD = 20;
+  OPCODE_ADD_IMM = 21;
+  OPCODE_SET_LT_IMM = 22;
+  OPCODE_SET_LTU_IMM = 23;
+  OPCODE_XOR_IMM = 24;
+  OPCODE_OR_IMM = 25;
+  OPCODE_AND_IMM = 26;
+  OPCODE_SHIFT_LEFT_LOGICAL_IMM = 27;
+  OPCODE_SHIFT_RIGHT_LOGICAL_IMM = 28;
+  OPCODE_SHIFT_RIGHT_ARITH_IMM = 29;
+  OPCODE_ADD = 30;
+  OPCODE_SUB = 31;
+  OPCODE_SHIFT_LEFT_LOGICAL = 32;
+  OPCODE_SET_LT = 33;
+  OPCODE_SET_LTU = 34;
+  OPCODE_XOR = 35;
+  OPCODE_SHIFT_RIGHT_LOGICAL = 36;
+  OPCODE_SHIFT_RIGHT_ARITH = 37;
+  OPCODE_OR = 38;
+  OPCODE_AND = 39;
+  OPCODE_FENCE = 40;
+  OPCODE_ECALL = 41;
+  OPCODE_EBREAK = 42;
+  OPCODE_FENCEI = 43;
+  OPCODE_MUL = 44;
+  OPCODE_MULH = 45;
+  OPCODE_MULHSU = 46;
+  OPCODE_MULHU = 47;
+  OPCODE_DIV = 48;
+  OPCODE_DIVU = 49;
+  OPCODE_REM = 50;
+  OPCODE_REMU = 51;
+  OPCODE_CSRRW = 52;
+  OPCODE_CSRRS = 53;
+  OPCODE_CSRRC = 54;
+  OPCODE_CSRRS_NR = 55;
+  OPCODE_CSRRC_NR = 56;
+  OPCODE_CSRRW_NR = 57;
+  OPCODE_CSRRS_NW = 58;
+  OPCODE_CSRRC_NW = 59;
+  OPCODE_CSRRW_IMM = 60;
+  OPCODE_CSRRS_IMM = 61;
+  OPCODE_CSRRC_IMM = 62;
+  OPCODE_CSRRS_IMM_NR = 63;
+  OPCODE_CSRRC_IMM_NR = 64;
+  OPCODE_CSRRW_IMM_NR = 65;
+  OPCODE_CSRRS_IMM_NW = 66;
+  OPCODE_CSRRC_IMM_NW = 67;
+  OPCODE_URET = 68;
+  OPCODE_SRET = 69;
+  OPCODE_WFI = 70;
+  OPCODE_SFENCE_VMA_ZZ = 71;
+  OPCODE_SFENCE_VMA_ZN = 72;
+  OPCODE_SFENCE_VMA_NZ = 73;
+  OPCODE_SFENCE_VMA_NN = 74;
+}
+
+message UType {
+  optional int64 immediate = 1;
+  optional int32 rd = 2;
+}
+
+message JType {
+  optional int64 immediate = 1;
+}
+
+message JRegType {
+  optional int64 immediate = 1;
+  optional int32 rs1 = 2;
+}
+
+message IType {
+  optional int64 immediate = 1;
+  optional int32 rs1 = 2;
+  optional int32 rd = 3;
+}
+
+message BType {
+  optional int64 immediate = 1;
+  optional int32 rs1 = 2;
+  optional int32 rs2 = 3;
+}
+
+message R3Type {
+  optional int32 rs1 = 1;
+  optional int32 rs2 = 2;
+  optional int32 rd = 3;
+}
+
+message RiscVInstruction {
+  optional RiscVOpcode opcode = 1;
+  oneof format {
+    UType utype = 2;
+    JType jtype = 3;
+    JRegType jregtype = 4;
+    IType itype = 5;
+    BType btype = 6;
+    R3Type rtype = 7;
+  }
+  optional int32 size = 8;
+}

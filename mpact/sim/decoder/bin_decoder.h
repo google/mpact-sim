@@ -58,9 +58,9 @@ class BinDecoder {
   std::deque<std::string> &namespaces() { return namespaces_; }
 
  private:
-  // Encoder name.
+  // Decoder name.
   std::string name_;
-  // The global decoder structure.
+  // The global encoding structure.
   BinEncodingInfo *encoding_info_;
   // Error handler.
   DecoderErrorListener *error_listener_;

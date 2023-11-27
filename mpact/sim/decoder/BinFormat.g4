@@ -25,14 +25,6 @@ top_level
   : declaration_list EOF
   ;
 
-// Include files can only contain bundle and slot declarations and nested
-// includes. Include file parsing starts with the declaration_list_w_eof,
-// forcing syntax errors to be recognized if the first token doesn't match in
-// the included file, since it requires the EOF to finish the rule.
-
-declaration_list_w_eof
-  : declaration_list EOF
-  ;
 declaration_list
   : (decoder_def | declaration)*
   ;
@@ -40,8 +32,6 @@ declaration_list
 declaration
   : format_def | instruction_group_def | include_file
   ;
-
-
 
 // Defines an instruction format. It may inherit from another format, though
 // "inheritance" in this context only refers to the width, and helps group
@@ -218,7 +208,7 @@ opcode_enum_decl
   ;
 
 include_files
-  : INCLUDE_FILES '{' include_file* '}'
+  : INCLUDE_FILES '{' include_file* '}' ';'?
   ;
 
 include_file

@@ -20,6 +20,7 @@
 #include "absl/container/btree_map.h"
 #include "absl/container/btree_set.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/string_view.h"
 #include "mpact/sim/decoder/decoder_error_listener.h"
 
 namespace mpact {

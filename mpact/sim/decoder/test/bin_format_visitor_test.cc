@@ -366,7 +366,7 @@ TEST_F(BinFormatVisitorTest, GeneratorErrorUndefinedBindingVariable) {
   absl::RemoveLogSink(&log_sink);
   EXPECT_FALSE(success);
 
-  // Make sure the error about duplicate binding variable 'btype' is found.
+  // Make sure the error about duplicate binding variable 'funcX' is found.
   auto ptr = log_sink.error_log().find("Undefined binding variable 'funcX'");
   EXPECT_TRUE(ptr != std::string::npos);
 }

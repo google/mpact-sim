@@ -100,7 +100,6 @@ class BinFormatVisitor {
   BitRange GetBitIndexRange(BitIndexRangeCtx *ctx);
   int ConvertToInt(NumberCtx *ctx);
   // Methods that visit the nodes of the parse tree.
-  void VisitTopLevel(TopLevelCtx *ctx);
   std::unique_ptr<BinEncodingInfo> ProcessTopLevel(
       const std::string &decoder_name);
   void PreProcessDeclarations(DeclarationListCtx *ctx);
