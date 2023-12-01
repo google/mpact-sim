@@ -283,6 +283,7 @@ mpact_cc_library(
     name = "proto_format_visitor",
     srcs = [
         "proto_constraint_expression.cc",
+        "proto_constraint_value_set.cc",
         "proto_encoding_group.cc",
         "proto_encoding_info.cc",
         "proto_format_visitor.cc",
@@ -292,6 +293,7 @@ mpact_cc_library(
     ],
     hdrs = [
         "proto_constraint_expression.h",
+        "proto_constraint_value_set.h",
         "proto_encoding_group.h",
         "proto_encoding_info.h",
         "proto_format_contexts.h",

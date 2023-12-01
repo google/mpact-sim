@@ -227,6 +227,7 @@ StringPair ProtoEncodingInfo::GenerateDecoderClass() {
                     "::Decode", ToPascalCase(inst_group->name()), "(",
                     kDecodeMsgName, ", this);\n", "}\n\n");
   }
+  if (error_listener_->HasError()) return {"", ""};
   absl::StrAppend(&cc_output, decoder_fcns);
   absl::StrAppend(&h_output, "\n  // Setters and getters.\n");
   for (auto const &[name, cpp_type] : setter_types_) {

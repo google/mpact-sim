@@ -192,4 +192,49 @@ TEST_F(ProtoConstraintExpressionTest, NegateExpression) {
   EXPECT_FALSE(res.status().ok());
 }
 
+TEST_F(ProtoConstraintExpressionTest, CloneValueExpr) {
+  ProtoConstraintValueExpression expr(ProtoValue(static_cast<int32_t>(-1)));
+  auto *clone = expr.Clone();
+  EXPECT_NE(clone, nullptr);
+  EXPECT_EQ(clone->cpp_type(), expr.cpp_type());
+  EXPECT_EQ(clone->GetValueAs<int32_t>(), -1);
+  delete clone;
+}
+
+TEST_F(ProtoConstraintExpressionTest, CloneEnumExpr) {
+  // Read in the proto file and initialize the importer pool.
+  MultiFileErrorCollector error_collector;
+  proto2::compiler::DiskSourceTree source_tree;
+  source_tree.MapPath("", "");
+  proto2::compiler::Importer importer(&source_tree, &error_collector);
+  auto const *isa_descriptor = importer.Import(kIsaProto);
+  CHECK_NE(isa_descriptor, nullptr);
+  auto const *pool = importer.pool();
+  CHECK_NE(pool, nullptr);
+  // Get the enum value descriptor.
+  auto const *enum_value_desc =
+      pool->FindEnumValueByName("mpact_sim.decoder.test.OPCODE_ADD");
+  CHECK_NE(enum_value_desc, nullptr);
+  int enum_value = enum_value_desc->number();
+  // Create a constraint enum expression using the enum value descriptor.
+  ProtoConstraintEnumExpression enum_expr(enum_value_desc);
+  auto *clone = enum_expr.Clone();
+  EXPECT_NE(clone, nullptr);
+  EXPECT_EQ(clone->cpp_type(), enum_expr.cpp_type());
+  EXPECT_EQ(clone->GetValueAs<int32_t>(), enum_value);
+  delete clone;
+}
+
+TEST_F(ProtoConstraintExpressionTest, CloneNegateExpr) {
+  // int32_t
+  auto *val_expr =
+      new ProtoConstraintValueExpression(ProtoValue(static_cast<int32_t>(-1)));
+  ProtoConstraintNegateExpression neg_expr(val_expr);
+  auto *clone = neg_expr.Clone();
+  EXPECT_NE(clone, nullptr);
+  EXPECT_EQ(clone->cpp_type(), neg_expr.cpp_type());
+  EXPECT_EQ(clone->GetValueAs<int32_t>(), neg_expr.GetValueAs<int32_t>());
+  delete clone;
+}
+
 }  // namespace

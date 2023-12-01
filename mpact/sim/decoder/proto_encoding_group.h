@@ -20,6 +20,7 @@
 #include <vector>
 
 #include "absl/container/btree_map.h"
+#include "absl/container/flat_hash_set.h"
 #include "absl/strings/string_view.h"
 
 // This file defines the ProtoEncodingGroup class, which is used in a hierarchy
@@ -42,6 +43,7 @@ class DecoderErrorListener;
 namespace proto_fmt {
 
 // Forward declarations.
+class ProtoConstraintValueSet;
 class ProtoInstructionEncoding;
 class ProtoInstructionGroup;
 struct FieldInfo;
@@ -67,15 +69,6 @@ class ProtoEncodingGroup {
   // Process the encodings in this group and divide them into subgroups based
   // on their constraint value for the differentiating field.
   void AddSubGroups();
-  // Create C++ code for leaf (encoding group) instruction decoder.
-  std::string EmitLeafDecoder(absl::string_view fcn_name,
-                              absl::string_view opcode_enum,
-                              absl::string_view message_type_name,
-                              int indent_width) const;
-  // Create C++ code for intermediary instruction decoder.
-  std::string EmitComplexDecoder(absl::string_view fcn_name,
-                                 absl::string_view opcode_enum,
-                                 absl::string_view message_type_name);
   // Top level function called for creating C++ code for the decoder.
   std::string EmitDecoders(absl::string_view fcn_name,
                            absl::string_view opcode_enum,
@@ -88,6 +81,22 @@ class ProtoEncodingGroup {
   int level() const { return level_; }
 
  private:
+  // Check the encodings after the subgroups have been created and make sure
+  // there are no encoding ambiguities, such as multiple opcodes with the same
+  // encoding, etc.
+  void CheckEncodings();
+  bool DoConstraintsOverlap(const std::vector<ProtoConstraintValueSet *> &lhs,
+                            const std::vector<ProtoConstraintValueSet *> &rhs);
+  // Create C++ code for leaf (encoding group) instruction decoder.
+  std::string EmitLeafDecoder(absl::string_view fcn_name,
+                              absl::string_view opcode_enum,
+                              absl::string_view message_type_name,
+                              int indent_width) const;
+  // Create C++ code for intermediary instruction decoder.
+  std::string EmitComplexDecoder(absl::string_view fcn_name,
+                                 absl::string_view opcode_enum,
+                                 absl::string_view message_type_name);
+
   ProtoInstructionGroup *inst_group_ = nullptr;
   ProtoEncodingGroup *parent_ = nullptr;
   DecoderErrorListener *error_listener_ = nullptr;
@@ -97,6 +106,8 @@ class ProtoEncodingGroup {
   std::vector<ProtoInstructionEncoding *> encoding_vec_;
   std::vector<ProtoEncodingGroup *> encoding_group_vec_;
   absl::btree_map<std::string, FieldInfo *> field_map_;
+  absl::flat_hash_set<const proto2::FieldDescriptor *> other_field_set_;
+  absl::flat_hash_set<const proto2::OneofDescriptor *> other_oneof_set_;
 };
 
 }  // namespace proto_fmt

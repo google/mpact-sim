@@ -128,7 +128,7 @@ class ProtoConstraintExpression {
   virtual absl::StatusOr<ProtoValue> GetValue() const = 0;
   template <typename T>
   T GetValueAs() const {
-    auto res = GetValue();
+    auto res = this->GetValue();
     // If there is a error, or the value is of a different type, just return
     // the default constructed object of the desired type.
     if (!res.ok() || !std::holds_alternative<T>(res.value())) return T();

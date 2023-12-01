@@ -458,3 +458,22 @@ cc_proto_library(
     name = "riscv32g_cc_proto",
     deps = [":riscv32g_proto"],
 )
+
+cc_test(
+    name = "proto_constraint_value_set_test",
+    size = "small",
+    srcs = [
+        "proto_constraint_value_set_test.cc",
+    ],
+    deps = [
+        "//mpact/sim/decoder:proto_format_visitor",
+        "//mpact/sim/generic:type_helpers",
+        "@com_google_absl//absl/log",
+        "@com_google_absl//absl/log:check",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_googletest//:gtest",
+        "@com_google_googletest//:gtest_main",
+    ],
+)

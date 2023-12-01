@@ -190,19 +190,24 @@ absl::Status ProtoFormatVisitor::Process(
   // Generate the decoder.
   auto [h_decoder, cc_decoder] = encoding_info->GenerateDecoderClass();
 
+  // Terminate if there were errors.
+  if (error_listener_->HasError() > 0) {
+    return absl::InternalError("Errors encountered - terminating.");
+  }
+  // Create file names for the output files.
   std::string file_prefix(prefix);
   if (file_prefix.empty()) {
     // If there is no prefix specified, use the decoder name in snake case.
     file_prefix = mpact::sim::machine_description::instruction_set::ToSnakeCase(
         decoder_name);
   }
-  // Create output streams for .h and .cc files.
   std::string dot_h_name = absl::StrCat(file_prefix, "_proto_decoder.h");
   std::string dot_cc_name = absl::StrCat(file_prefix, "_proto_decoder.cc");
-  std::string header_guard_name = ToHeaderGuard(dot_h_name);
+  // Create output streams for .h and .cc files.
   std::ofstream dot_h_file(absl::StrCat(directory, "/", dot_h_name));
   std::ofstream dot_cc_file(absl::StrCat(directory, "/", dot_cc_name));
-  // Output the decoder with header guards inserted.
+  // Output the decoder with header guards inserted in the .h file.
+  std::string header_guard_name = ToHeaderGuard(dot_h_name);
   dot_h_file << "#ifndef " << header_guard_name << "\n";
   dot_h_file << "#define " << header_guard_name << "\n\n";
   dot_h_file << h_decoder;
