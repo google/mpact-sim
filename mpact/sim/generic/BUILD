@@ -228,7 +228,7 @@ cc_library(
     ],
     copts = ["-O3"],
     visibility = [
-        "__subpackages__",
+        "//visibility:private",  # Only private by automation, not intent. Owner may accept CLs adding visibility. See go/scheuklappen#explicit-private.
     ],
     deps = [
         "@com_google_absl//absl/types:variant",
