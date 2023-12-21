@@ -71,18 +71,18 @@ constexpr int kCppToVariantTypeMap[] = {-1,
                                         -1};
 
 // Mapping from protobuf variant type index to proto cpp field types.
-constexpr proto2::FieldDescriptor::CppType kVariantToCppTypeMap[] = {
-    proto2::FieldDescriptor::CPPTYPE_INT32,
-    proto2::FieldDescriptor::CPPTYPE_INT64,
-    proto2::FieldDescriptor::CPPTYPE_UINT32,
-    proto2::FieldDescriptor::CPPTYPE_UINT64,
-    proto2::FieldDescriptor::CPPTYPE_DOUBLE,
-    proto2::FieldDescriptor::CPPTYPE_FLOAT,
-    proto2::FieldDescriptor::CPPTYPE_BOOL,
-    proto2::FieldDescriptor::CPPTYPE_STRING,
+constexpr google::protobuf::FieldDescriptor::CppType kVariantToCppTypeMap[] = {
+    google::protobuf::FieldDescriptor::CPPTYPE_INT32,
+    google::protobuf::FieldDescriptor::CPPTYPE_INT64,
+    google::protobuf::FieldDescriptor::CPPTYPE_UINT32,
+    google::protobuf::FieldDescriptor::CPPTYPE_UINT64,
+    google::protobuf::FieldDescriptor::CPPTYPE_DOUBLE,
+    google::protobuf::FieldDescriptor::CPPTYPE_FLOAT,
+    google::protobuf::FieldDescriptor::CPPTYPE_BOOL,
+    google::protobuf::FieldDescriptor::CPPTYPE_STRING,
 };
 
-std::string GetCppTypeName(proto2::FieldDescriptor::CppType cpp_type);
+std::string GetCppTypeName(google::protobuf::FieldDescriptor::CppType cpp_type);
 
 // Helper templates for comparing CPP type to actual type.
 template <typename T>
@@ -90,35 +90,39 @@ struct CppType;
 
 template <>
 struct CppType<int32_t> {
-  static constexpr int value = proto2::FieldDescriptor::CPPTYPE_INT32;
+  static constexpr int value = google::protobuf::FieldDescriptor::CPPTYPE_INT32;
 };
 template <>
 struct CppType<int64_t> {
-  static constexpr int value = proto2::FieldDescriptor::CPPTYPE_INT64;
+  static constexpr int value = google::protobuf::FieldDescriptor::CPPTYPE_INT64;
 };
 template <>
 struct CppType<uint32_t> {
-  static constexpr int value = proto2::FieldDescriptor::CPPTYPE_UINT32;
+  static constexpr int value =
+      google::protobuf::FieldDescriptor::CPPTYPE_UINT32;
 };
 template <>
 struct CppType<uint64_t> {
-  static constexpr int value = proto2::FieldDescriptor::CPPTYPE_UINT64;
+  static constexpr int value =
+      google::protobuf::FieldDescriptor::CPPTYPE_UINT64;
 };
 template <>
 struct CppType<double> {
-  static constexpr int value = proto2::FieldDescriptor::CPPTYPE_DOUBLE;
+  static constexpr int value =
+      google::protobuf::FieldDescriptor::CPPTYPE_DOUBLE;
 };
 template <>
 struct CppType<float> {
-  static constexpr int value = proto2::FieldDescriptor::CPPTYPE_FLOAT;
+  static constexpr int value = google::protobuf::FieldDescriptor::CPPTYPE_FLOAT;
 };
 template <>
 struct CppType<bool> {
-  static constexpr int value = proto2::FieldDescriptor::CPPTYPE_BOOL;
+  static constexpr int value = google::protobuf::FieldDescriptor::CPPTYPE_BOOL;
 };
 template <>
 struct CppType<std::string> {
-  static constexpr int value = proto2::FieldDescriptor::CPPTYPE_STRING;
+  static constexpr int value =
+      google::protobuf::FieldDescriptor::CPPTYPE_STRING;
 };
 
 // Expression base class.
@@ -135,7 +139,7 @@ class ProtoConstraintExpression {
     return std::get<T>(res.value());
   }
   virtual ProtoConstraintExpression *Clone() const = 0;
-  virtual proto2::FieldDescriptor::CppType cpp_type() const = 0;
+  virtual google::protobuf::FieldDescriptor::CppType cpp_type() const = 0;
   virtual int variant_type() const = 0;
 };
 
@@ -149,7 +153,7 @@ class ProtoConstraintNegateExpression : public ProtoConstraintExpression {
   ProtoConstraintExpression *Clone() const override {
     return new ProtoConstraintNegateExpression(expr_->Clone());
   }
-  proto2::FieldDescriptor::CppType cpp_type() const override {
+  google::protobuf::FieldDescriptor::CppType cpp_type() const override {
     return expr_->cpp_type();
   }
   int variant_type() const override { return expr_->variant_type(); }
@@ -162,20 +166,20 @@ class ProtoConstraintNegateExpression : public ProtoConstraintExpression {
 class ProtoConstraintEnumExpression : public ProtoConstraintExpression {
  public:
   explicit ProtoConstraintEnumExpression(
-      const proto2::EnumValueDescriptor *enum_value)
+      const google::protobuf::EnumValueDescriptor *enum_value)
       : enum_value_(enum_value) {}
   ~ProtoConstraintEnumExpression() override = default;
   absl::StatusOr<ProtoValue> GetValue() const override;
   ProtoConstraintExpression *Clone() const override {
     return new ProtoConstraintEnumExpression(enum_value_);
   }
-  proto2::FieldDescriptor::CppType cpp_type() const override {
-    return proto2::FieldDescriptor::CPPTYPE_INT32;
+  google::protobuf::FieldDescriptor::CppType cpp_type() const override {
+    return google::protobuf::FieldDescriptor::CPPTYPE_INT32;
   }
   int variant_type() const override { return *ProtoValueIndex::kInt32; }
 
  private:
-  const proto2::EnumValueDescriptor *enum_value_ = nullptr;
+  const google::protobuf::EnumValueDescriptor *enum_value_ = nullptr;
 };
 
 // Constant value expression.
@@ -191,7 +195,7 @@ class ProtoConstraintValueExpression : public ProtoConstraintExpression {
   ProtoConstraintExpression *Clone() const override {
     return new ProtoConstraintValueExpression(value_);
   }
-  proto2::FieldDescriptor::CppType cpp_type() const override {
+  google::protobuf::FieldDescriptor::CppType cpp_type() const override {
     return kVariantToCppTypeMap[value_.index()];
   }
   int variant_type() const override { return value_.index(); }

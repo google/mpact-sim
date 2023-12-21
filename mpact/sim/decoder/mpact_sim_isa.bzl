@@ -241,7 +241,6 @@ def mpact_proto_fmt_decoder(name, includes, src = "", srcs = [], proto_files = [
         srcs = [f for f in out_files if f.endswith(".cc")],
         hdrs = [f for f in out_files if f.endswith(".h")],
         deps = [
-            "@com_google_absl//absl/base:no_destructor",
             "@com_google_absl//absl/container:flat_hash_map",
             "@com_google_absl//absl/functional:any_invocable",
             "@com_google_absl//absl/strings:str_format",
@@ -289,7 +288,7 @@ def _make_bin_tool_invocation_command(num_srcs, prefix, decoder_name):
 # those that will be included, the command includes creating a bash array from $(SRCS), then
 # instead of using $(SRCS) in the command, it uses only the first element of that array.
 def _make_proto_tool_invocation_command(num_srcs, prefix, decoder_name, proto_files):
-    cmd = "ARR=($(SRCS)); $(location //third_party/mpact_sim/decoder:proto_format_gen) "
+    cmd = "ARR=($(SRCS)); $(location @@com_google_mpact-sim//mpact/sim/decoder:proto_format_gen) "
 
     # Add the sources that are not in includes.
     for i in range(0, num_srcs):

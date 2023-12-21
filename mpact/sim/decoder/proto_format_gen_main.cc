@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <cstdlib>
+#include <cstring>
 #include <iostream>
 #include <ostream>
 #include <string>
@@ -38,6 +39,8 @@ ABSL_FLAG(std::string, include, "", "include file root(s)");
 ABSL_FLAG(std::string, proto_include, "", "proto include file root(s)");
 ABSL_FLAG(std::string, proto_files, "", "proto file(s)");
 
+static constexpr char kRootDir[] = "";
+
 int main(int argc, char **argv) {
   // Process the command line options.
   auto arg_vec = absl::ParseCommandLine(argc, argv);
@@ -61,12 +64,15 @@ int main(int argc, char **argv) {
   auto proto_dirs_string = absl::GetFlag(FLAGS_proto_include);
   std::vector<std::string> proto_include =
       absl::StrSplit(proto_dirs_string, ',', absl::SkipWhitespace());
-  char cwd[1024];
-  getcwd(cwd, sizeof(cwd));
-  std::string cwd_str(cwd);
-  auto pos = cwd_str.find("google3");
-  if (pos != std::string::npos) {
-    proto_include.push_back(cwd_str.substr(0, pos + 7));
+
+  if (strlen(kRootDir) > 0) {
+    char cwd[1024];
+    (void)getcwd(cwd, sizeof(cwd));
+    std::string cwd_str(cwd);
+    auto pos = cwd_str.find(kRootDir);
+    if (pos != std::string::npos) {
+      proto_include.push_back(cwd_str.substr(0, pos + 7));
+    }
   }
 
   auto proto_files_string = absl::GetFlag(FLAGS_proto_files);

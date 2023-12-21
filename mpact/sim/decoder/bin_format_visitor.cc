@@ -25,7 +25,7 @@
 #include <utility>
 #include <vector>
 
-#include "./third_party/absl/container/btree_map.h"
+#include "absl/container/btree_map.h"
 #include "absl/container/flat_hash_set.h"
 #include "absl/log/log.h"
 #include "absl/status/status.h"

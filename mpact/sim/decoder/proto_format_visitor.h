@@ -101,11 +101,13 @@ class ProtoFormatVisitor {
   // Get the field descriptor for the named field from the message type while
   // building up a vector of one_of_fields that are on the path from the top
   // level message to the field.
-  const proto2::FieldDescriptor *GetField(
-      const std::string &field_name, const proto2::Descriptor *message_type,
-      std::vector<const proto2::FieldDescriptor *> &one_of_fields) const;
+  const google::protobuf::FieldDescriptor *GetField(
+      const std::string &field_name,
+      const google::protobuf::Descriptor *message_type,
+      std::vector<const google::protobuf::FieldDescriptor *> &one_of_fields)
+      const;
   // Get the descriptor for the named enumeration member.
-  const proto2::EnumValueDescriptor *GetEnumValueDescriptor(
+  const google::protobuf::EnumValueDescriptor *GetEnumValueDescriptor(
       const std::string &full_name) const;
   // Get the numeric value of the named enumeration member.
   absl::StatusOr<int> GetEnumValue(const std::string &enum_name) const;
@@ -121,7 +123,7 @@ class ProtoFormatVisitor {
   void VisitIncludeFile(IncludeFileCtx *ctx);
   // Parse an included file.
   void ParseIncludeFile(antlr4::ParserRuleContext *ctx,
-                        std::string_view file_name,
+                        const std::string &file_name,
                         const std::vector<std::string> &dirs);
   // Creates the top level data structures and visits the declarations that
   // are necessary to generate the instruction decoder.
@@ -137,12 +139,14 @@ class ProtoFormatVisitor {
                             ProtoInstructionEncoding *inst_encoding,
                             const ProtoInstructionGroup *inst_group);
   ProtoConstraintExpression *VisitConstraintExpression(
-      ConstraintExprCtx *ctx, const proto2::FieldDescriptor *field_desc,
+      ConstraintExprCtx *ctx,
+      const google::protobuf::FieldDescriptor *field_desc,
       const ProtoInstructionGroup *inst_group);
   ProtoConstraintExpression *VisitValue(ValueCtx *ctx);
   ProtoConstraintExpression *VisitNumber(NumberCtx *ctx);
   ProtoConstraintExpression *VisitQualifiedIdent(
-      QualifiedIdentCtx *ctx, const proto2::FieldDescriptor *field_desc,
+      QualifiedIdentCtx *ctx,
+      const google::protobuf::FieldDescriptor *field_desc,
       const ProtoInstructionGroup *inst_group);
   void VisitSetterGroupDef(SetterGroupDefCtx *ctx,
                            ProtoInstructionGroup *inst_group,
@@ -176,14 +180,15 @@ class ProtoFormatVisitor {
   StringPair EmitCode(ProtoEncodingInfo *encoding_info);
 
   // Finders used to find specific object types from the proto2 pool.
-  using FieldFinder =
-      std::function<const proto2::FieldDescriptor *(const std::string &)>;
+  using FieldFinder = std::function<const google::protobuf::FieldDescriptor *(
+      const std::string &)>;
   using MessageFinder =
-      std::function<const proto2::Descriptor *(const std::string &)>;
-  using EnumTypeFinder =
-      std::function<const proto2::EnumDescriptor *(const std::string &)>;
+      std::function<const google::protobuf::Descriptor *(const std::string &)>;
+  using EnumTypeFinder = std::function<const google::protobuf::EnumDescriptor *(
+      const std::string &)>;
   using EnumValueFinder =
-      std::function<const proto2::EnumValueDescriptor *(const std::string &)>;
+      std::function<const google::protobuf::EnumValueDescriptor *(
+          const std::string &)>;
 
   FieldFinder field_finder_;
   MessageFinder message_finder_;
@@ -198,8 +203,8 @@ class ProtoFormatVisitor {
   std::unique_ptr<decoder::DecoderErrorListener> error_listener_ = nullptr;
   std::string decoder_name_;
   // Descriptor pool.
-  const proto2::DescriptorPool *descriptor_pool_;
-  absl::flat_hash_map<std::string, const proto2::FileDescriptor *>
+  const google::protobuf::DescriptorPool *descriptor_pool_;
+  absl::flat_hash_map<std::string, const google::protobuf::FileDescriptor *>
       file_descriptor_map_;
   // Using decl map.
   absl::flat_hash_map<std::string, std::string> using_decl_map_;

@@ -84,8 +84,8 @@ ProtoInstructionEncoding::~ProtoInstructionEncoding() {
 
 absl::Status ProtoInstructionEncoding::AddSetter(
     SetterDefCtx *ctx, const std::string &name,
-    const proto2::FieldDescriptor *field_descriptor,
-    const std::vector<const proto2::FieldDescriptor *> &one_of_fields,
+    const google::protobuf::FieldDescriptor *field_descriptor,
+    const std::vector<const google::protobuf::FieldDescriptor *> &one_of_fields,
     IfNotCtx *if_not) {
   if (ctx == nullptr) return absl::InvalidArgumentError("Context is null");
 
@@ -122,8 +122,8 @@ absl::Status ProtoInstructionEncoding::AddSetter(
 
 absl::Status ProtoInstructionEncoding::AddConstraint(
     FieldConstraintCtx *ctx, ConstraintType op,
-    const proto2::FieldDescriptor *field_descriptor,
-    const std::vector<const proto2::FieldDescriptor *> &one_of_fields,
+    const google::protobuf::FieldDescriptor *field_descriptor,
+    const std::vector<const google::protobuf::FieldDescriptor *> &one_of_fields,
     const ProtoConstraintExpression *expr) {
   // One_of_fields is a list of fields that have 'kHas' constraints that are
   // prerequisites for the constraint being added. The variable depends_on
@@ -215,7 +215,7 @@ absl::Status ProtoInstructionEncoding::AddConstraint(
 }
 
 ProtoConstraint *ProtoInstructionEncoding::AddHasConstraint(
-    const proto2::FieldDescriptor *field_descriptor,
+    const google::protobuf::FieldDescriptor *field_descriptor,
     ProtoConstraint *depends_on) {
   if (depends_on != nullptr) {
     if (!has_constraints_.contains(depends_on->field_descriptor->full_name())) {

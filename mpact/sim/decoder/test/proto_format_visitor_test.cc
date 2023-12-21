@@ -32,12 +32,12 @@ using mpact::sim::decoder::proto_fmt::ProtoFormatVisitor;
 
 constexpr char kTestUndeclaredOutputsDir[] = "TEST_UNDECLARED_OUTPUTS_DIR";
 
-constexpr char kRiscV32GIsa[] = "testfiles/riscv32g.proto";
+constexpr char kRiscV32Isa[] = "testfiles/riscv32i.proto";
 constexpr char kEmptyBaseName[] = "empty_file";
-constexpr char kRiscV32GBaseName[] = "riscv32g";
+constexpr char kRiscV32BaseName[] = "riscv32i";
 
 constexpr char kEmptyIsaName[] = "Empty";
-constexpr char kRiscV32GIsaName[] = "RiscV32GProto";
+constexpr char kRiscV32IsaName[] = "RiscV32IProto";
 
 // The depot path to the test directory.
 constexpr char kDepotPath[] = "mpact/sim/decoder/test";
@@ -76,12 +76,12 @@ TEST_F(ProtoFormatVisitorTest, EmptyProto) {
 TEST_F(ProtoFormatVisitorTest, ExampleProto) {
   // Set up input and output file paths.
   std::vector<std::string> input_files = {
-      absl::StrCat(kDepotPath, "/testfiles/", kRiscV32GBaseName, ".proto_fmt")};
+      absl::StrCat(kDepotPath, "/testfiles/", kRiscV32BaseName, ".proto_fmt")};
   ASSERT_TRUE(FileExists(input_files[0]));
   std::string output_dir = getenv(kTestUndeclaredOutputsDir);
   ProtoFormatVisitor visitor;
-  auto status = visitor.Process(input_files, kRiscV32GIsaName, "", {}, {paths_},
-                                {kRiscV32GIsa}, output_dir);
+  auto status = visitor.Process(input_files, kRiscV32IsaName, "", {}, {paths_},
+                                {kRiscV32Isa}, output_dir);
   EXPECT_TRUE(status.ok()) << status.message();
 }
 

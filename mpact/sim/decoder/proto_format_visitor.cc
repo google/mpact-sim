@@ -14,6 +14,8 @@
 
 #include "mpact/sim/decoder/proto_format_visitor.h"
 
+#include <unistd.h>
+
 #include <cctype>
 #include <cstdint>
 #include <fstream>
@@ -63,7 +65,7 @@ std::string StripQuotes(const std::string &str) {
 
 // Error collector for .proto file parsing.
 class MultiFileErrorCollector
-    : public proto2::compiler::MultiFileErrorCollector {
+    : public google::protobuf::compiler::MultiFileErrorCollector {
  public:
   MultiFileErrorCollector() {}
   MultiFileErrorCollector(const MultiFileErrorCollector &) = delete;
@@ -121,14 +123,15 @@ absl::Status ProtoFormatVisitor::Process(
 
   // Initialize the proto source tree with the proto directories to resolve
   // proto files from.
-  proto2::compiler::DiskSourceTree source_tree;
-
+  google::protobuf::compiler::DiskSourceTree source_tree;
+  source_tree.MapPath("", "./");
   for (auto const &proto_dir : proto_dirs) {
     source_tree.MapPath("", proto_dir);
   }
   // Import the proto files.
   MultiFileErrorCollector proto_error_collector;
-  proto2::compiler::Importer importer(&source_tree, &proto_error_collector);
+  google::protobuf::compiler::Importer importer(&source_tree,
+                                                &proto_error_collector);
   for (auto const &proto_file : proto_files) {
     auto *file_desc = importer.Import(proto_file);
     if (file_desc == nullptr) {
@@ -148,14 +151,15 @@ absl::Status ProtoFormatVisitor::Process(
 
   descriptor_pool_ = importer.pool();
   // Set the finder function objects.
-  field_finder_ = absl::bind_front(&proto2::DescriptorPool::FindFieldByName,
-                                   descriptor_pool_);
-  message_finder_ = absl::bind_front(
-      &proto2::DescriptorPool::FindMessageTypeByName, descriptor_pool_);
+  field_finder_ = absl::bind_front(
+      &google::protobuf::DescriptorPool::FindFieldByName, descriptor_pool_);
+  message_finder_ =
+      absl::bind_front(&google::protobuf::DescriptorPool::FindMessageTypeByName,
+                       descriptor_pool_);
   enum_type_finder_ = absl::bind_front(
-      &proto2::DescriptorPool::FindEnumTypeByName, descriptor_pool_);
+      &google::protobuf::DescriptorPool::FindEnumTypeByName, descriptor_pool_);
   enum_value_finder_ = absl::bind_front(
-      &proto2::DescriptorPool::FindEnumValueByName, descriptor_pool_);
+      &google::protobuf::DescriptorPool::FindEnumValueByName, descriptor_pool_);
 
   // Parse the file and then create the data structures.
   TopLevelCtx *top_level = parser_wrapper.parser()->top_level();
@@ -248,9 +252,11 @@ const T *ProtoFormatVisitor::FindByName(
   return object;
 }
 
-const proto2::FieldDescriptor *ProtoFormatVisitor::GetField(
-    const std::string &field_name, const proto2::Descriptor *message_type,
-    std::vector<const proto2::FieldDescriptor *> &one_of_fields) const {
+const google::protobuf::FieldDescriptor *ProtoFormatVisitor::GetField(
+    const std::string &field_name,
+    const google::protobuf::Descriptor *message_type,
+    std::vector<const google::protobuf::FieldDescriptor *> &one_of_fields)
+    const {
   auto pos = field_name.find_first_of('.');
   // If this is a "leaf" field, find it and return if found.
   if (pos == std::string::npos) {
@@ -273,8 +279,8 @@ const proto2::FieldDescriptor *ProtoFormatVisitor::GetField(
   return GetField(remainder, message_desc, one_of_fields);
 }
 
-const proto2::EnumValueDescriptor *ProtoFormatVisitor::GetEnumValueDescriptor(
-    const std::string &full_name) const {
+const google::protobuf::EnumValueDescriptor *
+ProtoFormatVisitor::GetEnumValueDescriptor(const std::string &full_name) const {
   std::string expanded = Expand(full_name);
   auto pos = expanded.find_last_of('.');
   // If this is a "leaf", it fails. The enum must be qualified by enum type.
@@ -390,7 +396,7 @@ void ProtoFormatVisitor::VisitIncludeFile(IncludeFileCtx *ctx) {
 }
 
 void ProtoFormatVisitor::ParseIncludeFile(
-    antlr4::ParserRuleContext *ctx, std::string_view file_name,
+    antlr4::ParserRuleContext *ctx, const std::string &file_name,
     const std::vector<std::string> &dirs) {
   std::fstream include_file;
   // Open include file.
@@ -529,7 +535,7 @@ void ProtoFormatVisitor::VisitFieldConstraint(
   absl::Status status;
   if (ctx->HAS() != nullptr) {
     std::string field_name = ctx->qualified_ident()->getText();
-    std::vector<const proto2::FieldDescriptor *> one_of_fields;
+    std::vector<const google::protobuf::FieldDescriptor *> one_of_fields;
     auto *field_desc =
         GetField(field_name, inst_group->message_type(), one_of_fields);
     if (field_desc == nullptr) {
@@ -551,7 +557,7 @@ void ProtoFormatVisitor::VisitFieldConstraint(
     // The field name is relative to the message type, but may refer to fields
     // in sub-messages contained within that message.
     std::string field_name = ctx->field->getText();
-    std::vector<const proto2::FieldDescriptor *> one_of_fields;
+    std::vector<const google::protobuf::FieldDescriptor *> one_of_fields;
     auto *field_desc =
         GetField(field_name, inst_group->message_type(), one_of_fields);
     if (field_desc == nullptr) {
@@ -593,7 +599,7 @@ void ProtoFormatVisitor::VisitFieldConstraint(
 }
 
 ProtoConstraintExpression *ProtoFormatVisitor::VisitConstraintExpression(
-    ConstraintExprCtx *ctx, const proto2::FieldDescriptor *field_desc,
+    ConstraintExprCtx *ctx, const google::protobuf::FieldDescriptor *field_desc,
     const ProtoInstructionGroup *inst_group) {
   if (ctx == nullptr) return nullptr;
   ProtoConstraintExpression *constraint_expr = nullptr;
@@ -685,7 +691,7 @@ ProtoConstraintExpression *ProtoFormatVisitor::VisitNumber(NumberCtx *ctx) {
 
 // Visits a qualified identifier that specifies an enumerator value.
 ProtoConstraintExpression *ProtoFormatVisitor::VisitQualifiedIdent(
-    QualifiedIdentCtx *ctx, const proto2::FieldDescriptor *field_desc,
+    QualifiedIdentCtx *ctx, const google::protobuf::FieldDescriptor *field_desc,
     const ProtoInstructionGroup *inst_group) {
   if (ctx == nullptr) return nullptr;
   // Verify that the field is an enum.
@@ -716,7 +722,7 @@ void ProtoFormatVisitor::VisitSetterGroupDef(SetterGroupDefCtx *ctx,
   for (auto *setter_def : ctx->setter_def()) {
     std::string name = setter_def->name->getText();
     std::string field_name = setter_def->qualified_ident()->getText();
-    std::vector<const proto2::FieldDescriptor *> one_of_fields;
+    std::vector<const google::protobuf::FieldDescriptor *> one_of_fields;
     auto const *field_desc =
         GetField(field_name, inst_group->message_type(), one_of_fields);
     if (field_desc == nullptr) {
@@ -750,7 +756,7 @@ void ProtoFormatVisitor::VisitSetterDef(SetterDefCtx *ctx,
   if (ctx == nullptr) return;
   std::string name = ctx->name->getText();
   std::string field_name = ctx->qualified_ident()->getText();
-  std::vector<const proto2::FieldDescriptor *> one_of_fields;
+  std::vector<const google::protobuf::FieldDescriptor *> one_of_fields;
   auto const *field_desc =
       GetField(field_name, inst_group->message_type(), one_of_fields);
   if (field_desc == nullptr) {
@@ -1179,7 +1185,7 @@ void ProtoFormatVisitor::ProcessParentGroup(
     return;
   }
   // Create the "parent" instruction group.
-  const proto2::Descriptor *group_format =
+  const google::protobuf::Descriptor *group_format =
       message_finder_(Expand(group_format_name));
   if (group_format == nullptr) {
     error_listener_->semanticError(

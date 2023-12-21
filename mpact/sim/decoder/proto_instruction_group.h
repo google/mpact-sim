@@ -41,8 +41,8 @@ class ProtoEncodingGroup;
 struct SetterInfo {
   SetterDefCtx *ctx;
   std::string name;
-  const proto2::FieldDescriptor *field_desc;
-  std::vector<const proto2::FieldDescriptor *> one_of_fields;
+  const google::protobuf::FieldDescriptor *field_desc;
+  std::vector<const google::protobuf::FieldDescriptor *> one_of_fields;
   IfNotCtx *if_not;
 };
 
@@ -50,7 +50,7 @@ struct SetterInfo {
 class ProtoInstructionGroup {
  public:
   ProtoInstructionGroup(std::string group_name,
-                        const proto2::Descriptor *message_type,
+                        const google::protobuf::Descriptor *message_type,
                         std::string opcode_enum,
                         ProtoEncodingInfo *encoding_info);
   ProtoInstructionGroup() = delete;
@@ -59,8 +59,9 @@ class ProtoInstructionGroup {
   // Add group level setter.
   absl::Status AddSetter(
       const std::string &group_name, SetterDefCtx *ctx,
-      const std::string &setter_name, const proto2::FieldDescriptor *field_desc,
-      std::vector<const proto2::FieldDescriptor *> one_of_fields,
+      const std::string &setter_name,
+      const google::protobuf::FieldDescriptor *field_desc,
+      std::vector<const google::protobuf::FieldDescriptor *> one_of_fields,
       IfNotCtx *if_not);
   // Look up the setters in the named setter group. If found, return the begin
   // and end iterators for those setters.
@@ -81,7 +82,9 @@ class ProtoInstructionGroup {
 
   // Accessors.
   const std::string &name() const { return name_; }
-  const proto2::Descriptor *message_type() const { return message_type_; }
+  const google::protobuf::Descriptor *message_type() const {
+    return message_type_;
+  }
   const std::vector<ProtoInstructionEncoding *> &encodings() const {
     return encodings_;
   }
@@ -89,7 +92,7 @@ class ProtoInstructionGroup {
 
  private:
   std::string name_;
-  const proto2::Descriptor *message_type_;
+  const google::protobuf::Descriptor *message_type_;
   std::string opcode_enum_;
   ProtoEncodingInfo *encoding_info_;
   absl::flat_hash_set<std::string> encoding_name_set_;

@@ -62,7 +62,7 @@ struct ProtoConstraint {
   // Parsing context.
   FieldConstraintCtx *ctx;
   // The proto field descriptor for which the constraint applies.
-  const proto2::FieldDescriptor *field_descriptor;
+  const google::protobuf::FieldDescriptor *field_descriptor;
   // The constraint type.
   ConstraintType op;
   // If non-null, the expression that applies to the constraint.
@@ -75,7 +75,7 @@ struct ProtoConstraint {
   ProtoConstraint *depends_on;
   // Constructors.
   ProtoConstraint(FieldConstraintCtx *ctx,
-                  const proto2::FieldDescriptor *field_descriptor,
+                  const google::protobuf::FieldDescriptor *field_descriptor,
                   ConstraintType op, const ProtoConstraintExpression *expr,
                   int64_t value, ProtoConstraint *depends_on)
       : ctx(ctx),
@@ -85,7 +85,7 @@ struct ProtoConstraint {
         value(value),
         depends_on(depends_on) {}
   ProtoConstraint(FieldConstraintCtx *ctx,
-                  const proto2::FieldDescriptor *field_descriptor,
+                  const google::protobuf::FieldDescriptor *field_descriptor,
                   ConstraintType op)
       : ProtoConstraint(ctx, field_descriptor, op, nullptr, 0, nullptr) {}
   // Copy constructor.
@@ -106,7 +106,7 @@ struct ProtoSetter {
   // The name of the object that is set.
   std::string name;
   // The field that will provide the type and value of the object.
-  const proto2::FieldDescriptor *field_descriptor;
+  const google::protobuf::FieldDescriptor *field_descriptor;
   // Default value of the object if the field descriptor is not valid.
   IfNotCtx *if_not;
   // If non-null, points to constraint that has to be true in order to access
@@ -133,16 +133,18 @@ class ProtoInstructionEncoding {
   // at known names.
   absl::Status AddSetter(
       SetterDefCtx *ctx, const std::string &name,
-      const proto2::FieldDescriptor *field_descriptor,
-      const std::vector<const proto2::FieldDescriptor *> &one_of_fields,
+      const google::protobuf::FieldDescriptor *field_descriptor,
+      const std::vector<const google::protobuf::FieldDescriptor *>
+          &one_of_fields,
       IfNotCtx *if_not);
   // Adds an encoding constraint for the current instruction. Encoding
   // constraints provide constraints on values of proto message fields that
   // have to be satisfied in order for the instruction to match.
   absl::Status AddConstraint(
       FieldConstraintCtx *ctx, ConstraintType op,
-      const proto2::FieldDescriptor *field_descriptor,
-      const std::vector<const proto2::FieldDescriptor *> &one_of_fields,
+      const google::protobuf::FieldDescriptor *field_descriptor,
+      const std::vector<const google::protobuf::FieldDescriptor *>
+          &one_of_fields,
       const ProtoConstraintExpression *expr);
 
   // Call when the setters and constraints have been added in order to generate
@@ -175,7 +177,7 @@ class ProtoInstructionEncoding {
   // has_constraints_ map. This is checked by searching for the full_name of
   // the field_descriptor in the depends_on constraint.
   ProtoConstraint *AddHasConstraint(
-      const proto2::FieldDescriptor *field_descriptor,
+      const google::protobuf::FieldDescriptor *field_descriptor,
       ProtoConstraint *depends_on);
 
   // Instruction name.
@@ -187,8 +189,8 @@ class ProtoInstructionEncoding {
   // Map from setter names to the setter structs.
   absl::btree_map<std::string, ProtoSetter *> setter_map_;
   // Map from one_of descriptor to field.
-  absl::flat_hash_map<const proto2::OneofDescriptor *,
-                      const proto2::FieldDescriptor *>
+  absl::flat_hash_map<const google::protobuf::OneofDescriptor *,
+                      const google::protobuf::FieldDescriptor *>
       oneof_field_map_;
   // "equal-to" field constraints.
   std::vector<ProtoConstraint *> equal_constraints_;

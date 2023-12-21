@@ -22,17 +22,13 @@
 #include "absl/container/btree_map.h"
 #include "absl/container/flat_hash_set.h"
 #include "absl/strings/string_view.h"
+#include "src/google/protobuf/descriptor.h"
 
 // This file defines the ProtoEncodingGroup class, which is used in a hierarchy
 // to divide instruction encodings into groups that can be differentiated based
 // on a single field value (or has_*() reference). Based on how complex the
 // instruction encoding is, this can create a hierarchy that are several levels
 // deep.
-
-namespace proto2 {
-class FieldDescriptor;
-class OneofDescriptor;
-}  // namespace proto2
 
 namespace mpact {
 namespace sim {
@@ -106,8 +102,10 @@ class ProtoEncodingGroup {
   std::vector<ProtoInstructionEncoding *> encoding_vec_;
   std::vector<ProtoEncodingGroup *> encoding_group_vec_;
   absl::btree_map<std::string, FieldInfo *> field_map_;
-  absl::flat_hash_set<const proto2::FieldDescriptor *> other_field_set_;
-  absl::flat_hash_set<const proto2::OneofDescriptor *> other_oneof_set_;
+  absl::flat_hash_set<const google::protobuf::FieldDescriptor *>
+      other_field_set_;
+  absl::flat_hash_set<const google::protobuf::OneofDescriptor *>
+      other_oneof_set_;
 };
 
 }  // namespace proto_fmt

@@ -8,7 +8,6 @@
 #include "absl/log/log.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
-#include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
 #include "mpact/sim/generic/type_helpers.h"
 #include "src/google/protobuf/compiler/importer.h"
@@ -25,11 +24,11 @@ using ::mpact::sim::decoder::proto_fmt::ProtoConstraintValueExpression;
 using ::mpact::sim::decoder::proto_fmt::ProtoValue;
 using ::mpact::sim::decoder::proto_fmt::ProtoValueIndex;
 
-constexpr char kIsaProto[] = "mpact/sim/decoder/test/testfiles/riscv32g.proto";
+constexpr char kIsaProto[] = "mpact/sim/decoder/test/testfiles/riscv32i.proto";
 
 // Need to implement RecordError.
 class MultiFileErrorCollector
-    : public proto2::compiler::MultiFileErrorCollector {
+    : public google::protobuf::compiler::MultiFileErrorCollector {
  public:
   MultiFileErrorCollector() {}
   MultiFileErrorCollector(const MultiFileErrorCollector &) = delete;
@@ -77,9 +76,9 @@ TEST_F(ProtoConstraintExpressionTest, ValueIndex) {
 TEST_F(ProtoConstraintExpressionTest, EnumExpression) {
   // Read in the proto file and initialize the importer pool.
   MultiFileErrorCollector error_collector;
-  proto2::compiler::DiskSourceTree source_tree;
+  google::protobuf::compiler::DiskSourceTree source_tree;
   source_tree.MapPath("", "");
-  proto2::compiler::Importer importer(&source_tree, &error_collector);
+  google::protobuf::compiler::Importer importer(&source_tree, &error_collector);
   auto const *isa_descriptor = importer.Import(kIsaProto);
   CHECK_NE(isa_descriptor, nullptr);
   auto const *pool = importer.pool();
@@ -92,10 +91,11 @@ TEST_F(ProtoConstraintExpressionTest, EnumExpression) {
   // Create a constraint enum expression using the enum value descriptor.
   ProtoConstraintEnumExpression enum_expr(enum_value_desc);
   // Verify the type of the enum expr.
-  EXPECT_EQ(enum_expr.cpp_type(), proto2::FieldDescriptor::CPPTYPE_INT32);
+  EXPECT_EQ(enum_expr.cpp_type(),
+            google::protobuf::FieldDescriptor::CPPTYPE_INT32);
   auto res = enum_expr.GetValue();
   // Get the value (std::variant)
-  EXPECT_OK(res.status());
+  EXPECT_TRUE(res.status().ok());
   auto expr_value = res.value();
   // Verify that the type is as expected.
   EXPECT_EQ(expr_value.index(), *ProtoValueIndex::kInt32);
@@ -204,9 +204,9 @@ TEST_F(ProtoConstraintExpressionTest, CloneValueExpr) {
 TEST_F(ProtoConstraintExpressionTest, CloneEnumExpr) {
   // Read in the proto file and initialize the importer pool.
   MultiFileErrorCollector error_collector;
-  proto2::compiler::DiskSourceTree source_tree;
+  google::protobuf::compiler::DiskSourceTree source_tree;
   source_tree.MapPath("", "");
-  proto2::compiler::Importer importer(&source_tree, &error_collector);
+  google::protobuf::compiler::Importer importer(&source_tree, &error_collector);
   auto const *isa_descriptor = importer.Import(kIsaProto);
   CHECK_NE(isa_descriptor, nullptr);
   auto const *pool = importer.pool();

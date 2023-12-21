@@ -15,19 +15,19 @@
 // This file defines the decoder for RiscV32G instructions represented in
 // protobuf format. It should work with the standard RiscV32G .isa file.
 
-decoder RiscV32GProto {
+decoder RiscV32IProto {
   namespace mpact_sim::decoder::test;
   opcode_enum = "mpact::sim::riscv::isa32::OpcodeEnum";
   includes {
-    #include "third_party/mpact_riscv/riscv32g_enums.h"
+    #include "mpact/sim/decoder/test/riscv32i_enums.h"
   }
-  g_instructions;
+  i_instructions;
 }
 
 // From package mpact_sim.decoder.test.
 using mpact_sim.decoder.test.RiscVInstruction;
 
-instruction group g_instructions : RiscVInstruction {
+instruction group i_instructions : RiscVInstruction {
   setter btype_setter:
     B_imm12 = btype.immediate;
     rs1 = btype.rs1;

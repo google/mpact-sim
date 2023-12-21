@@ -31,23 +31,24 @@ namespace decoder {
 namespace proto_fmt {
 
 // Map a proto cpp_type to a C++ type string.
-std::string GetCppTypeName(proto2::FieldDescriptor::CppType cpp_type) {
+std::string GetCppTypeName(
+    google::protobuf::FieldDescriptor::CppType cpp_type) {
   switch (cpp_type) {
-    case proto2::FieldDescriptor::CPPTYPE_INT32:
+    case google::protobuf::FieldDescriptor::CPPTYPE_INT32:
       return "int32_t";
-    case proto2::FieldDescriptor::CPPTYPE_INT64:
+    case google::protobuf::FieldDescriptor::CPPTYPE_INT64:
       return "int64_t";
-    case proto2::FieldDescriptor::CPPTYPE_UINT32:
+    case google::protobuf::FieldDescriptor::CPPTYPE_UINT32:
       return "uint32_t";
-    case proto2::FieldDescriptor::CPPTYPE_UINT64:
+    case google::protobuf::FieldDescriptor::CPPTYPE_UINT64:
       return "uint64_t";
-    case proto2::FieldDescriptor::CPPTYPE_BOOL:
+    case google::protobuf::FieldDescriptor::CPPTYPE_BOOL:
       return "bool";
-    case proto2::FieldDescriptor::CPPTYPE_FLOAT:
+    case google::protobuf::FieldDescriptor::CPPTYPE_FLOAT:
       return "float";
-    case proto2::FieldDescriptor::CPPTYPE_DOUBLE:
+    case google::protobuf::FieldDescriptor::CPPTYPE_DOUBLE:
       return "double";
-    case proto2::FieldDescriptor::CPPTYPE_STRING:
+    case google::protobuf::FieldDescriptor::CPPTYPE_STRING:
       return "std::string";
     default:
       return "void";

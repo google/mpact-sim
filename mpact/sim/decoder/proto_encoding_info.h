@@ -55,10 +55,12 @@ class ProtoEncodingInfo {
   ProtoInstructionDecoder *SetProtoDecoder(std::string name);
   // Create and return an instruction group object with the given name.
   absl::StatusOr<ProtoInstructionGroup *> AddInstructionGroup(
-      const std::string &group_name, const proto2::Descriptor *descriptor);
+      const std::string &group_name,
+      const google::protobuf::Descriptor *descriptor);
   // Check that the setter types are consistent.
-  absl::Status CheckSetterType(absl::string_view name,
-                               const proto2::FieldDescriptor *field_desc);
+  absl::Status CheckSetterType(
+      absl::string_view name,
+      const google::protobuf::FieldDescriptor *field_desc);
   // Generate the C++ .h and .cc file contents.
   StringPair GenerateDecoderClass();
 
@@ -85,7 +87,8 @@ class ProtoEncodingInfo {
   absl::btree_set<std::string> include_files_;
   ProtoInstructionDecoder *decoder_ = nullptr;
   // Map of all setter types.
-  absl::btree_map<std::string, proto2::FieldDescriptor::CppType> setter_types_;
+  absl::btree_map<std::string, google::protobuf::FieldDescriptor::CppType>
+      setter_types_;
 };
 
 }  // namespace proto_fmt

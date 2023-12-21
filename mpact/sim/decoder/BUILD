@@ -326,7 +326,6 @@ mpact_cc_library(
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_protobuf//:protobuf",
-        "@com_google_protobuf//:protobuf/compiler:importer",
         "@com_googlesource_code_re2//:re2",
     ],
 )

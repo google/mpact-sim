@@ -35,6 +35,8 @@ namespace sim {
 namespace decoder {
 namespace proto_fmt {
 
+static constexpr char kProtoFileExtension[] = ".pb.h";
+
 using ::mpact::sim::machine_description::instruction_set::ToPascalCase;
 using ::mpact::sim::machine_description::instruction_set::ToSnakeCase;
 
@@ -61,7 +63,8 @@ ProtoInstructionDecoder *ProtoEncodingInfo::SetProtoDecoder(std::string name) {
 }
 
 absl::StatusOr<ProtoInstructionGroup *> ProtoEncodingInfo::AddInstructionGroup(
-    const std::string &group_name, const proto2::Descriptor *descriptor) {
+    const std::string &group_name,
+    const google::protobuf::Descriptor *descriptor) {
   // Make sure that the instruction group hasn't been added before.
   if (instruction_group_map_.contains(group_name)) {
     return absl::AlreadyExistsError(absl::StrCat(
@@ -74,17 +77,18 @@ absl::StatusOr<ProtoInstructionGroup *> ProtoEncodingInfo::AddInstructionGroup(
 }
 
 absl::Status ProtoEncodingInfo::CheckSetterType(
-    absl::string_view name, const proto2::FieldDescriptor *field_desc) {
+    absl::string_view name,
+    const google::protobuf::FieldDescriptor *field_desc) {
   // Is it a new setter, if so, just insert it.
   auto iter = setter_types_.find(name);
   auto cpp_type = field_desc->cpp_type();
-  if (cpp_type == proto2::FieldDescriptor::CPPTYPE_MESSAGE) {
+  if (cpp_type == google::protobuf::FieldDescriptor::CPPTYPE_MESSAGE) {
     return absl::InvalidArgumentError(
         absl::StrCat("Setter type for '", name, "' cannot be a message."));
   }
   // Treat enums at int32.
-  if (cpp_type == proto2::FieldDescriptor::CPPTYPE_ENUM) {
-    cpp_type = proto2::FieldDescriptor::CPPTYPE_INT32;
+  if (cpp_type == google::protobuf::FieldDescriptor::CPPTYPE_ENUM) {
+    cpp_type = google::protobuf::FieldDescriptor::CPPTYPE_INT32;
   }
   if (iter == setter_types_.end()) {
     setter_types_.insert({std::string(name), cpp_type});
@@ -95,76 +99,76 @@ absl::Status ProtoEncodingInfo::CheckSetterType(
 
   // The types are not the same. See if we can use a compatible type.
   switch (iter->second) {
-    case proto2::FieldDescriptor::CPPTYPE_INT32:
-      if (cpp_type == proto2::FieldDescriptor::CPPTYPE_BOOL) {
+    case google::protobuf::FieldDescriptor::CPPTYPE_INT32:
+      if (cpp_type == google::protobuf::FieldDescriptor::CPPTYPE_BOOL) {
         return absl::OkStatus();
       }
-      if ((cpp_type == proto2::FieldDescriptor::CPPTYPE_INT64) ||
-          (cpp_type == proto2::FieldDescriptor::CPPTYPE_UINT32)) {
-        iter->second = proto2::FieldDescriptor::CPPTYPE_INT64;
-        return absl::OkStatus();
-      }
-      return absl::InvalidArgumentError(
-          absl::StrCat("Type inconsistency in setter '", name, "'"));
-    case proto2::FieldDescriptor::CPPTYPE_INT64:
-      if (cpp_type == proto2::FieldDescriptor::CPPTYPE_BOOL) {
-        return absl::OkStatus();
-      }
-      if ((cpp_type == proto2::FieldDescriptor::CPPTYPE_UINT32) ||
-          (cpp_type == proto2::FieldDescriptor::CPPTYPE_INT32)) {
+      if ((cpp_type == google::protobuf::FieldDescriptor::CPPTYPE_INT64) ||
+          (cpp_type == google::protobuf::FieldDescriptor::CPPTYPE_UINT32)) {
+        iter->second = google::protobuf::FieldDescriptor::CPPTYPE_INT64;
         return absl::OkStatus();
       }
       return absl::InvalidArgumentError(
           absl::StrCat("Type inconsistency in setter '", name, "'"));
-    case proto2::FieldDescriptor::CPPTYPE_UINT32:
-      if (cpp_type == proto2::FieldDescriptor::CPPTYPE_BOOL) {
+    case google::protobuf::FieldDescriptor::CPPTYPE_INT64:
+      if (cpp_type == google::protobuf::FieldDescriptor::CPPTYPE_BOOL) {
         return absl::OkStatus();
       }
-      if ((cpp_type == proto2::FieldDescriptor::CPPTYPE_INT32) ||
-          (iter->second = proto2::FieldDescriptor::CPPTYPE_INT64)) {
-        iter->second = proto2::FieldDescriptor::CPPTYPE_INT64;
-        return absl::OkStatus();
-      }
-      if (cpp_type == proto2::FieldDescriptor::CPPTYPE_UINT64) {
-        iter->second = proto2::FieldDescriptor::CPPTYPE_UINT64;
+      if ((cpp_type == google::protobuf::FieldDescriptor::CPPTYPE_UINT32) ||
+          (cpp_type == google::protobuf::FieldDescriptor::CPPTYPE_INT32)) {
         return absl::OkStatus();
       }
       return absl::InvalidArgumentError(
           absl::StrCat("Type inconsistency in setter '", name, "'"));
-    case proto2::FieldDescriptor::CPPTYPE_UINT64:
-      if (cpp_type == proto2::FieldDescriptor::CPPTYPE_BOOL) {
+    case google::protobuf::FieldDescriptor::CPPTYPE_UINT32:
+      if (cpp_type == google::protobuf::FieldDescriptor::CPPTYPE_BOOL) {
         return absl::OkStatus();
       }
-      if ((cpp_type == proto2::FieldDescriptor::CPPTYPE_INT32) ||
-          (cpp_type == proto2::FieldDescriptor::CPPTYPE_UINT32)) {
+      if ((cpp_type == google::protobuf::FieldDescriptor::CPPTYPE_INT32) ||
+          (iter->second = google::protobuf::FieldDescriptor::CPPTYPE_INT64)) {
+        iter->second = google::protobuf::FieldDescriptor::CPPTYPE_INT64;
         return absl::OkStatus();
       }
-      return absl::InvalidArgumentError(
-          absl::StrCat("Type inconsistency in setter '", name, "'"));
-    case proto2::FieldDescriptor::CPPTYPE_DOUBLE:
-      if (cpp_type == proto2::FieldDescriptor::CPPTYPE_FLOAT) {
-        return absl::OkStatus();
-      }
-      return absl::InvalidArgumentError(
-          absl::StrCat("Type inconsistency in setter '", name, "'"));
-    case proto2::FieldDescriptor::CPPTYPE_FLOAT:
-      if (cpp_type == proto2::FieldDescriptor::CPPTYPE_DOUBLE) {
-        iter->second = proto2::FieldDescriptor::CPPTYPE_DOUBLE;
+      if (cpp_type == google::protobuf::FieldDescriptor::CPPTYPE_UINT64) {
+        iter->second = google::protobuf::FieldDescriptor::CPPTYPE_UINT64;
         return absl::OkStatus();
       }
       return absl::InvalidArgumentError(
           absl::StrCat("Type inconsistency in setter '", name, "'"));
-    case proto2::FieldDescriptor::CPPTYPE_BOOL:
-      if ((cpp_type == proto2::FieldDescriptor::CPPTYPE_INT32) ||
-          (cpp_type == proto2::FieldDescriptor::CPPTYPE_UINT32) ||
-          (cpp_type == proto2::FieldDescriptor::CPPTYPE_INT64) ||
-          (cpp_type == proto2::FieldDescriptor::CPPTYPE_UINT64)) {
+    case google::protobuf::FieldDescriptor::CPPTYPE_UINT64:
+      if (cpp_type == google::protobuf::FieldDescriptor::CPPTYPE_BOOL) {
+        return absl::OkStatus();
+      }
+      if ((cpp_type == google::protobuf::FieldDescriptor::CPPTYPE_INT32) ||
+          (cpp_type == google::protobuf::FieldDescriptor::CPPTYPE_UINT32)) {
+        return absl::OkStatus();
+      }
+      return absl::InvalidArgumentError(
+          absl::StrCat("Type inconsistency in setter '", name, "'"));
+    case google::protobuf::FieldDescriptor::CPPTYPE_DOUBLE:
+      if (cpp_type == google::protobuf::FieldDescriptor::CPPTYPE_FLOAT) {
+        return absl::OkStatus();
+      }
+      return absl::InvalidArgumentError(
+          absl::StrCat("Type inconsistency in setter '", name, "'"));
+    case google::protobuf::FieldDescriptor::CPPTYPE_FLOAT:
+      if (cpp_type == google::protobuf::FieldDescriptor::CPPTYPE_DOUBLE) {
+        iter->second = google::protobuf::FieldDescriptor::CPPTYPE_DOUBLE;
+        return absl::OkStatus();
+      }
+      return absl::InvalidArgumentError(
+          absl::StrCat("Type inconsistency in setter '", name, "'"));
+    case google::protobuf::FieldDescriptor::CPPTYPE_BOOL:
+      if ((cpp_type == google::protobuf::FieldDescriptor::CPPTYPE_INT32) ||
+          (cpp_type == google::protobuf::FieldDescriptor::CPPTYPE_UINT32) ||
+          (cpp_type == google::protobuf::FieldDescriptor::CPPTYPE_INT64) ||
+          (cpp_type == google::protobuf::FieldDescriptor::CPPTYPE_UINT64)) {
         iter->second = cpp_type;
         return absl::OkStatus();
       }
       return absl::InvalidArgumentError(
           absl::StrCat("Type inconsistency in setter '", name, "'"));
-    case proto2::FieldDescriptor::CPPTYPE_STRING:
+    case google::protobuf::FieldDescriptor::CPPTYPE_STRING:
       return absl::InvalidArgumentError(
           absl::StrCat("Type inconsistency in setter '", name, "'"));
     default:
@@ -190,7 +194,17 @@ StringPair ProtoEncodingInfo::GenerateDecoderClass() {
     absl::StrAppend(&type_aliases, "using ", ToPascalCase(inst_group->name()),
                     "MessageType = ", qualified_message_type, ";\n");
     std::string file_name = inst_group->message_type()->file()->name();
-    AddIncludeFile(absl::StrCat("\"", file_name, ".h\""));
+    // Verify that this is a .proto file.
+
+    if ((file_name.size() <= 5) &&
+        (file_name.substr(file_name.size() - 5) != ".proto")) {
+      error_listener_->semanticError(
+          nullptr, absl::StrCat("Not a .proto file: '", file_name, "'"));
+      return {"", ""};
+    }
+    auto proto_file_include = absl::StrCat(
+        file_name.substr(0, file_name.size() - 6), kProtoFileExtension);
+    AddIncludeFile(absl::StrCat("\"", proto_file_include, "\""));
   }
   // Include files.
   absl::StrAppend(&h_output, "#include <cstdint>\n\n");
@@ -200,7 +214,6 @@ StringPair ProtoEncodingInfo::GenerateDecoderClass() {
   absl::StrAppend(&h_output, "\n");
   absl::StrAppend(&cc_output,
                   "#include <functional>\n\n"
-                  "#include \"absl/base/no_destructor.h\"\n"
                   "#include \"absl/container/flat_hash_map.h\"\n\n");
   // Open namespaces.
   std::string name_space_ref = absl::StrJoin(decoder_->namespaces(), "::");

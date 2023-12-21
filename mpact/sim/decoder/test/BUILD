@@ -15,7 +15,6 @@
 # This contains the test projects for the decoder.
 
 load("//mpact/sim/decoder:mpact_sim_isa.bzl", "mpact_cc_library", "mpact_cc_test", "mpact_isa_decoder", "mpact_proto_fmt_decoder")
-load("//tools/build_defs/proto/cpp:cc_proto_library.bzl", "cc_proto_library")
 
 package(
     default_applicable_licenses = ["//:license"],
@@ -392,8 +391,8 @@ mpact_cc_test(
     data = [
         # Local include files.
         "testfiles/empty_file.proto_fmt",
-        "testfiles/riscv32g.proto_fmt",
-        "testfiles/riscv32g.proto",
+        "testfiles/riscv32i.proto_fmt",
+        "testfiles/riscv32i.proto",
     ],
     deps = [
         ":log_sink",
@@ -418,7 +417,7 @@ mpact_cc_test(
         "proto_constraint_expression_test.cc",
     ],
     data = [
-        "testfiles/riscv32g.proto",
+        "testfiles/riscv32i.proto",
     ],
     deps = [
         "//mpact/sim/decoder:proto_format_visitor",
@@ -431,32 +430,51 @@ mpact_cc_test(
         "@com_google_googletest//:gtest",
         "@com_google_googletest//:gtest_main",
         "@com_google_protobuf//:protobuf",
-        "@com_google_protobuf//:protobuf/compiler:importer",
     ],
 )
 
 mpact_proto_fmt_decoder(
-    name = "riscv32g_proto_decoder",
-    srcs = ["testfiles/riscv32g.proto_fmt"],
-    decoder_name = "RiscV32GProto",
+    name = "riscv32i_proto_decoder",
+    srcs = ["testfiles/riscv32i.proto_fmt"],
+    decoder_name = "RiscV32IProto",
     includes = [],
-    prefix = "riscv32g_proto",
-    proto_files = ["testfiles/riscv32g.proto"],
+    prefix = "riscv32i_proto",
+    proto_files = ["testfiles/riscv32i.proto"],
     deps = [
-        ":riscv32g_cc_proto",
-        "//third_party/mpact_riscv:riscv32g_isa",
+        ":riscv32i_cc_proto",
+        ":riscv32i_isa",
+    ],
+)
+
+mpact_isa_decoder(
+    name = "riscv32i_isa",
+    src = "testfiles/riscv32i.isa",
+    includes = [],
+    isa_name = "RiscV32I",
+    deps = [
+        ":riscv32i_instructions",
+        "@com_google_absl//absl/functional:bind_front",
+    ],
+)
+
+cc_library(
+    name = "riscv32i_instructions",
+    hdrs = [
+        "riscv_i_instructions.h",
+    ],
+    deps = [
+        "//mpact/sim/generic:instruction",
     ],
 )
 
 proto_library(
-    name = "riscv32g_proto",
-    srcs = ["testfiles/riscv32g.proto"],
-    cc_api_version = 2,
+    name = "riscv32i_proto",
+    srcs = ["testfiles/riscv32i.proto"],
 )
 
 cc_proto_library(
-    name = "riscv32g_cc_proto",
-    deps = [":riscv32g_proto"],
+    name = "riscv32i_cc_proto",
+    deps = [":riscv32i_proto"],
 )
 
 cc_test(

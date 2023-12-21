@@ -45,8 +45,8 @@ using ::mpact::sim::machine_description::instruction_set::ToPascalCase;
 using ::mpact::sim::machine_description::instruction_set::ToSnakeCase;
 
 struct FieldInfo {
-  const proto2::FieldDescriptor *field;
-  const proto2::OneofDescriptor *oneof;
+  const google::protobuf::FieldDescriptor *field;
+  const google::protobuf::OneofDescriptor *oneof;
   QualifiedIdentCtx *ctx;
   absl::btree_multimap<int64_t, const ProtoInstructionEncoding *> value_map;
   int64_t min_value = 0;
@@ -324,7 +324,7 @@ void ProtoEncodingGroup::CheckEncodings() {
   std::vector<std::vector<ProtoConstraintValueSet *>> value_sets;
   value_sets.reserve(encoding_vec_.size());
   for (auto const &constraint_vec : constraints) {
-    const proto2::FieldDescriptor *previous = nullptr;
+    const google::protobuf::FieldDescriptor *previous = nullptr;
     value_sets.push_back({});
     for (auto const *constraint : constraint_vec) {
       // If it's the first occurance of a field descriptor, create a new

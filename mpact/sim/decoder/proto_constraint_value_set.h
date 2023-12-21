@@ -29,7 +29,7 @@ namespace decoder {
 namespace proto_fmt {
 
 class ProtoConstraintExpression;
-class ProtoConstraint;
+struct ProtoConstraint;
 
 // This class implements the value set of a constraint as a vector of
 // sub-ranges. The sub-ranges may overlap, there is no guarantee that they are
@@ -43,6 +43,13 @@ class ProtoConstraintValueSet {
     bool min_included;
     const ProtoConstraintExpression *max = nullptr;
     bool max_included;
+    SubRange() = default;
+    SubRange(const ProtoConstraintExpression *min, bool min_included,
+             const ProtoConstraintExpression *max, bool max_included)
+        : min(min),
+          min_included(min_included),
+          max(max),
+          max_included(max_included) {}
   };
 
   ProtoConstraintValueSet() = default;
@@ -65,7 +72,7 @@ class ProtoConstraintValueSet {
 
   // Accessors.
   const std::vector<SubRange> &subranges() const { return subranges_; }
-  const proto2::FieldDescriptor *field_descriptor() const {
+  const google::protobuf::FieldDescriptor *field_descriptor() const {
     return field_descriptor_;
   }
 
@@ -81,7 +88,7 @@ class ProtoConstraintValueSet {
                           std::vector<SubRange> &new_subranges) const;
   // The range consists of a union of a number of subranges.
   std::vector<SubRange> subranges_;
-  const proto2::FieldDescriptor *field_descriptor_ = nullptr;
+  const google::protobuf::FieldDescriptor *field_descriptor_ = nullptr;
 };
 
 }  // namespace proto_fmt

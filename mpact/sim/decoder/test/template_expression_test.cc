@@ -20,7 +20,6 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/types/variant.h"
-#include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
 
 namespace mpact {
@@ -73,7 +72,7 @@ TEST(TemplateExpressionTest, Negate) {
   EXPECT_EQ(*value_ptr, -kIntConst5);
   // Call Evaluate and check that the value is the same.
   auto eval_res = negate_expr->Evaluate(nullptr);
-  EXPECT_OK(eval_res.status());
+  EXPECT_TRUE(eval_res.status().ok());
   auto *eval_expr = eval_res.value();
   result = eval_expr->GetValue();
   ASSERT_TRUE(result.status().ok());

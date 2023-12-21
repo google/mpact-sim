@@ -1,0 +1,202 @@
+// This file contains the ISA description for the RiscV32G architecture.
+
+includes {
+#include "absl/functional/bind_front.h"
+}
+
+// First disasm field is 18 char wide and left justified.
+disasm widths = {-18};
+
+int global_latency = 0;
+
+isa RiscV32I {
+  namespace mpact::sim::riscv::isa32;
+  slots { riscv32i; }
+}
+
+// Basic integer ALU instructions, part of the RiscV 32i subset.
+slot riscv32i {
+  includes {
+    #include "mpact/sim/decoder/test/riscv_i_instructions.h"
+  }
+  default size = 4;
+  default latency = global_latency;
+  default opcode =
+    disasm: "Illegal instruction at 0x%(@:08x)",
+    semfunc: "&RiscVIllegalInstruction";
+  resources TwoOp = { next_pc, rs1 : rd[..rd]};
+  resources ThreeOp = { next_pc, rs1, rs2 : rd[..rd]};
+  opcodes {
+    addi{: rs1, I_imm12 : rd},
+      resources: TwoOp,
+      disasm: "addi", "%rd, %rs1, %I_imm12",
+      semfunc: "&RV32::RiscVIAdd";
+    slti{: rs1, I_imm12 : rd},
+      resources: TwoOp,
+      disasm: "slti", "%rd, %rs1, %I_imm12",
+      semfunc: "&RV32::RiscVISlt";
+    sltiu{: rs1, I_imm12 : rd},
+      resources: TwoOp,
+      disasm: "sltiu", "%rd, %rs1, %I_imm12",
+      semfunc: "&RV32::RiscVISltu";
+    andi{: rs1, I_imm12 : rd},
+      resources: TwoOp,
+      disasm: "andi", "%rd, %rs1, %I_imm12",
+      semfunc: "&RV32::RiscVIAnd";
+    ori{: rs1, I_imm12 : rd},
+      resources: TwoOp,
+      disasm: "ori", "%rd, %rs1, %I_imm12",
+      semfunc: "&RV32::RiscVIOr";
+    xori{: rs1, I_imm12 : rd},
+      resources: TwoOp,
+      disasm: "xori", "%rd, %rs1, %I_imm12",
+      semfunc: "&RV32::RiscVIXor";
+    slli{: rs1, I_uimm5 : rd},
+      resources: TwoOp,
+      disasm: "slli", "%rd, %rs1, 0x%(I_uimm5:x)",
+      semfunc: "&RV32::RiscVISll";
+    srli{: rs1, I_uimm5 : rd},
+      resources: TwoOp,
+      disasm: "srli", "%rd  %rs1, 0x%(I_uimm5:x)",
+      semfunc: "&RV32::RiscVISrl";
+    srai{: rs1, I_uimm5 : rd},
+      resources: TwoOp,
+      disasm: "srai", "%rd, %rs1, 0x%(I_uimm5:x)",
+      semfunc: "&RV32::RiscVISra";
+    lui{: U_imm20 : rd},
+      resources: { next_pc : rd[0..]},
+      disasm: "lui", "%rd, 0x%(U_imm20:08x)",
+      semfunc: "&RV32::RiscVILui";
+    auipc{: U_imm20 : rd},
+      resources: { next_pc : rd[0..]},
+      disasm: "auipc", "%rd, 0x%(U_imm20:08x)",
+      semfunc: "&RV32::RiscVIAuipc";
+    add{: rs1, rs2 : rd},
+      resources: ThreeOp,
+      disasm: "add", "%rd, %rs1, %rs2",
+      semfunc: "&RV32::RiscVIAdd";
+    slt{: rs1, rs2 : rd},
+      resources: ThreeOp,
+      disasm: "slt", "%rd, %rs1, %rs2",
+      semfunc: "&RV32::RiscVISlt";
+    sltu{: rs1, rs2 : rd},
+      resources: ThreeOp,
+      disasm: "sltu", "%rd, %rs1, %rs2",
+      semfunc: "&RV32::RiscVISltu";
+    and{: rs1, rs2 : rd},
+      resources: ThreeOp,
+      disasm: "and", "%rd, %rs1, %rs2",
+      semfunc: "&RV32::RiscVIAnd";
+    or{: rs1, rs2 : rd},
+      resources: ThreeOp,
+      disasm: "or", "%rd, %rs1, %rs2",
+      semfunc: "&RV32::RiscVIOr";
+    xor{: rs1, rs2 : rd},
+      resources: ThreeOp,
+      disasm: "xor", "%rd, %rs1, %rs2",
+      semfunc: "&RV32::RiscVIXor";
+    sll{: rs1, rs2 : rd},
+      resources: ThreeOp,
+      disasm: "sll", "%rd, %rs1, %rs2",
+      semfunc: "&RV32::RiscVISll";
+    srl{: rs1, rs2 : rd},
+      resources: ThreeOp,
+      disasm: "srl", "%rd, %rs1, %rs2",
+      semfunc: "&RV32::RiscVISrl";
+    sub{: rs1, rs2 : rd},
+      resources: ThreeOp,
+      disasm: "sub", "%rd, %rs1, %rs2",
+      semfunc: "&RV32::RiscVISub";
+    sra{: rs1, rs2 : rd},
+      resources: ThreeOp,
+      disasm: "sra", "%rd, %rs1, %rs2",
+      semfunc: "&RV32::RiscVISra";
+    nop{},
+      disasm: "nop",
+      semfunc: "&RiscVINop";
+    hint{},
+      disasm: "hint",
+      semfunc: "&RiscVINop";
+    jal{: J_imm20 : next_pc, rd},
+      resources: { next_pc : next_pc[0..], rd[0..]},
+      disasm: "jal", "%rd, %(@+J_imm20:08x)",
+      semfunc: "&RV32::RiscVIJal";
+    jalr{: rs1, J_imm12 : next_pc, rd},
+      resources: { next_pc, rs1 : next_pc[0..], rd[0..]},
+      disasm: "jalr", "%rd, %rs1, %J_imm12",
+      semfunc: "&RV32::RiscVIJalr";
+    j{: J_imm20 : next_pc, rd},
+      resources: { next_pc : next_pc[0..], rd[0..]},
+      disasm: "j", "%(@+J_imm20:08x)",
+      semfunc: "&RV32::RiscVIJal";
+    jr{: rs1, J_imm12 : next_pc, rd},
+      resources: { next_pc, rs1 : next_pc[0..], rd[0..]},
+      disasm: "jr", "%rs1, %J_imm12",
+      semfunc: "&RV32::RiscVIJalr";
+    beq{: rs1, rs2, B_imm12 : next_pc},
+      resources: { next_pc, rs1, rs2 : next_pc[0..]},
+      disasm: "beq", "%rs1, %rs2, %(@+B_imm12:08x)",
+      semfunc: "&RV32::RiscVIBeq";
+    bne{: rs1, rs2, B_imm12 : next_pc},
+      resources: { next_pc, rs1, rs2 : next_pc[0..]},
+      disasm: "bne", "%rs1, %rs2, %(@+B_imm12:08x)",
+      semfunc: "&RV32::RiscVIBne";
+    blt{: rs1, rs2, B_imm12 : next_pc},
+      resources: { next_pc, rs1, rs2 : next_pc[0..]},
+      disasm: "blt", "%rs1, %rs2, %(@+B_imm12:08x)",
+      semfunc: "&RV32::RiscVIBlt";
+    bltu{: rs1, rs2, B_imm12 : next_pc},
+      resources: { next_pc, rs1, rs2 : next_pc[0..]},
+      disasm: "bltu", "%rs1, %rs2, %(@+B_imm12:08x)",
+      semfunc: "&RV32::RiscVIBltu";
+    bge{: rs1, rs2, B_imm12 : next_pc},
+      resources: { next_pc, rs1, rs2 : next_pc[0..]},
+      disasm: "bge", "%rs1, %rs2, %(@+B_imm12:08x)",
+      semfunc: "&RV32::RiscVIBge";
+    bgeu{: rs1, rs2, B_imm12 : next_pc},
+      resources: { next_pc, rs1, rs2 : next_pc[0..]},
+      disasm: "bgeu", "%rs1, %rs2, %(@+B_imm12:08x)",
+      semfunc: "&RV32::RiscVIBgeu";
+    lw{(: rs1, I_imm12), (: : rd)},
+      resources: { next_pc, rs1 : rd[0..]},
+      disasm: "lw", "%rd, %I_imm12(%rs1)",
+      semfunc: "&RV32::RiscVILw", "&RV32::RiscVILwChild";
+    lh{(: rs1, I_imm12 :), (: : rd)},
+      resources: { next_pc, rs1 : rd[0..]},
+      disasm: "lh", "%rd, %I_imm12(%rs1)",
+      semfunc: "&RV32::RiscVILh", "&RV32::RiscVILhChild";
+    lhu{(: rs1, I_imm12 :), (: : rd)},
+      resources: { next_pc, rs1 : rd[0..]},
+      disasm: "lhu", "%rd, %I_imm12(%rs1)",
+      semfunc: "&RV32::RiscVILhu", "&RV32::RiscVILhuChild";
+    lb{(: rs1, I_imm12 :), (: : rd)},
+      resources: { next_pc, rs1 : rd[0..]},
+      disasm: "lb", "%rd, %I_imm12(%rs1)",
+      semfunc: "&RV32::RiscVILb", "&RV32::RiscVILbChild";
+    lbu{(: rs1, I_imm12 :), (: : rd)},
+      resources: { next_pc, rs1 : rd[0..]},
+      disasm: "lbu", "%rd, %I_imm12(%rs1)",
+      semfunc: "&RV32::RiscVILbu", "&RV32::RiscVILbuChild";
+    sw{: rs1, S_imm12, rs2 : },
+      resources: { next_pc, rs1, rs2 : },
+      disasm: "sw", "%rs2, %S_imm12(%rs1)",
+      semfunc: "&RV32::RiscVISw";
+    sh{: rs1, S_imm12, rs2 : },
+      resources: { next_pc, rs1, rs2 : },
+      disasm: "sh", "%rs2, %S_imm12(%rs1)",
+      semfunc: "&RV32::RiscVISh";
+    sb{: rs1, S_imm12, rs2 : },
+      resources: { next_pc, rs1, rs2 : },
+      disasm: "sb", "%rs2, %S_imm12(%rs1)",
+      semfunc: "&RV32::RiscVISb";
+    fence{: I_imm12 : },
+      disasm: "fence",
+      semfunc: "&RiscVIFence";
+    ecall{},
+      disasm: "ecall",
+      semfunc: "&RiscVIEcall";
+    ebreak{},
+      disasm: "ebreak",
+      semfunc: "&RiscVIEbreak";
+  }
+}

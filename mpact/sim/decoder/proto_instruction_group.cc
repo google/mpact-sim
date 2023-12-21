@@ -40,7 +40,7 @@ namespace proto_fmt {
 using ::mpact::sim::machine_description::instruction_set::ToPascalCase;
 
 ProtoInstructionGroup::ProtoInstructionGroup(
-    std::string group_name, const proto2::Descriptor *message_type,
+    std::string group_name, const google::protobuf::Descriptor *message_type,
     std::string opcode_enum, ProtoEncodingInfo *encoding_info)
     : name_(group_name),
       message_type_(message_type),
@@ -86,8 +86,9 @@ ProtoInstructionGroup::GetSetterGroup(absl::string_view group) const {
 // Add a group level setter.
 absl::Status ProtoInstructionGroup::AddSetter(
     const std::string &group_name, SetterDefCtx *ctx,
-    const std::string &setter_name, const proto2::FieldDescriptor *field_desc,
-    std::vector<const proto2::FieldDescriptor *> one_of_fields,
+    const std::string &setter_name,
+    const google::protobuf::FieldDescriptor *field_desc,
+    std::vector<const google::protobuf::FieldDescriptor *> one_of_fields,
     IfNotCtx *if_not) {
   auto map_iter = setter_groups_.find(group_name);
   if (map_iter == setter_groups_.end()) {
