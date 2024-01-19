@@ -240,8 +240,7 @@ class Instruction : public ReferenceCount {
 
 // The base case shouldn't be matched. No return statement is provided.
 template <typename T>
-inline T GetInstructionSource(const Instruction *inst, int index) { /*empty */
-}
+inline T GetInstructionSource(const Instruction *inst, int index) { /*empty */ }
 
 // The following provide specializations for each of the integral types of
 // operand values, both signed and unsigned.
@@ -313,8 +312,7 @@ inline absl::int128 GetInstructionSource<absl::int128>(const Instruction *inst,
 // will generate a compile time error if no other case is matched.
 template <typename T>
 inline T GetInstructionSource(const Instruction *inst, int index,
-                              int element) { /*empty */
-}
+                              int element) { /*empty */ }
 // The following provide specializations for each of the integral types of
 // operand values, both signed and unsigned.
 template <>

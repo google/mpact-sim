@@ -1,4 +1,4 @@
-# Copyright 2023 Google LLC
+# Copyright 2024 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -26,6 +26,7 @@ cc_library(
         "flat_demand_memory.cc",
         "flat_memory.cc",
         "memory_watcher.cc",
+        "tagged_flat_demand_memory.cc",
     ],
     hdrs = [
         "atomic_memory.h",
@@ -33,6 +34,8 @@ cc_library(
         "flat_memory.h",
         "memory_interface.h",
         "memory_watcher.h",
+        "tagged_flat_demand_memory.h",
+        "tagged_memory_interface.h",
     ],
     copts = ["-O3"],
     deps = [

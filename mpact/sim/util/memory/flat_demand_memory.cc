@@ -1,4 +1,4 @@
-// Copyright 2023 Google LLC
+// Copyright 2024 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,8 +15,12 @@
 #include "mpact/sim/util/memory/flat_demand_memory.h"
 
 #include <algorithm>
+#include <cstdint>
 #include <cstring>
 #include <utility>
+
+#include "absl/base/macros.h"
+#include "absl/numeric/bits.h"
 
 namespace mpact {
 namespace sim {
