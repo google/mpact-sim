@@ -241,18 +241,7 @@ class DataBuffer : public ReferenceCount {
   // is updated immediately. Otherwise the DataBuffer object is entered into
   // a "delay line" that will update the destination after latency number of
   // cycles.
-  inline void Submit(int latency) {
-    if (destination_ == nullptr) {
-      DecRef();
-      return;
-    }
-    if (0 == latency) {
-      destination_->SetDataBuffer(this);
-      DecRef();
-    } else {
-      delay_line_->Add(latency, this, destination_);
-    }
-  }
+  void Submit(int latency);
 
   inline void Submit() { Submit(latency_); }
 

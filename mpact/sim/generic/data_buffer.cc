@@ -56,6 +56,18 @@ DataBuffer::DataBuffer(unsigned size) : size_(size) {
 
 DataBuffer::~DataBuffer() { delete[] static_cast<unsigned char *>(raw_ptr_); }
 
+void DataBuffer::Submit(int latency) {
+  if (destination_ == nullptr) {
+    DecRef();
+    return;
+  }
+  if (0 == latency) {
+    destination_->SetDataBuffer(this);
+    DecRef();
+  } else {
+    delay_line_->Add(latency, this, destination_);
+  }
+}
 }  // namespace generic
 }  // namespace sim
 }  // namespace mpact
