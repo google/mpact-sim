@@ -123,14 +123,14 @@ bool TaggedFlatDemandMemory::CheckRequest(uint64_t address,
   uint64_t mask = (1ULL << tag_granule_shift_) - 1;
   if (address & mask) {
     LOG(ERROR) << absl::StrCat(
-        "Tagged load to ", absl::Hex(address, absl::ZERO_PAD_16),
+        "Tagged load to ", absl::Hex(address, absl::kZeroPad16),
         " not aligned to tag granule (", tag_granule_, ")");
     return false;
   }
   if ((db != nullptr) && (db->size<uint8_t>() & mask)) {
     LOG(ERROR) << absl::StrCat(
         "Size (", db->size<uint8_t>(), ") of tagged load to ",
-        absl::Hex(address, absl::ZERO_PAD_16),
+        absl::Hex(address, absl::kZeroPad16),
         " not a multiple of tag granule (", tag_granule_, ")");
     return false;
   }
@@ -138,7 +138,7 @@ bool TaggedFlatDemandMemory::CheckRequest(uint64_t address,
       (db->size<uint8_t>() / tag_granule_) != tags->size<uint8_t>()) {
     LOG(ERROR) << absl::StrCat("Unexpected number of tags (",
                                tags->size<uint8_t>(), ") for tagged load to ",
-                               absl::Hex(address, absl::ZERO_PAD_16),
+                               absl::Hex(address, absl::kZeroPad16),
                                " for tag granule (", tag_granule_, ")");
     return false;
   }
