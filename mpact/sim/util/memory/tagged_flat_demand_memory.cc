@@ -54,6 +54,9 @@ TaggedFlatDemandMemory::~TaggedFlatDemandMemory() {
   delete data_memory_;
   delete tag_memory_;
   delete db_factory_;
+  data_memory_ = nullptr;
+  tag_memory_ = nullptr;
+  db_factory_ = nullptr;
 }
 
 void TaggedFlatDemandMemory::Load(uint64_t address, DataBuffer *db,

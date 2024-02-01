@@ -128,7 +128,7 @@ class TaggedFlatDemandMemory : public TaggedMemoryInterface {
   unsigned tag_granule_shift_;
   FlatDemandMemory *data_memory_ = nullptr;
   FlatDemandMemory *tag_memory_ = nullptr;
-  generic::DataBufferFactory *db_factory_;
+  generic::DataBufferFactory *db_factory_ = nullptr;
 };
 
 }  // namespace util
