@@ -134,16 +134,17 @@ struct FPTypeInfo<float> {
   using T = float;
   using UIntType = uint32_t;
   using IntType = std::make_signed<UIntType>::type;
-  static const int kBitSize = sizeof(float) << 3;
-  static const int kExpSize = 8;
-  static const int kExpBias = 127;
-  static const int kSigSize = kBitSize - kExpSize - /*sign*/ 1;
-  static const UIntType kInfMask = (1ULL << (kBitSize - 1)) - 1;
-  static const UIntType kExpMask = ((1ULL << kExpSize) - 1) << kSigSize;
-  static const UIntType kSigMask = (1ULL << kSigSize) - 1;
-  static const UIntType kCanonicalNaN = 0b0'1111'1111'1ULL << (kSigSize - 1);
-  static const UIntType kPosInf = kExpMask;
-  static const UIntType kNegInf = kExpMask | (1ULL << (kBitSize - 1));
+  static constexpr int kBitSize = sizeof(float) << 3;
+  static constexpr int kExpSize = 8;
+  static constexpr int kExpBias = 127;
+  static constexpr int kSigSize = kBitSize - kExpSize - /*sign*/ 1;
+  static constexpr UIntType kInfMask = (1ULL << (kBitSize - 1)) - 1;
+  static constexpr UIntType kExpMask = ((1ULL << kExpSize) - 1) << kSigSize;
+  static constexpr UIntType kSigMask = (1ULL << kSigSize) - 1;
+  static constexpr UIntType kCanonicalNaN = 0b0'1111'1111'1ULL
+                                            << (kSigSize - 1);
+  static constexpr UIntType kPosInf = kExpMask;
+  static constexpr UIntType kNegInf = kExpMask | (1ULL << (kBitSize - 1));
   static inline bool IsInf(T value) {
     UIntType uint_val = *reinterpret_cast<UIntType *>(&value);
     return (uint_val & kInfMask) == kPosInf;
@@ -167,17 +168,17 @@ struct FPTypeInfo<double> {
   using T = double;
   using UIntType = uint64_t;
   using IntType = std::make_signed<UIntType>::type;
-  static const int kBitSize = sizeof(double) << 3;
-  static const int kExpSize = 11;
-  static const int kExpBias = 1023;
-  static const int kSigSize = kBitSize - kExpSize - /*sign*/ 1;
-  static const UIntType kInfMask = (1ULL << (kBitSize - 1)) - 1;
-  static const UIntType kExpMask = ((1ULL << kExpSize) - 1) << kSigSize;
-  static const UIntType kSigMask = (1ULL << kSigSize) - 1;
-  static const UIntType kCanonicalNaN = 0b0'1111'1111'111'1ULL
-                                        << (kSigSize - 1);
-  static const UIntType kPosInf = kExpMask;
-  static const UIntType kNegInf = kExpMask | (1ULL << (kBitSize - 1));
+  static constexpr int kBitSize = sizeof(double) << 3;
+  static constexpr int kExpSize = 11;
+  static constexpr int kExpBias = 1023;
+  static constexpr int kSigSize = kBitSize - kExpSize - /*sign*/ 1;
+  static constexpr UIntType kInfMask = (1ULL << (kBitSize - 1)) - 1;
+  static constexpr UIntType kExpMask = ((1ULL << kExpSize) - 1) << kSigSize;
+  static constexpr UIntType kSigMask = (1ULL << kSigSize) - 1;
+  static constexpr UIntType kCanonicalNaN = 0b0'1111'1111'111'1ULL
+                                            << (kSigSize - 1);
+  static constexpr UIntType kPosInf = kExpMask;
+  static constexpr UIntType kNegInf = kExpMask | (1ULL << (kBitSize - 1));
   static inline bool IsInf(T value) {
     UIntType uint_val = *reinterpret_cast<UIntType *>(&value);
     return (uint_val & kInfMask) == kPosInf;
@@ -201,16 +202,17 @@ struct FPTypeInfo<uint32_t> {
   using T = uint32_t;
   using UIntType = uint32_t;
   using IntType = std::make_signed<UIntType>::type;
-  static const int kBitSize = sizeof(float) << 3;
-  static const int kExpSize = 8;
-  static const int kExpBias = 127;
-  static const int kSigSize = kBitSize - kExpSize - /*sign*/ 1;
-  static const UIntType kInfMask = (1ULL << (kBitSize - 1)) - 1;
-  static const UIntType kExpMask = ((1ULL << kExpSize) - 1) << kSigSize;
-  static const UIntType kSigMask = (1ULL << kSigSize) - 1;
-  static const UIntType kCanonicalNaN = 0b0'1111'1111'1ULL << (kSigSize - 1);
-  static const UIntType kPosInf = kExpMask;
-  static const UIntType kNegInf = kExpMask | (1ULL << (kBitSize - 1));
+  static constexpr int kBitSize = sizeof(float) << 3;
+  static constexpr int kExpSize = 8;
+  static constexpr int kExpBias = 127;
+  static constexpr int kSigSize = kBitSize - kExpSize - /*sign*/ 1;
+  static constexpr UIntType kInfMask = (1ULL << (kBitSize - 1)) - 1;
+  static constexpr UIntType kExpMask = ((1ULL << kExpSize) - 1) << kSigSize;
+  static constexpr UIntType kSigMask = (1ULL << kSigSize) - 1;
+  static constexpr UIntType kCanonicalNaN = 0b0'1111'1111'1ULL
+                                            << (kSigSize - 1);
+  static constexpr UIntType kPosInf = kExpMask;
+  static constexpr UIntType kNegInf = kExpMask | (1ULL << (kBitSize - 1));
   static inline bool IsInf(T value) { return (value & kInfMask) == kPosInf; }
   static inline bool IsNaN(T value) {
     return ((value & kExpMask) == kExpMask) && ((value & kSigMask) != 0);
@@ -228,16 +230,17 @@ struct FPTypeInfo<int32_t> {
   using T = int32_t;
   using UIntType = uint32_t;
   using IntType = std::make_signed<UIntType>::type;
-  static const int kBitSize = sizeof(float) << 3;
-  static const int kExpSize = 8;
-  static const int kExpBias = 127;
-  static const int kSigSize = kBitSize - kExpSize - /*sign*/ 1;
-  static const UIntType kInfMask = (1ULL << (kBitSize - 1)) - 1;
-  static const UIntType kExpMask = ((1ULL << kExpSize) - 1) << kSigSize;
-  static const UIntType kSigMask = (1ULL << kSigSize) - 1;
-  static const UIntType kCanonicalNaN = 0b0'1111'1111'1ULL << (kSigSize - 1);
-  static const UIntType kPosInf = kExpMask;
-  static const UIntType kNegInf = kExpMask | (1ULL << (kBitSize - 1));
+  static constexpr int kBitSize = sizeof(float) << 3;
+  static constexpr int kExpSize = 8;
+  static constexpr int kExpBias = 127;
+  static constexpr int kSigSize = kBitSize - kExpSize - /*sign*/ 1;
+  static constexpr UIntType kInfMask = (1ULL << (kBitSize - 1)) - 1;
+  static constexpr UIntType kExpMask = ((1ULL << kExpSize) - 1) << kSigSize;
+  static constexpr UIntType kSigMask = (1ULL << kSigSize) - 1;
+  static constexpr UIntType kCanonicalNaN = 0b0'1111'1111'1ULL
+                                            << (kSigSize - 1);
+  static constexpr UIntType kPosInf = kExpMask;
+  static constexpr UIntType kNegInf = kExpMask | (1ULL << (kBitSize - 1));
   static inline bool IsInf(T value) { return (value & kInfMask) == kPosInf; }
   static inline bool IsNaN(T value) {
     return ((value & kExpMask) == kExpMask) && ((value & kSigMask) != 0);
@@ -255,16 +258,17 @@ struct FPTypeInfo<uint64_t> {
   using T = uint64_t;
   using UIntType = uint64_t;
   using IntType = std::make_signed<UIntType>::type;
-  static const int kBitSize = sizeof(float) << 3;
-  static const int kExpSize = 8;
-  static const int kExpBias = 127;
-  static const int kSigSize = kBitSize - kExpSize - /*sign*/ 1;
-  static const UIntType kInfMask = (1ULL << (kBitSize - 1)) - 1;
-  static const UIntType kExpMask = ((1ULL << kExpSize) - 1) << kSigSize;
-  static const UIntType kSigMask = (1ULL << kSigSize) - 1;
-  static const UIntType kCanonicalNaN = 0b0'1111'1111'1ULL << (kSigSize - 1);
-  static const UIntType kPosInf = kExpMask;
-  static const UIntType kNegInf = kExpMask | (1ULL << (kBitSize - 1));
+  static constexpr int kBitSize = sizeof(float) << 3;
+  static constexpr int kExpSize = 8;
+  static constexpr int kExpBias = 127;
+  static constexpr int kSigSize = kBitSize - kExpSize - /*sign*/ 1;
+  static constexpr UIntType kInfMask = (1ULL << (kBitSize - 1)) - 1;
+  static constexpr UIntType kExpMask = ((1ULL << kExpSize) - 1) << kSigSize;
+  static constexpr UIntType kSigMask = (1ULL << kSigSize) - 1;
+  static constexpr UIntType kCanonicalNaN = 0b0'1111'1111'1ULL
+                                            << (kSigSize - 1);
+  static constexpr UIntType kPosInf = kExpMask;
+  static constexpr UIntType kNegInf = kExpMask | (1ULL << (kBitSize - 1));
   static inline bool IsInf(T value) { return (value & kInfMask) == kPosInf; }
   static inline bool IsNaN(T value) {
     return ((value & kExpMask) == kExpMask) && ((value & kSigMask) != 0);
@@ -282,16 +286,17 @@ struct FPTypeInfo<int64_t> {
   using T = int64_t;
   using UIntType = uint64_t;
   using IntType = std::make_signed<UIntType>::type;
-  static const int kBitSize = sizeof(float) << 3;
-  static const int kExpSize = 8;
-  static const int kExpBias = 127;
-  static const int kSigSize = kBitSize - kExpSize - /*sign*/ 1;
-  static const UIntType kInfMask = (1ULL << (kBitSize - 1)) - 1;
-  static const UIntType kExpMask = ((1ULL << kExpSize) - 1) << kSigSize;
-  static const UIntType kSigMask = (1ULL << kSigSize) - 1;
-  static const UIntType kCanonicalNaN = 0b0'1111'1111'1ULL << (kSigSize - 1);
-  static const UIntType kPosInf = kExpMask;
-  static const UIntType kNegInf = kExpMask | (1ULL << (kBitSize - 1));
+  static constexpr int kBitSize = sizeof(float) << 3;
+  static constexpr int kExpSize = 8;
+  static constexpr int kExpBias = 127;
+  static constexpr int kSigSize = kBitSize - kExpSize - /*sign*/ 1;
+  static constexpr UIntType kInfMask = (1ULL << (kBitSize - 1)) - 1;
+  static constexpr UIntType kExpMask = ((1ULL << kExpSize) - 1) << kSigSize;
+  static constexpr UIntType kSigMask = (1ULL << kSigSize) - 1;
+  static constexpr UIntType kCanonicalNaN = 0b0'1111'1111'1ULL
+                                            << (kSigSize - 1);
+  static constexpr UIntType kPosInf = kExpMask;
+  static constexpr UIntType kNegInf = kExpMask | (1ULL << (kBitSize - 1));
   static inline bool IsInf(T value) { return (value & kInfMask) == kPosInf; }
   static inline bool IsNaN(T value) {
     return ((value & kExpMask) == kExpMask) && ((value & kSigMask) != 0);
