@@ -23,6 +23,7 @@ cc_library(
     name = "memory",
     srcs = [
         "atomic_memory.cc",
+        "atomic_tagged_memory.cc",
         "flat_demand_memory.cc",
         "flat_memory.cc",
         "memory_watcher.cc",
@@ -30,6 +31,7 @@ cc_library(
     ],
     hdrs = [
         "atomic_memory.h",
+        "atomic_tagged_memory.h",
         "flat_demand_memory.h",
         "flat_memory.h",
         "memory_interface.h",

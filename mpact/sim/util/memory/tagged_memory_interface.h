@@ -17,7 +17,6 @@
 
 #include <cstdint>
 
-#include "absl/status/status.h"
 #include "mpact/sim/generic/data_buffer.h"
 #include "mpact/sim/generic/instruction.h"
 #include "mpact/sim/generic/ref_count.h"
@@ -42,20 +41,6 @@ class TaggedMemoryInterface : public MemoryInterface {
   virtual void Load(uint64_t address, DataBuffer *db, DataBuffer *tags,
                     Instruction *inst, ReferenceCount *context) = 0;
   virtual void Store(uint64_t address, DataBuffer *db, DataBuffer *tags) = 0;
-};
-
-class AtomicTaggedMemoryOpInterface : public AtomicMemoryOpInterface {
- public:
-  using Operation = ::mpact::sim::util::AtomicMemoryOpInterface::Operation;
-  using AtomicMemoryOpInterface::PerformMemoryOp;
-
-  // Default destructor.
-  virtual ~AtomicTaggedMemoryOpInterface() = default;
-
-  virtual absl::Status PerformMemoryOp(uint64_t address, Operation op,
-                                       DataBuffer *db, DataBuffer *tags,
-                                       Instruction *inst,
-                                       ReferenceCount *context) = 0;
 };
 
 }  // namespace util

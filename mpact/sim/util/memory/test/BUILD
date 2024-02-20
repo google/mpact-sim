@@ -97,3 +97,17 @@ cc_test(
         "@com_google_googletest//:gtest_main",
     ],
 )
+
+cc_test(
+    name = "atomic_tagged_memory_test",
+    size = "small",
+    srcs = ["atomic_tagged_memory_test.cc"],
+    deps = [
+        "//mpact/sim/generic:core",
+        "//mpact/sim/util/memory",
+        "@com_google_absl//absl/memory",
+        "@com_google_absl//absl/strings",
+        "@com_google_googletest//:gtest",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
