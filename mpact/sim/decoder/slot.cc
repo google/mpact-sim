@@ -14,7 +14,9 @@
 
 #include "mpact/sim/decoder/slot.h"
 
+#include <cctype>
 #include <cstddef>
+#include <cstdlib>
 #include <map>
 #include <stack>
 #include <string>
@@ -25,6 +27,7 @@
 #include "absl/container/flat_hash_set.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/numbers.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "mpact/sim/decoder/format_name.h"
@@ -65,6 +68,27 @@ static absl::StatusOr<std::string> TranslateLocator(
   return code;
 }
 
+// This is a helper function that generates the code snippet to extract the
+// right sized value based on the length specifier in the print format
+// specification. E.g., %08x, %04d, etc.
+static std::string GetExtractor(const std::string &format) {
+  int size = 0;
+  int pos = 0;
+  int len = 1;
+  for (int i = 0; i < format.size(); i++) {
+    if (!isdigit(format[i])) continue;
+    pos = i;
+    break;
+  }
+  while (isdigit(format[pos + len])) len++;
+  if (!absl::SimpleAtoi(format.substr(pos, len), &size)) size = 0;
+  if (size == 0) return "->AsInt64(0)";
+  if (size <= 2) return "->AsInt8(0)";
+  if (size <= 4) return "->AsInt16(0)";
+  if (size <= 8) return "->AsInt32(0)";
+  return "->AsInt64(0)";
+}
+
 // Small helper function to just expand the expression specified by the
 // FormatInfo from parsing the disassembly specifier.
 static std::string ExpandExpression(const FormatInfo &format,
@@ -72,20 +96,27 @@ static std::string ExpandExpression(const FormatInfo &format,
   // Handle the case when it's just an '@' - i.e., just the address.
   if (format.use_address && format.operation.empty()) {
     return absl::StrCat("(inst->address())");
-  } else if (format.operation.empty()) {
+  }
+  if (format.operation.empty()) {
     // No +/- for the @ sign, i.e., @ <</>> amount.
     if (locator.empty()) return absl::StrCat("#error missing field locator");
-    return absl::StrCat("(", locator, "->AsInt64(0)",
+    if (format.shift_amount == 0) {
+      return absl::StrCat(locator, GetExtractor(format.number_format));
+    }
+    return absl::StrCat("(", locator, GetExtractor(format.number_format),
                         format.do_left_shift ? " << " : " >> ",
                         format.shift_amount, ")");
-  } else {
-    // (@ +/- operand) <</>> shift amount
-    if (locator.empty()) return absl::StrCat("#error missing field locator");
-    return absl::StrCat("(", format.use_address ? "inst->address() " : "0 ",
-                        format.operation, "(", locator, "->AsInt64(0)",
-                        format.do_left_shift ? " << " : " >> ",
-                        format.shift_amount, "))");
   }
+  // (@ +/- operand) <</>> shift amount
+  if (locator.empty()) return absl::StrCat("#error missing field locator");
+
+  return absl::StrCat("(", format.use_address ? "inst->address() " : "0 ",
+                      format.operation, "(", locator,
+                      GetExtractor(format.number_format),
+                      format.shift_amount != 0
+                          ? absl::StrCat(format.do_left_shift ? " << " : " >> ",
+                                         format.shift_amount, "))")
+                          : "))");
 }
 
 Slot::Slot(absl::string_view name, InstructionSet *instruction_set,
