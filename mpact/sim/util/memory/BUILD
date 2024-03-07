@@ -30,6 +30,7 @@ cc_library(
         "memory_watcher.cc",
         "single_initiator_router.cc",
         "tagged_flat_demand_memory.cc",
+        "tagged_memory_watcher.cc",
     ],
     hdrs = [
         "atomic_memory.h",
@@ -42,6 +43,7 @@ cc_library(
         "single_initiator_router.h",
         "tagged_flat_demand_memory.h",
         "tagged_memory_interface.h",
+        "tagged_memory_watcher.h",
     ],
     copts = ["-O3"],
     deps = [
