@@ -18,6 +18,18 @@ package(
     default_applicable_licenses = ["//:license"],
 )
 
+cc_library(
+    name = "dummy_memory",
+    testonly = True,
+    hdrs = ["dummy_memory.h"],
+    deps = [
+        "//mpact/sim/generic:core",
+        "//mpact/sim/generic:instruction",
+        "//mpact/sim/util/memory",
+        "@com_google_absl//absl/status",
+    ],
+)
+
 cc_test(
     name = "flat_memory_test",
     size = "small",
@@ -117,6 +129,24 @@ cc_test(
     size = "small",
     srcs = ["single_initiator_router_test.cc"],
     deps = [
+        ":dummy_memory",
+        "//mpact/sim/generic:core",
+        "//mpact/sim/generic:instruction",
+        "//mpact/sim/util/memory",
+        "@com_google_absl//absl/memory",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/strings",
+        "@com_google_googletest//:gtest",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "memory_router_test",
+    size = "small",
+    srcs = ["memory_router_test.cc"],
+    deps = [
+        ":dummy_memory",
         "//mpact/sim/generic:core",
         "//mpact/sim/generic:instruction",
         "//mpact/sim/util/memory",

@@ -26,6 +26,7 @@ cc_library(
         "atomic_tagged_memory.cc",
         "flat_demand_memory.cc",
         "flat_memory.cc",
+        "memory_router.cc",
         "memory_watcher.cc",
         "single_initiator_router.cc",
         "tagged_flat_demand_memory.cc",
@@ -36,6 +37,7 @@ cc_library(
         "flat_demand_memory.h",
         "flat_memory.h",
         "memory_interface.h",
+        "memory_router.h",
         "memory_watcher.h",
         "single_initiator_router.h",
         "tagged_flat_demand_memory.h",
@@ -53,7 +55,6 @@ cc_library(
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/numeric:bits",
         "@com_google_absl//absl/status",
-        "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
     ],
 )
