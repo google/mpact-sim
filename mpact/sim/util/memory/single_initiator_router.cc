@@ -172,7 +172,14 @@ void SingleInitiatorRouter::Load(DataBuffer *address_db, DataBuffer *mask_db,
 void SingleInitiatorRouter::Load(uint64_t address, DataBuffer *db,
                                  DataBuffer *tags, Instruction *inst,
                                  ReferenceCount *context) {
-  int size = db->size<uint8_t>();
+  int size;
+  // If db is null, then this is a tag load. The size for routing purposes is
+  // the size of tags * 8.
+  if (db == nullptr) {
+    size = tags->size<uint8_t>() << 3;
+  } else {
+    size = db->size<uint8_t>();
+  }
   auto tagged_it = tagged_targets_.find({address, address + size - 1});
   if (tagged_it != tagged_targets_.end()) {
     auto &range = tagged_it->first;
