@@ -55,6 +55,7 @@ absl::Status TaggedMemoryWatcher::ClearStoreWatchCallback(uint64_t address) {
         "ClearStoreWatchCallback: Error: No range found that contains: ",
         absl::Hex(address)));
   }
+  st_watch_actions_.erase(ptr);
   return absl::OkStatus();
 }
 
@@ -81,6 +82,7 @@ absl::Status TaggedMemoryWatcher::ClearLoadWatchCallback(uint64_t address) {
         "ClearLoadWatchCallback: Error: No range found that contains: ",
         absl::Hex(address)));
   }
+  ld_watch_actions_.erase(ptr);
   return absl::OkStatus();
 }
 
