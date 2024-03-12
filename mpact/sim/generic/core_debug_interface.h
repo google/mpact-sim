@@ -51,6 +51,7 @@ class CoreDebugInterface {
     kHardwareBreakpoint = 1,
     kUserRequest = 2,
     kSemihostHaltRequest = 3,
+    kDataWatchPoint = 4,
     kNone = 0x7fff'ffff,
     // Custom halt reason limits.
     kUserSpecifiedMin = 0x8000'0000,
