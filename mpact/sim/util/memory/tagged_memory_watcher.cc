@@ -131,7 +131,7 @@ void TaggedMemoryWatcher::Load(DataBuffer *address_db, DataBuffer *mask_db,
 void TaggedMemoryWatcher::Load(uint64_t address, DataBuffer *db,
                                DataBuffer *tags, Instruction *inst,
                                ReferenceCount *context) {
-  if (!ld_watch_actions_.empty()) {
+  if (db != nullptr && !ld_watch_actions_.empty()) {
     auto [first_match, last] = ld_watch_actions_.equal_range(
         AddressRange(address, address + db->size<uint8_t>() - 1));
     while (first_match != last) {
