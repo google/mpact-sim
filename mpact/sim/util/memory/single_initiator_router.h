@@ -66,14 +66,18 @@ class SingleInitiatorRouter : public TaggedMemoryInterface,
   SingleInitiatorRouter &operator=(const SingleInitiatorRouter &) = delete;
   ~SingleInitiatorRouter();
 
-  // Add 'memory' target interface with given range.
-  absl::Status AddTarget(MemoryInterface *memory, uint64_t base, uint64_t top);
-  // Add 'tagged_memory' interface with given range.
-  absl::Status AddTarget(TaggedMemoryInterface *tagged_memory, uint64_t base,
-                         uint64_t top);
-  // Add 'atomic_memory' interface with given range.
-  absl::Status AddTarget(AtomicMemoryOpInterface *atomic_memory, uint64_t base,
-                         uint64_t top);
+  // Add 'memory' target interface with given range. Only three interface types
+  // are supported: MemoryInterface, TaggedMemoryInterface, and
+  // AtomicMemoryOpInterface.
+  template <typename Interface>
+  absl::Status AddTarget(Interface *memory, uint64_t base, uint64_t top);
+
+  // Add 'memory' target interface as default target, that is, if no other
+  // interface matches, it is the fallback interface. Only three interface types
+  // are supported: MemoryInterface, TaggedMemoryInterface, and
+  // AtomicMemoryOpInterface.
+  template <typename Interface>
+  absl::Status AddDefaultTarget(Interface *memory);
 
   // Memory interface methods.
   // Plain load.
@@ -105,8 +109,11 @@ class SingleInitiatorRouter : public TaggedMemoryInterface,
   std::string name_;
   // These maps are used to look up target interfaces based on addresses.
   InterfaceMap<MemoryInterface> memory_targets_;
+  MemoryInterface *default_memory_target_ = nullptr;
   InterfaceMap<TaggedMemoryInterface> tagged_targets_;
+  TaggedMemoryInterface *default_tagged_target_ = nullptr;
   InterfaceMap<AtomicMemoryOpInterface> atomic_targets_;
+  AtomicMemoryOpInterface *default_atomic_target_ = nullptr;
 };
 
 }  // namespace util

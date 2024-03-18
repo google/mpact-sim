@@ -191,15 +191,18 @@ TEST(SingleInitiatorRouterTest, MultiTargetMemory) {
   auto memory0 = std::make_unique<DummyMemory>();
   auto memory1 = std::make_unique<DummyMemory>();
   auto memory2 = std::make_unique<DummyMemory>();
+  auto default_memory = std::make_unique<DummyMemory>();
   auto *memory_target0 = static_cast<MemoryInterface *>(memory0.get());
   auto *memory_target1 = static_cast<MemoryInterface *>(memory1.get());
   auto *memory_target2 = static_cast<MemoryInterface *>(memory2.get());
+  auto *default_target = static_cast<MemoryInterface *>(default_memory.get());
   auto *db = db_factory.Allocate<uint32_t>(1);
 
   // Add 3 targets at different areas in the memory map.
   EXPECT_OK(router->AddTarget(memory_target0, 0x1'0000'0000, 0x1'0000'ffff));
   EXPECT_OK(router->AddTarget(memory_target1, 0x3'0000'0000, 0x3'0000'ffff));
   EXPECT_OK(router->AddTarget(memory_target2, 0x5'0000'0000, 0x5'0000'ffff));
+  EXPECT_OK(router->AddDefaultTarget(default_target));
 
   // Make sure access addresses hit the expected target.
 
@@ -219,10 +222,11 @@ TEST(SingleInitiatorRouterTest, MultiTargetMemory) {
   EXPECT_EQ(memory2->load_address(), 0x5'0000'1000);
   EXPECT_EQ(memory2->store_address(), 0x5'0000'2000);
 
-  // An access outside the memory map should not hit any of the targets.
+  // An access outside the memory map should hit the default target.
   memory0->ClearValues();
   memory1->ClearValues();
   memory2->ClearValues();
+  default_memory->ClearValues();
   router->Load(0x2'0000'0000, db, nullptr, nullptr);
   router->Store(0x2'0000'2000, db);
   EXPECT_EQ(memory0->load_address(), 0);
@@ -231,16 +235,21 @@ TEST(SingleInitiatorRouterTest, MultiTargetMemory) {
   EXPECT_EQ(memory0->store_address(), 0);
   EXPECT_EQ(memory1->store_address(), 0);
   EXPECT_EQ(memory2->store_address(), 0);
+  EXPECT_EQ(default_memory->load_address(), 0x2'0000'0000);
+  EXPECT_EQ(default_memory->store_address(), 0x2'0000'2000);
 
   // An access partially overlapping the memory should not hit any of the
   // targets.
   router->Load(0x0'ffff'fffe, db, nullptr, nullptr);
+  default_memory->ClearValues();
   EXPECT_EQ(memory0->load_address(), 0);
   EXPECT_EQ(memory1->load_address(), 0);
   EXPECT_EQ(memory2->load_address(), 0);
   EXPECT_EQ(memory0->store_address(), 0);
   EXPECT_EQ(memory1->store_address(), 0);
   EXPECT_EQ(memory2->store_address(), 0);
+  EXPECT_EQ(default_memory->load_address(), 0);
+  EXPECT_EQ(default_memory->store_address(), 0);
 
   db->DecRef();
 }
@@ -252,9 +261,12 @@ TEST(SingleInitiatorRouterTest, MultiTargetTaggedMemory) {
   auto memory0 = std::make_unique<DummyMemory>();
   auto memory1 = std::make_unique<DummyMemory>();
   auto memory2 = std::make_unique<DummyMemory>();
+  auto default_memory = std::make_unique<DummyMemory>();
   auto *memory_target0 = static_cast<TaggedMemoryInterface *>(memory0.get());
   auto *memory_target1 = static_cast<TaggedMemoryInterface *>(memory1.get());
   auto *memory_target2 = static_cast<TaggedMemoryInterface *>(memory2.get());
+  auto *default_target =
+      static_cast<TaggedMemoryInterface *>(default_memory.get());
   auto *db = db_factory.Allocate<uint32_t>(1);
   auto *tag_db = db_factory.Allocate<uint8_t>(1);
 
@@ -262,6 +274,7 @@ TEST(SingleInitiatorRouterTest, MultiTargetTaggedMemory) {
   EXPECT_OK(router->AddTarget(memory_target0, 0x1'0000'0000, 0x1'0000'ffff));
   EXPECT_OK(router->AddTarget(memory_target1, 0x3'0000'0000, 0x3'0000'ffff));
   EXPECT_OK(router->AddTarget(memory_target2, 0x5'0000'0000, 0x5'0000'ffff));
+  EXPECT_OK(router->AddDefaultTarget(default_target));
 
   // Make sure access addresses hit the expected target.
 
@@ -281,10 +294,11 @@ TEST(SingleInitiatorRouterTest, MultiTargetTaggedMemory) {
   EXPECT_EQ(memory2->tagged_load_address(), 0x5'0000'1000);
   EXPECT_EQ(memory2->tagged_store_address(), 0x5'0000'2000);
 
-  // An access outside the memory map should not hit any of the targets.
+  // An access outside the memory map should hit the default target.
   memory0->ClearValues();
   memory1->ClearValues();
   memory2->ClearValues();
+  default_memory->ClearValues();
   router->Load(0x2'0000'0000, db, tag_db, nullptr, nullptr);
   router->Store(0x2'0000'2000, db, tag_db);
   EXPECT_EQ(memory0->tagged_load_address(), 0);
@@ -293,17 +307,22 @@ TEST(SingleInitiatorRouterTest, MultiTargetTaggedMemory) {
   EXPECT_EQ(memory0->tagged_store_address(), 0);
   EXPECT_EQ(memory1->tagged_store_address(), 0);
   EXPECT_EQ(memory2->tagged_store_address(), 0);
+  EXPECT_EQ(default_memory->tagged_load_address(), 0x2'0000'0000);
+  EXPECT_EQ(default_memory->tagged_store_address(), 0x2'0000'2000);
 
   // An access partially overlapping the memory should not hit any of the
   // targets.
   router->Load(0x0'ffff'fffe, db, tag_db, nullptr, nullptr);
   router->Store(0x0'ffff'fffe, db, tag_db);
+  default_memory->ClearValues();
   EXPECT_EQ(memory0->tagged_load_address(), 0);
   EXPECT_EQ(memory1->tagged_load_address(), 0);
   EXPECT_EQ(memory2->tagged_load_address(), 0);
   EXPECT_EQ(memory0->tagged_store_address(), 0);
   EXPECT_EQ(memory1->tagged_store_address(), 0);
   EXPECT_EQ(memory2->tagged_store_address(), 0);
+  EXPECT_EQ(default_memory->tagged_load_address(), 0);
+  EXPECT_EQ(default_memory->tagged_store_address(), 0);
 
   tag_db->DecRef();
   db->DecRef();
@@ -484,15 +503,19 @@ TEST(SingleInitiatorRouterTest, MultiTargetAtomicMemory) {
   auto memory0 = std::make_unique<DummyMemory>();
   auto memory1 = std::make_unique<DummyMemory>();
   auto memory2 = std::make_unique<DummyMemory>();
+  auto default_memory = std::make_unique<DummyMemory>();
   auto *atomic_target0 = static_cast<AtomicMemoryOpInterface *>(memory0.get());
   auto *atomic_target1 = static_cast<AtomicMemoryOpInterface *>(memory1.get());
   auto *atomic_target2 = static_cast<AtomicMemoryOpInterface *>(memory2.get());
+  auto *default_target =
+      static_cast<AtomicMemoryOpInterface *>(default_memory.get());
   auto *db = db_factory.Allocate<uint32_t>(1);
 
   // Add 3 targets at different areas in the memory map.
-  EXPECT_OK(router->AddTarget(atomic_target0, 0x1'0000'0000, 0x1'0000'ffff));
-  EXPECT_OK(router->AddTarget(atomic_target1, 0x3'0000'0000, 0x3'0000'ffff));
-  EXPECT_OK(router->AddTarget(atomic_target2, 0x5'0000'0000, 0x5'0000'ffff));
+  EXPECT_OK(router->AddTarget(atomic_target0, 0x1'0000'0000, 0x1'0000'ffffULL));
+  EXPECT_OK(router->AddTarget(atomic_target1, 0x3'0000'0000, 0x3'0000'ffffULL));
+  EXPECT_OK(router->AddTarget(atomic_target2, 0x5'0000'0000, 0x5'0000'ffffULL));
+  EXPECT_OK(router->AddDefaultTarget(default_target));
 
   // Make sure access addresses hit the expected target.
 
@@ -500,37 +523,39 @@ TEST(SingleInitiatorRouterTest, MultiTargetAtomicMemory) {
   EXPECT_OK(router->PerformMemoryOp(
       0x1'0000'1000, AtomicMemoryOpInterface::Operation::kAtomicAdd, db,
       nullptr, nullptr));
-  EXPECT_EQ(memory0->memory_op_address(), 0x1'0000'1000);
+  EXPECT_EQ(memory0->memory_op_address(), 0x1'0000'1000ULL);
   // Memory 1.
   EXPECT_OK(router->PerformMemoryOp(
       0x3'0000'1000, AtomicMemoryOpInterface::Operation::kAtomicAdd, db,
       nullptr, nullptr));
-  EXPECT_EQ(memory1->memory_op_address(), 0x3'0000'1000);
+  EXPECT_EQ(memory1->memory_op_address(), 0x3'0000'1000ULL);
   // Memory 2.
   EXPECT_OK(router->PerformMemoryOp(
       0x5'0000'1000, AtomicMemoryOpInterface::Operation::kAtomicAdd, db,
       nullptr, nullptr));
-  EXPECT_EQ(memory2->memory_op_address(), 0x5'0000'1000);
+  EXPECT_EQ(memory2->memory_op_address(), 0x5'0000'1000ULL);
 
-  // An access outside the memory map should not hit any of the targets.
+  // An access outside the memory map should hit the default target.
   memory0->ClearValues();
   memory1->ClearValues();
   memory2->ClearValues();
-  EXPECT_FALSE(
+  EXPECT_TRUE(
       router
-          ->PerformMemoryOp(0x2'0000'1000,
+          ->PerformMemoryOp(0x2'0000'1000ULL,
                             AtomicMemoryOpInterface::Operation::kAtomicAdd, db,
                             nullptr, nullptr)
           .ok());
   EXPECT_EQ(memory0->memory_op_address(), 0);
   EXPECT_EQ(memory1->memory_op_address(), 0);
   EXPECT_EQ(memory2->memory_op_address(), 0);
+  EXPECT_EQ(default_memory->memory_op_address(), 0x2'0000'1000ULL);
 
   // An access partially overlapping the memory should not hit any of the
   // targets.
+  default_memory->ClearValues();
   EXPECT_FALSE(
       router
-          ->PerformMemoryOp(0x0'ffff'fffe,
+          ->PerformMemoryOp(0x0'ffff'fffeULL,
                             AtomicMemoryOpInterface::Operation::kAtomicAdd, db,
                             nullptr, nullptr)
           .ok());
