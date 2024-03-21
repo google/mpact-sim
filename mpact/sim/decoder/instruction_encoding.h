@@ -73,6 +73,7 @@ class InstructionEncoding {
 
   // Accessors.
   const std::string &name() const { return name_; }
+  const std::string &format_name() const { return format_name_; }
   // Return the vector of constraints on the values of this encoding. These
   // constraints determine the value that a masked set of bits have to be equal
   // to in order to match this encoding.

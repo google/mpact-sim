@@ -247,8 +247,8 @@ void EncodingGroup::EmitInitializers(absl::string_view name,
   if (discriminator_size_ == 0) return;
   absl::StrAppend(initializers_ptr, "constexpr int kParseGroup", name,
                   "_Size = ", discriminator_size_, ";\n\n");
-  absl::StrAppend(initializers_ptr, "absl::AnyInvocable<", opcode_enum, "(",
-                  inst_word_type_,
+  absl::StrAppend(initializers_ptr, "absl::AnyInvocable<std::pair<",
+                  opcode_enum, ", FormatEnum>(", inst_word_type_,
                   ")>"
                   " parse_group_",
                   name, "[kParseGroup", name, "_Size] = {\n");
@@ -300,8 +300,9 @@ void EncodingGroup::EmitDecoders(absl::string_view name,
                                  std::string *definitions_ptr,
                                  const std::string &opcode_enum) const {
   // Generate the decode function signature.
-  std::string signature = absl::StrCat(opcode_enum, " Decode", name, "(",
-                                       inst_word_type_, " inst_word)");
+  std::string signature =
+      absl::StrCat("std::pair<", opcode_enum, ", FormatEnum> Decode", name, "(",
+                   inst_word_type_, " inst_word)");
   absl::StrAppend(declarations_ptr, signature, ";\n");
   absl::StrAppend(definitions_ptr, signature, " {\n");
   // Generate the index extraction code if the discriminator size is > 0.
@@ -318,7 +319,8 @@ void EncodingGroup::EmitDecoders(absl::string_view name,
     uint64_t const_value = encoding_vec_[0]->GetValue() & constant_;
     absl::StrAppend(&constant_test, "  if ((inst_word & 0x",
                     absl::Hex(constant_), ") != 0x", absl::Hex(const_value),
-                    ") return ", opcode_enum, "::kNone;\n");
+                    ") return std::make_pair(", opcode_enum,
+                    "::kNone, FormatEnum::kNone);\n");
   }
   if (!encoding_group_vec_.empty()) {
     // Create decoder for a non-leaf encoding group. Just extract the index
@@ -335,29 +337,35 @@ void EncodingGroup::EmitDecoders(absl::string_view name,
       if (encoding_vec_.size() == 1) {
         // If the table size is 1, no need to generate the table, just return
         // the opcode.
-        absl::StrAppend(definitions_ptr, constant_test, "  return ",
-                        opcode_enum, "::k",
-                        ToPascalCase(encoding_vec_[0]->name()), ";\n");
+        absl::StrAppend(definitions_ptr, constant_test,
+                        "  return std::make_pair(", opcode_enum, "::k",
+                        ToPascalCase(encoding_vec_[0]->name()),
+                        ", FormatEnum::k",
+                        ToPascalCase(encoding_vec_[0]->format_name()), ");\n");
       } else {
         // First generate the table of opcodes. The opcodes are in order of the
         // extracted discriminator value. If there are gaps, fill them in with
         // kNone values.
         int count = 1 << absl::popcount(discriminator_);
-        absl::StrAppend(definitions_ptr, "  static constexpr ", opcode_enum,
-                        " opcodes[", count, "] = {\n");
+        absl::StrAppend(definitions_ptr, "  static constexpr std::pair<",
+                        opcode_enum, ", FormatEnum> opcodes[", count,
+                        "] = {\n");
         int entry = 0;
         for (auto *enc : encoding_vec_) {
           int value = ExtractValue(enc->GetValue(), discriminator_recipe_);
           while (entry < value) {
-            absl::StrAppend(definitions_ptr, "    ", opcode_enum, "::kNone,\n");
+            absl::StrAppend(definitions_ptr, "    {", opcode_enum,
+                            "::kNone, FormatEnum::kNone},\n");
             entry++;
           }
-          absl::StrAppend(definitions_ptr, "    ", opcode_enum, "::k",
-                          ToPascalCase(enc->name()), ",\n");
+          absl::StrAppend(definitions_ptr, "    {", opcode_enum, "::k",
+                          ToPascalCase(enc->name()), ", FormatEnum::k",
+                          ToPascalCase(enc->format_name()), "},\n");
           entry++;
         }
         while (entry < count) {
-          absl::StrAppend(definitions_ptr, "    ", opcode_enum, "::kNone,\n");
+          absl::StrAppend(definitions_ptr, "    {", opcode_enum,
+                          "::kNone, FormatEnum::kNone},\n");
           entry++;
         }
         absl::StrAppend(definitions_ptr, "  };\n");
@@ -421,7 +429,8 @@ void EncodingGroup::EmitComplexDecoderBody(
     absl::StrAppend(definitions_ptr, "    }\n");
   }
   absl::StrAppend(definitions_ptr, "    default: break;\n", "  }\n",
-                  "  return ", opcode_enum, "::kNone;\n");
+                  "  return std::make_pair(", opcode_enum,
+                  "::kNone, FormatEnum::kNone);\n");
 }
 
 void EncodingGroup::EmitComplexDecoderBodyIfSequence(
@@ -438,7 +447,8 @@ void EncodingGroup::EmitComplexDecoderBodyIfSequence(
     EmitEncodingIfStatement(/*indent*/ 0, encoding, opcode_enum, extracted,
                             definitions_ptr);
   }
-  absl::StrAppend(definitions_ptr, "  return ", opcode_enum, "::kNone;\n");
+  absl::StrAppend(definitions_ptr, "  return std::make_pair(", opcode_enum,
+                  "::kNone, FormatEnum::kNone);\n");
 }
 
 void EncodingGroup::ProcessConstraint(
@@ -515,8 +525,10 @@ int EncodingGroup::EmitEncodingIfStatement(
     absl::StrAppend(definitions_ptr, indent_str, "if ", condition, "\n");
     indent_str.append("  ");
   }
-  absl::StrAppend(definitions_ptr, indent_str, "return ", opcode_enum, "::k",
-                  ToPascalCase(encoding->name()), ";\n");
+  absl::StrAppend(definitions_ptr, indent_str, "return std::make_pair(",
+                  opcode_enum, "::k", ToPascalCase(encoding->name()),
+                  ", FormatEnum::k", ToPascalCase(encoding->format_name()),
+                  ");\n");
   return count != 0 ? 1 : 0;
 }
 

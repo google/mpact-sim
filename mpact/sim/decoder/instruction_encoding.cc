@@ -28,7 +28,9 @@ namespace decoder {
 namespace bin_format {
 
 InstructionEncoding::InstructionEncoding(std::string name, Format *format)
-    : name_(name), format_(format) {}
+    : name_(name), format_(format) {
+  if (format) format_name_ = format->name();
+}
 
 // Custom copy constructor.
 InstructionEncoding::InstructionEncoding(const InstructionEncoding &encoding)

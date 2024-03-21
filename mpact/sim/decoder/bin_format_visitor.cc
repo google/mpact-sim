@@ -49,6 +49,8 @@ namespace sim {
 namespace decoder {
 namespace bin_format {
 
+using mpact::sim::machine_description::instruction_set::ToPascalCase;
+
 constexpr char kTemplatedExtractBits[] = R"foo(
 namespace internal {
 
@@ -217,6 +219,16 @@ BinFormatVisitor::StringPair BinFormatVisitor::EmitFilePrefix(
   absl::StrAppend(&cc_string, "\n");
   // Write out the templated extractor function used by the other methods.
   absl::StrAppend(&h_string, kTemplatedExtractBits);
+  // Write out the instruction format enum.
+  absl::StrAppend(&h_string,
+                  "\n"
+                  "enum class FormatEnum {\n"
+                  "  kNone = 0,\n");
+  int i = 1;
+  for (auto &[name, unused] : encoding_info->format_map()) {
+    absl::StrAppend(&h_string, "  k", ToPascalCase(name), " = ", i++, ",\n");
+  }
+  absl::StrAppend(&h_string, "};\n\n");
   return {h_string, cc_string};
 }
 
