@@ -227,9 +227,7 @@ cc_library(
         "variant_helper.h",
     ],
     copts = ["-O3"],
-    visibility = [
-        "//visibility:private",  # Only private by automation, not intent. Owner may accept CLs adding visibility. See go/scheuklappen#explicit-private.
-    ],
+    visibility = ["//visibility:private"],
     deps = [
         "@com_google_absl//absl/types:variant",
     ],
