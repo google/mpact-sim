@@ -15,22 +15,30 @@
 #ifndef MPACT_SIM_GENERIC_REF_COUNT_H_
 #define MPACT_SIM_GENERIC_REF_COUNT_H_
 
+#include <cstdint>
+
 #include "absl/base/macros.h"
 
 // Class to manage reference counting of simulation objects
 // that does not const declare IncRef, DecRef and OnRefCountIsZero
 
+extern uint64_t kelvin_instruction_count;
+
 namespace mpact {
 namespace sim {
 namespace generic {
 
-// This class is thread safe.
+// This class is thread safe.ere
 class ReferenceCount {
  public:
   // Constructor and destructor
   ReferenceCount() : inc_count_(1), dec_count_(0) {}
   virtual ~ReferenceCount() = default;
 
+  void ResetCounts() {
+    inc_count_ = 1;
+    dec_count_ = 0;
+  }
   // Add to the increment count of the object.
   void IncRef() { inc_count_++; }
 
@@ -53,8 +61,8 @@ class ReferenceCount {
   int ref_count() const { return inc_count_ - dec_count_; }
 
  private:
-  int inc_count_;
-  int dec_count_;
+  uint64_t inc_count_;
+  uint64_t dec_count_;
 };
 
 }  // namespace generic

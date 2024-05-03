@@ -330,6 +330,7 @@ inline DataBuffer *DataBufferFactory::Allocate(int size) {
         db = free_list.back();
         free_list.pop_back();
         db->IncRef();
+        db->ResetCounts();
         return db;
       }
     } else {
@@ -339,6 +340,7 @@ inline DataBuffer *DataBufferFactory::Allocate(int size) {
           db = ptr->second.back();
           ptr->second.pop_back();
           db->IncRef();
+          db->ResetCounts();
           return db;
         }
       }

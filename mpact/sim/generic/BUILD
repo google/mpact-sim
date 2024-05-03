@@ -51,6 +51,7 @@ cc_library(
     ],
     copts = ["-O3"],
     deps = [
+        "//util/symbolize",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/container:btree",
         "@com_google_absl//absl/container:flat_hash_map",
