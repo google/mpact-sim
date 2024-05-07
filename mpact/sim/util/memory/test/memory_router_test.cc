@@ -69,8 +69,10 @@ TEST(MemoryRouterTest, AddTarget) {
   auto memory_router = std::make_unique<MemoryRouter>();
   auto memory = std::make_unique<DummyMemory>();
   // Add memory target.
-  EXPECT_OK(memory_router->AddTarget(
-      "memory_target", static_cast<MemoryInterface *>(memory.get())));
+  EXPECT_TRUE(memory_router
+                  ->AddTarget("memory_target",
+                              static_cast<MemoryInterface *>(memory.get()))
+                  .ok());
   // Try adding it again, for each interface. It should fail.
   EXPECT_FALSE(memory_router
                    ->AddTarget("memory_target",
@@ -87,12 +89,20 @@ TEST(MemoryRouterTest, AddTarget) {
                       static_cast<AtomicMemoryOpInterface *>(memory.get()))
           .ok());
   // Add the memory target with different names. This should work.
-  EXPECT_OK(memory_router->AddTarget(
-      "memory_target_2", static_cast<MemoryInterface *>(memory.get())));
-  EXPECT_OK(memory_router->AddTarget(
-      "tagged_target", static_cast<TaggedMemoryInterface *>(memory.get())));
-  EXPECT_OK(memory_router->AddTarget(
-      "atomic_target", static_cast<AtomicMemoryOpInterface *>(memory.get())));
+  EXPECT_TRUE(memory_router
+                  ->AddTarget("memory_target_2",
+                              static_cast<MemoryInterface *>(memory.get()))
+                  .ok());
+  EXPECT_TRUE(
+      memory_router
+          ->AddTarget("tagged_target",
+                      static_cast<TaggedMemoryInterface *>(memory.get()))
+          .ok());
+  EXPECT_TRUE(
+      memory_router
+          ->AddTarget("atomic_target",
+                      static_cast<AtomicMemoryOpInterface *>(memory.get()))
+          .ok());
 }
 
 TEST(MemoryRouterTest, AddMapping) {
@@ -100,16 +110,21 @@ TEST(MemoryRouterTest, AddMapping) {
   auto memory = std::make_unique<DummyMemory>();
   // Add initiator (ignoring the return value) and target.
   (void)memory_router->AddMemoryInitiator("initiator");
-  EXPECT_OK(memory_router->AddTarget(
-      "mem", static_cast<MemoryInterface *>(memory.get())));
-  EXPECT_OK(memory_router->AddMapping("initiator", "mem", 0x1000, 0x1fff));
-  EXPECT_OK(memory_router->AddMapping("initiator", "mem", 0x1000, 0x1fff));
+  EXPECT_TRUE(
+      memory_router
+          ->AddTarget("mem", static_cast<MemoryInterface *>(memory.get()))
+          .ok());
+  EXPECT_TRUE(
+      memory_router->AddMapping("initiator", "mem", 0x1000, 0x1fff).ok());
+  EXPECT_TRUE(
+      memory_router->AddMapping("initiator", "mem", 0x1000, 0x1fff).ok());
   EXPECT_FALSE(
       memory_router->AddMapping("initiator", "mem", 0x800, 0x1800).ok());
   EXPECT_FALSE(memory_router->AddMapping("none", "mem", 0x2000, 0x2fff).ok());
   EXPECT_FALSE(
       memory_router->AddMapping("initiator", "none", 0x2000, 0x2fff).ok());
-  EXPECT_OK(memory_router->AddMapping("initiator", "mem", 0x2000, 0x2fff));
+  EXPECT_TRUE(
+      memory_router->AddMapping("initiator", "mem", 0x2000, 0x2fff).ok());
 }
 
 TEST(MemoryRouterTest, RoutingTest) {
@@ -122,16 +137,26 @@ TEST(MemoryRouterTest, RoutingTest) {
   auto memory1 = std::make_unique<DummyMemory>();
   auto *initiator0 = memory_router->AddMemoryInitiator("initiator0");
   auto *initiator1 = memory_router->AddMemoryInitiator("initiator1");
-  EXPECT_OK(memory_router->AddTarget(
-      "mem0", static_cast<MemoryInterface *>(memory0.get())));
-  EXPECT_OK(memory_router->AddTarget(
-      "mem1", static_cast<MemoryInterface *>(memory1.get())));
-  EXPECT_OK(memory_router->AddMapping("initiator0", "mem0", 0x1000, 0x1fff));
-  EXPECT_OK(memory_router->AddMapping("initiator0", "mem1", 0x2000, 0x2fff));
-  EXPECT_OK(memory_router->AddMapping("initiator1", "mem0", 0x1'0000'0000,
-                                      0x1'0000'ffff));
-  EXPECT_OK(memory_router->AddMapping("initiator1", "mem1", 0x2'0000'0000,
-                                      0x2'0000'ffff));
+  EXPECT_TRUE(
+      memory_router
+          ->AddTarget("mem0", static_cast<MemoryInterface *>(memory0.get()))
+          .ok());
+  EXPECT_TRUE(
+      memory_router
+          ->AddTarget("mem1", static_cast<MemoryInterface *>(memory1.get()))
+          .ok());
+  EXPECT_TRUE(
+      memory_router->AddMapping("initiator0", "mem0", 0x1000, 0x1fff).ok());
+  EXPECT_TRUE(
+      memory_router->AddMapping("initiator0", "mem1", 0x2000, 0x2fff).ok());
+  EXPECT_TRUE(
+      memory_router
+          ->AddMapping("initiator1", "mem0", 0x1'0000'0000, 0x1'0000'ffff)
+          .ok());
+  EXPECT_TRUE(
+      memory_router
+          ->AddMapping("initiator1", "mem1", 0x2'0000'0000, 0x2'0000'ffff)
+          .ok());
   // Load using initiator 0.
   initiator0->Load(0x1000, db, nullptr, nullptr);
   initiator0->Load(0x2000, db, nullptr, nullptr);

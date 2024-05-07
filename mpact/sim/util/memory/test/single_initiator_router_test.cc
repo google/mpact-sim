@@ -17,6 +17,7 @@
 #include <cstdint>
 #include <memory>
 
+#include "absl/log/check.h"
 #include "absl/status/status.h"
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
@@ -41,7 +42,7 @@ TEST(SingleInitiatorRouterTest, MemoryTargetLoadStore) {
   auto memory = std::make_unique<DummyMemory>();
   auto *memory_target = static_cast<MemoryInterface *>(memory.get());
 
-  EXPECT_OK(router->AddTarget(memory_target, 0, 0xffff'ffff'ffff'ffff));
+  EXPECT_TRUE(router->AddTarget(memory_target, 0, 0xffff'ffff'ffff'ffff).ok());
   auto *db = db_factory.Allocate<uint32_t>(1);
   auto *tag_db = db_factory.Allocate<uint8_t>(1);
 
@@ -74,7 +75,7 @@ TEST(SingleInitiatorRouterTest, MemoryTargetVectorLoadStore) {
   auto memory = std::make_unique<DummyMemory>();
   auto *memory_target = static_cast<MemoryInterface *>(memory.get());
 
-  EXPECT_OK(router->AddTarget(memory_target, 0, 0xffff'ffff'ffff'ffff));
+  EXPECT_TRUE(router->AddTarget(memory_target, 0, 0xffff'ffff'ffff'ffff).ok());
   auto *db = db_factory.Allocate<uint32_t>(2);
   auto *address_db = db_factory.Allocate<uint64_t>(2);
   auto *mask_db = db_factory.Allocate<uint8_t>(2);
@@ -102,7 +103,7 @@ TEST(SingleInitiatorRouterTest, TaggedTargetLoadStore) {
   auto tagged = std::make_unique<DummyMemory>();
   auto *tagged_target = static_cast<TaggedMemoryInterface *>(tagged.get());
 
-  EXPECT_OK(router->AddTarget(tagged_target, 0, 0xffff'ffff'ffff'ffff));
+  EXPECT_TRUE(router->AddTarget(tagged_target, 0, 0xffff'ffff'ffff'ffff).ok());
   auto *db = db_factory.Allocate<uint32_t>(1);
   auto *tag_db = db_factory.Allocate<uint8_t>(1);
   // Verify that only the access on the correct interface call go through.
@@ -136,7 +137,7 @@ TEST(SingleInitiatorRouterTest, TaggedTargetVectorLoadStore) {
   auto tagged = std::make_unique<DummyMemory>();
   auto *tagged_target = static_cast<TaggedMemoryInterface *>(tagged.get());
 
-  EXPECT_OK(router->AddTarget(tagged_target, 0, 0xffff'ffff'ffff'ffff));
+  EXPECT_TRUE(router->AddTarget(tagged_target, 0, 0xffff'ffff'ffff'ffff).ok());
   auto *db = db_factory.Allocate<uint32_t>(2);
   auto *address_db = db_factory.Allocate<uint64_t>(2);
   auto *mask_db = db_factory.Allocate<uint8_t>(2);
@@ -163,7 +164,7 @@ TEST(SingleInitiatorRouterTest, SingleAtomicTarget) {
   auto router = std::make_unique<SingleInitiatorRouter>("test");
   auto atomic = std::make_unique<DummyMemory>();
   auto *atomic_target = static_cast<AtomicMemoryOpInterface *>(atomic.get());
-  EXPECT_OK(router->AddTarget(atomic_target, 0, 0xffff'ffff'ffff'ffff));
+  EXPECT_TRUE(router->AddTarget(atomic_target, 0, 0xffff'ffff'ffff'ffff).ok());
   auto *db = db_factory.Allocate<uint32_t>(1);
   auto *tag_db = db_factory.Allocate<uint8_t>(1);
   // These should not update the address.
@@ -176,9 +177,11 @@ TEST(SingleInitiatorRouterTest, SingleAtomicTarget) {
   router->Store(0x4000, db, tag_db);
   EXPECT_EQ(atomic->tagged_store_address(), 0);
   // Verify that only the access on the correct interface call go through.
-  EXPECT_OK(router->PerformMemoryOp(
-      0x5000, AtomicMemoryOpInterface::Operation::kAtomicAdd, db, nullptr,
-      nullptr));
+  EXPECT_TRUE(router
+                  ->PerformMemoryOp(
+                      0x5000, AtomicMemoryOpInterface::Operation::kAtomicAdd,
+                      db, nullptr, nullptr)
+                  .ok());
   EXPECT_EQ(atomic->memory_op_address(), 0x5000);
   tag_db->DecRef();
   db->DecRef();
@@ -199,10 +202,13 @@ TEST(SingleInitiatorRouterTest, MultiTargetMemory) {
   auto *db = db_factory.Allocate<uint32_t>(1);
 
   // Add 3 targets at different areas in the memory map.
-  EXPECT_OK(router->AddTarget(memory_target0, 0x1'0000'0000, 0x1'0000'ffff));
-  EXPECT_OK(router->AddTarget(memory_target1, 0x3'0000'0000, 0x3'0000'ffff));
-  EXPECT_OK(router->AddTarget(memory_target2, 0x5'0000'0000, 0x5'0000'ffff));
-  EXPECT_OK(router->AddDefaultTarget(default_target));
+  EXPECT_TRUE(
+      router->AddTarget(memory_target0, 0x1'0000'0000, 0x1'0000'ffff).ok());
+  EXPECT_TRUE(
+      router->AddTarget(memory_target1, 0x3'0000'0000, 0x3'0000'ffff).ok());
+  EXPECT_TRUE(
+      router->AddTarget(memory_target2, 0x5'0000'0000, 0x5'0000'ffff).ok());
+  EXPECT_TRUE(router->AddDefaultTarget(default_target).ok());
 
   // Make sure access addresses hit the expected target.
 
@@ -271,10 +277,13 @@ TEST(SingleInitiatorRouterTest, MultiTargetTaggedMemory) {
   auto *tag_db = db_factory.Allocate<uint8_t>(1);
 
   // Add 3 targets at different areas in the memory map.
-  EXPECT_OK(router->AddTarget(memory_target0, 0x1'0000'0000, 0x1'0000'ffff));
-  EXPECT_OK(router->AddTarget(memory_target1, 0x3'0000'0000, 0x3'0000'ffff));
-  EXPECT_OK(router->AddTarget(memory_target2, 0x5'0000'0000, 0x5'0000'ffff));
-  EXPECT_OK(router->AddDefaultTarget(default_target));
+  EXPECT_TRUE(
+      router->AddTarget(memory_target0, 0x1'0000'0000, 0x1'0000'ffff).ok());
+  EXPECT_TRUE(
+      router->AddTarget(memory_target1, 0x3'0000'0000, 0x3'0000'ffff).ok());
+  EXPECT_TRUE(
+      router->AddTarget(memory_target2, 0x5'0000'0000, 0x5'0000'ffff).ok());
+  EXPECT_TRUE(router->AddDefaultTarget(default_target).ok());
 
   // Make sure access addresses hit the expected target.
 
@@ -345,9 +354,12 @@ TEST(SingleInitiatorRouterTest, MultiTargetVectorMemory) {
   mask_db->Set<uint8_t>(1, 1);
 
   // Add 3 targets at different areas in the memory map.
-  EXPECT_OK(router->AddTarget(memory_target0, 0x1'0000'0000, 0x1'0000'ffff));
-  EXPECT_OK(router->AddTarget(memory_target1, 0x3'0000'0000, 0x3'0000'ffff));
-  EXPECT_OK(router->AddTarget(memory_target2, 0x5'0000'0000, 0x5'0000'ffff));
+  EXPECT_TRUE(
+      router->AddTarget(memory_target0, 0x1'0000'0000, 0x1'0000'ffff).ok());
+  EXPECT_TRUE(
+      router->AddTarget(memory_target1, 0x3'0000'0000, 0x3'0000'ffff).ok());
+  EXPECT_TRUE(
+      router->AddTarget(memory_target2, 0x5'0000'0000, 0x5'0000'ffff).ok());
 
   // Make sure access addresses hit the expected target.
 
@@ -429,9 +441,12 @@ TEST(SingleInitiatorRouterTest, MultiTargetVectorTaggedMemory) {
   mask_db->Set<uint8_t>(1, 1);
 
   // Add 3 targets at different areas in the memory map.
-  EXPECT_OK(router->AddTarget(tagged_target0, 0x1'0000'0000, 0x1'0000'ffff));
-  EXPECT_OK(router->AddTarget(tagged_target1, 0x3'0000'0000, 0x3'0000'ffff));
-  EXPECT_OK(router->AddTarget(tagged_target2, 0x5'0000'0000, 0x5'0000'ffff));
+  EXPECT_TRUE(
+      router->AddTarget(tagged_target0, 0x1'0000'0000, 0x1'0000'ffff).ok());
+  EXPECT_TRUE(
+      router->AddTarget(tagged_target1, 0x3'0000'0000, 0x3'0000'ffff).ok());
+  EXPECT_TRUE(
+      router->AddTarget(tagged_target2, 0x5'0000'0000, 0x5'0000'ffff).ok());
 
   // Make sure access addresses hit the expected target.
 
@@ -512,27 +527,39 @@ TEST(SingleInitiatorRouterTest, MultiTargetAtomicMemory) {
   auto *db = db_factory.Allocate<uint32_t>(1);
 
   // Add 3 targets at different areas in the memory map.
-  EXPECT_OK(router->AddTarget(atomic_target0, 0x1'0000'0000, 0x1'0000'ffffULL));
-  EXPECT_OK(router->AddTarget(atomic_target1, 0x3'0000'0000, 0x3'0000'ffffULL));
-  EXPECT_OK(router->AddTarget(atomic_target2, 0x5'0000'0000, 0x5'0000'ffffULL));
-  EXPECT_OK(router->AddDefaultTarget(default_target));
+  EXPECT_TRUE(
+      router->AddTarget(atomic_target0, 0x1'0000'0000, 0x1'0000'ffffULL).ok());
+  EXPECT_TRUE(
+      router->AddTarget(atomic_target1, 0x3'0000'0000, 0x3'0000'ffffULL).ok());
+  EXPECT_TRUE(
+      router->AddTarget(atomic_target2, 0x5'0000'0000, 0x5'0000'ffffULL).ok());
+  EXPECT_TRUE(router->AddDefaultTarget(default_target).ok());
 
   // Make sure access addresses hit the expected target.
 
   // Memory 0.
-  EXPECT_OK(router->PerformMemoryOp(
-      0x1'0000'1000, AtomicMemoryOpInterface::Operation::kAtomicAdd, db,
-      nullptr, nullptr));
+  EXPECT_TRUE(
+      router
+          ->PerformMemoryOp(0x1'0000'1000,
+                            AtomicMemoryOpInterface::Operation::kAtomicAdd, db,
+                            nullptr, nullptr)
+          .ok());
   EXPECT_EQ(memory0->memory_op_address(), 0x1'0000'1000ULL);
   // Memory 1.
-  EXPECT_OK(router->PerformMemoryOp(
-      0x3'0000'1000, AtomicMemoryOpInterface::Operation::kAtomicAdd, db,
-      nullptr, nullptr));
+  EXPECT_TRUE(
+      router
+          ->PerformMemoryOp(0x3'0000'1000,
+                            AtomicMemoryOpInterface::Operation::kAtomicAdd, db,
+                            nullptr, nullptr)
+          .ok());
   EXPECT_EQ(memory1->memory_op_address(), 0x3'0000'1000ULL);
   // Memory 2.
-  EXPECT_OK(router->PerformMemoryOp(
-      0x5'0000'1000, AtomicMemoryOpInterface::Operation::kAtomicAdd, db,
-      nullptr, nullptr));
+  EXPECT_TRUE(
+      router
+          ->PerformMemoryOp(0x5'0000'1000,
+                            AtomicMemoryOpInterface::Operation::kAtomicAdd, db,
+                            nullptr, nullptr)
+          .ok());
   EXPECT_EQ(memory2->memory_op_address(), 0x5'0000'1000ULL);
 
   // An access outside the memory map should hit the default target.

@@ -19,6 +19,7 @@
 #include <cstring>
 
 #include "absl/log/log.h"
+#include "absl/numeric/bits.h"
 #include "absl/strings/str_cat.h"
 #include "mpact/sim/generic/data_buffer.h"
 #include "mpact/sim/generic/instruction.h"
@@ -40,11 +41,11 @@ TaggedFlatDemandMemory::TaggedFlatDemandMemory(uint64_t memory_size_in_units,
                                                uint8_t fill,
                                                unsigned tag_granule)
     : tag_granule_(tag_granule) {
-  if (!std::has_single_bit(tag_granule_)) return;
+  if (!absl::has_single_bit(tag_granule_)) return;
   data_memory_ = new FlatDemandMemory(memory_size_in_units, base_address,
                                       addressable_unit_size, fill);
   // 8 tags per byte, so shift by log2(granule).
-  tag_granule_shift_ = std::bit_width(tag_granule_) - 1;
+  tag_granule_shift_ = absl::bit_width(tag_granule_) - 1;
   tag_memory_ = new FlatDemandMemory(memory_size_in_units >> tag_granule_shift_,
                                      base_address >> tag_granule_shift_, 1, 0);
   db_factory_ = new DataBufferFactory();

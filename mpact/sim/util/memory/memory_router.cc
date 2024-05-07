@@ -67,12 +67,15 @@ AtomicMemoryOpInterface *MemoryRouter::AddAtomicInitiator(
   return AddInitiator<AtomicMemoryOpInterface>(initiators_, name);
 }
 
+namespace internal {
+
 // Templated helper method used in implementing the next three methods that
 // add named targets to the router (one for each type of target interface).
 template <typename Interface>
-absl::Status AddTarget(MemoryRouter::TargetMap<Interface> &target_interface_map,
-                       absl::flat_hash_set<std::string> &target_names,
-                       const std::string &name, Interface *memory) {
+absl::Status AddTargetPrivate(
+    MemoryRouter::TargetMap<Interface> &target_interface_map,
+    absl::flat_hash_set<std::string> &target_names, const std::string &name,
+    Interface *memory) {
   // Only one instance of each target name can exist.
   if (target_names.contains(name)) {
     return absl::AlreadyExistsError(
@@ -83,22 +86,24 @@ absl::Status AddTarget(MemoryRouter::TargetMap<Interface> &target_interface_map,
   return absl::OkStatus();
 }
 
+}  // namespace internal
+
 absl::Status MemoryRouter::AddTarget(const std::string &name,
                                      MemoryInterface *memory) {
-  return AddTarget<MemoryInterface>(memory_targets_, target_names_, name,
-                                    memory);
+  return internal::AddTargetPrivate<MemoryInterface>(
+      memory_targets_, target_names_, name, memory);
 }
 
 absl::Status MemoryRouter::AddTarget(const std::string &name,
                                      TaggedMemoryInterface *tagged_memory) {
-  return AddTarget<TaggedMemoryInterface>(tagged_targets_, target_names_, name,
-                                          tagged_memory);
+  return internal::AddTargetPrivate<TaggedMemoryInterface>(
+      tagged_targets_, target_names_, name, tagged_memory);
 }
 
 absl::Status MemoryRouter::AddTarget(const std::string &name,
                                      AtomicMemoryOpInterface *atomic_memory) {
-  return AddTarget<AtomicMemoryOpInterface>(atomic_targets_, target_names_,
-                                            name, atomic_memory);
+  return internal::AddTargetPrivate<AtomicMemoryOpInterface>(
+      atomic_targets_, target_names_, name, atomic_memory);
 }
 
 // Add a mapping between 'initiator_name' and 'target_name' for the given
