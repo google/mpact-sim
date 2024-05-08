@@ -15,6 +15,7 @@
 #ifndef MPACT_SIM_UTIL_PROGRAM_LOADER_ELF_PROGRAM_LOADER_H_
 #define MPACT_SIM_UTIL_PROGRAM_LOADER_ELF_PROGRAM_LOADER_H_
 
+#include <cstdint>
 #include <map>
 #include <string>
 #include <utility>
@@ -67,6 +68,7 @@ class ElfProgramLoader : public ProgramLoaderInterface {
   ElfProgramLoader() = delete;
   ~ElfProgramLoader() override;
 
+  absl::StatusOr<uint64_t> LoadSymbols(const std::string &file_name) override;
   absl::StatusOr<uint64_t> LoadProgram(const std::string &file_name) override;
   // Return the value and size of the symbol 'name' if it exists in the symbol
   // table.

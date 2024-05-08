@@ -16,6 +16,7 @@
 
 #include <sys/stat.h>
 
+#include <cstdint>
 #include <cstring>
 #include <fstream>
 #include <ios>
@@ -23,11 +24,14 @@
 #include <utility>
 
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
 #include "elfio/elf_types.hpp"
 #include "elfio/elfio_segment.hpp"
 #include "elfio/elfio_symbols.hpp"
 #include "mpact/sim/generic/core_debug_interface.h"
 #include "mpact/sim/generic/data_buffer.h"
+#include "mpact/sim/util/memory/memory_interface.h"
 
 namespace mpact {
 namespace sim {
@@ -52,10 +56,8 @@ ElfProgramLoader::~ElfProgramLoader() {
   symbol_accessors_.clear();
 }
 
-// This is the main method of the class. It reads in the elf file, validates it
-// and iterates over the segments. For each segment it writes it to the
-// appropriate location in the given memories.
-absl::StatusOr<uint64_t> ElfProgramLoader::LoadProgram(
+// Only load the program into the elf reader so that symbols can be looked up.
+absl::StatusOr<uint64_t> ElfProgramLoader::LoadSymbols(
     const std::string &file_name) {
   struct stat buffer;
   auto result = stat(file_name.c_str(), &buffer);
@@ -73,6 +75,42 @@ absl::StatusOr<uint64_t> ElfProgramLoader::LoadProgram(
         absl::StrCat("Validation error for '", file_name, "': ", msg));
   }
   loaded_ = true;
+  // Now look up any symbol sections.
+  for (auto const &section : elf_reader_.sections) {
+    if (section->get_type() == SHT_SYMTAB) {
+      symbol_accessors_.push_back(
+          new ELFIO::symbol_section_accessor(elf_reader_, section));
+    }
+  }
+  std::string name;
+  ELFIO::Elf_Xword size;
+  unsigned char bind;
+  unsigned char type;
+  ELFIO::Elf_Half section_index;
+  unsigned char other;
+  // Scan symbol table. Place function names in a map for easy lookup.
+  for (auto *symtab : symbol_accessors_) {
+    ELFIO::Elf64_Addr value;
+    for (unsigned i = 0; i < symtab->get_symbols_num(); i++) {
+      symtab->get_symbol(i, name, value, size, bind, type, section_index,
+                         other);
+      if (type == STT_FUNC) {
+        fcn_symbol_map_.emplace(value, name);
+        function_range_map_.insert(
+            std::make_pair(AddressRange(value, size), name));
+      }
+    }
+  }
+  return elf_reader_.get_entry();
+}
+
+// This is the main method of the class. It reads in the elf file, validates it
+// and iterates over the segments. For each segment it writes it to the
+// appropriate location in the given memories.
+absl::StatusOr<uint64_t> ElfProgramLoader::LoadProgram(
+    const std::string &file_name) {
+  auto load_symbols_res = LoadSymbols(file_name);
+  if (!load_symbols_res.ok()) return load_symbols_res.status();
 
   generic::DataBufferFactory db_factory;
 
@@ -108,33 +146,7 @@ absl::StatusOr<uint64_t> ElfProgramLoader::LoadProgram(
     }
   }
 
-  // Now look up any symbol sections.
-  for (auto const &section : elf_reader_.sections) {
-    if (section->get_type() == SHT_SYMTAB) {
-      symbol_accessors_.push_back(
-          new ELFIO::symbol_section_accessor(elf_reader_, section));
-    }
-  }
-  std::string name;
-  ELFIO::Elf_Xword size;
-  unsigned char bind;
-  unsigned char type;
-  ELFIO::Elf_Half section_index;
-  unsigned char other;
-  // Scan symbol table. Place function names in a map for easy lookup.
-  for (auto *symtab : symbol_accessors_) {
-    ELFIO::Elf64_Addr value;
-    for (unsigned i = 0; i < symtab->get_symbols_num(); i++) {
-      symtab->get_symbol(i, name, value, size, bind, type, section_index,
-                         other);
-      if (type == STT_FUNC) {
-        fcn_symbol_map_.emplace(value, name);
-        function_range_map_.insert(
-            std::make_pair(AddressRange(value, size), name));
-      }
-    }
-  }
-  return elf_reader_.get_entry();
+  return load_symbols_res.value();
 }
 
 absl::StatusOr<std::pair<uint64_t, uint64_t>> ElfProgramLoader::GetSymbol(

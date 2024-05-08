@@ -15,6 +15,7 @@
 #ifndef LEARNING_BRAIN_RESEARCH_MPACT_SIM_UTIL_PROGRAM_LOADER_PROGRAM_LOADER_INTERFACE_H_
 #define LEARNING_BRAIN_RESEARCH_MPACT_SIM_UTIL_PROGRAM_LOADER_PROGRAM_LOADER_INTERFACE_H_
 
+#include <cstdint>
 #include <string>
 
 #include "absl/status/statusor.h"
@@ -26,6 +27,10 @@ namespace util {
 class ProgramLoaderInterface {
  public:
   virtual ~ProgramLoaderInterface() = default;
+  // Load the executable into the program loader, but don't write segments to
+  // memory. Return the entry point.
+  virtual absl::StatusOr<uint64_t> LoadSymbols(
+      const std::string &file_name) = 0;
   // Write program segments to memories and return the entry point.
   virtual absl::StatusOr<uint64_t> LoadProgram(
       const std::string &file_name) = 0;
