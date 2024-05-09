@@ -30,6 +30,12 @@ namespace generic {
 class DataBuffer;
 class Instruction;
 
+enum class AccessType {
+  kLoad = 1,
+  kStore = 2,
+  kLoadStore = 3,
+};
+
 // This class defines an interface for controlling a simulator. This interface
 // should be implemented at the top level of the class hierarchy for a single
 // core. The intent is that this interface provides a uniform method for

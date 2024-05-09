@@ -41,6 +41,7 @@ cc_library(
     deps = [
         ":program_loader",
         "//mpact/sim/generic:core",
+        "//mpact/sim/generic:core_debug_interface",
         "//mpact/sim/util/memory",
         "@com_github_serge1_elfio//:elfio",
         "@com_google_absl//absl/container:flat_hash_map",

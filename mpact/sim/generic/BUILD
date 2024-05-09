@@ -32,7 +32,6 @@ cc_library(
         "state_item_base.cc",
     ],
     hdrs = [
-        "core_debug_interface.h",
         "data_buffer.h",
         "decoder_interface.h",
         "delay_line.h",
@@ -102,6 +101,23 @@ cc_library(
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:span",
+    ],
+)
+
+cc_library(
+    name = "debug_command_shell_interface",
+    srcs = [],
+    hdrs = [
+        "debug_command_shell_interface.h",
+    ],
+    deps = [
+        ":core_debug_interface",
+        "//mpact/sim/util/program_loader:elf_loader",
+        "@com_google_absl//absl/container:btree",
+        "@com_google_absl//absl/functional:any_invocable",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings:string_view",
     ],
 )
 
