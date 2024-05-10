@@ -96,8 +96,6 @@ cc_test(
     srcs = ["status_register_test.cc"],
     deps = [
         "//mpact/sim/generic:arch_state",
-        "//mpact/sim/generic:core",
-        "@com_google_absl//absl/functional:any_invocable",
         "@com_google_googletest//:gtest",
         "@com_google_googletest//:gtest_main",
     ],
@@ -126,14 +124,11 @@ cc_test(
     srcs = ["fifo_with_notify_test.cc"],
     deps = [
         "//mpact/sim/generic:arch_state",
-        "//mpact/sim/generic:config",
         "//mpact/sim/generic:core",
         "//mpact/sim/generic:program_error",
-        "//mpact/sim/proto:component_data_cc_proto",
         "@com_google_absl//absl/memory",
         "@com_google_googletest//:gtest",
         "@com_google_googletest//:gtest_main",
-        "@com_google_protobuf//:protobuf",
     ],
 )
 
@@ -157,7 +152,6 @@ cc_test(
     srcs = ["immediate_operand_test.cc"],
     deps = [
         "//mpact/sim/generic:core",
-        "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/memory",
         "@com_google_googletest//:gtest",
         "@com_google_googletest//:gtest_main",
@@ -170,7 +164,6 @@ cc_test(
     srcs = ["literal_operand_test.cc"],
     deps = [
         "//mpact/sim/generic:core",
-        "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/memory",
         "@com_google_googletest//:gtest",
         "@com_google_googletest//:gtest_main",
@@ -184,7 +177,6 @@ cc_test(
     deps = [
         "//mpact/sim/generic:arch_state",
         "//mpact/sim/generic:core",
-        "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/memory",
         "@com_google_googletest//:gtest",
         "@com_google_googletest//:gtest_main",
@@ -209,8 +201,6 @@ cc_test(
     deps = [
         "//mpact/sim/generic:arch_state",
         "//mpact/sim/generic:core",
-        "@com_google_absl//absl/base:core_headers",
-        "@com_google_absl//absl/memory",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:any",
         "@com_google_googletest//:gtest",
@@ -225,8 +215,6 @@ cc_test(
     deps = [
         "//mpact/sim/generic:arch_state",
         "//mpact/sim/generic:core",
-        "@com_google_absl//absl/base:core_headers",
-        "@com_google_absl//absl/memory",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:any",
         "@com_google_googletest//:gtest",
@@ -252,11 +240,8 @@ cc_test(
     size = "small",
     srcs = ["instruction_test.cc"],
     deps = [
-        "//mpact/sim/generic:arch_state",
         "//mpact/sim/generic:core",
         "//mpact/sim/generic:instruction",
-        "@com_google_absl//absl/memory",
-        "@com_google_absl//absl/types:span",
         "@com_google_googletest//:gtest",
         "@com_google_googletest//:gtest_main",
     ],
@@ -304,7 +289,6 @@ cc_test(
     deps = [
         "//mpact/sim/generic:arch_state",
         "//mpact/sim/generic:core",
-        "@com_google_absl//absl/status",
         "@com_google_googletest//:gtest",
         "@com_google_googletest//:gtest_main",
     ],
@@ -316,7 +300,6 @@ cc_test(
     srcs = ["complex_resource_operand_test.cc"],
     deps = [
         "//mpact/sim/generic:arch_state",
-        "//mpact/sim/generic:core",
         "@com_google_absl//absl/status",
         "@com_google_googletest//:gtest",
         "@com_google_googletest//:gtest_main",

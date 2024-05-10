@@ -27,7 +27,6 @@ cc_library(
     ],
     deps = [
         "@com_google_absl//absl/base:log_severity",
-        "@com_google_absl//absl/log",
         "@com_google_absl//absl/log:log_entry",
         "@com_google_absl//absl/log:log_sink",
     ],

@@ -94,7 +94,6 @@ cc_library(
         ":core",
         ":internal",
         ":program_error",
-        "//mpact/sim/proto:component_data_cc_proto",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/functional:any_invocable",
@@ -115,8 +114,6 @@ cc_library(
         "//mpact/sim/util/program_loader:elf_loader",
         "@com_google_absl//absl/container:btree",
         "@com_google_absl//absl/functional:any_invocable",
-        "@com_google_absl//absl/status",
-        "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings:string_view",
     ],
 )
@@ -193,8 +190,6 @@ cc_library(
         ":internal",
         "//mpact/sim/proto:component_data_cc_proto",
         "@com_google_absl//absl/status",
-        "@com_google_absl//absl/strings",
-        "@com_google_absl//absl/types:variant",
     ],
 )
 
@@ -232,7 +227,6 @@ cc_library(
         "@com_google_absl//absl/container:btree",
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/status",
-        "@com_google_absl//absl/strings",
     ],
 )
 

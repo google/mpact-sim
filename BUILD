@@ -14,6 +14,7 @@
 
 # Top level BUILD file for mpact_sim
 
+load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 load("@rules_license//rules:license.bzl", "license")
 
 package(
@@ -29,3 +30,15 @@ license(
 licenses(["notice"])
 
 exports_files(["LICENSE"])
+
+bzl_library(
+    name = "deps_bzl",
+    srcs = ["deps.bzl"],
+    visibility = ["//visibility:private"],
+)
+
+bzl_library(
+    name = "repos_bzl",
+    srcs = ["repos.bzl"],
+    visibility = ["//visibility:private"],
+)

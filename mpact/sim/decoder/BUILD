@@ -18,6 +18,7 @@
 #   (antlr4_cc_parser, antlr4_cc_lexer), a cc_library for processing the
 #   input file, and a cc_main for the top level executable.
 
+load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 load("//mpact/sim/decoder:antlr_cc.bzl", "antlr4_cc_lexer", "antlr4_cc_parser")
 load("//mpact/sim/decoder:mpact_sim_isa.bzl", "mpact_cc_binary", "mpact_cc_library")
 
@@ -350,4 +351,10 @@ mpact_cc_binary(
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
     ],
+)
+
+bzl_library(
+    name = "mpact_sim_isa_bzl",
+    srcs = ["mpact_sim_isa.bzl"],
+    visibility = ["//visibility:private"],
 )
