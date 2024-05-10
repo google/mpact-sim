@@ -32,3 +32,16 @@ cc_library(
         "@com_google_absl//absl/log:log_sink",
     ],
 )
+
+cc_library(
+    name = "simple_uart",
+    srcs = ["simple_uart.cc"],
+    hdrs = ["simple_uart.h"],
+    deps = [
+        "//mpact/sim/generic:arch_state",
+        "//mpact/sim/generic:core",
+        "//mpact/sim/generic:instruction",
+        "//mpact/sim/util/memory",
+        "@com_google_absl//absl/log",
+    ],
+)
