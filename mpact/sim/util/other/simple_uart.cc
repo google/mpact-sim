@@ -60,7 +60,7 @@ void SimpleUart::Store(uint64_t address, DataBuffer *db) {
   if ((address & 0b11) || (db->size<uint8_t>() & 0b11)) return;
 
   uint32_t offset = address & 0xffff;
-  for (int i = 0; i < db->size<uint8_t>(); ++i) {
+  for (int i = 0; i < db->size<uint32_t>(); ++i) {
     Write(offset + i * 4, db->Get<uint32_t>(i));
   }
 }
