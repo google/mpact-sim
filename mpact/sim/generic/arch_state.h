@@ -15,6 +15,7 @@
 #ifndef MPACT_SIM_GENERIC_ARCH_STATE_H_
 #define MPACT_SIM_GENERIC_ARCH_STATE_H_
 
+#include <cstdint>
 #include <string>
 #include <type_traits>
 #include <vector>
@@ -122,6 +123,11 @@ class ArchState : public Component {
     delay_lines_.push_back(static_cast<DelayLineInterface *>(delay_line));
     return delay_line;
   }
+  // This function is called after any event that may have caused an interrupt
+  // to be registered as pending or enabled.  It is used to inform the core that
+  // it should check to see if there are available interrupts and act
+  // accordingly. The method is empty by default.
+  virtual void CheckForInterrupt() { /*empty*/ }
 
   // Accessors for data members
   const std::string &id() const { return component_name(); }
