@@ -21,6 +21,8 @@
 #include "absl/functional/any_invocable.h"
 #include "absl/status/status.h"
 #include "mpact/sim/generic/data_buffer.h"
+#include "mpact/sim/generic/instruction.h"
+#include "mpact/sim/generic/ref_count.h"
 #include "mpact/sim/util/memory/memory_interface.h"
 
 // This file declares a class that is used to create data watchpoints. Since it
@@ -44,6 +46,15 @@ class MemoryWatcher : public MemoryInterface {
     explicit AddressRange(uint64_t address) : start(address), end(address) {}
     AddressRange(uint64_t start_address, uint64_t end_address)
         : start(start_address), end(end_address) {}
+  };
+  // Comparator used to compare two address ranges. A range is less than another
+  // if they do (a) not overlap and (b) the addresses of the first are less than
+  // the other.
+  struct AddressRangeLess {
+    constexpr bool operator()(const AddressRange &lhs,
+                              const AddressRange &rhs) const {
+      return lhs.end < rhs.start;
+    }
   };
 
   // Callback types. The load callback does not pass the load data, as that is
@@ -81,15 +92,6 @@ class MemoryWatcher : public MemoryInterface {
              DataBuffer *db) override;
 
  private:
-  // Comparator used to compare two address ranges. A range is less than another
-  // if they do (a) not overlap and (b) the addresses of the first are less than
-  // the other.
-  struct AddressRangeLess {
-    constexpr bool operator()(const AddressRange &lhs,
-                              const AddressRange &rhs) const {
-      return lhs.end < rhs.start;
-    }
-  };
   // The memory interface to forward the loads/stores to.
   MemoryInterface *memory_;
   absl::btree_multimap<AddressRange, Callback, AddressRangeLess>

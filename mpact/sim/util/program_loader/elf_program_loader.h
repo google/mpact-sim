@@ -82,6 +82,8 @@ class ElfProgramLoader : public ProgramLoaderInterface {
   // If the GNU stack size program header exists, return the memory size.
   absl::StatusOr<uint64_t> GetStackSize() const;
 
+  const ELFIO::elfio *elf_reader() const { return &elf_reader_; }
+
  private:
   bool loaded_ = false;
   ELFIO::elfio elf_reader_;
