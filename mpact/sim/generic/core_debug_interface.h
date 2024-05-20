@@ -58,6 +58,9 @@ class CoreDebugInterface {
     kUserRequest = 2,
     kSemihostHaltRequest = 3,
     kDataWatchPoint = 4,
+    kActionPoint = 5,
+    kProgramDone = 6,
+    kSimulatorError = 0x7fff'fffe,
     kNone = 0x7fff'ffff,
     // Custom halt reason limits.
     kUserSpecifiedMin = 0x8000'0000,
