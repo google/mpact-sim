@@ -61,6 +61,7 @@ void TaggedToUntaggedMemoryTransactor::Load(uint64_t address, DataBuffer *db,
                                             DataBuffer *tags, Instruction *inst,
                                             ReferenceCount *context) {
   std::memset(tags->raw_ptr(), 0, tags->size<uint8_t>());
+  if (db == nullptr) return;
   target_mem_->Load(address, db, inst, context);
 }
 
@@ -75,6 +76,7 @@ void TaggedToUntaggedMemoryTransactor::Store(uint64_t address, DataBuffer *db,
             absl::Hex(address, absl::kZeroPad8));
     }
   }
+  if (db == nullptr) return;
   target_mem_->Store(address, db);
 }
 

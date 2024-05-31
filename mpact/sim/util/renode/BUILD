@@ -26,12 +26,10 @@ cc_library(
     srcs = [
         "renode_memory_access.cc",
         "renode_mpact.cc",
-        "stoull_wrapper.cc",
     ],
     hdrs = [
         "renode_memory_access.h",
         "renode_mpact.h",
-        "stoull_wrapper.h",
     ],
     deps = [
         ":renode_debug_interface",

@@ -30,7 +30,6 @@
 #include "mpact/sim/util/memory/memory_interface.h"
 #include "mpact/sim/util/renode/renode_debug_interface.h"
 #include "mpact/sim/util/renode/renode_memory_access.h"
-#include "mpact/sim/util/renode/stoull_wrapper.h"
 
 using ::mpact::sim::generic::operator*;  // NOLINT: used below (clang error).
 using ::mpact::sim::util::MemoryInterface;
@@ -299,7 +298,6 @@ uint64_t RenodeAgent::WriteMemory(int32_t id, uint64_t address,
 
 uint64_t RenodeAgent::LoadExecutable(int32_t id, const char *file_name,
                                      bool for_symbols_only, int32_t *status) {
-  LOG(INFO) << "LoadExecutable: " << file_name << " " << for_symbols_only;
   // Get the debug interface.
   auto dbg_iter = core_dbg_instances_.find(id);
   if (dbg_iter == core_dbg_instances_.end()) {
@@ -309,7 +307,6 @@ uint64_t RenodeAgent::LoadExecutable(int32_t id, const char *file_name,
   }
   // Instantiate loader.
   auto *dbg = dbg_iter->second;
-  LOG(INFO) << "LoadExecutable: " << file_name << " " << for_symbols_only;
   auto res = dbg->LoadExecutable(file_name, for_symbols_only);
   if (!res.ok()) {
     LOG(ERROR) << "Failed to load executable: " << res.status().message();
@@ -457,26 +454,6 @@ uint64_t RenodeAgent::Step(int32_t id, uint64_t num_to_step, int32_t *status) {
     *status = static_cast<int32_t>(ExecutionResult::kOk);
   }
   return total_executed;
-}
-
-// Helper function used by SetConfig.
-static absl::StatusOr<uint64_t> ParseNumber(const std::string &number) {
-  if (number.empty()) {
-    return absl::InvalidArgumentError("Empty number");
-  }
-  absl::StatusOr<uint64_t> ok;
-  if ((number.size() > 2) && (number.substr(0, 2) == "0x")) {
-    ok = internal::stoull(number.substr(2), nullptr, 16);
-  } else if (number[0] == '0') {
-    ok = internal::stoull(number.substr(1), nullptr, 8);
-  } else {
-    ok = internal::stoull(number, nullptr, 10);
-  }
-  if (!ok.status().ok()) {
-    LOG(ERROR) << "Invalid number: " << number;
-    return absl::InvalidArgumentError(absl::StrCat("Invalid number: ", number));
-  }
-  return ok.value();
 }
 
 // Set configuration item.
