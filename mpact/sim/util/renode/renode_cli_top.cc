@@ -88,13 +88,14 @@ absl::StatusOr<int> RenodeCLITop::RenodeStep(int num) {
       if ((halt_reason != *HaltReason::kProgramDone) &&
           (halt_reason != *HaltReason::kNone)) {
         cli_status_ = RunStatus::kHalted;
+        program_done_ = true;
         continue;
       }
       // ProgramHalted request halts the simulation. So transfer control and
       // return.
       if (halt_reason == *HaltReason::kProgramDone) {
-        LOG(INFO) << "Renode halted kProgramDone";
         cli_status_ = RunStatus::kHalted;
+        program_done_ = true;
         break;
       }
       // If we have stepped enough, just return.
@@ -180,8 +181,8 @@ absl::StatusOr<int> RenodeCLITop::CLIStep(int num) {
   }
   // Lambda used in Await below.
   auto cli_is_in_control = [this] {
-    return (cli_status_ != RunStatus::kRunning) &&
-           (renode_steps_to_take_ > renode_steps_taken_);
+    return program_done_ || ((cli_status_ != RunStatus::kRunning) &&
+                             (renode_steps_to_take_ > renode_steps_taken_));
   };
 
   cli_steps_to_take_ = num;
@@ -212,9 +213,9 @@ absl::StatusOr<int> RenodeCLITop::CLIStep(int num) {
     auto halt_reason = halt_result.value();
     // Check if the program is done.
     if (halt_reason == *HaltReason::kProgramDone) {
-      // Set cli state as kRunning to give control to ReNode.
+      // Set cli state as kRunning to give control to ReNode to return.
       cli_status_ = RunStatus::kRunning;
-      status = absl::UnavailableError("Program terminated");
+      program_done_ = true;
       break;
     }
     // If we're done with renode steps, then go to the top of the loop so

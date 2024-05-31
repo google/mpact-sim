@@ -3,6 +3,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <iostream>
 #include <string>
 #include <vector>
@@ -29,7 +30,7 @@ class DebugCommandShellInterface {
   // Each core must provide the debug interface and the elf loader.
   struct CoreAccess {
     CoreDebugInterface *debug_interface;
-    util::ElfProgramLoader *loader = nullptr;
+    std::function<util::ElfProgramLoader *()> loader_getter;
     absl::btree_map<int, uint64_t> breakpoint_map;
     int breakpoint_index = 0;
     absl::btree_map<int, WatchpointInfo> watchpoint_map;

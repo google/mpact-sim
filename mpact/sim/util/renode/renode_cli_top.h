@@ -135,14 +135,15 @@ class RenodeCLITop {
   uint64_t renode_steps_to_take_ = 0;
   bool cli_connected_ = false;
   bool wait_for_cli_;
+  bool program_done_ = false;
 };
 
 // Templated definition of DoWhenInControl
 template <typename T>
 inline T RenodeCLITop::DoWhenInControl(absl::AnyInvocable<T(void)> action) {
   auto cli_is_in_control = [this] {
-    return (cli_status_ != RunStatus::kRunning) &&
-           (renode_steps_to_take_ > renode_steps_taken_);
+    return program_done_ || ((cli_status_ != RunStatus::kRunning) &&
+                             (renode_steps_to_take_ > renode_steps_taken_));
   };
   run_control_mutex_.LockWhen(absl::Condition(&cli_is_in_control));
   T result = action();
@@ -155,8 +156,8 @@ template <>
 inline void RenodeCLITop::DoWhenInControl<void>(
     absl::AnyInvocable<void(void)> action) {
   auto cli_is_in_control = [this] {
-    return (cli_status_ != RunStatus::kRunning) &&
-           (renode_steps_to_take_ > renode_steps_taken_);
+    return program_done_ || ((cli_status_ != RunStatus::kRunning) &&
+                             (renode_steps_to_take_ > renode_steps_taken_));
   };
   run_control_mutex_.LockWhen(absl::Condition(&cli_is_in_control));
   action();
