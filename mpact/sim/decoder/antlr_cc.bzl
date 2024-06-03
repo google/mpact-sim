@@ -148,9 +148,9 @@ def _make_bazel_cleanup_command(out_files):
     # Clean up imports and usage of the #pragma once directive.
     return ";\n".join([
         ";\n".join([
-            "sed -i '0,/antlr4-runtime.h/s//antlr4-runtime\\/antlr4-runtime.h/' $(@D)/%s" % filepath,
+            "sed -i'.bak' '/antlr4-runtime.h/s//antlr4-runtime\\/antlr4-runtime.h/' $(@D)/%s" % filepath,
             "grep -q '^#pragma once' $(@D)/%s && echo '\n#endif  // %s\n' >> $(@D)/%s" % (filepath, _to_c_macro_name(filepath), filepath),
-            "sed -i '0,/#pragma once/s//#ifndef %s\\n#define %s/' $(@D)/%s" % (_to_c_macro_name(filepath), _to_c_macro_name(filepath), filepath),
+            "sed -i'.bak' '/#pragma once/s//#ifndef %s\\n#define %s/' $(@D)/%s" % (_to_c_macro_name(filepath), _to_c_macro_name(filepath), filepath),
         ])
         for filepath in out_files
     ])
@@ -162,11 +162,11 @@ def _make_namespace_adjustment_command(namespaces, out_files):
     extra_header_namespaces = "\\\n".join(["namespace %s {" % namespace for namespace in namespaces[1:]])
     for filepath in out_files:
         if filepath.endswith(".h"):
-            commands.append("sed -i '/namespace %s {/ a%s' $(@D)/%s" % (namespaces[0], extra_header_namespaces, filepath))
+            commands.append("sed -i'.bak'  '/namespace %s {/ a\\\n%s' $(@D)/%s" % (namespaces[0], extra_header_namespaces, filepath))
             for namespace in namespaces[1:]:
-                commands.append("sed -i '/}  \\/\\/ namespace %s/i}  \\/\\/ namespace %s' $(@D)/%s" % (namespaces[0], namespace, filepath))
+                commands.append("sed -i'.bak'  '/}  \\/\\/ namespace %s/i\\\n}  \\/\\/ namespace %s\n' $(@D)/%s" % (namespaces[0], namespace, filepath))
         else:
-            commands.append("sed -i 's/using namespace %s;/using namespace %s;/' $(@D)/%s" % (namespaces[0], "::".join(namespaces), filepath))
+            commands.append("sed -i'.bak'  's/using namespace %s;/using namespace %s;/' $(@D)/%s" % (namespaces[0], "::".join(namespaces), filepath))
     return ";\n".join(commands)
 
 def _make_outs(file_prefix, suffixes):

@@ -52,7 +52,12 @@ SocketCLI::SocketCLI(int port, DebugCommandShellInterface &dbg_shell,
   // Create the socket on the given port.
   server_socket_ =
       socket(/*domain=*/AF_INET, /*type=*/SOCK_STREAM, /*protocol=*/0);
-  const sockaddr_in server_address_int = {AF_INET, htons(port), {INADDR_ANY}};
+  sockaddr_in server_address_int;
+  server_address_int.sin_family = AF_INET;
+  server_address_int.sin_addr.s_addr = INADDR_ANY;
+  server_address_int.sin_port = htons(port);
+  std::memset(&server_address_int.sin_zero, 0,
+              sizeof(server_address_int.sin_zero));
   int res = bind(server_socket_,
                  reinterpret_cast<const sockaddr *>(&server_address_int),
                  sizeof(server_address_int));

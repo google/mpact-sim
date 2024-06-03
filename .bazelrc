@@ -1,4 +1,4 @@
-# Copyright 2023 Google LLC
+# Copyright 2023-2024 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,10 +14,10 @@
 
 # Build configurations for the project
 build --action_env=BAZEL_CXXOPTS="-std=c++17"
-build --action_env=CC="clang"
+build --action_env=CC="clang" 
 
 # Disable warnings we don't care about or that generally have a low signal/noise
 # ratio.
 
-build --copt=-Wno-unused-function
-build --host_copt=-Wno-unused-function
+build --copt=-Wno-unused-function --cxxopt="-std=c++17"
+build --host_copt=-Wno-unused-function --host_cxxopt="-std=c++17"

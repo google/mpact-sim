@@ -18,7 +18,26 @@ memory classes and an ELF loader.
 
 ## Building
 
-MPACT-Sim utilizes the [bazel](https://bazel.build/) build system.
+### Bazel
+
+MPACT-Sim utilizes the [Bazel](https://bazel.build/) build system. The easiest
+way to install bazel is to use
+[Bazelisk](https://github.com/bazelbuild/bazelisk), a wrapper for Bazel that
+automates selecting and downloading the right version of bazel. Use `brew
+install bazelisk` on macOS, `choco install bazelisk` on Windows, and on linux,
+download the Bazelisk binary, add it to your `PATH`, then alias bazel to the
+bazelisk binary.
+
+### Java
+
+MPACT-Sim depends on Java, so a reasonable JRE has to be installed. For macOS,
+run `brew install java`, on linux `sudo apt install default-jre`, and on Windows
+follow the appropriate instructions at [java.com](https://java.com).
+
+### Build and Test
+
+To build the mpact-sim libraries, use the command `bazel build ...:all` from the
+top level directory. To run the tests, use the command `bazel test ...:all`
 
 ## Directory Listing
 
@@ -33,7 +52,7 @@ MPACT-Sim utilizes the [bazel](https://bazel.build/) build system.
     mpact/sim/decoder/test for examples.
 
 *   mpact/sim/generic <br />
-    This directory contains alll the generic classes provided for use
+    This directory contains all the generic classes provided for use
     in writing MPACT-Sim instruction set simulators.
 
 *   mpact/sim/util <br />
