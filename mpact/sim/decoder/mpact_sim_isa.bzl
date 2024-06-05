@@ -102,7 +102,7 @@ def mpact_isa_decoder(name, includes, src = "", srcs = [], deps = [], isa_name =
         outs = out_files,
         cmd = command,
         heuristic_label_expansion = 0,
-        tools = ["@@com_google_mpact-sim//mpact/sim/decoder:decoder_gen"],
+        tools = ["@com_google_mpact-sim//mpact/sim/decoder:decoder_gen"],
     )
 
     # The rule for the lib that is built from the generated sources.
@@ -111,8 +111,8 @@ def mpact_isa_decoder(name, includes, src = "", srcs = [], deps = [], isa_name =
         srcs = [f for f in out_files if f.endswith(".cc")],
         hdrs = [f for f in out_files if f.endswith(".h")],
         deps = [
-            "@@com_google_mpact-sim//mpact/sim/generic:arch_state",
-            "@@com_google_mpact-sim//mpact/sim/generic:instruction",
+            "@com_google_mpact-sim//mpact/sim/generic:arch_state",
+            "@com_google_mpact-sim//mpact/sim/generic:instruction",
             "@com_google_absl//absl/container:flat_hash_map",
             "@com_google_absl//absl/strings:str_format",
         ] + deps,
@@ -166,7 +166,7 @@ def mpact_bin_fmt_decoder(name, includes, src = "", srcs = [], deps = [], decode
         outs = out_files,
         cmd = command,
         heuristic_label_expansion = 0,
-        tools = ["@@com_google_mpact-sim//mpact/sim/decoder:bin_format_gen"],
+        tools = ["@com_google_mpact-sim//mpact/sim/decoder:bin_format_gen"],
     )
 
     # The rule for the lib that is built from the generated sources.
@@ -175,8 +175,8 @@ def mpact_bin_fmt_decoder(name, includes, src = "", srcs = [], deps = [], decode
         srcs = [f for f in out_files if f.endswith(".cc")],
         hdrs = [f for f in out_files if f.endswith(".h")],
         deps = [
-            "@@com_google_mpact-sim//mpact/sim/generic:arch_state",
-            "@@com_google_mpact-sim//mpact/sim/generic:instruction",
+            "@com_google_mpact-sim//mpact/sim/generic:arch_state",
+            "@com_google_mpact-sim//mpact/sim/generic:instruction",
             "@com_google_absl//absl/container:flat_hash_map",
             "@com_google_absl//absl/functional:any_invocable",
             "@com_google_absl//absl/strings:str_format",
@@ -232,7 +232,7 @@ def mpact_proto_fmt_decoder(name, includes, src = "", srcs = [], proto_files = [
         outs = out_files,
         cmd = command,
         heuristic_label_expansion = 0,
-        tools = ["@@com_google_mpact-sim//mpact/sim/decoder:proto_format_gen"],
+        tools = ["@com_google_mpact-sim//mpact/sim/decoder:proto_format_gen"],
     )
 
     # The rule for the lib that is built from the generated sources.
@@ -259,7 +259,7 @@ def _strip_path(text):
 # a bash array from $(SRCS), then instead of using $(SRCS) in the command, it
 # uses only the first element of that array.
 def _make_isa_tool_invocation_command(num_srcs, prefix, isa_name):
-    cmd = "ARR=($(SRCS)); $(location @@com_google_mpact-sim//mpact/sim/decoder:decoder_gen) "
+    cmd = "ARR=($(SRCS)); $(location @com_google_mpact-sim//mpact/sim/decoder:decoder_gen) "
 
     # Add the sources that are not in includes.
     for i in range(0, num_srcs):
@@ -274,7 +274,7 @@ def _make_isa_tool_invocation_command(num_srcs, prefix, isa_name):
 # those that will be included, the command includes creating a bash array from $(SRCS), then
 # instead of using $(SRCS) in the command, it uses only the first element of that array.
 def _make_bin_tool_invocation_command(num_srcs, prefix, decoder_name):
-    cmd = "ARR=($(SRCS)); $(location @@com_google_mpact-sim//mpact/sim/decoder:bin_format_gen) "
+    cmd = "ARR=($(SRCS)); $(location @com_google_mpact-sim//mpact/sim/decoder:bin_format_gen) "
 
     # Add the sources that are not in includes.
     for i in range(0, num_srcs):
@@ -288,7 +288,7 @@ def _make_bin_tool_invocation_command(num_srcs, prefix, decoder_name):
 # those that will be included, the command includes creating a bash array from $(SRCS), then
 # instead of using $(SRCS) in the command, it uses only the first element of that array.
 def _make_proto_tool_invocation_command(num_srcs, prefix, decoder_name, proto_files):
-    cmd = "ARR=($(SRCS)); $(location @@com_google_mpact-sim//mpact/sim/decoder:proto_format_gen) "
+    cmd = "ARR=($(SRCS)); $(location @com_google_mpact-sim//mpact/sim/decoder:proto_format_gen) "
 
     # Add the sources that are not in includes.
     for i in range(0, num_srcs):
