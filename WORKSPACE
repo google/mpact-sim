@@ -27,3 +27,7 @@ mpact_sim_repos()
 load("//:deps.bzl", "mpact_sim_deps")
 
 mpact_sim_deps()
+
+load("//:protobuf_deps.bzl", "mpact_sim_protobuf_deps")
+
+mpact_sim_protobuf_deps()

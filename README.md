@@ -28,6 +28,8 @@ install bazelisk` on macOS, `choco install bazelisk` on Windows, and on linux,
 download the Bazelisk binary, add it to your `PATH`, then alias bazel to the
 bazelisk binary.
 
+You need to use bazel version >= 7.0 to build this project.
+
 ### Java
 
 MPACT-Sim depends on Java, so a reasonable JRE has to be installed. For macOS,
