@@ -44,3 +44,20 @@ cc_library(
         "@com_google_absl//absl/log",
     ],
 )
+
+cc_library(
+    name = "instruction_profiler",
+    srcs = ["instruction_profiler.cc"],
+    hdrs = ["instruction_profiler.h"],
+    deps = [
+        "//mpact/sim/generic:counters",
+        "//mpact/sim/util/memory",
+        "//mpact/sim/util/program_loader:elf_loader",
+        "@com_github_serge1_elfio//:elfio",
+        "@com_google_absl//absl/container:btree",
+        "@com_google_absl//absl/log",
+        "@com_google_absl//absl/numeric:bits",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:str_format",
+    ],
+)

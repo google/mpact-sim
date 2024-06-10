@@ -27,6 +27,7 @@ cc_library(
         "flat_demand_memory.cc",
         "flat_memory.cc",
         "memory_router.cc",
+        "memory_use_profiler.cc",
         "memory_watcher.cc",
         "single_initiator_router.cc",
         "tagged_flat_demand_memory.cc",
@@ -40,6 +41,7 @@ cc_library(
         "flat_memory.h",
         "memory_interface.h",
         "memory_router.h",
+        "memory_use_profiler.h",
         "memory_watcher.h",
         "single_initiator_router.h",
         "tagged_flat_demand_memory.h",
@@ -60,5 +62,6 @@ cc_library(
         "@com_google_absl//absl/numeric:bits",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:str_format",
     ],
 )
