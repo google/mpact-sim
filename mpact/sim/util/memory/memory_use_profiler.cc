@@ -14,12 +14,14 @@
 
 #include "mpact/sim/util/memory/memory_use_profiler.h"
 
+#include <algorithm>
 #include <cstdint>
 #include <cstring>
 #include <ostream>
 #include <utility>
 
 #include "absl/container/btree_map.h"
+#include "absl/log/log.h"
 #include "absl/numeric/bits.h"
 #include "absl/strings/str_format.h"
 #include "mpact/sim/util/memory/memory_interface.h"
@@ -51,7 +53,12 @@ static inline void MarkUsedBits(uint64_t byte_offset, int mask, uint8_t *bits) {
 void MemoryUseTracker::MarkUsed(uint64_t address, int size) {
   // The profiling is done on a word boundary, so word or smaller is marked by
   // a single bit, double words by 2 bits.
-  uint8_t mask = size == 8 ? 0b11 : 0b1;
+  if (size > 8) {
+    LOG(INFO) << "MemoryUseTracker::MarkUsed: not profiling accesses > 8 bytes";
+    return;
+  }
+  size = std::min(size, 4);
+  uint8_t mask = size > 4 ? 0b11 : 0b1;
   if ((address >= last_start_) && (address + size - 1 <= last_end_)) {
     return MarkUsedBits(address - last_start_, mask, last_used_);
   }
