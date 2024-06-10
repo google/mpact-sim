@@ -253,12 +253,10 @@ public class MpactBaseCPU : BaseCPU, ICPUWithRegisters,
     [Register]
     public override RegisterValue PC {
         get {
-            Int32 error = read_register(mpact_id, PC_ID, value_ptr);
-            if (error < 0) {
-                this.Log(LogLevel.Error, "Failed to read PC");
+            if (registerMap.Count == 0) {
+                GetMpactRegisters();
             }
-            Int64 value = Marshal.ReadInt64(value_ptr);
-            return Convert.ToUInt32(value);
+	    return GetRegisterUnsafe(PC_ID);
         }
 
         set {
@@ -348,7 +346,8 @@ public class MpactBaseCPU : BaseCPU, ICPUWithRegisters,
                     break;
             }
         } else {
-            LogAndThrowRE("Unknown register id: {register}");
+	    string msg = $"Unknown register id: {register} not found";
+            LogAndThrowRE(msg);
         }
         return (ulong)0;
     }

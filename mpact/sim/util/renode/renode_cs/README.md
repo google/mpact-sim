@@ -62,3 +62,43 @@ simulator target specific implementation of the `RenodeDebugInterface`.
 The name of the dynamic library is passed to ReNode by setting the instance
 property CpuLibraryPath in either the ReNode platform definition (.repl) or
 script (.resc) file.
+
+## MpactRiscVCPU.cs
+
+The `MpactRiscVCPU` class in MpactRiscVCPU.cs inherits from `MpactBaseCPU`. It
+adds 4 configuration items to the base class:
+
+*   `InstProfile` is a boolean that when true enables instruction profiling in
+    the simulator. Following execution there will be a `.csv` file that contains
+    a table of instruction addresses and the number of times each instruction
+    was executed.
+*   `MemProfiler` is a boolean that when true enables data profiling in the
+    simulator. Following execution there will be a `.csv` file that contains a
+    table of first and last word addresses in a range, and the size of the
+    range. It does not contain an access count.
+*   `StackEnd` is a ulong that contains the address of the end of the stack.
+    Some RiscV libraries don't properly initialize the stack pointer (i.e., it
+    is left at 0x0). Setting the stack end and stack size will cause the
+    simulator to initialize the stack pointer to the value of the sum of stack
+    end and stack size.
+*   `StackSize` is a ulong that contains the size to use for the stack.
+
+The MpactRiscVCPU class can be used with either the `librenode_mpact_riscv32.so`
+or the `librenode_mpact_riscv64.so` targets in the mpact_riscv repository.
+
+## MpactCheriotCPU.cs
+
+The `MpactCheriotCPU` class in MpactCheriotCPU.cs inherits from `MpactBaseCPU`.
+It adds 4 configuration items to the base class:
+
+*   `InstProfile` is a boolean that when true enables instruction profiling in
+    the simulator. Following execution there will be a `.csv` file that contains
+    a table of instruction addresses and the number of times each instruction
+    was executed.
+*   `MemProfiler` is a boolean that when true enabled data profiling in the in
+    the simulator. Following execution there will be a `.csv` file that contains
+    a table of first and last word addresses in a range, and the size of the
+    range. It does not contain an access count.
+
+The MpactCheriotCPU class can be used with the `librenode_mpact_cheriot.so`
+target in the mpact_cheriot repository.
