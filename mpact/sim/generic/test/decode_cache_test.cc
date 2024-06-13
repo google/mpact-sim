@@ -16,7 +16,7 @@
 
 #include <cstdint>
 
-#include "googlemock/include/gmock/gmock.h"
+#include "googlemock/include/gmock/gmock.h"  // IWYU pragma: keep
 #include "googletest/include/gtest/gtest.h"
 #include "mpact/sim/generic/decoder_interface.h"
 #include "mpact/sim/generic/instruction.h"
@@ -36,6 +36,8 @@ class MockDecoder : public DecoderInterface {
     Instruction *inst = new Instruction(address, nullptr);
     return inst;
   }
+  int GetNumOpcodes() const override { return 0; }
+  const char *GetOpcodeName(int index) const override { return ""; }
   void set_num_decoded(int val) { num_decoded_ = val; }
   int num_decoded() const { return num_decoded_; }
 
