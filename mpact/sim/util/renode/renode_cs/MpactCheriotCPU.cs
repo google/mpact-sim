@@ -73,6 +73,14 @@ public class MpactCheriotCPU : MpactBaseCPU, ICpuSupportingGdb {
             config_names.Add("memProfile");
             config_values.Add("0x1");
         }
+        if (clint_mmr_base != 0) {
+            config_names.Add("clintMMRBase");
+            config_values.Add(clint_mmr_base.ToString("X"));
+        }
+        if (clint_period != 0) {
+            config_names.Add("clintPeriod");
+            config_values.Add(clint_period.ToString("X"));
+        }
     }
 
     public bool InstProfile {
@@ -83,6 +91,16 @@ public class MpactCheriotCPU : MpactBaseCPU, ICpuSupportingGdb {
     public bool MemProfile {
         get => mem_profile;
         set => mem_profile = value;
+    }
+
+    public UInt64 ClintMMRBase {
+        get => clint_mmr_base;
+        set => clint_mmr_base = value;
+    }
+
+    public UInt64 ClintPeriod {
+        get => clint_period;
+        set => clint_period = value;
     }
 
     // ICPUWithHooks methods.
@@ -155,6 +173,8 @@ public class MpactCheriotCPU : MpactBaseCPU, ICpuSupportingGdb {
     private bool inst_profile = false;
     private bool mem_profile = false;
     private UInt64 revocationMemBase;
+    private UInt64 clint_mmr_base = 0x0;
+    private UInt64 clint_period = 0;
     private List<GDBFeatureDescriptor>
                 gdbFeatures = new List<GDBFeatureDescriptor>();
 }  // class MpactCheriotCPU
