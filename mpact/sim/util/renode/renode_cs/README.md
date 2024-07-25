@@ -95,9 +95,9 @@ It adds 4 configuration items to the base class:
     the simulator. Following execution there will be a `.csv` file that contains
     a table of instruction addresses and the number of times each instruction
     was executed.
-*   `MemProfiler` is a boolean that when true enabled data profiling in the in
-    the simulator. Following execution there will be a `.csv` file that contains
-    a table of first and last word addresses in a range, and the size of the
+*   `MemProfiler` is a boolean that when true enabled data profiling in the
+    simulator. Following execution there will be a `.csv` file that contains a
+    table of first and last word addresses in a range, and the size of the
     range. It does not contain an access count.
 
 The MpactCheriotCPU class can be used with the `librenode_mpact_cheriot.so`
