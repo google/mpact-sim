@@ -52,6 +52,14 @@ SocketCLI::SocketCLI(int port, DebugCommandShellInterface &dbg_shell,
   // Create the socket on the given port.
   server_socket_ =
       socket(/*domain=*/AF_INET, /*type=*/SOCK_STREAM, /*protocol=*/0);
+  int one = 1;
+  int err =
+      setsockopt(server_socket_, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one));
+  if (err != 0) {
+    LOG(ERROR) << "Failed to set socket options: " << strerror(errno);
+    good_ = false;
+    return;
+  }
   sockaddr_in server_address_int;
   server_address_int.sin_family = AF_INET;
   server_address_int.sin_addr.s_addr = INADDR_ANY;
@@ -107,12 +115,22 @@ SocketCLI::~SocketCLI() {
   // Shutdown the connection.
   if (cli_fd_ != -1) {
     (void)shutdown(cli_fd_, SHUT_RDWR);
+    int err = close(cli_fd_);
+    if (err != 0) {
+      LOG(ERROR) << "Failed to close client socket " << cli_fd_ << ": "
+                 << strerror(errno);
+    }
   }
   if (server_socket_ != -1) {
     int res = shutdown(server_socket_, SHUT_RDWR);
     if (res != 0) {
       LOG(ERROR) << "Failed to shutdown server socket " << server_socket_
                  << ": " << strerror(errno);
+    }
+    int err = close(server_socket_);
+    if (err != 0) {
+      LOG(ERROR) << "Failed to close server socket " << server_socket_ << ": "
+                 << strerror(errno);
     }
   }
   if (cli_thread_.joinable()) cli_thread_.join();
