@@ -255,10 +255,15 @@ BinFormatVisitor::StringPair BinFormatVisitor::EmitCode(
   std::string h_string;
   std::string cc_string;
   std::string group_string;
+  std::string extractor_class =
+      absl::StrCat("class Extractors {\n", "public: \n");
   // Write out the inline functions for bitfield and overlay extractions.
   for (auto &[unused, format_ptr] : encoding->format_map()) {
-    absl::StrAppend(&h_string, format_ptr->GenerateExtractors());
+    auto [functions, classes] = format_ptr->GenerateExtractors();
+    absl::StrAppend(&h_string, functions);
+    absl::StrAppend(&extractor_class, classes);
   }
+  absl::StrAppend(&h_string, extractor_class, "};\n\n");
   absl::flat_hash_set<std::string> groups;
   auto *decoder = encoding->decoder();
   // Generate the code for decoders.

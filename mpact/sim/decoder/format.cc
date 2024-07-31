@@ -17,6 +17,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <string>
+#include <tuple>
 #include <utility>
 
 #include "absl/numeric/bits.h"
@@ -485,34 +486,44 @@ std::string Format::GenerateOverlayExtractor(Overlay *overlay) const {
 }
 
 // Top level function called to generate all the extractors for this format.
-std::string Format::GenerateExtractors() {
-  if (extractors_.empty() && overlay_extractors_.empty()) return "";
+std::tuple<std::string, std::string> Format::GenerateExtractors() {
+  std::string class_output;
+  std::string h_output;
+  if (extractors_.empty() && overlay_extractors_.empty()) {
+    return std::tie(h_output, class_output);
+  }
+
+  class_output = absl::StrCat("class ", ToPascalCase(name()), " {\n public:\n",
+                              "  ", ToPascalCase(name()), "() = default;\n");
 
   // Use a separate namespace for each format.
-  std::string h_output =
-      absl::StrCat("namespace ", ToSnakeCase(name()), " {\n\n");
+  h_output = absl::StrCat("namespace ", ToSnakeCase(name()), " {\n\n");
 
   // First fields and formats.
   for (auto &[unused, field_or_format_ptr] : extractors_) {
     if (field_or_format_ptr->is_field()) {
-      absl::StrAppend(&h_output,
-                      GenerateFieldExtractor(field_or_format_ptr->field()));
+      auto extractor = GenerateFieldExtractor(field_or_format_ptr->field());
+      absl::StrAppend(&h_output, extractor);
+      absl::StrAppend(&class_output, "static ", extractor);
     } else {
-      absl::StrAppend(&h_output, GenerateFormatExtractor(
-                                     field_or_format_ptr->format_alias(),
-                                     field_or_format_ptr->format(),
-                                     field_or_format_ptr->high(),
-                                     field_or_format_ptr->size()));
+      auto extractor = GenerateFormatExtractor(
+          field_or_format_ptr->format_alias(), field_or_format_ptr->format(),
+          field_or_format_ptr->high(), field_or_format_ptr->size());
+      absl::StrAppend(&h_output, extractor);
+      absl::StrAppend(&class_output, "static ", extractor);
     }
   }
 
   // Then the overlays.
   for (auto &[unused, overlay_ptr] : overlay_extractors_) {
-    absl::StrAppend(&h_output, GenerateOverlayExtractor(overlay_ptr));
+    auto extractor = GenerateOverlayExtractor(overlay_ptr);
+    absl::StrAppend(&h_output, extractor);
+    absl::StrAppend(&class_output, "static ", extractor);
   }
 
   absl::StrAppend(&h_output, "}  // namespace ", ToSnakeCase(name()), "\n\n");
-  return h_output;
+  absl::StrAppend(&class_output, "};\n\n");
+  return std::tie(h_output, class_output);
 }
 
 bool Format::IsDerivedFrom(const Format *format) {

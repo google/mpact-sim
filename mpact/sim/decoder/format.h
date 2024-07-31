@@ -17,6 +17,7 @@
 
 #include <map>
 #include <string>
+#include <tuple>
 #include <vector>
 
 #include "absl/container/btree_map.h"
@@ -139,7 +140,7 @@ class Format {
   void PropagateExtractorsUp();
   void PropagateExtractorsDown();
   // Generates definitions the field and overlay extractors in the format.
-  std::string GenerateExtractors();
+  std::tuple<std::string, std::string> GenerateExtractors();
 
   // True if the current format is a descendent of format.
   bool IsDerivedFrom(const Format *format);
