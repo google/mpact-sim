@@ -139,7 +139,7 @@ class Format {
   // hierarchy.
   void PropagateExtractorsUp();
   void PropagateExtractorsDown();
-  // Generates definitions the field and overlay extractors in the format.
+  // Generates definitions of the field and overlay extractors in the format.
   std::tuple<std::string, std::string> GenerateExtractors();
 
   // True if the current format is a descendent of format.
