@@ -107,6 +107,7 @@ void TaggedFlatDemandMemory::Store(uint64_t address, DataBuffer *db) {
 void TaggedFlatDemandMemory::Store(DataBuffer *address_db, DataBuffer *mask_db,
                                    int el_size, DataBuffer *db) {
   unsigned num_stores = address_db->size<uint64_t>();
+  if (num_stores == 0) return;
   unsigned store_size = db->size<uint8_t>() / num_stores;
   auto mask_span = mask_db->Get<bool>();
   // Perform stores.
