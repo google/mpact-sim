@@ -81,6 +81,7 @@ public class MpactBaseCPU : BaseCPU, ICPUWithRegisters,
                     string cpuType, IMachine machine, Endianess endianness,
                     CpuBitness bitness = CpuBitness.Bits32)
         : base(id, cpuType, machine, endianness, bitness) {
+        this.cpu_type = cpuType;
         this.memoryBase = memoryBase;
         this.memorySize = memorySize;
         // Allocate space for marshaling data to/from simulator.
@@ -203,7 +204,7 @@ public class MpactBaseCPU : BaseCPU, ICPUWithRegisters,
                     new FuncInt32UInt64IntPtrInt32(ReadSysMemory);
             write_sysmem_delegate =
                     new FuncInt32UInt64IntPtrInt32(WriteSysMemory);
-            mpact_id = construct_with_sysbus(maxStringLen,
+            mpact_id = construct_with_sysbus(cpu_type, maxStringLen,
                                              read_sysmem_delegate,
                                              write_sysmem_delegate);
             if (mpact_id < 0) {
@@ -592,14 +593,14 @@ public class MpactBaseCPU : BaseCPU, ICPUWithRegisters,
 
     // Declare some additional function signatures.
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-    public delegate Int32 ConnectWithSysbus(Int32 param0, Int32 param1,
-                                            FuncInt32UInt64IntPtrInt32 param2,
-                                            FuncInt32UInt64IntPtrInt32 param3);
+    public delegate Int32 ConnectWithSysbus(string param0, Int32 param1, Int32 param2,
+                                            FuncInt32UInt64IntPtrInt32 param3,
+                                            FuncInt32UInt64IntPtrInt32 param4);
 
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-    public delegate Int32 ConstructWithSysbus(Int32 param0,
-                                              FuncInt32UInt64IntPtrInt32 param1,
-                                              FuncInt32UInt64IntPtrInt32 param2);
+    public delegate Int32 ConstructWithSysbus(string param0, Int32 param1,
+                                              FuncInt32UInt64IntPtrInt32 param2,
+                                              FuncInt32UInt64IntPtrInt32 param3);
 
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     public delegate Int32 SetConfig(Int32 param0, string[] param1,
@@ -620,13 +621,13 @@ public class MpactBaseCPU : BaseCPU, ICPUWithRegisters,
     // Functions that are imported from the mpact sim library.
 #pragma warning disable 649
     [Import(UseExceptionWrapper = false)]
-    // Int32 construct_with_sysbus(Int32 id,
+    // Int32 construct_with_sysbus(string cpu_type, Int32 id,
     //                             Int32 read_callback(UInt64, IntPtr, Int32),
     //                             Int32 write_callback(UInt64, IntPtr, Int32));
     private ConstructWithSysbus construct_with_sysbus;
 
     [Import(UseExceptionWrapper = false)]
-    // Int32 connect_with_sybsus(Int32 id,
+    // Int32 connect_with_sybsus(string cpu_type, Int32 id,
     //                           Int32 read_callback(UInt64, IntPtr, Int32),
     //                           Int32 write_callback(UInt64, IntPtr, Int32));
     private ConnectWithSysbus connect_with_sysbus;
@@ -687,6 +688,7 @@ public class MpactBaseCPU : BaseCPU, ICPUWithRegisters,
 #pragma warning restore 649
 
     private Int32 mpact_id = -1;
+    private string cpu_type;
     private ulong instructionsExecutedThisRound {get; set;}
     private ulong totalExecutedInstructions {get; set;}
     private const int PC_ID = 0x07b1;

@@ -42,6 +42,12 @@ using ELFSharp.UImage;
 namespace Antmicro.Renode.Peripherals.MpactCPU
 {
 
+public enum CheriotCpu {
+    Base = 0,
+    Rvv = 1,
+    RvvFp = 2,
+}
+
 // The MpactCheriotCPU class. This class derives from BaseCPU, which implements
 // a CPU in ReNode. It is the interface between ReNode and the mpact_cheriot
 // simulator library.

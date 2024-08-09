@@ -38,8 +38,8 @@ extern "C" {
 // Create a debug instance, returning its id. A return value of zero indicates
 // and error. The sysbus variant of the call provides methods to perform loads
 // and stores from a memory space managed by the caller.
-int32_t construct(int32_t max_name_length);
-int32_t construct_with_sysbus(int32_t max_name_length,
+int32_t construct(char *cpu_type, int32_t max_name_length);
+int32_t construct_with_sysbus(char *cpu_type, int32_t max_name_length,
                               int32_t (*read_callback)(uint64_t, char *,
                                                        int32_t),
                               int32_t (*write_callback)(uint64_t, char *,
@@ -48,8 +48,8 @@ int32_t construct_with_sysbus(int32_t max_name_length,
 // the given id. A return value of zero indicates an error. The sysbus variant
 // of the call provides methods to perform loads and stores from a memory space
 // managed by the caller.
-int32_t connect(int32_t id, int32_t max_name_length);
-int32_t connect_with_sysbus(int32_t id, int32_t max_name_length,
+int32_t connect(char *cpu_type, int32_t id, int32_t max_name_length);
+int32_t connect_with_sysbus(char *cpu_type, int32_t id, int32_t max_name_length,
                             int32_t (*read_callback)(uint64_t, char *, int32_t),
                             int32_t (*write_callback)(uint64_t, char *,
                                                       int32_t));
@@ -125,10 +125,10 @@ class RenodeAgent {
   }
 
   // These methods correspond to the C methods defined above.
-  int32_t Construct(int32_t max_name_length,
+  int32_t Construct(char *cpu_type, int32_t max_name_length,
                     int32_t (*read_callback)(uint64_t, char *, int32_t),
                     int32_t (*write_callback)(uint64_t, char *, int32_t));
-  int32_t Connect(int32_t id, int32_t max_name_length,
+  int32_t Connect(char *cpu_type, int32_t id, int32_t max_name_length,
                   int32_t (*read_callback)(uint64_t, char *, int32_t),
                   int32_t (*write_callback)(uint64_t, char *, int32_t));
   void Destroy(int32_t id);

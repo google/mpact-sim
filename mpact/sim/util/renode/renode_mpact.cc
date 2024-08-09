@@ -36,37 +36,38 @@ using ::mpact::sim::util::MemoryInterface;
 
 // This function must be defined in the library.
 extern ::mpact::sim::util::renode::RenodeDebugInterface *CreateMpactSim(
-    std::string, MemoryInterface *);
+    std::string name, std::string cpu_type, MemoryInterface *);
 
 using ::mpact::sim::util::renode::RenodeAgent;
 using ::mpact::sim::util::renode::RenodeCpuRegister;
 
 // Implementation of the C interface functions. They each forward the call to
 // the corresponding method in RenodeAgent.
-int32_t construct(int32_t max_name_length) {
-  return RenodeAgent::Instance()->Construct(max_name_length, nullptr, nullptr);
+int32_t construct(char *cpu_type, int32_t max_name_length) {
+  return RenodeAgent::Instance()->Construct(cpu_type, max_name_length, nullptr,
+                                            nullptr);
 }
 
-int32_t construct_with_sysbus(int32_t max_name_length,
+int32_t construct_with_sysbus(char *cpu_type, int32_t max_name_length,
                               int32_t (*read_callback)(uint64_t, char *,
                                                        int32_t),
                               int32_t (*write_callback)(uint64_t, char *,
                                                         int32_t)) {
-  return RenodeAgent::Instance()->Construct(max_name_length, read_callback,
-                                            write_callback);
+  return RenodeAgent::Instance()->Construct(cpu_type, max_name_length,
+                                            read_callback, write_callback);
 }
 
-int32_t connect(int32_t id, int32_t max_name_length) {
-  return RenodeAgent::Instance()->Connect(id, max_name_length, nullptr,
-                                          nullptr);
+int32_t connect(char *cpu_type, int32_t id, int32_t max_name_length) {
+  return RenodeAgent::Instance()->Connect(cpu_type, id, max_name_length,
+                                          nullptr, nullptr);
 }
 
-int32_t connect_with_sysbus(int32_t id, int32_t max_name_length,
+int32_t connect_with_sysbus(char *cpu_type, int32_t id, int32_t max_name_length,
                             int32_t (*read_callback)(uint64_t, char *, int32_t),
                             int32_t (*write_callback)(uint64_t, char *,
                                                       int32_t)) {
-  return RenodeAgent::Instance()->Connect(id, max_name_length, read_callback,
-                                          write_callback);
+  return RenodeAgent::Instance()->Connect(cpu_type, id, max_name_length,
+                                          read_callback, write_callback);
 }
 
 void destruct(int32_t id) { RenodeAgent::Instance()->Destroy(id); }
@@ -136,14 +137,14 @@ RenodeAgent *RenodeAgent::instance_ = nullptr;
 int32_t RenodeAgent::count_ = 0;
 
 // Create the debug instance by calling the factory function.
-int32_t RenodeAgent::Construct(int32_t max_name_length,
+int32_t RenodeAgent::Construct(char *cpu_type, int32_t max_name_length,
                                int32_t (*read_callback)(uint64_t, char *,
                                                         int32_t),
                                int32_t (*write_callback)(uint64_t, char *,
                                                          int32_t)) {
   std::string name = absl::StrCat("renode", count_);
   auto *memory_access = new RenodeMemoryAccess(read_callback, write_callback);
-  auto *dbg = CreateMpactSim(name, memory_access);
+  auto *dbg = CreateMpactSim(name, cpu_type, memory_access);
   if (dbg == nullptr) {
     delete memory_access;
     return -1;
@@ -159,11 +160,10 @@ int32_t RenodeAgent::Construct(int32_t max_name_length,
   return RenodeAgent::count_++;
 }
 
-int32_t RenodeAgent::Connect(int32_t id, int32_t max_name_length,
-                             int32_t (*read_callback)(uint64_t, char *,
-                                                      int32_t),
-                             int32_t (*write_callback)(uint64_t, char *,
-                                                       int32_t)) {
+int32_t RenodeAgent::Connect(
+    char *cpu_type, int32_t id, int32_t max_name_length,
+    int32_t (*read_callback)(uint64_t, char *, int32_t),
+    int32_t (*write_callback)(uint64_t, char *, int32_t)) {
   // First check if the instance already exists.
   auto iter = core_dbg_instances_.find(id);
   if (iter != core_dbg_instances_.end()) {
@@ -183,7 +183,7 @@ int32_t RenodeAgent::Connect(int32_t id, int32_t max_name_length,
   // The instance does not exist, so create a new debug instance.
   std::string name = absl::StrCat("renode", id);
   auto *memory_access = new RenodeMemoryAccess(read_callback, write_callback);
-  auto *dbg = CreateMpactSim(name, memory_access);
+  auto *dbg = CreateMpactSim(name, cpu_type, memory_access);
   if (dbg == nullptr) {
     delete memory_access;
     return -1;

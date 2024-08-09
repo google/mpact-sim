@@ -14,6 +14,7 @@
 
 #include "mpact/sim/util/renode/socket_cli.h"
 
+#include <fcntl.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -127,10 +128,13 @@ SocketCLI::~SocketCLI() {
       LOG(ERROR) << "Failed to shutdown server socket " << server_socket_
                  << ": " << strerror(errno);
     }
-    int err = close(server_socket_);
-    if (err != 0) {
-      LOG(ERROR) << "Failed to close server socket " << server_socket_ << ": "
-                 << strerror(errno);
+    res = fcntl(server_socket_, F_GETFD);
+    if (res >= 0) {
+      int err = close(server_socket_);
+      if (err != 0) {
+        LOG(ERROR) << "Failed to close server socket " << server_socket_ << ": "
+                   << strerror(errno);
+      }
     }
   }
   if (cli_thread_.joinable()) cli_thread_.join();
