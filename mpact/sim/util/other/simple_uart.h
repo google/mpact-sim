@@ -3,7 +3,6 @@
 
 #include <cstdint>
 #include <ostream>
-#include <string>
 
 #include "mpact/sim/generic/arch_state.h"
 #include "mpact/sim/generic/data_buffer.h"
@@ -57,7 +56,6 @@ class SimpleUart : public MemoryInterface {
   // Helper methods.
   uint32_t Read(uint32_t offset);
   void Write(uint32_t offset, uint32_t value);
-  ArchState *state_;
   // The dlab_ bit of the line control register. The dlab bit changes the
   // register map for offsets 0x0 and 0x4 when set.
   bool dlab_ = false;

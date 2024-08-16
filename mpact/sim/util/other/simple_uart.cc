@@ -11,7 +11,7 @@ namespace mpact::sim::util {
 
 // Constructors.
 SimpleUart::SimpleUart(ArchState *state, std::ostream &output)
-    : state_(state), output_(&output) {}
+    : output_(&output) {}
 
 SimpleUart::SimpleUart(ArchState *state) : SimpleUart(state, std::cerr) {}
 
