@@ -257,7 +257,7 @@ public class MpactBaseCPU : BaseCPU, ICPUWithRegisters,
             if (registerMap.Count == 0) {
                 GetMpactRegisters();
             }
-	    return GetRegisterUnsafe(PC_ID);
+	    return GetRegister(PC_ID);
         }
 
         set {
@@ -320,7 +320,7 @@ public class MpactBaseCPU : BaseCPU, ICPUWithRegisters,
     }
 
     // ICPUWithRegisters methods implementations.
-    public  void SetRegisterUnsafe(int register, RegisterValue value) {
+    public  void SetRegister(int register, RegisterValue value) {
         var status = write_register((Int32)mpact_id, (Int32)register,
                                     (UInt64)value);
         if (status < 0) {
@@ -328,7 +328,11 @@ public class MpactBaseCPU : BaseCPU, ICPUWithRegisters,
         }
     }
 
-    public  RegisterValue GetRegisterUnsafe(int register) {
+    public  void SetRegisterUnsafe(int register, RegisterValue value) {
+        SetRegister(register, value);
+    }
+
+    public  RegisterValue GetRegister(int register) {
         var status = read_register(mpact_id, register, value_ptr);
         if (status < 0) {
             LogAndThrowRE("Failed to read register " + register);
@@ -351,6 +355,10 @@ public class MpactBaseCPU : BaseCPU, ICPUWithRegisters,
             LogAndThrowRE(msg);
         }
         return (ulong)0;
+    }
+
+    public  RegisterValue GetRegisterUnsafe(int register) {
+        return GetRegister(register);
     }
 
     protected void GetMpactRegisters() {
