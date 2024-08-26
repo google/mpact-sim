@@ -110,6 +110,7 @@ cc_library(
         "debug_command_shell_interface.h",
     ],
     deps = [
+        ":arch_state",
         ":core_debug_interface",
         "//mpact/sim/util/program_loader:elf_loader",
         "@com_google_absl//absl/container:btree",

@@ -11,6 +11,7 @@
 #include "absl/container/btree_map.h"
 #include "absl/functional/any_invocable.h"
 #include "absl/strings/string_view.h"
+#include "mpact/sim/generic/arch_state.h"
 #include "mpact/sim/generic/core_debug_interface.h"
 #include "mpact/sim/util/program_loader/elf_program_loader.h"
 
@@ -29,8 +30,9 @@ class DebugCommandShellInterface {
 
   // Each core must provide the debug interface and the elf loader.
   struct CoreAccess {
-    CoreDebugInterface *debug_interface;
+    CoreDebugInterface *debug_interface = nullptr;
     std::function<util::ElfProgramLoader *()> loader_getter;
+    ArchState *state = nullptr;
     absl::btree_map<int, uint64_t> breakpoint_map;
     int breakpoint_index = 0;
     absl::btree_map<int, WatchpointInfo> watchpoint_map;

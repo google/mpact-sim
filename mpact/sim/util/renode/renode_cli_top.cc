@@ -310,7 +310,12 @@ absl::StatusOr<std::string> RenodeCLITop::CLIGetDisassembly(uint64_t address) {
 
 void RenodeCLITop::CLIRequestHalt(HaltReason halt_reason,
                                   const Instruction *inst) {
-  (void)top_->Halt();
+  (void)top_->Halt(halt_reason);
+}
+
+void RenodeCLITop::CLIRequestHalt(HaltReasonValueType halt_reason,
+                                  const Instruction *inst) {
+  (void)top_->Halt(halt_reason);
 }
 
 }  // namespace renode

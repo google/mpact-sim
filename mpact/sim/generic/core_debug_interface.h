@@ -74,6 +74,8 @@ class CoreDebugInterface {
 
   // Request that core stop running.
   virtual absl::Status Halt() = 0;
+  virtual absl::Status Halt(HaltReason halt_reason) = 0;
+  virtual absl::Status Halt(HaltReasonValueType halt_reason) = 0;
   // Step the core by num instructions.
   virtual absl::StatusOr<int> Step(int num) = 0;
   // Allow the core to free-run. The loop to run the instructions should be

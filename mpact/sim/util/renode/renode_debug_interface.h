@@ -74,6 +74,12 @@ class RenodeDebugInterface : public generic::CoreDebugInterface {
   absl::Status Halt() final {
     return absl::InternalError("Halt: Not implemented");
   }
+  absl::Status Halt(HaltReason) final {
+    return absl::InternalError("Halt: Not implemented");
+  }
+  absl::Status Halt(HaltReasonValueType) {
+    return absl::InternalError("Halt: Not implemented");
+  }
   absl::Status Wait() final {
     return absl::InternalError("Wait: Not implemented");
   }

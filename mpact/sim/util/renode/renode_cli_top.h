@@ -79,6 +79,9 @@ class RenodeCLITop {
   // Wait for free run to complete.
   virtual absl::Status CLIWait();
   virtual absl::StatusOr<RunStatus> CLIGetRunStatus();
+  virtual void CLIRequestHalt(HaltReason halt_reason, const Instruction *inst);
+  virtual void CLIRequestHalt(HaltReasonValueType halt_reason,
+                              const Instruction *inst);
   virtual absl::StatusOr<HaltReasonValueType> CLIGetLastHaltReason();
   // Register access by register name.
   virtual absl::StatusOr<uint64_t> CLIReadRegister(const std::string &name);
@@ -99,8 +102,6 @@ class RenodeCLITop {
   virtual absl::Status CLIClearAllSwBreakpoints();
   virtual absl::StatusOr<Instruction *> CLIGetInstruction(uint64_t address);
   virtual absl::StatusOr<std::string> CLIGetDisassembly(uint64_t address);
-  // Called when a halt is requested.
-  virtual void CLIRequestHalt(HaltReason halt_reason, const Instruction *inst);
 
  protected:
   // Perform the action after having obtained the lock that depends on the CLI
