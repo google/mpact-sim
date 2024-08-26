@@ -23,9 +23,9 @@ def mpact_sim_repos():
     if not native.existing_rule("com_google_absl"):
         http_archive(
             name = "com_google_absl",
-            sha256 = "3c743204df78366ad2eaf236d6631d83f6bc928d1705dd0000b872e53b73dc6a",
-            strip_prefix = "abseil-cpp-20240116.1",
-            urls = ["https://github.com/abseil/abseil-cpp/archive/refs/tags/20240116.1.tar.gz"],
+            sha256 = "f50e5ac311a81382da7fa75b97310e4b9006474f9560ac46f54a9967f07d4ae3",
+            strip_prefix = "abseil-cpp-20240722.0",
+            url = "https://github.com/abseil/abseil-cpp/archive/refs/tags/20240722.0.tar.gz",
         )
 
     # Google protobuf.
