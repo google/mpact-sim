@@ -763,7 +763,7 @@ void BinFormatVisitor::VisitInstructionDef(InstructionDefCtx *ctx,
   if (format == nullptr) return;
   // Add constraints to the instruction encoding.
   for (auto *constraint : ctx->field_constraint_list()->field_constraint()) {
-    VisitConstraint(constraint, inst_encoding);
+    VisitConstraint(format, constraint, inst_encoding);
   }
 }
 
@@ -921,7 +921,7 @@ std::string BinFormatVisitor::GenerateInstructionDefList(
   return generated;
 }
 
-void BinFormatVisitor::VisitConstraint(FieldConstraintCtx *ctx,
+void BinFormatVisitor::VisitConstraint(Format *format, FieldConstraintCtx *ctx,
                                        InstructionEncoding *inst_encoding) {
   if (ctx == nullptr) return;
   if (inst_encoding == nullptr) return;
@@ -929,6 +929,29 @@ void BinFormatVisitor::VisitConstraint(FieldConstraintCtx *ctx,
   // Constraints are based on field names ==/!=/>/>=/</<= to a value.
   std::string field_name = ctx->field_name->getText();
   std::string op = ctx->constraint_op()->getText();
+  // If the number is binary, let's get its length too and check against the
+  // field width.
+  if (ctx->number()->BIN_NUMBER() != nullptr) {
+    int length = ParseBinaryNum(ctx->number()->BIN_NUMBER()).width;
+    auto *field = format->GetField(field_name);
+    auto *overlay = format->GetOverlay(field_name);
+    if (field != nullptr) {
+      if (field->width != length) {
+        error_listener_->semanticWarning(
+            ctx->start,
+            absl::StrCat("Field '", field_name, "' has width ", field->width,
+                         " but constraint value is ", length, " bits"));
+      }
+    } else if (overlay != nullptr) {
+      if (overlay->computed_width() != length) {
+        error_listener_->semanticWarning(
+            ctx->start,
+            absl::StrCat("Overlay '", field_name, "' has width ",
+                         overlay->computed_width(), " but constraint value is ",
+                         length, " bits"));
+      }
+    }
+  }
   int value = ConvertToInt(ctx->number());
   absl::Status status;
   if (op == "==") {

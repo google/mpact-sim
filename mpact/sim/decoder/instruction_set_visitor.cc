@@ -16,11 +16,12 @@
 
 #include <cctype>
 #include <cstddef>
-#include <filesystem>
+#include <filesystem>  // NOLINT: third party.
 #include <fstream>
 #include <iostream>
 #include <istream>
 #include <memory>
+#include <new>
 #include <optional>
 #include <string>
 #include <utility>
@@ -214,7 +215,7 @@ void InstructionSetVisitor::PerformBundleReferenceChecks(
     PerformBundleReferenceChecks(instruction_set, bundle_ref);
   }
   // Verify that all the slot uses were declared.
-  for (auto [slot_name, instance_vec] : bundle->slot_uses()) {
+  for (auto &[slot_name, instance_vec] : bundle->slot_uses()) {
     Slot *slot = instruction_set->GetSlot(slot_name);
     // Verify that the instance number of the slot falls within valid range.
     for (auto &instance_number : instance_vec) {
@@ -1701,8 +1702,13 @@ absl::Status InstructionSetVisitor::ParseDisasmFormat(std::string format,
   DisasmFormat *disasm_fmt = new DisasmFormat();
   while ((pos != std::string::npos) &&
          ((pos = format.find_first_of('%', pos)) != std::string::npos)) {
-    disasm_fmt->format_fragment_vec.push_back(format.substr(prev, pos - prev));
     std::string text = format.substr(prev, pos - prev);
+    std::string new_text;
+    for (auto &c : text) {
+      if (c == '\\') continue;
+      new_text.push_back(c);
+    }
+    disasm_fmt->format_fragment_vec.push_back(new_text);
     pos++;
     if (pos >= length) break;
 
@@ -1790,7 +1796,17 @@ absl::Status InstructionSetVisitor::ParseDisasmFormat(std::string format,
         absl::StrCat("Unexpected end of format string in '", format, "'"));
   }
   if (prev != std::string::npos) {
-    disasm_fmt->format_fragment_vec.push_back(format.substr(prev));
+    std::string text = format.substr(prev);
+    std::string new_text;
+    for (auto &c : text) {
+      if (c == '\\') continue;
+      new_text.push_back(c);
+    }
+    disasm_fmt->format_fragment_vec.push_back(new_text);
+  }
+  std::string str;
+  for (auto &s : disasm_fmt->format_fragment_vec) {
+    absl::StrAppend(&str, s, ":");
   }
   int width = 0;
   auto count = inst->disasm_format_vec().size();

@@ -124,7 +124,7 @@ class BinFormatVisitor {
   std::string GenerateInstructionDefList(
       const std::vector<RangeAssignmentInfo *> &range_info_vec, int index,
       const std::string &template_str_in) const;
-  void VisitConstraint(FieldConstraintCtx *ctx,
+  void VisitConstraint(Format *format, FieldConstraintCtx *ctx,
                        InstructionEncoding *inst_encoding);
 
   // Accessors.
