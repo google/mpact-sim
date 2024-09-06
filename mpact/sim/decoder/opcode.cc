@@ -15,6 +15,7 @@
 #include "mpact/sim/decoder/opcode.h"
 
 #include <functional>
+#include <new>
 #include <string>
 #include <utility>
 
