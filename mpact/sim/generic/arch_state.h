@@ -60,8 +60,8 @@ class ArchState : public Component {
   ~ArchState() override;
 
  public:
-  using RegisterMap = absl::flat_hash_map<const std::string, RegisterBase *>;
-  using FifoMap = absl::flat_hash_map<const std::string, FifoBase *>;
+  using RegisterMap = absl::flat_hash_map<std::string, RegisterBase *>;
+  using FifoMap = absl::flat_hash_map<std::string, FifoBase *>;
 
   // Adds the given register to the register table.
   void AddRegister(RegisterBase *reg);

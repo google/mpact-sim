@@ -46,9 +46,9 @@ class MemoryRouter {
  public:
   // Convenient map types shorthand.
   using InitiatorMap =
-      absl::flat_hash_map<const std::string, SingleInitiatorRouter *>;
+      absl::flat_hash_map<std::string, SingleInitiatorRouter *>;
   template <typename Interface>
-  using TargetMap = absl::flat_hash_map<const std::string, Interface *>;
+  using TargetMap = absl::flat_hash_map<std::string, Interface *>;
 
   MemoryRouter();
   MemoryRouter(const MemoryRouter &) = delete;
