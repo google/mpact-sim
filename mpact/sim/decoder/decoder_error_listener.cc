@@ -29,10 +29,21 @@ namespace decoder {
 // Error listener methods.
 void DecoderErrorListener::semanticError(antlr4::Token *token,
                                          absl::string_view msg) {
+  semanticError(file_name_, token, msg);
+}
+
+void DecoderErrorListener::semanticWarning(antlr4::Token *token,
+                                           absl::string_view msg) {
+  semanticWarning(file_name_, token, msg);
+}
+
+void DecoderErrorListener::semanticError(const std::string &file_name,
+                                         antlr4::Token *token,
+                                         absl::string_view msg) {
   if (token != nullptr) {
     size_t line = token->getLine();
     size_t charPositionInLine = token->getCharPositionInLine();
-    LOG(ERROR) << absl::StrCat(file_name_, ":", line, ":", charPositionInLine,
+    LOG(ERROR) << absl::StrCat(file_name, ":", line, ":", charPositionInLine,
                                "  Error: ", msg, "\n");
   } else {
     LOG(ERROR) << absl::StrCat("Error: ", msg, "\n");
@@ -40,12 +51,13 @@ void DecoderErrorListener::semanticError(antlr4::Token *token,
   semantic_error_count_++;
 }
 
-void DecoderErrorListener::semanticWarning(antlr4::Token *token,
+void DecoderErrorListener::semanticWarning(const std::string &file_name,
+                                           antlr4::Token *token,
                                            absl::string_view msg) {
   if (token != nullptr) {
     size_t line = token->getLine();
     size_t charPositionInLine = token->getCharPositionInLine();
-    LOG(WARNING) << absl::StrCat(file_name_, ":", line, ":", charPositionInLine,
+    LOG(WARNING) << absl::StrCat(file_name, ":", line, ":", charPositionInLine,
                                  "  Warning: ", msg, "\n");
   } else {
     LOG(WARNING) << absl::StrCat("Warning: ", msg, "\n");

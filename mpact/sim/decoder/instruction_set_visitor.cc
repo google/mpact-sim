@@ -110,6 +110,7 @@ absl::Status InstructionSetVisitor::Process(
   // Create an antlr4 stream from the input stream.
   IsaAntlrParserWrapper parser_wrapper(source_stream);
   error_listener()->set_file_name(file_names[0]);
+  file_names_.push_back(file_names[0]);
   parser_wrapper.parser()->removeErrorListeners();
   parser_wrapper.parser()->addErrorListener(error_listener());
 
@@ -248,17 +249,20 @@ void InstructionSetVisitor::VisitTopLevel(TopLevelCtx *ctx) {
   // Process disasm widths. Only the one in the top level file is used if there
   // are additional ones in included files.
   int count = 0;
-  std::string location;
+  DisasmWidthsCtx *disasm_ctx = nullptr;
   for (auto *decl : declarations) {
+    context_file_map_[decl] = current_file_index_;
     if (decl->disasm_widths() == nullptr) continue;
     if (count > 0) {
       error_listener()->semanticError(
-          nullptr, absl::StrCat("Only one `disasm width` declaration allowed - "
-                                "previous declaration on line: ",
-                                location));
+          decl->disasm_widths()->start,
+          absl::StrCat("Only one `disasm width` declaration allowed - "
+                       "previous declaration on line: ",
+                       disasm_ctx->start->getLine()));
     }
+    disasm_ctx = decl->disasm_widths();
+    context_file_map_[disasm_ctx] = context_file_map_.at(decl);
     VisitDisasmWidthsDecl(decl->disasm_widths());
-    location = absl::StrCat(decl->start->getLine());
     count++;
   }
 
@@ -290,6 +294,7 @@ void InstructionSetVisitor::PreProcessDeclarations(
   for (auto *decl : ctx_vec) {
     if (decl->slot_declaration() != nullptr) {
       auto *slot_ctx = decl->slot_declaration();
+      context_file_map_.insert({slot_ctx, current_file_index_});
       auto name = slot_ctx->slot_name->getText();
       auto ptr = slot_decl_map_.find(name);
       if (ptr != slot_decl_map_.end()) {
@@ -304,6 +309,7 @@ void InstructionSetVisitor::PreProcessDeclarations(
     // Create map from bundle name to bundle ctx.
     if (decl->bundle_declaration() != nullptr) {
       auto *bundle_ctx = decl->bundle_declaration();
+      context_file_map_.insert({bundle_ctx, current_file_index_});
       auto name = bundle_ctx->bundle_name->getText();
       auto ptr = bundle_decl_map_.find(name);
       if (ptr != bundle_decl_map_.end()) {
@@ -319,6 +325,7 @@ void InstructionSetVisitor::PreProcessDeclarations(
     // Create map from isa name to isa ctx.
     if (decl->isa_declaration() != nullptr) {
       auto *isa_ctx = decl->isa_declaration();
+      context_file_map_.insert({isa_ctx, current_file_index_});
       auto name = isa_ctx->instruction_set_name->getText();
       auto ptr = isa_decl_map_.find(name);
       if (ptr != isa_decl_map_.end()) {
@@ -343,6 +350,7 @@ void InstructionSetVisitor::PreProcessDeclarations(
 
     // Process global constants.
     if (decl->constant_def() != nullptr) {
+      context_file_map_.insert({decl->constant_def(), current_file_index_});
       VisitConstantDef(decl->constant_def());
     }
 
@@ -370,7 +378,9 @@ std::unique_ptr<InstructionSet> InstructionSetVisitor::VisitIsaDeclaration(
   // Visit the namespace declaration, and the bundle and slot references that
   // are part of the instruction_set declaration.
   VisitNamespaceDecl(ctx->namespace_decl(), instruction_set.get());
+  context_file_map_[ctx->bundle_list()] = context_file_map_.at(ctx);
   VisitBundleList(ctx->bundle_list(), instruction_set->bundle());
+  context_file_map_[ctx->slot_list()] = context_file_map_.at(ctx);
   VisitSlotList(ctx->slot_list(), instruction_set->bundle());
   return instruction_set;
 }
@@ -394,7 +404,7 @@ void InstructionSetVisitor::VisitBundleList(BundleListCtx *ctx,
     // If the name hasn't been seen, flag an error.
     if (iter == bundle_decl_map_.end()) {
       error_listener()->semanticError(
-          bundle_spec->start,
+          file_names_[context_file_map_.at(ctx)], bundle_spec->start,
           absl::StrCat("Reference to undefined bundle: '", bundle_name, "'"));
       continue;
     }
@@ -416,7 +426,7 @@ void InstructionSetVisitor::VisitSlotList(SlotListCtx *ctx, Bundle *bundle) {
     // If the slot hasn't been seen, flag an error.
     if (iter == slot_decl_map_.end()) {
       error_listener()->semanticError(
-          slot_spec->start,
+          file_names_[context_file_map_.at(ctx)], slot_spec->start,
           absl::StrCat("Reference to undefined slot: '", slot_name, "'"));
       continue;
     }
@@ -457,6 +467,7 @@ void InstructionSetVisitor::VisitConstantDef(ConstantDefCtx *ctx) {
   if (ctx == nullptr) return;
   std::string ident = ctx->ident()->getText();
   std::string type = ctx->template_parameter_type()->getText();
+  context_file_map_.insert({ctx->expression(), context_file_map_.at(ctx)});
   auto *expr = VisitExpression(ctx->expression(), nullptr, nullptr);
   auto status = AddConstant(ident, type, expr);
   if (!status.ok()) {
@@ -504,7 +515,10 @@ void InstructionSetVisitor::ParseIncludeFile(
     }
   }
   std::string previous_file_name = error_listener()->file_name();
+  int previous_file_index_ = current_file_index_;
   error_listener()->set_file_name(file_name);
+  file_names_.push_back(file_name);
+  current_file_index_ = file_names_.size() - 1;
   // Create an antlr4 stream from the input stream.
   auto *include_parser = new IsaAntlrParserWrapper(&include_file);
   // We need to save the parser state so it's available for analysis after
@@ -517,13 +531,16 @@ void InstructionSetVisitor::ParseIncludeFile(
   auto declaration_vec =
       include_parser->parser()->include_top_level()->declaration();
   include_file.close();
-  error_listener()->set_file_name(previous_file_name);
   if (error_listener()->syntax_error_count() > 0) {
+    error_listener()->set_file_name(previous_file_name);
+    current_file_index_ = previous_file_index_;
     return;
   }
   include_file_stack_.push_back(file_name);
   PreProcessDeclarations(declaration_vec);
   include_file_stack_.pop_back();
+  error_listener()->set_file_name(previous_file_name);
+  current_file_index_ = previous_file_index_;
 }
 
 void InstructionSetVisitor::VisitBundleDeclaration(
@@ -532,7 +549,9 @@ void InstructionSetVisitor::VisitBundleDeclaration(
   Bundle *bundle =
       new Bundle(ctx->bundle_name->getText(), instruction_set, ctx);
   instruction_set->AddBundle(bundle);
+  context_file_map_[ctx->bundle_list()] = context_file_map_.at(ctx);
   VisitBundleList(ctx->bundle_list(), bundle);
+  context_file_map_[ctx->slot_list()] = context_file_map_.at(ctx);
   VisitSlotList(ctx->slot_list(), bundle);
 }
 
@@ -545,7 +564,9 @@ void InstructionSetVisitor::VisitSlotDeclaration(
     for (auto const &param : ctx->template_decl()->template_parameter_decl()) {
       auto status = slot->AddTemplateFormal(param->IDENT()->getText());
       if (!status.ok()) {
-        error_listener()->semanticError(param->start, status.message());
+        error_listener()->semanticError(
+            file_names_[context_file_map_.at(slot->ctx())], param->start,
+            status.message());
       }
     }
   }
@@ -558,7 +579,8 @@ void InstructionSetVisitor::VisitSlotDeclaration(
       auto slot_iter = slot_decl_map_.find(base_name);
       if (slot_iter == slot_decl_map_.end()) {
         error_listener()->semanticError(
-            base_item->start, absl::StrCat("Undefined base slot: ", base_name));
+            file_names_[context_file_map_.at(ctx)], base_item->start,
+            absl::StrCat("Undefined base slot: ", base_name));
         continue;
       }
       // If the slot hasn't been visited, visit it.
@@ -573,14 +595,14 @@ void InstructionSetVisitor::VisitSlotDeclaration(
       if ((template_spec != nullptr) && !base->is_templated()) {
         // Template arguments are present but the slot isn't templated.
         error_listener()->semanticError(
-            base_item->start,
+            file_names_[context_file_map_.at(ctx)], base_item->start,
             absl::StrCat("'", base_name, "' is not a templated slot"));
         continue;
       }
       if ((template_spec == nullptr) && base->is_templated()) {
         // The slot is templated, but no template arguments.
         error_listener()->semanticError(
-            base_item->start,
+            file_names_[context_file_map_.at(ctx)], base_item->start,
             absl::StrCat("Missing template arguments for slot '", base_name,
                          "'"));
         continue;
@@ -591,7 +613,7 @@ void InstructionSetVisitor::VisitSlotDeclaration(
         int param_count = base->template_parameters().size();
         if (arg_count != param_count) {
           error_listener()->semanticError(
-              template_spec->start,
+              file_names_[context_file_map_.at(ctx)], template_spec->start,
               absl::StrCat("Wrong number of arguments: ", param_count,
                            " were expected, ", arg_count, " were provided"));
           continue;
@@ -600,10 +622,12 @@ void InstructionSetVisitor::VisitSlotDeclaration(
         // Build up the argument vector.
         auto *arguments = new TemplateInstantiationArgs;
         for (auto *template_arg : template_spec->expression()) {
+          context_file_map_.insert({template_arg, context_file_map_.at(ctx)});
           auto *expr = VisitExpression(template_arg, slot, nullptr);
           if (expr == nullptr) {
-            error_listener()->semanticError(template_arg->start,
-                                            "Error in template expression");
+            error_listener()->semanticError(
+                file_names_[context_file_map_.at(ctx)], template_arg->start,
+                "Error in template expression");
             has_error = true;
             break;
           }
@@ -618,13 +642,17 @@ void InstructionSetVisitor::VisitSlotDeclaration(
         }
         auto result = slot->AddBase(base, arguments);
         if (!result.ok()) {
-          error_listener()->semanticError(base_item->start, result.message());
+          error_listener()->semanticError(
+              file_names_[context_file_map_.at(ctx)], base_item->start,
+              result.message());
         }
       } else {
         // No template arguments.
         auto result = slot->AddBase(base);
         if (!result.ok()) {
-          error_listener()->semanticError(base_item->start, result.message());
+          error_listener()->semanticError(
+              file_names_[context_file_map_.at(ctx)], base_item->start,
+              result.message());
         }
       }
     }
@@ -637,13 +665,16 @@ void InstructionSetVisitor::VisitSlotDeclaration(
   // Add the slot to the ISA.
   instruction_set->AddSlot(slot);
   for (auto *decl_ctx : ctx->const_and_default_decl()) {
+    context_file_map_[decl_ctx] = context_file_map_.at(ctx);
     VisitConstAndDefaultDecls(decl_ctx, slot);
   }
+  context_file_map_[ctx->opcode_list()] = context_file_map_.at(ctx);
   VisitOpcodeList(ctx->opcode_list(), slot);
 }
 
 void InstructionSetVisitor::VisitDisasmWidthsDecl(DisasmWidthsCtx *ctx) {
   for (auto *expr : ctx->expression()) {
+    context_file_map_.insert({expr, context_file_map_.at(ctx)});
     auto *width_expr = VisitExpression(expr, nullptr, nullptr);
     if ((width_expr == nullptr) || (!width_expr->IsConstant())) {
       error_listener()->semanticError(expr->start,
@@ -662,17 +693,21 @@ void InstructionSetVisitor::VisitConstAndDefaultDecls(ConstAndDefaultCtx *ctx,
   if (const_def != nullptr) {  // Constant declaration.
     std::string ident = const_def->ident()->getText();
     std::string type = const_def->template_parameter_type()->getText();
+    context_file_map_.insert(
+        {const_def->expression(), context_file_map_.at(ctx)});
     auto *expr = VisitExpression(const_def->expression(), slot, nullptr);
     if (expr == nullptr) {
       delete expr;
-      error_listener()->semanticError(const_def->expression()->start,
+      error_listener()->semanticError(file_names_[context_file_map_.at(ctx)],
+                                      const_def->expression()->start,
                                       "Error in expression");
       return;
     }
     auto status = slot->AddConstant(ident, type, expr);
     if (!status.ok()) {
       delete expr;
-      error_listener()->semanticError(const_def->ident()->start,
+      error_listener()->semanticError(file_names_[context_file_map_.at(ctx)],
+                                      const_def->ident()->start,
                                       status.message());
     }
     return;
@@ -683,10 +718,12 @@ void InstructionSetVisitor::VisitConstAndDefaultDecls(ConstAndDefaultCtx *ctx,
     return;
   }
   if (ctx->LATENCY() != nullptr) {  // Default latency.
+    context_file_map_.insert({ctx->expression(), context_file_map_.at(ctx)});
     auto *expr = VisitExpression(ctx->expression(), slot, nullptr);
     if (expr == nullptr) {
       delete expr;
-      error_listener()->semanticError(ctx->expression()->start,
+      error_listener()->semanticError(file_names_[context_file_map_.at(ctx)],
+                                      ctx->expression()->start,
                                       "Error in expression");
       return;
     }
@@ -694,6 +731,8 @@ void InstructionSetVisitor::VisitConstAndDefaultDecls(ConstAndDefaultCtx *ctx,
     return;
   }
   if (ctx->ATTRIBUTES() != nullptr) {  // Default attributes.
+    context_file_map_.insert(
+        {ctx->instruction_attribute_list(), context_file_map_.at(ctx)});
     VisitInstructionAttributeList(ctx->instruction_attribute_list(), slot,
                                   nullptr);
     return;
@@ -711,7 +750,8 @@ void InstructionSetVisitor::VisitConstAndDefaultDecls(ConstAndDefaultCtx *ctx,
     // and semantic function for when no valid opcode is found during decode.
     if (slot->default_instruction() != nullptr) {
       error_listener()->semanticError(
-          ctx->start, "Multiple definitions of 'default' opcode");
+          file_names_[context_file_map_.at(ctx)], ctx->start,
+          "Multiple definitions of 'default' opcode");
       return;
     }
     auto *default_instruction = new Instruction(
@@ -722,8 +762,9 @@ void InstructionSetVisitor::VisitConstAndDefaultDecls(ConstAndDefaultCtx *ctx,
       // Disasm spec.
       if (attribute->disasm_spec() != nullptr) {
         if (has_disasm) {
-          error_listener()->semanticError(attribute->start,
-                                          "Duplicate disasm declaration");
+          error_listener()->semanticError(
+              file_names_[context_file_map_.at(ctx)], attribute->start,
+              "Duplicate disasm declaration");
           continue;
         }
         has_disasm = true;
@@ -743,7 +784,8 @@ void InstructionSetVisitor::VisitConstAndDefaultDecls(ConstAndDefaultCtx *ctx,
       // Semfunc spec.
       // If a semfunc has already been declared, signal an error.
       if (has_semfunc) {
-        error_listener()->semanticError(attribute->start,
+        error_listener()->semanticError(file_names_[context_file_map_.at(ctx)],
+                                        attribute->start,
                                         "Duplicate semfunc declaration");
         continue;
       }
@@ -753,7 +795,8 @@ void InstructionSetVisitor::VisitConstAndDefaultDecls(ConstAndDefaultCtx *ctx,
       // opcode.
       if (semfunc_code.size() > 1) {
         error_listener()->semanticError(
-            ctx->start, "Only one semfunc specification per default opcode");
+            file_names_[context_file_map_.at(ctx)], ctx->start,
+            "Only one semfunc specification per default opcode");
         continue;
       }
       std::string string_literal = semfunc_code[0]->getText();
@@ -767,14 +810,15 @@ void InstructionSetVisitor::VisitConstAndDefaultDecls(ConstAndDefaultCtx *ctx,
     } else {
       delete default_instruction;
       error_listener()->semanticError(
-          ctx->start, "Default opcode lacks mandatory semfunc specification");
+          file_names_[context_file_map_.at(ctx)], ctx->start,
+          "Default opcode lacks mandatory semfunc specification");
     }
   }
   if (ctx->resource_details() != nullptr) {
     std::string ident = ctx->ident()->getText();
     if (slot->resource_spec_map().contains(ident)) {
       error_listener()->semanticError(
-          ctx->ident()->start,
+          file_names_[context_file_map_.at(ctx)], ctx->ident()->start,
           absl::StrCat("Resources '", ident, "': duplicate definition"));
       return;
     }
@@ -792,6 +836,7 @@ TemplateExpression *InstructionSetVisitor::VisitExpression(ExpressionCtx *ctx,
                                                            Instruction *inst) {
   if (ctx == nullptr) return nullptr;
   if (ctx->negop() != nullptr) {
+    context_file_map_.insert({ctx->expr, context_file_map_.at(ctx)});
     TemplateExpression *expr = VisitExpression(ctx->expr, slot, inst);
     if (expr == nullptr) return nullptr;
     return new TemplateNegate(expr);
@@ -799,8 +844,10 @@ TemplateExpression *InstructionSetVisitor::VisitExpression(ExpressionCtx *ctx,
 
   if (ctx->mulop() != nullptr) {
     std::string op = ctx->mulop()->getText();
+    context_file_map_.insert({ctx->lhs, context_file_map_.at(ctx)});
     TemplateExpression *lhs = VisitExpression(ctx->lhs, slot, inst);
     if (lhs == nullptr) return nullptr;
+    context_file_map_.insert({ctx->rhs, context_file_map_.at(ctx)});
     TemplateExpression *rhs = VisitExpression(ctx->rhs, slot, inst);
     if (rhs == nullptr) {
       delete lhs;
@@ -812,8 +859,10 @@ TemplateExpression *InstructionSetVisitor::VisitExpression(ExpressionCtx *ctx,
 
   if (ctx->addop() != nullptr) {
     std::string op = ctx->addop()->getText();
+    context_file_map_.insert({ctx->lhs, context_file_map_.at(ctx)});
     TemplateExpression *lhs = VisitExpression(ctx->lhs, slot, inst);
     if (lhs == nullptr) return nullptr;
+    context_file_map_.insert({ctx->rhs, context_file_map_.at(ctx)});
     TemplateExpression *rhs = VisitExpression(ctx->rhs, slot, inst);
     if (rhs == nullptr) {
       delete lhs;
@@ -828,19 +877,22 @@ TemplateExpression *InstructionSetVisitor::VisitExpression(ExpressionCtx *ctx,
     auto iter = template_function_evaluators_.find(function);
     if (iter == template_function_evaluators_.end()) {
       error_listener()->semanticError(
-          ctx->start, absl::StrCat("No function '", function, "' supported"));
+          file_names_[context_file_map_.at(ctx)], ctx->start,
+          absl::StrCat("No function '", function, "' supported"));
       return nullptr;
     }
     auto evaluator = iter->second;
     if (ctx->expression().size() != evaluator.arity) {
       error_listener()->semanticError(
-          ctx->start, absl::StrCat("Function '", function, "' takes ",
-                                   evaluator.arity, " parameters, but ",
-                                   ctx->expression().size(), " were given"));
+          file_names_[context_file_map_.at(ctx)], ctx->start,
+          absl::StrCat("Function '", function, "' takes ", evaluator.arity,
+                       " parameters, but ", ctx->expression().size(),
+                       " were given"));
     }
     auto *args = new TemplateInstantiationArgs;
     bool has_error = false;
     for (auto *expr_ctx : ctx->expression()) {
+      context_file_map_.insert({expr_ctx, context_file_map_.at(ctx)});
       auto *expr = VisitExpression(expr_ctx, slot, inst);
       if (expr == nullptr) {
         has_error = true;
@@ -859,6 +911,7 @@ TemplateExpression *InstructionSetVisitor::VisitExpression(ExpressionCtx *ctx,
   }
 
   if (ctx->paren_expr != nullptr) {
+    context_file_map_.insert({ctx->paren_expr, context_file_map_.at(ctx)});
     return VisitExpression(ctx->paren_expr, slot, inst);
   }
 
@@ -888,7 +941,7 @@ TemplateExpression *InstructionSetVisitor::VisitExpression(ExpressionCtx *ctx,
       auto *op = inst->GetDestOp(ident);
       if (op == nullptr) {
         error_listener()->semanticError(
-            ctx->start,
+            file_names_[context_file_map_.at(ctx)], ctx->start,
             absl::StrCat("'", ident,
                          "' is not a valid destination operand for opcode '",
                          inst->opcode()->name(), "'"));
@@ -901,7 +954,8 @@ TemplateExpression *InstructionSetVisitor::VisitExpression(ExpressionCtx *ctx,
       // expr is null, this means that the destination operand has a decode
       // time computed latency. This is a special case that will be addressed
       // later. For now, signal an unsupported error.
-      error_listener()->semanticError(ctx->start,
+      error_listener()->semanticError(file_names_[context_file_map_.at(ctx)],
+                                      ctx->start,
                                       "Decode time evaluation of latency "
                                       "expression not supported for resources");
       return nullptr;
@@ -911,20 +965,24 @@ TemplateExpression *InstructionSetVisitor::VisitExpression(ExpressionCtx *ctx,
     if (expr != nullptr) return expr->DeepCopy();
 
     error_listener()->semanticError(
-        ctx->start, absl::StrCat("Unable to evaluate expression: ", "'",
-                                 ctx->getText(), "'"));
+        file_names_[context_file_map_.at(ctx)], ctx->start,
+        absl::StrCat("Unable to evaluate expression: ", "'", ctx->getText(),
+                     "'"));
   }
 
   return nullptr;
 }
 
 DestinationOperand *InstructionSetVisitor::FindDestinationOpInExpression(
-    ExpressionCtx *ctx, const Slot *slot, const Instruction *inst) const {
+    ExpressionCtx *ctx, const Slot *slot, const Instruction *inst) {
   if (ctx == nullptr) return nullptr;
   if (ctx->negop() != nullptr) {
+    context_file_map_.insert({ctx->expr, context_file_map_.at(ctx)});
     return FindDestinationOpInExpression(ctx->expr, slot, inst);
   }
   if ((ctx->mulop() != nullptr) || (ctx->addop() != nullptr)) {
+    context_file_map_.insert({ctx->lhs, context_file_map_.at(ctx)});
+    context_file_map_.insert({ctx->rhs, context_file_map_.at(ctx)});
     auto *lhs = FindDestinationOpInExpression(ctx->lhs, slot, inst);
     auto *rhs = FindDestinationOpInExpression(ctx->rhs, slot, inst);
     if (lhs == nullptr) return rhs;
@@ -938,6 +996,7 @@ DestinationOperand *InstructionSetVisitor::FindDestinationOpInExpression(
     return nullptr;
   }
   if (ctx->paren_expr != nullptr) {
+    context_file_map_.insert({ctx->paren_expr, context_file_map_.at(ctx)});
     return FindDestinationOpInExpression(ctx->paren_expr, slot, inst);
   }
   if (ctx->NUMBER() != nullptr) {
@@ -947,6 +1006,7 @@ DestinationOperand *InstructionSetVisitor::FindDestinationOpInExpression(
     DestinationOperand *dest_op = nullptr;
     DestinationOperand *tmp_op;
     for (auto *expr_ctx : ctx->expression()) {
+      context_file_map_.insert({expr_ctx, context_file_map_.at(ctx)});
       tmp_op = FindDestinationOpInExpression(expr_ctx, slot, inst);
       if (dest_op == nullptr) {
         dest_op = tmp_op;
@@ -997,7 +1057,9 @@ void InstructionSetVisitor::VisitOpcodeList(OpcodeListCtx *ctx, Slot *slot) {
         absl::Status status =
             slot->AppendInheritedInstruction(inst_ptr, base_slot.arguments);
         if (!status.ok()) {
-          error_listener()->semanticError(ctx->start, status.message());
+          error_listener()->semanticError(
+              file_names_[context_file_map_.at(ctx)], ctx->start,
+              status.message());
         }
       }
     }
@@ -1008,7 +1070,8 @@ void InstructionSetVisitor::VisitOpcodeList(OpcodeListCtx *ctx, Slot *slot) {
   for (auto *inst : instruction_vec) {
     absl::Status status = slot->AppendInstruction(inst);
     if (!status.ok()) {
-      error_listener()->semanticError(ctx->start, status.message());
+      error_listener()->semanticError(file_names_[context_file_map_.at(ctx)],
+                                      ctx->start, status.message());
     }
   }
 }
@@ -1039,8 +1102,9 @@ void InstructionSetVisitor::VisitOpcodeAttributes(OpcodeAttributeListCtx *ctx,
       inst->ClearDisasmFormat();
       // Signal error if there is more than one disassembly spec.
       if (has_disasm) {
-        error_listener()->semanticError(attribute_ctx->start,
-                                        "Multiple disasm specifications");
+        error_listener()->semanticError(
+            file_names_[context_file_map_.at(slot->ctx())],
+            attribute_ctx->start, "Multiple disasm specifications");
         continue;
       }
       has_disasm = true;
@@ -1051,8 +1115,9 @@ void InstructionSetVisitor::VisitOpcodeAttributes(OpcodeAttributeListCtx *ctx,
         format.erase(0, 1);
         auto status = ParseDisasmFormat(format, inst);
         if (!status.ok()) {
-          error_listener()->semanticError(attribute_ctx->disasm_spec()->start,
-                                          status.message());
+          error_listener()->semanticError(
+              file_names_[context_file_map_.at(slot->ctx())],
+              attribute_ctx->disasm_spec()->start, status.message());
           has_disasm = false;
           break;
         }
@@ -1066,8 +1131,9 @@ void InstructionSetVisitor::VisitOpcodeAttributes(OpcodeAttributeListCtx *ctx,
       inst->ClearSemfuncCodeString();
       // Signal error if there is more than one semantic function spec.
       if (has_semfunc) {
-        error_listener()->semanticError(attribute_ctx->start,
-                                        "Multiple semfunc specifications");
+        error_listener()->semanticError(
+            file_names_[context_file_map_.at(slot->ctx())],
+            attribute_ctx->start, "Multiple semfunc specifications");
         continue;
       }
       has_semfunc = true;
@@ -1081,8 +1147,9 @@ void InstructionSetVisitor::VisitOpcodeAttributes(OpcodeAttributeListCtx *ctx,
       inst->ClearResourceSpecs();
       // Signal error if there is more than one resource specification.
       if (has_resources) {
-        error_listener()->semanticError(attribute_ctx->start,
-                                        "Multiple resource specifications");
+        error_listener()->semanticError(
+            file_names_[context_file_map_.at(slot->ctx())],
+            attribute_ctx->start, "Multiple resource specifications");
         continue;
       }
       has_resources = true;
@@ -1097,8 +1164,9 @@ void InstructionSetVisitor::VisitOpcodeAttributes(OpcodeAttributeListCtx *ctx,
       inst->ClearAttributeSpecs();
       // Signal error if there is more than one attribute specification.
       if (has_attributes) {
-        error_listener()->semanticError(attribute_ctx->start,
-                                        "Multiple attribute specifications");
+        error_listener()->semanticError(
+            file_names_[context_file_map_.at(slot->ctx())],
+            attribute_ctx->start, "Multiple attribute specifications");
         continue;
       }
       has_attributes = true;
@@ -1109,8 +1177,9 @@ void InstructionSetVisitor::VisitOpcodeAttributes(OpcodeAttributeListCtx *ctx,
     }
 
     // Unknown attribute type.
-    error_listener()->semanticError(attribute_ctx->start,
-                                    "Unknown attribute type");
+    error_listener()->semanticError(
+        file_names_[context_file_map_.at(slot->ctx())], attribute_ctx->start,
+        "Unknown attribute type");
   }
 }
 
@@ -1121,12 +1190,14 @@ void InstructionSetVisitor::VisitInstructionAttributeList(
     std::string name = attribute->IDENT()->getText();
     if (attributes.find(name) != attributes.end()) {
       error_listener()->semanticError(
-          attribute->start,
+          file_names_[context_file_map_.at(slot->ctx())], attribute->start,
           absl::StrCat("Duplicate attribute name '", name, "' in list"));
       continue;
     }
     InstructionSet::AddAttributeName(name);
     if (attribute->expression() != nullptr) {
+      context_file_map_.insert(
+          {attribute->expression(), context_file_map_.at(slot->ctx())});
       auto *expr = VisitExpression(attribute->expression(), slot, inst);
       attributes.emplace(name, expr);
       continue;
@@ -1158,8 +1229,9 @@ void InstructionSetVisitor::VisitSemfuncSpec(SemfuncSpecCtx *semfunc_spec,
   // should be one the opcode and one for each child opcode.
   for (auto *sem_func : semfunc_spec->STRING_LITERAL()) {
     if (child == nullptr) {
-      error_listener()->semanticWarning(sem_func->getSymbol(),
-                                        "Ignoring extra semfunc spec");
+      error_listener()->semanticWarning(
+          file_names_[context_file_map_.at(inst->slot()->ctx())],
+          sem_func->getSymbol(), "Ignoring extra semfunc spec");
       break;
     }
     std::string literal = sem_func->getText();
@@ -1170,6 +1242,7 @@ void InstructionSetVisitor::VisitSemfuncSpec(SemfuncSpecCtx *semfunc_spec,
   // Are there fewer specifier strings than child instructions?
   if (child != nullptr) {
     error_listener()->semanticError(
+        file_names_[context_file_map_.at(inst->slot()->ctx())],
         semfunc_spec->start,
         absl::StrCat("Fewer semfunc specifiers than expected for opcode '",
                      inst->opcode()->name(), "'"));
@@ -1186,7 +1259,7 @@ void InstructionSetVisitor::VisitResourceDetails(ResourceDetailsCtx *ctx,
     if (iter == slot->resource_spec_map().end()) {
       // This should never happen.
       error_listener()->semanticError(
-          ctx->start,
+          file_names_[context_file_map_.at(slot->ctx())], ctx->start,
           absl::StrCat("Internal error: Undefined resources name: '", name,
                        "'"));
       return;
@@ -1222,6 +1295,8 @@ InstructionSetVisitor::ProcessResourceReference(
   if (resource_item->begin_cycle == nullptr) {
     begin_expr = new TemplateConstant(0);
   } else {
+    context_file_map_.insert(
+        {resource_item->begin_cycle, context_file_map_.at(slot->ctx())});
     tmp_op =
         FindDestinationOpInExpression(resource_item->begin_cycle, slot, inst);
     if (tmp_op != nullptr) {
@@ -1229,12 +1304,15 @@ InstructionSetVisitor::ProcessResourceReference(
         dest_op = tmp_op;
       } else if (dest_op != tmp_op) {
         error_listener()->semanticError(
+            file_names_[context_file_map_.at(slot->ctx())],
             resource_item->start,
             "Resource reference can only reference a single "
             "destination operand");
         return return_value;
       }
     }
+    context_file_map_.insert(
+        {resource_item->begin_cycle, context_file_map_.at(slot->ctx())});
     begin_expr = VisitExpression(resource_item->begin_cycle, slot, inst);
   }
 
@@ -1248,6 +1326,8 @@ InstructionSetVisitor::ProcessResourceReference(
       end_expr = new TemplateConstant(0);
     }
   } else {
+    context_file_map_.insert(
+        {resource_item->end_cycle, context_file_map_.at(slot->ctx())});
     tmp_op =
         FindDestinationOpInExpression(resource_item->end_cycle, slot, inst);
     if (tmp_op != nullptr) {
@@ -1262,6 +1342,8 @@ InstructionSetVisitor::ProcessResourceReference(
         return return_value;
       }
     }
+    context_file_map_.insert(
+        {resource_item->end_cycle, context_file_map_.at(slot->ctx())});
     end_expr = VisitExpression(resource_item->end_cycle, slot, inst);
   }
   auto *ref = new ResourceReference(resource, dest_op, begin_expr, end_expr);
@@ -1362,7 +1444,7 @@ void InstructionSetVisitor::ProcessOpcodeSpec(
     // If there is no base slot, this is an error.
     if (slot->base_slots().empty()) {
       error_listener()->semanticError(
-          opcode_ctx->deleted,
+          file_names_[context_file_map_.at(slot->ctx())], opcode_ctx->deleted,
           absl::StrCat("Invalid deleted opcode '", opcode_name, "', slot '",
                        slot->name(), "' does not inherit from a base slot"));
       return;
@@ -1376,7 +1458,7 @@ void InstructionSetVisitor::ProcessOpcodeSpec(
     // If the opcode was not defined in any of the base slots, it is an error.
     if (!found) {
       error_listener()->semanticError(
-          opcode_ctx->deleted,
+          file_names_[context_file_map_.at(slot->ctx())], opcode_ctx->deleted,
           absl::StrCat("Base slot does not define or inherit opcode '",
                        opcode_name, "'"));
       return;
@@ -1396,13 +1478,13 @@ void InstructionSetVisitor::ProcessOpcodeSpec(
     // Multiple inheritance is not supported.
     if (found == 0) {
       error_listener()->semanticError(
-          opcode_ctx->deleted,
+          file_names_[context_file_map_.at(slot->ctx())], opcode_ctx->deleted,
           absl::StrCat("Base slot does not define or inherit opcode '",
                        opcode_name, "'"));
       return;
     } else if (found > 1) {
       error_listener()->semanticError(
-          opcode_ctx->deleted,
+          file_names_[context_file_map_.at(slot->ctx())], opcode_ctx->deleted,
           absl::StrCat("Multiple inheritance of opcodes is not supported: ",
                        opcode_name));
       return;
@@ -1414,8 +1496,9 @@ void InstructionSetVisitor::ProcessOpcodeSpec(
   // This is a new opcode, so let's create it. Signal failure if error.
   absl::StatusOr<Opcode *> result = opcode_factory->CreateOpcode(opcode_name);
   if (!result.ok()) {
-    error_listener()->semanticError(opcode_ctx->name,
-                                    result.status().message());
+    error_listener()->semanticError(
+        file_names_[context_file_map_.at(slot->ctx())], opcode_ctx->name,
+        result.status().message());
     return;
   }
 
@@ -1507,6 +1590,8 @@ void InstructionSetVisitor::VisitOpcodeOperands(OpcodeOperandsCtx *ctx,
       // expression, by '*' (wildcard), or omitted, in which case it
       // defaults to 1.
       if (dest_op->expression() != nullptr) {
+        context_file_map_.insert(
+            {dest_op->expression(), context_file_map_.at(slot->ctx())});
         child->opcode()->AppendDestOp(
             ident, VisitExpression(dest_op->expression(), slot, child));
       } else if (dest_op->wildcard != nullptr) {
@@ -1542,7 +1627,7 @@ absl::Status InstructionSetVisitor::ProcessOpcodeGenerator(
       std::string name = ident_ctx->getText();
       if (range_variable_names.contains(name)) {
         error_listener()->semanticError(
-            assign_ctx->start,
+            file_names_[context_file_map_.at(slot->ctx())], assign_ctx->start,
             absl::StrCat("Duplicate binding variable name '", name, "'"));
         continue;
       }
@@ -1555,7 +1640,7 @@ absl::Status InstructionSetVisitor::ProcessOpcodeGenerator(
       if (!RE2::PartialMatch(ctx->generator_opcode_spec_list()->getText(),
                              range_info->range_regexes.back())) {
         error_listener()->semanticWarning(
-            assign_ctx->start,
+            file_names_[context_file_map_.at(slot->ctx())], assign_ctx->start,
             absl::StrCat("Unreferenced binding variable '", name, "'"));
       }
     }
@@ -1606,6 +1691,7 @@ absl::Status InstructionSetVisitor::ProcessOpcodeGenerator(
     auto ident = input_text.substr(start_pos, end_pos - start_pos);
     if (!range_variable_names.contains(ident)) {
       error_listener()->semanticError(
+          file_names_[context_file_map_.at(slot->ctx())],
           ctx->generator_opcode_spec_list()->start,
           absl::StrCat("Undefined binding variable '", ident, "'"));
     }

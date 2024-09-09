@@ -78,6 +78,7 @@ class Instruction {
   // Getters and setters.
   Opcode *opcode() const { return opcode_; }
   Instruction *child() const { return child_; }
+  Slot *slot() const { return slot_; }
   void set_semfunc_code_string(std::string code_string) {
     semfunc_code_string_ = code_string;
   }

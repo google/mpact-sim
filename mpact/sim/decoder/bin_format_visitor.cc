@@ -21,6 +21,7 @@
 #include <istream>
 #include <list>
 #include <memory>
+#include <new>
 #include <string>
 #include <utility>
 #include <vector>
@@ -129,6 +130,7 @@ absl::Status BinFormatVisitor::Process(
   // Create and add the error listener.
   set_error_listener(std::make_unique<decoder::DecoderErrorListener>());
   error_listener_->set_file_name(file_names[0]);
+  file_names_.push_back(file_names[0]);
   parser_wrapper.parser()->removeErrorListeners();
   parser_wrapper.parser()->addErrorListener(error_listener());
 
@@ -365,7 +367,7 @@ std::unique_ptr<BinEncodingInfo> BinFormatVisitor::ProcessTopLevel(
     for (auto iter = reference_map.lower_bound(format->name());
          iter != reference_map.upper_bound(format->name()); iter++) {
       std::string parent_format_name = iter->second;
-      VisitFormatDef(format_decl_map_[parent_format_name],
+      VisitFormatDef(format_decl_map_.at(parent_format_name),
                      bin_encoding_info.get());
       format_list.push_back(bin_encoding_info->GetFormat(parent_format_name));
     }
@@ -378,9 +380,11 @@ void BinFormatVisitor::PreProcessDeclarations(DeclarationListCtx *ctx) {
   std::vector<IncludeFileCtx *> include_files;
 
   for (auto *declaration : ctx->declaration()) {
+    context_file_map_.insert({declaration, current_file_index_});
     // Create map from format name to format ctx.
     if (declaration->format_def() != nullptr) {
       auto format_def = declaration->format_def();
+      context_file_map_.insert({format_def, current_file_index_});
       auto name = format_def->name->getText();
       auto iter = format_decl_map_.find(name);
       if (iter != format_decl_map_.end()) {
@@ -396,6 +400,7 @@ void BinFormatVisitor::PreProcessDeclarations(DeclarationListCtx *ctx) {
     // Create map from instruction group name to instruction group ctx.
     if (declaration->instruction_group_def() != nullptr) {
       auto group_def = declaration->instruction_group_def();
+      context_file_map_.insert({group_def, current_file_index_});
       auto name = group_def->name->getText();
       auto iter = group_decl_map_.find(name);
       if (iter != group_decl_map_.end()) {
@@ -414,6 +419,7 @@ void BinFormatVisitor::PreProcessDeclarations(DeclarationListCtx *ctx) {
   }
   // Create map from decoder name to decoder ctx.
   for (auto *decoder_def : ctx->decoder_def()) {
+    context_file_map_.insert({decoder_def, current_file_index_});
     auto name = decoder_def->name->getText();
     auto iter = decoder_decl_map_.find(name);
     if (iter != decoder_decl_map_.end()) {
@@ -470,7 +476,10 @@ void BinFormatVisitor::ParseIncludeFile(antlr4::ParserRuleContext *ctx,
     }
   }
   std::string previous_file_name = error_listener()->file_name();
+  int previous_file_index_ = current_file_index_;
   error_listener()->set_file_name(file_name);
+  file_names_.push_back(file_name);
+  current_file_index_ = file_names_.size() - 1;
   auto *include_parser = new BinFmtAntlrParserWrapper(&include_file);
   // We need to save the parser state so it's available for analysis after
   // we are done with building the parse trees.
@@ -482,13 +491,16 @@ void BinFormatVisitor::ParseIncludeFile(antlr4::ParserRuleContext *ctx,
   DeclarationListCtx *declaration_list =
       include_parser->parser()->top_level()->declaration_list();
   include_file.close();
-  error_listener()->set_file_name(previous_file_name);
   if (error_listener()->syntax_error_count() > 0) {
+    error_listener()->set_file_name(previous_file_name);
+    current_file_index_ = previous_file_index_;
     return;
   }
   include_file_stack_.push_back(file_name);
   PreProcessDeclarations(declaration_list);
   include_file_stack_.pop_back();
+  error_listener()->set_file_name(previous_file_name);
+  current_file_index_ = previous_file_index_;
 }
 
 void BinFormatVisitor::VisitFormatDef(FormatDefCtx *ctx,
@@ -505,7 +517,7 @@ void BinFormatVisitor::VisitFormatDef(FormatDefCtx *ctx,
     // Must specify either a width or it must inherit from a format that has
     // a width.
     error_listener_->semanticError(
-        ctx->start,
+        file_names_[context_file_map_.at(ctx)], ctx->start,
         absl::StrCat("Format '", format_name,
                      "': must specify a width or inherited format"));
     return;
@@ -523,13 +535,14 @@ void BinFormatVisitor::VisitFormatDef(FormatDefCtx *ctx,
     }
     if (parent_format == nullptr) {
       error_listener_->semanticError(
-          ctx->inherits_from()->start,
+          file_names_[context_file_map_.at(ctx)], ctx->inherits_from()->start,
           absl::StrCat("Parent format '", parent_name, "' not defined"));
       return;
     } else {
       int parent_width = parent_format->declared_width();
       if ((format_width != -1) && (format_width != parent_width)) {
         error_listener_->semanticError(
+            file_names_[context_file_map_.at(format_decl_map_.at(parent_name))],
             ctx->inherits_from()->start,
             absl::StrCat("Format '", format_name, "' declared width (",
                          format_width, ") differs from width inherited from '",
@@ -544,21 +557,26 @@ void BinFormatVisitor::VisitFormatDef(FormatDefCtx *ctx,
     format_res = encoding_info->AddFormat(format_name, format_width);
   }
   if (!format_res.ok()) {
-    error_listener_->semanticError(ctx->start, format_res.status().message());
+    error_listener_->semanticError(file_names_[context_file_map_.at(ctx)],
+                                   ctx->start, format_res.status().message());
     return;
   }
   // Parse the fields in the format.
   auto format = format_res.value();
+  auto file_index = context_file_map_.at(ctx);
   for (auto field : ctx->format_field_defs()->field_def()) {
+    context_file_map_.insert({field, file_index});
     VisitFieldDef(field, format, encoding_info);
   }
   // Parse the overlays in the format.
   for (auto overlay : ctx->format_field_defs()->overlay_def()) {
+    context_file_map_.insert({overlay, file_index});
     VisitOverlayDef(overlay, format);
   }
   auto status = format->ComputeAndCheckFormatWidth();
   if (!status.ok()) {
-    error_listener_->semanticError(ctx->start, status.message());
+    error_listener_->semanticError(file_names_[context_file_map_.at(ctx)],
+                                   ctx->start, status.message());
   }
 }
 
@@ -573,7 +591,8 @@ void BinFormatVisitor::VisitFieldDef(FieldDefCtx *ctx, Format *format,
     int width = ConvertToInt(ctx->index()->number());
     auto status = format->AddField(field_name, is_signed, width);
     if (!status.ok()) {
-      error_listener_->semanticError(ctx->field_name, status.message());
+      error_listener_->semanticError(file_names_[context_file_map_.at(ctx)],
+                                     ctx->field_name, status.message());
     }
     return;
   }
@@ -607,25 +626,29 @@ void BinFormatVisitor::VisitOverlayDef(OverlayDefCtx *ctx, Format *format) {
   // For now, only support overlays <= 64 bit wide.
   if (width > 64) {
     error_listener_->semanticError(
-        ctx->width->number()->start,
+        file_names_[context_file_map_.at(ctx)], ctx->width->number()->start,
         "Only overlays <= 64 bits are supported for now");
     return;
   }
   // Visit the bitfield spec items.
   auto overlay_res = format->AddFieldOverlay(name, is_signed, width);
   if (!overlay_res.ok()) {
-    error_listener_->semanticError(ctx->start, overlay_res.status().message());
+    error_listener_->semanticError(file_names_[context_file_map_.at(ctx)],
+                                   ctx->start, overlay_res.status().message());
     return;
   }
   auto *overlay = overlay_res.value();
+  int file_index = context_file_map_.at(ctx);
   for (auto *bit_field : ctx->bit_field_list()->bit_field_spec()) {
+    context_file_map_.insert({bit_field, file_index});
     VisitOverlayBitField(bit_field, overlay);
   }
   if (overlay->computed_width() != overlay->declared_width()) {
     error_listener_->semanticError(
-        ctx->start, absl::StrCat("Declared width (", overlay->declared_width(),
-                                 ") differs from computed width (",
-                                 overlay->computed_width(), ")"));
+        file_names_[context_file_map_.at(ctx)], ctx->start,
+        absl::StrCat("Declared width (", overlay->declared_width(),
+                     ") differs from computed width (",
+                     overlay->computed_width(), ")"));
   }
 }
 
@@ -643,13 +666,15 @@ void BinFormatVisitor::VisitOverlayBitField(BitFieldCtx *ctx,
       auto status = overlay->AddFieldReference(ctx->IDENT()->getText(),
                                                std::move(bit_ranges_));
       if (!status.ok()) {
-        error_listener_->semanticError(ctx->start, status.message());
+        error_listener_->semanticError(file_names_[context_file_map_.at(ctx)],
+                                       ctx->start, status.message());
       }
       return;
     }
     auto status = overlay->AddFieldReference(ctx->IDENT()->getText());
     if (!status.ok()) {
-      error_listener_->semanticError(ctx->start, status.message());
+      error_listener_->semanticError(file_names_[context_file_map_.at(ctx)],
+                                     ctx->start, status.message());
     }
     return;
   }
@@ -661,7 +686,8 @@ void BinFormatVisitor::VisitOverlayBitField(BitFieldCtx *ctx,
     }
     auto status = overlay->AddFormatReference(std::move(bit_ranges_));
     if (!status.ok()) {
-      error_listener_->semanticError(ctx->start, status.message());
+      error_listener_->semanticError(file_names_[context_file_map_.at(ctx)],
+                                     ctx->start, status.message());
     }
     return;
   }
@@ -680,14 +706,15 @@ InstructionGroup *BinFormatVisitor::VisitInstructionGroupDef(
   auto format_iter = format_decl_map_.find(group_name);
   if (format_iter != format_decl_map_.end()) {
     error_listener_->semanticError(
-        ctx->start, absl::StrCat(group_name, ": illegal use of format name"));
+        file_names_[context_file_map_.at(ctx)], ctx->start,
+        absl::StrCat(group_name, ": illegal use of format name"));
   }
   int width = ConvertToInt(ctx->number());
   std::string format_name = ctx->format->getText();
   auto iter = format_decl_map_.find(format_name);
   if (iter == format_decl_map_.end()) {
     error_listener_->semanticError(
-        ctx->start,
+        file_names_[context_file_map_.at(ctx)], ctx->start,
         absl::StrCat("Undefined format '", format_name,
                      "' used by instruction group '", group_name, "'"));
     return nullptr;
@@ -697,6 +724,7 @@ InstructionGroup *BinFormatVisitor::VisitInstructionGroupDef(
     // Verify that the format width = declared width and also <= 64 bits wide.
     if (format->declared_width() != width) {
       error_listener_->semanticError(
+          file_names_[context_file_map_.at(format_decl_map_.at(format_name))],
           ctx->start,
           absl::StrCat("Width of format '", format_name, "' (",
                        format->declared_width(),
@@ -706,20 +734,25 @@ InstructionGroup *BinFormatVisitor::VisitInstructionGroupDef(
     }
     if (format->declared_width() > 64) {
       error_listener_->semanticError(
-          ctx->start, absl::StrCat("Instruction group '", group_name,
-                                   "': width must be <= 64 bits"));
+          file_names_[context_file_map_.at(format_decl_map_.at(format_name))],
+          ctx->start,
+          absl::StrCat("Instruction group '", group_name,
+                       "': width must be <= 64 bits"));
     }
   }
   auto inst_group_res =
       encoding_info->AddInstructionGroup(group_name, width, format_name);
   if (!inst_group_res.ok()) {
-    error_listener_->semanticError(ctx->start,
+    error_listener_->semanticError(file_names_[context_file_map_.at(ctx)],
+                                   ctx->start,
                                    inst_group_res.status().message());
     return nullptr;
   }
   // Parse the instruction encoding definitions in the instruction group.
   auto *inst_group = inst_group_res.value();
+  int file_index = context_file_map_.at(ctx);
   for (auto *inst_def : ctx->instruction_def_list()->instruction_def()) {
+    context_file_map_.insert({inst_def, file_index});
     VisitInstructionDef(inst_def, inst_group);
   }
   return inst_group_res.value();
@@ -741,7 +774,7 @@ void BinFormatVisitor::VisitInstructionDef(InstructionDefCtx *ctx,
     auto iter = format_decl_map_.find(format_name);
     if (iter == format_decl_map_.end()) {
       error_listener_->semanticError(
-          ctx->start,
+          file_names_[context_file_map_.at(ctx)], ctx->start,
           absl::StrCat("Format '", format_name, "' referenced by instruction '",
                        name, "' not defined"));
     } else {
@@ -752,7 +785,7 @@ void BinFormatVisitor::VisitInstructionDef(InstructionDefCtx *ctx,
   if ((format != nullptr) &&
       (format->declared_width() != inst_group->width())) {
     error_listener_->semanticError(
-        ctx->start,
+        file_names_[context_file_map_.at(ctx)], ctx->start,
         absl::StrCat(
             "Length of format '", format_name, "' (", format->declared_width(),
             ") differs from the declared width of the instruction group (",
@@ -762,7 +795,9 @@ void BinFormatVisitor::VisitInstructionDef(InstructionDefCtx *ctx,
       inst_group->AddInstructionEncoding(ctx->format_name, name, format);
   if (format == nullptr) return;
   // Add constraints to the instruction encoding.
+  int file_index = context_file_map_.at(ctx);
   for (auto *constraint : ctx->field_constraint_list()->field_constraint()) {
+    context_file_map_.insert({constraint, file_index});
     VisitConstraint(format, constraint, inst_encoding);
   }
 }
@@ -776,6 +811,7 @@ void BinFormatVisitor::ProcessInstructionDefGenerator(
   // value or a structured binding assignment. If it's a binding assignment we
   // need to make sure each tuple has the same number of values as there are
   // idents to assign them to.
+  int file_index = context_file_map_.at(ctx);
   for (auto *assign_ctx : ctx->range_assignment()) {
     auto *range_info = new RangeAssignmentInfo();
     range_info_vec.push_back(range_info);
@@ -783,7 +819,7 @@ void BinFormatVisitor::ProcessInstructionDefGenerator(
       std::string name = ident_ctx->getText();
       if (range_variable_names.contains(name)) {
         error_listener()->semanticError(
-            assign_ctx->start,
+            file_names_[file_index], assign_ctx->start,
             absl::StrCat("Duplicate binding variable name '", name, "'"));
         continue;
       }
@@ -796,7 +832,7 @@ void BinFormatVisitor::ProcessInstructionDefGenerator(
       if (!RE2::PartialMatch(ctx->generator_instruction_def_list()->getText(),
                              range_info->range_regexes.back())) {
         error_listener()->semanticWarning(
-            assign_ctx->start,
+            file_names_[file_index], assign_ctx->start,
             absl::StrCat("Unreferenced binding variable '", name, "'."));
       }
     }
@@ -824,7 +860,7 @@ void BinFormatVisitor::ProcessInstructionDefGenerator(
         // Clean up.
         for (auto *info : range_info_vec) delete info;
         error_listener_->semanticError(
-            assign_ctx->start,
+            file_names_[file_index], assign_ctx->start,
             "Number of values differs from number of identifiers");
         return;
       }
@@ -856,7 +892,7 @@ void BinFormatVisitor::ProcessInstructionDefGenerator(
     auto ident = input_text.substr(start_pos, end_pos - start_pos);
     if (!range_variable_names.contains(ident)) {
       error_listener()->semanticError(
-          ctx->generator_instruction_def_list()->start,
+          file_names_[file_index], ctx->generator_instruction_def_list()->start,
           absl::StrCat("Undefined binding variable '", ident, "'"));
     }
     start_pos = end_pos;
@@ -880,6 +916,7 @@ void BinFormatVisitor::ProcessInstructionDefGenerator(
       parser->parser()->instruction_def_list()->instruction_def();
   // Process the opcode spec.
   for (auto *inst_def : instruction_defs) {
+    context_file_map_.insert({inst_def, file_index});
     VisitInstructionDef(inst_def, inst_group);
   }
   // Clean up.
@@ -938,14 +975,14 @@ void BinFormatVisitor::VisitConstraint(Format *format, FieldConstraintCtx *ctx,
     if (field != nullptr) {
       if (field->width != length) {
         error_listener_->semanticWarning(
-            ctx->start,
+            file_names_[context_file_map_.at(ctx)], ctx->start,
             absl::StrCat("Field '", field_name, "' has width ", field->width,
                          " but constraint value is ", length, " bits"));
       }
     } else if (overlay != nullptr) {
       if (overlay->computed_width() != length) {
         error_listener_->semanticWarning(
-            ctx->start,
+            file_names_[context_file_map_.at(ctx)], ctx->start,
             absl::StrCat("Overlay '", field_name, "' has width ",
                          overlay->computed_width(), " but constraint value is ",
                          length, " bits"));
@@ -973,7 +1010,8 @@ void BinFormatVisitor::VisitConstraint(Format *format, FieldConstraintCtx *ctx,
                                                value);
   }
   if (!status.ok()) {
-    error_listener_->semanticError(ctx->start, status.message());
+    error_listener_->semanticError(file_names_[context_file_map_.at(ctx)],
+                                   ctx->start, status.message());
   }
 }
 
@@ -992,12 +1030,14 @@ std::unique_ptr<BinEncodingInfo> BinFormatVisitor::VisitDecoderDef(
       opcode_enum =
           opcode_enum_literal.substr(1, opcode_enum_literal.size() - 2);
       if (opcode_enum.empty()) {
-        error_listener_->semanticError(attr_ctx->start,
-                                       "Empty opcode enum string");
+        file_names_[context_file_map_.at(ctx)],
+            error_listener_->semanticError(attr_ctx->start,
+                                           "Empty opcode enum string");
       }
       if (opcode_count > 0) {
-        error_listener_->semanticError(attr_ctx->start,
-                                       "More than one opcode enum declaration");
+        file_names_[context_file_map_.at(ctx)],
+            error_listener_->semanticError(
+                attr_ctx->start, "More than one opcode enum declaration");
       }
       opcode_count++;
     }
@@ -1024,8 +1064,9 @@ std::unique_ptr<BinEncodingInfo> BinFormatVisitor::VisitDecoderDef(
         decoder->namespaces().push_back(namespace_name->getText());
       }
       if (namespace_count > 0) {
-        error_listener_->semanticError(attr_ctx->start,
-                                       "More than one namespace declaration");
+        file_names_[context_file_map_.at(ctx)],
+            error_listener_->semanticError(
+                attr_ctx->start, "More than one namespace declaration");
       }
       namespace_count++;
       continue;
@@ -1045,19 +1086,20 @@ std::unique_ptr<BinEncodingInfo> BinFormatVisitor::VisitDecoderDef(
       } else {
         auto iter = group_decl_map_.find(group_name);
         if (iter != group_decl_map_.end()) {
+          context_file_map_.insert({iter->second, current_file_index_});
           inst_group =
               VisitInstructionGroupDef(iter->second, encoding_info.get());
         }
         if (inst_group == nullptr) {
           error_listener_->semanticError(
-              attr_ctx->start,
+              file_names_[context_file_map_.at(ctx)], attr_ctx->start,
               absl::StrCat("No such instruction group: '", group_name, "'"));
           continue;
         }
       }
       if (group_name_set.contains(group_name)) {
         error_listener_->semanticError(
-            attr_ctx->start,
+            file_names_[context_file_map_.at(ctx)], attr_ctx->start,
             absl::StrCat("Instruction group '", group_name, "' listed twice"));
         continue;
       }
@@ -1073,8 +1115,9 @@ std::unique_ptr<BinEncodingInfo> BinFormatVisitor::VisitDecoderDef(
       std::string group_name = attr_ctx->group_name()->IDENT()->getText();
       if (group_name_set.contains(group_name)) {
         error_listener_->semanticError(
-            attr_ctx->start, absl::StrCat("Instruction group '", group_name,
-                                          "' listed twice - ignored"));
+            file_names_[context_file_map_.at(ctx)], attr_ctx->start,
+            absl::StrCat("Instruction group '", group_name,
+                         "' listed twice - ignored"));
         continue;
       }
       std::vector<InstructionGroup *> child_groups;
@@ -1084,8 +1127,9 @@ std::unique_ptr<BinEncodingInfo> BinFormatVisitor::VisitDecoderDef(
         auto child_name = ident->getText();
         if (group_name_set.contains(child_name)) {
           error_listener_->semanticError(
-              attr_ctx->start, absl::StrCat("Instruction group listed twice: '",
-                                            child_name, "' - ignored"));
+              file_names_[context_file_map_.at(ctx)], attr_ctx->start,
+              absl::StrCat("Instruction group listed twice: '", child_name,
+                           "' - ignored"));
           continue;
         }
         InstructionGroup *child_group = nullptr;
@@ -1101,8 +1145,9 @@ std::unique_ptr<BinEncodingInfo> BinFormatVisitor::VisitDecoderDef(
           }
           if (exists) {
             error_listener_->semanticError(
-                attr_ctx->start, absl::StrCat("Instruction group '", child_name,
-                                              "' listed twice"));
+                file_names_[context_file_map_.at(ctx)], attr_ctx->start,
+                absl::StrCat("Instruction group '", child_name,
+                             "' listed twice"));
             continue;
           }
         } else {
@@ -1115,7 +1160,7 @@ std::unique_ptr<BinEncodingInfo> BinFormatVisitor::VisitDecoderDef(
           }
           if (child_group == nullptr) {
             error_listener_->semanticError(
-                attr_ctx->start,
+                file_names_[context_file_map_.at(ctx)], attr_ctx->start,
                 absl::StrCat("Instruction group '", child_name, "' not found"));
             continue;
           }
@@ -1126,7 +1171,7 @@ std::unique_ptr<BinEncodingInfo> BinFormatVisitor::VisitDecoderDef(
         // Check that the child groups all use the same instruction format.
         if (group_format_name != child_group->format_name()) {
           error_listener_->semanticError(
-              attr_ctx->start,
+              file_names_[context_file_map_.at(ctx)], attr_ctx->start,
               absl::StrCat("Instruction group '", child_name,
                            "' must use format '", group_format_name,
                            ", to be merged into group '", group_name, "'"));

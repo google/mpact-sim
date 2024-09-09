@@ -141,8 +141,9 @@ class InstructionSetVisitor {
   void ParseIncludeFile(antlr4::ParserRuleContext *ctx,
                         const std::string &file_name,
                         const std::vector<std::string> &dirs);
-  DestinationOperand *FindDestinationOpInExpression(
-      ExpressionCtx *ctx, const Slot *slot, const Instruction *inst) const;
+  DestinationOperand *FindDestinationOpInExpression(ExpressionCtx *ctx,
+                                                    const Slot *slot,
+                                                    const Instruction *inst);
   void PerformOpcodeOverrides(
       absl::flat_hash_set<OpcodeSpecCtx *> overridden_ops_set, Slot *slot);
   void PreProcessDeclarations(const std::vector<DeclarationCtx *> &ctx_vec);
@@ -209,6 +210,11 @@ class InstructionSetVisitor {
   // Include file strings.
   absl::btree_set<std::string> include_files_;
 
+  int current_file_index_ = 0;
+  // Vector of file names.
+  std::vector<std::string> file_names_;
+  // Map from context pointer to file index.
+  absl::flat_hash_map<antlr4::ParserRuleContext *, int> context_file_map_;
   // Include file roots.
   std::vector<std::string> include_dir_vec_;
   // Keep track of files that are included in case there is recursive includes.

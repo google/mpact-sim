@@ -136,6 +136,11 @@ class BinFormatVisitor {
     error_listener_ = std::move(listener);
   }
 
+  int current_file_index_ = 0;
+  // Vector of file names.
+  std::vector<std::string> file_names_;
+  // Map from context pointer to file index.
+  absl::flat_hash_map<const antlr4::ParserRuleContext *, int> context_file_map_;
   // This stores a vector of include file root directories.
   std::vector<std::string> include_dir_vec_;
   // Keep track of files that are included in case there is recursive includes.
