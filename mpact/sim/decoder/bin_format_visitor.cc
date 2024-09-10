@@ -1064,9 +1064,9 @@ std::unique_ptr<BinEncodingInfo> BinFormatVisitor::VisitDecoderDef(
         decoder->namespaces().push_back(namespace_name->getText());
       }
       if (namespace_count > 0) {
-        file_names_[context_file_map_.at(ctx)],
-            error_listener_->semanticError(
-                attr_ctx->start, "More than one namespace declaration");
+        error_listener_->semanticError(file_names_[context_file_map_.at(ctx)],
+                                       attr_ctx->start,
+                                       "More than one namespace declaration");
       }
       namespace_count++;
       continue;
