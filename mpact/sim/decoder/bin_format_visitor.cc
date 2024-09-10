@@ -1030,14 +1030,14 @@ std::unique_ptr<BinEncodingInfo> BinFormatVisitor::VisitDecoderDef(
       opcode_enum =
           opcode_enum_literal.substr(1, opcode_enum_literal.size() - 2);
       if (opcode_enum.empty()) {
-        file_names_[context_file_map_.at(ctx)],
-            error_listener_->semanticError(attr_ctx->start,
-                                           "Empty opcode enum string");
+        error_listener_->semanticError(file_names_[context_file_map_.at(ctx)],
+                                       attr_ctx->start,
+                                       "Empty opcode enum string");
       }
       if (opcode_count > 0) {
-        file_names_[context_file_map_.at(ctx)],
-            error_listener_->semanticError(
-                attr_ctx->start, "More than one opcode enum declaration");
+        error_listener_->semanticError(file_names_[context_file_map_.at(ctx)],
+                                       attr_ctx->start,
+                                       "More than one opcode enum declaration");
       }
       opcode_count++;
     }
