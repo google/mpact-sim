@@ -51,7 +51,8 @@ public enum CheriotCpu {
 // The MpactCheriotCPU class. This class derives from BaseCPU, which implements
 // a CPU in ReNode. It is the interface between ReNode and the mpact_cheriot
 // simulator library.
-public class MpactCheriotCPU : MpactBaseCPU, ICpuSupportingGdb {
+public class MpactCheriotCPU : MpactBaseCPU, ICluster<MpactCheriotCPU>,
+                               ICpuSupportingGdb {
 
     public MpactCheriotCPU(uint id, UInt64 memoryBase, UInt64 memorySize,
                            UInt64 revocationMemoryBase, string cpuType,
@@ -60,6 +61,7 @@ public class MpactCheriotCPU : MpactBaseCPU, ICpuSupportingGdb {
         : base(id, memoryBase, memorySize, cpuType, machine, endianness,
                bitness) {
         revocationMemBase = revocationMemoryBase;
+	Clustered = new MpactCheriotCPU[] { this };
     }
 
     ~MpactCheriotCPU() {
@@ -132,6 +134,10 @@ public class MpactCheriotCPU : MpactBaseCPU, ICpuSupportingGdb {
     }
     public void RemoveHooksAt(ulong addr) { /* empty */ }
     public void RemoveAllHooks() { /* empty */ }
+
+    // ICluster methods.
+    public new IEnumerable<ICluster<MpactCheriotCPU>> Clusters {get; } = new List<ICluster<MpactCheriotCPU>>(0);
+    public new IEnumerable<MpactCheriotCPU> Clustered {get; }
 
     // ICPUSupportingGdb methods.
 

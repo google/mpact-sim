@@ -45,7 +45,8 @@ namespace Antmicro.Renode.Peripherals.MpactCPU
 // The MpactRiscvCPU class. This class derives from BaseCPU, which implements
 // a CPU in ReNode. It is the interface between ReNode and the mpact_riscv32/64
 // simulator libraries.
-public class MpactRiscVCPU : MpactBaseCPU, ICpuSupportingGdb {
+public class MpactRiscVCPU : MpactBaseCPU, ICluster<MpactRiscVCPU>,
+                             ICpuSupportingGdb {
 
     public MpactRiscVCPU(uint id, UInt64 memoryBase, UInt64 memorySize,
                          string cpuType, IMachine machine,
@@ -53,6 +54,7 @@ public class MpactRiscVCPU : MpactBaseCPU, ICpuSupportingGdb {
                          CpuBitness bitness = CpuBitness.Bits32)
         : base(id, memoryBase, memorySize, cpuType, machine, endianness,
                bitness) {
+        Clustered = new MpactRiscVCPU[] { this };
     }
 
     ~MpactRiscVCPU() {
@@ -132,6 +134,10 @@ public class MpactRiscVCPU : MpactBaseCPU, ICpuSupportingGdb {
     }
     public void RemoveHooksAt(ulong addr) { /* empty */ }
     public void RemoveAllHooks() { /* empty */ }
+
+    // ICluster methods.
+    public new IEnumerable<ICluster<MpactRiscVCPU>> Clusters {get; } = new List<ICluster<MpactRiscVCPU>>(0);
+    public new IEnumerable<MpactRiscVCPU> Clustered {get; }
 
     // ICPUSupportingGdb methods.
 
