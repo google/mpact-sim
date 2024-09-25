@@ -16,6 +16,7 @@
 #define MPACT_SIM_GENERIC_COUNTERS_H_
 
 #include <cstdint>
+#include <functional>
 #include <string>
 #include <type_traits>
 #include <utility>
@@ -23,7 +24,6 @@
 
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
-#include "absl/types/variant.h"
 #include "mpact/sim/generic/counters_base.h"
 #include "mpact/sim/generic/variant_helper.h"
 #include "mpact/sim/proto/component_data.pb.h"

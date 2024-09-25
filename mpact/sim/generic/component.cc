@@ -18,6 +18,11 @@
 #include <utility>
 
 #include "absl/log/log.h"
+#include "absl/status/status.h"
+#include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
+#include "mpact/sim/generic/config.h"
+#include "mpact/sim/generic/counters_base.h"
 
 namespace mpact {
 namespace sim {

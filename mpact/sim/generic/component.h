@@ -21,8 +21,9 @@
 
 #include "absl/container/btree_map.h"
 #include "absl/status/status.h"
+#include "absl/strings/string_view.h"
 #include "mpact/sim/generic/config.h"
-#include "mpact/sim/generic/counters.h"
+#include "mpact/sim/generic/counters_base.h"
 #include "mpact/sim/proto/component_data.pb.h"
 
 namespace mpact {

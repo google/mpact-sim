@@ -142,3 +142,18 @@ cc_test(
         "@com_google_googletest//:gtest_main",
     ],
 )
+
+cc_test(
+    name = "cache_test",
+    size = "small",
+    srcs = ["cache_test.cc"],
+    deps = [
+        "//mpact/sim/generic:core",
+        "//mpact/sim/generic:counters",
+        "//mpact/sim/util/memory",
+        "//mpact/sim/util/memory:cache",
+        "@com_google_absl//absl/log:check",
+        "@com_google_googletest//:gtest",
+        "@com_google_googletest//:gtest_main",
+    ],
+)

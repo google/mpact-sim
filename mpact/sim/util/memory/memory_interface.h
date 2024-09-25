@@ -16,8 +16,6 @@
 #define MPACT_SIM_UTIL_MEMORY_MEMORY_INTERFACE_H_
 
 #include <cstdint>
-#include <functional>
-#include <type_traits>
 
 #include "mpact/sim/generic/data_buffer.h"
 #include "mpact/sim/generic/instruction.h"

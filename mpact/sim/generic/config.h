@@ -18,11 +18,11 @@
 #include <cstdint>
 #include <functional>
 #include <string>
-#include <utility>
 #include <variant>
 #include <vector>
 
 #include "absl/status/status.h"
+#include "absl/strings/string_view.h"
 #include "mpact/sim/generic/variant_helper.h"
 #include "mpact/sim/proto/component_data.pb.h"
 

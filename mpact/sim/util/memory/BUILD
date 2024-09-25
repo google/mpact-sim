@@ -65,3 +65,27 @@ cc_library(
         "@com_google_absl//absl/strings:str_format",
     ],
 )
+
+cc_library(
+    name = "cache",
+    srcs = [
+        "cache.cc",
+    ],
+    hdrs = [
+        "cache.h",
+    ],
+    copts = ["-O3"],
+    deps = [
+        ":memory",
+        "//mpact/sim/generic:component",
+        "//mpact/sim/generic:core",
+        "//mpact/sim/generic:counters",
+        "//mpact/sim/generic:instruction",
+        "@com_google_absl//absl/functional:bind_front",
+        "@com_google_absl//absl/log",
+        "@com_google_absl//absl/log:check",
+        "@com_google_absl//absl/numeric:bits",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/strings",
+    ],
+)
