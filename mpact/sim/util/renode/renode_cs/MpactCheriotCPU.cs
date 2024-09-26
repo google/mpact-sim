@@ -89,6 +89,14 @@ public class MpactCheriotCPU : MpactBaseCPU, ICluster<MpactCheriotCPU>,
             config_names.Add("clintPeriod");
             config_values.Add(clint_period.ToString("X"));
         }
+        if (icache_config != "") {
+            config_names.Add("iCache");
+            config_values.Add(icache_config);
+        }
+        if (dcache_config != "") {
+            config_names.Add("dCache");
+            config_values.Add(dcache_config);
+        }
     }
 
     public bool InstProfile {
@@ -109,6 +117,16 @@ public class MpactCheriotCPU : MpactBaseCPU, ICluster<MpactCheriotCPU>,
     public UInt64 ClintPeriod {
         get => clint_period;
         set => clint_period = value;
+    }
+
+    public string ICache {
+        get => icache_config;
+        set => icache_config = value;
+    }
+
+    public string DCache {
+        get => dcache_config;
+        set => dcache_config = value;
     }
 
     // ICPUWithHooks methods.
@@ -187,6 +205,8 @@ public class MpactCheriotCPU : MpactBaseCPU, ICluster<MpactCheriotCPU>,
     private UInt64 revocationMemBase;
     private UInt64 clint_mmr_base = 0x0;
     private UInt64 clint_period = 0;
+    private string icache_config = "";
+    private string dcache_config = "";
     private List<GDBFeatureDescriptor>
                 gdbFeatures = new List<GDBFeatureDescriptor>();
 }  // class MpactCheriotCPU

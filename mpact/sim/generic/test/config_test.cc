@@ -18,13 +18,11 @@
 #include <memory>
 #include <string>
 #include <utility>
-#include <variant>
 #include <vector>
 
 #include "absl/container/btree_map.h"
-#include "absl/memory/memory.h"
 #include "absl/status/status.h"
-#include "googlemock/include/gmock/gmock.h"
+#include "googlemock/include/gmock/gmock.h"  // IWYU pragma: keep
 #include "googletest/include/gtest/gtest.h"
 #include "mpact/sim/proto/component_data.pb.h"
 #include "src/google/protobuf/text_format.h"

@@ -142,7 +142,7 @@ class Config : public ConfigBase {
   // Add a callback on value written. Some configuration entries may be
   // modifiable during simulation, for example, an adjustable trade-off between
   // accuracy and speed, requiring a notification when the value changes. This
-  // supports this usecase. Note, the callback is made whenever the value is
+  // supports this use-case. Note, the callback is made whenever the value is
   // written to, not just if it changes.
   template <typename F>
   void AddValueWrittenCallback(F callback) {

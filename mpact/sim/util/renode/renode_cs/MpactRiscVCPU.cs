@@ -83,6 +83,14 @@ public class MpactRiscVCPU : MpactBaseCPU, ICluster<MpactRiscVCPU>,
             config_names.Add("stackEnd");
             config_values.Add(stack_end.ToString("X"));
         }
+        if (icache_config != "") {
+            config_names.Add("iCache");
+            config_values.Add(icache_config);
+        }
+        if (dcache_config != "") {
+            config_names.Add("dCache");
+            config_values.Add(dcache_config);
+        }
     }
 
     public bool InstProfile {
@@ -109,6 +117,16 @@ public class MpactRiscVCPU : MpactBaseCPU, ICluster<MpactRiscVCPU>,
             stack_end = value;
             stack_end_set = true;
         }
+    }
+
+    public string ICache {
+        get => icache_config;
+        set => icache_config = value;
+    }
+
+    public string DCache {
+        get => dcache_config;
+        set => dcache_config = value;
     }
 
     // ICPUWithHooks methods.
@@ -188,6 +206,8 @@ public class MpactRiscVCPU : MpactBaseCPU, ICluster<MpactRiscVCPU>,
     private bool stack_size_set = false;
     private ulong stack_end;
     private bool stack_end_set = false;
+    private string icache_config = "";
+    private string dcache_config = "";
     private List<GDBFeatureDescriptor>
                 gdbFeatures = new List<GDBFeatureDescriptor>();
 }  // class MpactRiscVCPU
