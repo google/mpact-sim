@@ -131,6 +131,15 @@ class Cache : public Component, public TaggedMemoryInterface {
   void Store(DataBuffer *address, DataBuffer *mask, int el_size,
              DataBuffer *db) override;
   void Store(uint64_t address, DataBuffer *db, DataBuffer *tags) override;
+  // Setters for the memory interfaces.
+  void set_memory(MemoryInterface *memory) {
+    memory_ = memory;
+    tagged_memory_ = nullptr;
+  }
+  void set_tagged_memory(TaggedMemoryInterface *tagged_memory) {
+    tagged_memory_ = tagged_memory;
+    memory_ = tagged_memory;
+  }
 
  private:
   // This struct represents a cache line.
@@ -158,12 +167,12 @@ class Cache : public Component, public TaggedMemoryInterface {
   // The cache.
   CacheLine *cache_lines_ = nullptr;
   // Shift amounts and mask used to compute the index from the address.
-  int block_shift_;
-  int set_shift_;
-  uint64_t index_mask_;
+  int block_shift_ = 0;
+  int set_shift_ = 0;
+  uint64_t index_mask_ = 0;
   // True if allocate cache line on write is enabled.
-  bool write_allocate_;
-  uint64_t num_sets_;
+  bool write_allocate_ = false;
+  uint64_t num_sets_ = 0;
   // Instruction object used to perform the writeback to the processor.
   Instruction *cache_inst_;
   CounterValueOutputBase<uint64_t> *cycle_counter_;

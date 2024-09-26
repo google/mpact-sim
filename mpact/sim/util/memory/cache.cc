@@ -189,9 +189,9 @@ void Cache::Load(uint64_t address, DataBuffer *db, Instruction *inst,
   (void)CacheLookup(address, db->size<uint8_t>(), /*is_read=*/true);
   if (memory_ == nullptr) return;
 
-  auto *cache_context = new CacheContext{context, db, inst, db->latency()};
-  context->IncRef();
-  inst->IncRef();
+  auto *cache_context = new CacheContext(context, db, inst, db->latency());
+  if (context) context->IncRef();
+  if (inst) inst->IncRef();
   db->set_latency(0);
   memory_->Load(address, db, cache_inst_, cache_context);
   cache_context->DecRef();
@@ -209,8 +209,8 @@ void Cache::Load(DataBuffer *address_db, DataBuffer *mask_db, int el_size,
   if (memory_ == nullptr) return;
 
   auto *cache_context = new CacheContext(context, db, inst, db->latency());
-  context->IncRef();
-  inst->IncRef();
+  if (context) context->IncRef();
+  if (inst) inst->IncRef();
   db->set_latency(0);
   memory_->Load(address_db, mask_db, el_size, db, cache_inst_, cache_context);
   cache_context->DecRef();
@@ -221,17 +221,19 @@ void Cache::Load(uint64_t address, DataBuffer *db, DataBuffer *tags,
   (void)CacheLookup(address, db->size<uint8_t>(), /*is_read=*/true);
   if (tagged_memory_ == nullptr) return;
 
-  auto *cache_context = new CacheContext{context, db, inst, db->latency()};
-  context->IncRef();
-  inst->IncRef();
+  auto *cache_context =
+      new CacheContext(context, db, tags, inst, db->latency());
+  if (context) context->IncRef();
+  if (inst) inst->IncRef();
   db->set_latency(0);
-  tagged_memory_->Load(address, db, cache_inst_, cache_context);
+  tagged_memory_->Load(address, db, tags, cache_inst_, cache_context);
   cache_context->DecRef();
 }
 
 void Cache::Store(uint64_t address, DataBuffer *db) {
   (void)CacheLookup(address, db->size<uint8_t>(), /*is_read=*/false);
   if (memory_ == nullptr) return;
+
   memory_->Store(address, db);
 }
 
@@ -266,7 +268,7 @@ void Cache::LoadChild(const Instruction *inst) {
   auto *og_inst = cache_context->inst;
   // Reset the db latency to the original value.
   db->set_latency(cache_context->latency);
-  if (nullptr != inst) {
+  if (nullptr != og_inst) {
     if (db->latency() > 0) {
       og_inst->IncRef();
       og_inst->state()->function_delay_line()->Add(db->latency(),

@@ -15,6 +15,8 @@
 #ifndef SIM_UTIL_MEMORY_FLAT_DEMAND_MEMORY_H_
 #define SIM_UTIL_MEMORY_FLAT_DEMAND_MEMORY_H_
 
+#include <cstdint>
+
 #include "absl/container/flat_hash_map.h"
 #include "mpact/sim/generic/data_buffer.h"
 #include "mpact/sim/generic/instruction.h"
