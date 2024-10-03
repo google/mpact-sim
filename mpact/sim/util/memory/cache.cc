@@ -286,7 +286,7 @@ void Cache::Load(uint64_t address, DataBuffer *db, DataBuffer *tags,
   } else {
     size = db->size<uint8_t>();
   }
-  int latency = db == nullptr ? 0 : db->latency();
+  int latency = (db == nullptr) ? 0 : db->latency();
 
   (void)CacheLookup(address, size, /*is_read=*/true);
   if (tagged_memory_ == nullptr) return;
