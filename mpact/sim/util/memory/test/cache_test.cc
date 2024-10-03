@@ -17,6 +17,7 @@
 #include <cstdint>
 
 #include "absl/log/check.h"
+#include "absl/status/status.h"
 #include "googlemock/include/gmock/gmock.h"  // IWYU pragma: keep
 #include "googletest/include/gtest/gtest.h"
 #include "mpact/sim/generic/counters.h"
@@ -55,6 +56,10 @@ class CacheTest : public testing::Test {
         cache_->GetCounter("read_around"));
     write_arounds_ = reinterpret_cast<SimpleCounter<uint64_t> *>(
         cache_->GetCounter("write_around"));
+    read_non_cacheable_ = reinterpret_cast<SimpleCounter<uint64_t> *>(
+        cache_->GetCounter("read_non_cacheable"));
+    write_non_cacheable_ = reinterpret_cast<SimpleCounter<uint64_t> *>(
+        cache_->GetCounter("write_non_cacheable"));
   }
 
   ~CacheTest() override {
@@ -72,6 +77,8 @@ class CacheTest : public testing::Test {
   SimpleCounter<uint64_t> *dirty_line_writebacks_;
   SimpleCounter<uint64_t> *read_arounds_;
   SimpleCounter<uint64_t> *write_arounds_;
+  SimpleCounter<uint64_t> *read_non_cacheable_;
+  SimpleCounter<uint64_t> *write_non_cacheable_;
   SimpleCounter<uint64_t> cycle_counter_;
 };
 
@@ -279,6 +286,92 @@ TEST_F(CacheTest, TaggedMemoryTest) {
   ld_tag_db->DecRef();
   st_data_db->DecRef();
   st_tag_db->DecRef();
+}
+
+TEST_F(CacheTest, CacheableRanges) {
+  // Create a cache 16kB, 16B blocks, direct mapped.
+  CHECK_OK(cache_->Configure("1k,16,1,true,c:0x1000:0x1fff,c:0x3000:0x3fff",
+                             &cycle_counter_));
+  // These accesses should be cacheable.
+  for (uint64_t address = 0x1000; address < 0x2000; address += 0x100) {
+    cache_->Load(address, db_, nullptr, nullptr);
+  }
+  EXPECT_EQ(read_non_cacheable_->GetValue(), 0);
+  EXPECT_EQ(read_misses_->GetValue(), 0x1000 / 0x100);
+  // These accesses should be non-cacheable.
+  for (uint64_t address = 0x2000; address < 0x3000; address += 0x100) {
+    cache_->Load(address, db_, nullptr, nullptr);
+  }
+  EXPECT_EQ(read_non_cacheable_->GetValue(), 0x1000 / 0x100);
+  EXPECT_EQ(read_misses_->GetValue(), 0x1000 / 0x100);
+  read_misses_->SetValue(0);
+  read_non_cacheable_->SetValue(0);
+  // These accesses should be cacheable.
+  for (uint64_t address = 0x3000; address < 0x4000; address += 0x100) {
+    cache_->Load(address, db_, nullptr, nullptr);
+  }
+  EXPECT_EQ(read_non_cacheable_->GetValue(), 0);
+  EXPECT_EQ(read_misses_->GetValue(), 0x1000 / 0x100);
+  // These accesses should be non-cacheable.
+  for (uint64_t address = 0x4000; address < 0x5000; address += 0x100) {
+    cache_->Load(address, db_, nullptr, nullptr);
+  }
+  EXPECT_EQ(read_non_cacheable_->GetValue(), 0x1000 / 0x100);
+  EXPECT_EQ(read_misses_->GetValue(), 0x1000 / 0x100);
+}
+
+TEST_F(CacheTest, NonCacheableRanges) {
+  // Create a cache 16kB, 16B blocks, direct mapped.
+  CHECK_OK(cache_->Configure("1k,16,1,true,nc:0x1000:0x1fff,nc:0x3000:0x3fff",
+                             &cycle_counter_));
+  // These accesses should be non-cacheable.
+  for (uint64_t address = 0x1000; address < 0x2000; address += 0x100) {
+    cache_->Load(address, db_, nullptr, nullptr);
+  }
+  EXPECT_EQ(read_non_cacheable_->GetValue(), 0x1000 / 0x100);
+  EXPECT_EQ(read_misses_->GetValue(), 0);
+  // These accesses should be cacheable.
+  for (uint64_t address = 0x2000; address < 0x3000; address += 0x100) {
+    cache_->Load(address, db_, nullptr, nullptr);
+  }
+  EXPECT_EQ(read_non_cacheable_->GetValue(), 0x1000 / 0x100);
+  EXPECT_EQ(read_misses_->GetValue(), 0x1000 / 0x100);
+  read_misses_->SetValue(0);
+  read_non_cacheable_->SetValue(0);
+  // These accesses should be non-cacheable.
+  for (uint64_t address = 0x3000; address < 0x4000; address += 0x100) {
+    cache_->Load(address, db_, nullptr, nullptr);
+  }
+  EXPECT_EQ(read_non_cacheable_->GetValue(), 0x1000 / 0x100);
+  EXPECT_EQ(read_misses_->GetValue(), 0);
+  // These accesses should be cacheable.
+  for (uint64_t address = 0x4000; address < 0x5000; address += 0x100) {
+    cache_->Load(address, db_, nullptr, nullptr);
+  }
+  EXPECT_EQ(read_non_cacheable_->GetValue(), 0x1000 / 0x100);
+  EXPECT_EQ(read_misses_->GetValue(), 0x1000 / 0x100);
+}
+
+TEST_F(CacheTest, CacheableRangesConfigErrors) {
+  absl::Status status;
+  // Not enough fields.
+  status = cache_->Configure("1k,16,1,true,c:0x1000,c:0x2000", &cycle_counter_);
+  EXPECT_EQ(status.code(), absl::StatusCode::kInvalidArgument);
+  // Mix of cacheable and non-cacheable ranges.
+  status = cache_->Configure("1k,16,1,true,c:0x1000:0x1fff,nc:0x2000:0x2fff",
+                             &cycle_counter_);
+  EXPECT_EQ(status.code(), absl::StatusCode::kInvalidArgument);
+  // Syntax error in number.
+  status = cache_->Configure("1k,16,1,true,c:0x1000x:0x1fff", &cycle_counter_);
+  EXPECT_EQ(status.code(), absl::StatusCode::kInvalidArgument);
+  status = cache_->Configure("1k,16,1,true,c:0x1000:0x1fxff", &cycle_counter_);
+  EXPECT_EQ(status.code(), absl::StatusCode::kInvalidArgument);
+  // Using neither c nor nc.
+  status = cache_->Configure("1k,16,1,true,x:0x1000:0x1fff", &cycle_counter_);
+  EXPECT_EQ(status.code(), absl::StatusCode::kInvalidArgument);
+  // Lower bound is greater than upper bound.
+  status = cache_->Configure("1k,16,1,true,c:0x1fff:0x1000", &cycle_counter_);
+  EXPECT_EQ(status.code(), absl::StatusCode::kInvalidArgument);
 }
 
 }  // namespace

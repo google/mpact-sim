@@ -14,6 +14,8 @@
 
 #include "mpact/sim/util/memory/cache.h"
 
+#include <unistd.h>
+
 #include <cstdint>
 #include <limits>
 #include <string>
@@ -46,6 +48,8 @@ Cache::Cache(std::string name, Component *parent, MemoryInterface *memory)
       dirty_line_writeback_counter_("dirty_line_writeback", 0ULL),
       read_around_counter_("read_around", 0ULL),
       write_around_counter_("write_around", 0ULL),
+      read_non_cacheable_counter_("read_non_cacheable", 0ULL),
+      write_non_cacheable_counter_("write_non_cacheable", 0ULL),
       memory_(memory),
       tagged_memory_(nullptr) {
   // Register the counters.
@@ -56,6 +60,8 @@ Cache::Cache(std::string name, Component *parent, MemoryInterface *memory)
   CHECK_OK(AddCounter(&dirty_line_writeback_counter_));
   CHECK_OK(AddCounter(&read_around_counter_));
   CHECK_OK(AddCounter(&write_around_counter_));
+  CHECK_OK(AddCounter(&read_non_cacheable_counter_));
+  CHECK_OK(AddCounter(&write_non_cacheable_counter_));
   cache_inst_ = new Instruction(nullptr);
   cache_inst_->set_semantic_function(absl::bind_front(&Cache::LoadChild, this));
 }
@@ -80,6 +86,10 @@ Cache::Cache(std::string name, Component *parent,
   CHECK_OK(AddCounter(&dirty_line_writeback_counter_));
   CHECK_OK(AddCounter(&read_around_counter_));
   CHECK_OK(AddCounter(&write_around_counter_));
+  CHECK_OK(AddCounter(&read_non_cacheable_counter_));
+  CHECK_OK(AddCounter(&write_non_cacheable_counter_));
+  cache_inst_ = new Instruction(nullptr);
+  cache_inst_->set_semantic_function(absl::bind_front(&Cache::LoadChild, this));
 }
 
 // The simple constructors just call the main constructors.
@@ -108,7 +118,7 @@ absl::Status Cache::Configure(const std::string &config,
   cycle_counter_ = cycle_counter;
   // Split the configuration string into fields, make sure there are 4 fields.
   std::vector<std::string> config_vec = absl::StrSplit(config, ',');
-  if (config_vec.size() != 4) {
+  if (config_vec.size() < 4) {
     return absl::InvalidArgumentError("Invalid configuration - too few fields");
   }
   // Compute the cache size in bytes, including any suffixes ('k', 'M', 'G').
@@ -127,11 +137,12 @@ absl::Status Cache::Configure(const std::string &config,
           absl::StrCat("Invalid cache size suffix: '", suffix, "'"));
     }
   }
-  // Sanity check the cache parameters.
+  // Line size in bytes.
   uint64_t line_size = std::stoull(config_vec[1], &size);
   if (size != config_vec[1].size()) {
     return absl::InvalidArgumentError("Invalid value for line size");
   }
+  // Number of sets (set associativity) - 0 means fully set associative.
   num_sets_ = std::stoull(config_vec[2], &size);
   if (size != config_vec[2].size()) {
     return absl::InvalidArgumentError("Invalid value for number of sets");
@@ -144,6 +155,50 @@ absl::Status Cache::Configure(const std::string &config,
   } else {
     return absl::InvalidArgumentError("Invalid write allocate value");
   }
+  // If there are more than 4 entries, check for cacheable, or non-cacheable
+  // memory ranges. Format is: [c|nc]:<start_address>:<size>
+  for (int i = 4; i < config_vec.size(); i++) {
+    std::vector<std::string> range_vec = absl::StrSplit(config_vec[i], ':');
+    if (range_vec.size() != 3) {
+      return absl::InvalidArgumentError(
+          "Invalid (non)cacheable range - must have 3 fields");
+    }
+    uint64_t range_start = std::stoull(range_vec[1], &size, 0);
+    if (size != range_vec[1].size()) {
+      return absl::InvalidArgumentError(
+          "Invalid cacheable range - invalid start address");
+    }
+    uint64_t range_end = std::stoull(range_vec[2], &size, 0);
+    if (size != range_vec[2].size()) {
+      return absl::InvalidArgumentError(
+          "Invalid cacheable range - invalid size");
+    }
+    if (range_start > range_end) {
+      return absl::InvalidArgumentError(
+          "Invalid cacheable range - start address is greater than end "
+          "address");
+    }
+    if ((range_vec[0] != "c") && (range_vec[0] != "nc")) {
+      return absl::InvalidArgumentError(
+          "Invalid cacheable range - must start with 'c' or 'nc'");
+    }
+    if (range_vec[0] == "c") {
+      if (!non_cacheable_ranges_.empty()) {
+        return absl::InvalidArgumentError(
+            "Cannot mix cacheable and non-cacheable ranges");
+      }
+      cacheable_ranges_.insert(AddressRange(range_start, range_end));
+      has_cacheable_ = true;
+    } else {
+      if (!cacheable_ranges_.empty()) {
+        return absl::InvalidArgumentError(
+            "Cannot mix cacheable and non-cacheable ranges");
+      }
+      non_cacheable_ranges_.insert(AddressRange(range_start, range_end));
+      has_non_cacheable_ = true;
+    }
+  }
+  // Sanity check more cache parameters.
   if (!absl::has_single_bit(cache_size)) {
     return absl::InvalidArgumentError("Cache size is not a power of 2");
   }
@@ -187,6 +242,7 @@ absl::Status Cache::Configure(const std::string &config,
 void Cache::Load(uint64_t address, DataBuffer *db, Instruction *inst,
                  ReferenceCount *context) {
   (void)CacheLookup(address, db->size<uint8_t>(), /*is_read=*/true);
+
   if (memory_ == nullptr) return;
 
   auto *cache_context = new CacheContext(context, db, inst, db->latency());
@@ -291,6 +347,25 @@ int Cache::CacheLookup(uint64_t address, int size, bool is_read) {
   uint64_t first_block = address >> block_shift_;
   uint64_t last_block = (address + size - 1) >> block_shift_;
   for (uint64_t block = first_block; block <= last_block; block++) {
+    // Check each access to see if it is cachaeable or not.
+    if (has_cacheable_ || has_non_cacheable_) {
+      bool dont_fetch =
+          (has_cacheable_ && !cacheable_ranges_.contains(
+                                 AddressRange(address, address + size - 1))) ||
+          (has_non_cacheable_ && non_cacheable_ranges_.contains(AddressRange(
+                                     address, address + size - 1)));
+      if (dont_fetch) {
+        // Perform read/write-around.
+        if (is_read) {
+          read_non_cacheable_counter_.Increment(1ULL);
+        } else {
+          write_non_cacheable_counter_.Increment(1ULL);
+        }
+        // Skip the below since it's not cacheable.
+        continue;
+      }
+    }
+
     // Compute the cache index.
     uint64_t index = (block & index_mask_) << set_shift_;
     bool hit = false;

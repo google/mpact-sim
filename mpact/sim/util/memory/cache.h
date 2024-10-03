@@ -19,6 +19,7 @@
 #include <limits>
 #include <string>
 
+#include "absl/container/btree_set.h"
 #include "absl/status/status.h"
 #include "mpact/sim/generic/component.h"
 #include "mpact/sim/generic/counters.h"
@@ -142,6 +143,26 @@ class Cache : public Component, public TaggedMemoryInterface {
   }
 
  private:
+  // Address range struct used as key in maps from range to callback function.
+  struct AddressRange {
+    uint64_t start;
+    uint64_t end;
+    explicit AddressRange(uint64_t address) : start(address), end(address) {}
+    AddressRange(uint64_t start_address, uint64_t end_address)
+        : start(start_address), end(end_address) {}
+  };
+  // Comparator used in maps/sets to compare two address ranges so as to be able
+  // to order the keys. Note, two address ranges are "equal" (as in
+  // overlapping), if neither is less than the other. In this context A range is
+  // less than another if the addresses of the first are less than the addresses
+  // of the second. Thus if neither is less than the other, they overlap in
+  // in some way.
+  struct AddressRangeLess {
+    constexpr bool operator()(const AddressRange &lhs,
+                              const AddressRange &rhs) const {
+      return lhs.end < rhs.start;
+    }
+  };
   // This struct represents a cache line.
   struct CacheLine {
     // True if the line is valid.
@@ -173,6 +194,11 @@ class Cache : public Component, public TaggedMemoryInterface {
   // True if allocate cache line on write is enabled.
   bool write_allocate_ = false;
   uint64_t num_sets_ = 0;
+  // Cacheability ranges.
+  absl::btree_multiset<AddressRange, AddressRangeLess> non_cacheable_ranges_;
+  absl::btree_multiset<AddressRange, AddressRangeLess> cacheable_ranges_;
+  bool has_non_cacheable_ = false;
+  bool has_cacheable_ = false;
   // Instruction object used to perform the writeback to the processor.
   Instruction *cache_inst_;
   CounterValueOutputBase<uint64_t> *cycle_counter_;
@@ -184,6 +210,8 @@ class Cache : public Component, public TaggedMemoryInterface {
   SimpleCounter<uint64_t> dirty_line_writeback_counter_;
   SimpleCounter<uint64_t> read_around_counter_;
   SimpleCounter<uint64_t> write_around_counter_;
+  SimpleCounter<uint64_t> read_non_cacheable_counter_;
+  SimpleCounter<uint64_t> write_non_cacheable_counter_;
   // Memory interface pointers.
   MemoryInterface *memory_;
   TaggedMemoryInterface *tagged_memory_;
