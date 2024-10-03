@@ -248,6 +248,7 @@ void Cache::Load(uint64_t address, DataBuffer *db, Instruction *inst,
   auto *cache_context = new CacheContext(context, db, inst, db->latency());
   if (context) context->IncRef();
   if (inst) inst->IncRef();
+  db->IncRef();
   db->set_latency(0);
   memory_->Load(address, db, cache_inst_, cache_context);
   cache_context->DecRef();
@@ -267,6 +268,7 @@ void Cache::Load(DataBuffer *address_db, DataBuffer *mask_db, int el_size,
   auto *cache_context = new CacheContext(context, db, inst, db->latency());
   if (context) context->IncRef();
   if (inst) inst->IncRef();
+  db->IncRef();
   db->set_latency(0);
   memory_->Load(address_db, mask_db, el_size, db, cache_inst_, cache_context);
   cache_context->DecRef();
@@ -274,14 +276,33 @@ void Cache::Load(DataBuffer *address_db, DataBuffer *mask_db, int el_size,
 
 void Cache::Load(uint64_t address, DataBuffer *db, DataBuffer *tags,
                  Instruction *inst, ReferenceCount *context) {
-  (void)CacheLookup(address, db->size<uint8_t>(), /*is_read=*/true);
+  // Since db can be nullptr (for a tag only load), the size and latency may
+  // have to be computed differently. For size, base it on the number of tags
+  // that are being loaded. For latency, use 0.
+  int size = 0;
+  if (db == nullptr) {
+    int num_tags = tags->size<uint8_t>();
+    size = (address & ~0x7ULL) + (num_tags << 3) - address;
+  } else {
+    size = db->size<uint8_t>();
+  }
+  int latency = db == nullptr ? 0 : db->latency();
+
+  (void)CacheLookup(address, size, /*is_read=*/true);
   if (tagged_memory_ == nullptr) return;
 
-  auto *cache_context =
-      new CacheContext(context, db, tags, inst, db->latency());
+  if (inst == nullptr) {  // Just forward and return.
+    tagged_memory_->Load(address, db, tags, /*inst=*/nullptr, context);
+    return;
+  }
+
+  auto *cache_context = new CacheContext(context, db, inst, latency);
   if (context) context->IncRef();
   if (inst) inst->IncRef();
-  db->set_latency(0);
+  if (db) {
+    db->set_latency(0);
+    db->IncRef();
+  }
   tagged_memory_->Load(address, db, tags, cache_inst_, cache_context);
   cache_context->DecRef();
 }
@@ -319,25 +340,26 @@ void Cache::Store(uint64_t address, DataBuffer *db, DataBuffer *tags) {
 // read.
 void Cache::LoadChild(const Instruction *inst) {
   auto *cache_context = static_cast<CacheContext *>(inst->context());
-  auto *context = cache_context->context;
+  auto *og_context = cache_context->context;
   auto *db = cache_context->db;
   auto *og_inst = cache_context->inst;
   // Reset the db latency to the original value.
-  db->set_latency(cache_context->latency);
   if (nullptr != og_inst) {
-    if (db->latency() > 0) {
-      og_inst->IncRef();
-      og_inst->state()->function_delay_line()->Add(db->latency(),
-                                                   [og_inst, context]() {
-                                                     og_inst->Execute(context);
-                                                     if (context != nullptr)
-                                                       context->DecRef();
-                                                     og_inst->DecRef();
-                                                   });
+    if (cache_context->latency > 0) {
+      if (db != nullptr) db->set_latency(cache_context->latency);
+      og_inst->state()->function_delay_line()->Add(
+          db->latency(), [og_inst, og_context]() {
+            og_inst->Execute(og_context);
+            if (og_context != nullptr) og_context->DecRef();
+            og_inst->DecRef();
+          });
+    } else {
+      og_inst->Execute(og_context);
+      if (og_context != nullptr) og_context->DecRef();
+      og_inst->DecRef();
     }
-    cache_context->DecRef();
-    og_inst->DecRef();
   }
+  if (db) db->DecRef();
 }
 
 // Cache lookup function.
@@ -375,6 +397,7 @@ int Cache::CacheLookup(uint64_t address, int size, bool is_read) {
       if (line.valid && line.tag == block) {
         hit = true;
         line.lru = cycle_counter_->GetValue();
+        line.dirty |= !is_read;
         break;
       }
     }
@@ -386,14 +409,16 @@ int Cache::CacheLookup(uint64_t address, int size, bool is_read) {
       }
     } else {
       if (is_read) {
-        ReplaceBlock(block, is_read);
+        ReplaceBlock(block, /*is_read=*/true);
         miss_count++;
         read_miss_counter_.Increment(1ULL);
       } else {
-        ReplaceBlock(block, is_read);
         write_miss_counter_.Increment(1ULL);
         if (write_allocate_) {
+          ReplaceBlock(block, /*is_read=*/false);
           miss_count++;
+        } else {
+          write_around_counter_.Increment(1ULL);
         }
       }
     }

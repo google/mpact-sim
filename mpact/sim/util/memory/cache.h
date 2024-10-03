@@ -79,9 +79,6 @@ class Cache : public Component, public TaggedMemoryInterface {
     CacheContext(ReferenceCount *context_, DataBuffer *db_, Instruction *inst_,
                  int latency_)
         : context(context_), db(db_), inst(inst_), latency(latency_) {}
-    CacheContext(ReferenceCount *context_, DataBuffer *db_, DataBuffer *tags_,
-                 Instruction *inst_, int latency_)
-        : context(context_), db(db_), inst(inst_), latency(latency_) {}
   };
 
   // Two constructors depending on whether the cache is used with a tagged
@@ -139,7 +136,7 @@ class Cache : public Component, public TaggedMemoryInterface {
   }
   void set_tagged_memory(TaggedMemoryInterface *tagged_memory) {
     tagged_memory_ = tagged_memory;
-    memory_ = tagged_memory;
+    memory_ = static_cast<MemoryInterface *>(tagged_memory);
   }
 
  private:
