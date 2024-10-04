@@ -23,7 +23,6 @@
 #include "googletest/include/gtest/gtest.h"
 #include "mpact/sim/generic/arch_state.h"
 #include "mpact/sim/generic/data_buffer.h"
-#include "mpact/sim/generic/instruction.h"
 
 namespace {
 
@@ -67,6 +66,10 @@ TEST_F(FlatDemandMemoryTest, BasicLoadStore) {
   DataBuffer *ld_db2 = arch_state_->db_factory()->Allocate<uint16_t>(1);
   DataBuffer *ld_db4 = arch_state_->db_factory()->Allocate<uint32_t>(1);
   DataBuffer *ld_db8 = arch_state_->db_factory()->Allocate<uint64_t>(1);
+  ld_db1->set_latency(0);
+  ld_db2->set_latency(0);
+  ld_db4->set_latency(0);
+  ld_db8->set_latency(0);
 
   mem->Load(0x1000, ld_db1, nullptr, nullptr);
   mem->Load(0x1002, ld_db2, nullptr, nullptr);
@@ -101,6 +104,10 @@ TEST_F(FlatDemandMemoryTest, SpanningLoadStore) {
   DataBuffer *ld_db2 = arch_state_->db_factory()->Allocate<uint16_t>(1);
   DataBuffer *ld_db4 = arch_state_->db_factory()->Allocate<uint32_t>(1);
   DataBuffer *ld_db8 = arch_state_->db_factory()->Allocate<uint64_t>(1);
+  ld_db1->set_latency(0);
+  ld_db2->set_latency(0);
+  ld_db4->set_latency(0);
+  ld_db8->set_latency(0);
 
   st_db1->Set<uint8_t>(0, 0x0F);
   st_db2->Set<uint16_t>(0, 0xA5A5);
@@ -138,6 +145,7 @@ TEST_F(FlatDemandMemoryTest, MultiLoadUnitStride) {
   DataBuffer *address_db = arch_state_->db_factory()->Allocate<uint64_t>(1);
   DataBuffer *mask_db = arch_state_->db_factory()->Allocate<bool>(4);
   DataBuffer *ld_db = arch_state_->db_factory()->Allocate<uint32_t>(4);
+  ld_db->set_latency(0);
   DataBuffer *st_db = arch_state_->db_factory()->Allocate<uint32_t>(4);
   auto ld_span = ld_db->Get<uint32_t>();
   auto st_span = st_db->Get<uint32_t>();
@@ -173,6 +181,9 @@ TEST_F(FlatDemandMemoryTest, HalfWordAddressable) {
   DataBuffer *ld_db2 = arch_state_->db_factory()->Allocate<uint16_t>(1);
   DataBuffer *ld_db4 = arch_state_->db_factory()->Allocate<uint32_t>(1);
   DataBuffer *ld_db8 = arch_state_->db_factory()->Allocate<uint64_t>(1);
+  ld_db2->set_latency(0);
+  ld_db4->set_latency(0);
+  ld_db8->set_latency(0);
 
   mem->Load(0x1000, ld_db2, nullptr, nullptr);
   mem->Load(0x1001, ld_db4, nullptr, nullptr);
@@ -195,13 +206,14 @@ TEST_F(FlatDemandMemoryTest, LargeBlockOfMemory) {
   auto mem = std::make_unique<FlatDemandMemory>();
   DataBuffer *ld_db = arch_state_->db_factory()->Allocate<uint8_t>(
       FlatDemandMemory::kAllocationSize * 2);
+  ld_db->set_latency(0);
   DataBuffer *st_db = arch_state_->db_factory()->Allocate<uint8_t>(
       FlatDemandMemory::kAllocationSize * 2);
   // Set the store data to known value.
-  std::memset(st_db->raw_ptr(), 0xbe, FlatDemandMemory::kAllocationSize);
+  std::memset(st_db->raw_ptr(), 0xbe, FlatDemandMemory::kAllocationSize * 2);
   mem->Store(0x1234, st_db);
   // Set the load data buffer to a different value.
-  std::memset(ld_db->raw_ptr(), 0xff, FlatDemandMemory::kAllocationSize);
+  std::memset(ld_db->raw_ptr(), 0xff, FlatDemandMemory::kAllocationSize * 2);
   mem->Load(0x1234, ld_db, nullptr, nullptr);
   // Compare the values loaded to the store data.
   EXPECT_THAT(ld_db->Get<uint8_t>(),

@@ -42,6 +42,7 @@ class CacheTest : public testing::Test {
     // Create a cache 16kB, 16B blocks, direct mapped.
     cache_ = new Cache("cache");
     db_ = db_factory_.Allocate<uint32_t>(1);
+    db_->set_latency(0);
     read_hits_ = reinterpret_cast<SimpleCounter<uint64_t> *>(
         cache_->GetCounter("read_hit"));
     read_misses_ = reinterpret_cast<SimpleCounter<uint64_t> *>(
@@ -215,6 +216,11 @@ TEST_F(CacheTest, MemoryTest) {
   DataBuffer *ld_db4 = db_factory_.Allocate<uint32_t>(1);
   DataBuffer *ld_db8 = db_factory_.Allocate<uint64_t>(1);
 
+  ld_db1->set_latency(0);
+  ld_db2->set_latency(0);
+  ld_db4->set_latency(0);
+  ld_db8->set_latency(0);
+
   cache_->Load(0x1000, ld_db1, nullptr, nullptr);
   cache_->Load(0x1002, ld_db2, nullptr, nullptr);
   cache_->Load(0x1004, ld_db4, nullptr, nullptr);
@@ -245,6 +251,9 @@ TEST_F(CacheTest, TaggedMemoryTest) {
   DataBuffer *ld_tag_db = db_factory_.Allocate<uint8_t>(16);
   DataBuffer *st_data_db = db_factory_.Allocate<uint8_t>(kTagGranule * 16);
   DataBuffer *st_tag_db = db_factory_.Allocate<uint8_t>(16);
+  ld_data_db->set_latency(0);
+  ld_tag_db->set_latency(0);
+
   cache_->Load(0x1000, ld_data_db, ld_tag_db, nullptr, nullptr);
   // The loaded data should be all zeros.
   for (int i = 0; i < 16; i++) {
