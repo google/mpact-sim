@@ -24,6 +24,7 @@
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
+#include "absl/container/flat_hash_set.h"
 #include "absl/status/status.h"
 #include "absl/strings/string_view.h"
 #include "antlr4-runtime/ParserRuleContext.h"
@@ -126,6 +127,10 @@ class BinFormatVisitor {
       const std::string &template_str_in) const;
   void VisitConstraint(Format *format, FieldConstraintCtx *ctx,
                        InstructionEncoding *inst_encoding);
+  InstructionGroup *VisitInstructionGroupNameList(
+      const std::string &group_name, GroupNameListCtx *ctx,
+      absl::flat_hash_set<std::string> &group_name_set,
+      BinEncodingInfo *encoding_info);
 
   // Accessors.
   decoder::DecoderErrorListener *error_listener() const {

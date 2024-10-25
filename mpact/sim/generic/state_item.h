@@ -15,6 +15,7 @@
 #ifndef MPACT_SIM_GENERIC_STATE_ITEM_H_
 #define MPACT_SIM_GENERIC_STATE_ITEM_H_
 
+#include <cstdint>
 #include <string>
 #include <type_traits>
 

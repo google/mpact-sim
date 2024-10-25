@@ -34,6 +34,7 @@ using DeclarationListCtx = BinFormatParser::Declaration_listContext;
 using FieldConstraintCtx = BinFormatParser::Field_constraintContext;
 using FieldDefCtx = BinFormatParser::Field_defContext;
 using FormatDefCtx = BinFormatParser::Format_defContext;
+using GroupNameListCtx = BinFormatParser::Group_name_listContext;
 using IncludeFileCtx = BinFormatParser::Include_fileContext;
 using InstructionGroupDefCtx = BinFormatParser::Instruction_group_defContext;
 using InstructionDefCtx = BinFormatParser::Instruction_defContext;

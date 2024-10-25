@@ -21,7 +21,6 @@
 #include <istream>
 #include <list>
 #include <memory>
-#include <new>
 #include <string>
 #include <utility>
 #include <vector>
@@ -709,53 +708,63 @@ InstructionGroup *BinFormatVisitor::VisitInstructionGroupDef(
         file_names_[context_file_map_.at(ctx)], ctx->start,
         absl::StrCat(group_name, ": illegal use of format name"));
   }
-  int width = ConvertToInt(ctx->number());
-  std::string format_name = ctx->format->getText();
-  auto iter = format_decl_map_.find(format_name);
-  if (iter == format_decl_map_.end()) {
-    error_listener_->semanticError(
-        file_names_[context_file_map_.at(ctx)], ctx->start,
-        absl::StrCat("Undefined format '", format_name,
-                     "' used by instruction group '", group_name, "'"));
-    return nullptr;
-  } else {
-    VisitFormatDef(iter->second, encoding_info);
-    auto *format = encoding_info->GetFormat(format_name);
-    // Verify that the format width = declared width and also <= 64 bits wide.
-    if (format->declared_width() != width) {
+  // If the width is specified, this is a single instruction group with
+  // format definitions.
+  if (ctx->number() != nullptr) {
+    int width = ConvertToInt(ctx->number());
+    std::string format_name = ctx->format->getText();
+    auto iter = format_decl_map_.find(format_name);
+    if (iter == format_decl_map_.end()) {
       error_listener_->semanticError(
-          file_names_[context_file_map_.at(format_decl_map_.at(format_name))],
-          ctx->start,
-          absl::StrCat("Width of format '", format_name, "' (",
-                       format->declared_width(),
-                       ") differs from the declared width of instruction "
-                       "group '",
-                       group_name, "' (", width, ")"));
+          file_names_[context_file_map_.at(ctx)], ctx->start,
+          absl::StrCat("Undefined format '", format_name,
+                       "' used by instruction group '", group_name, "'"));
+      return nullptr;
+    } else {
+      VisitFormatDef(iter->second, encoding_info);
+      auto *format = encoding_info->GetFormat(format_name);
+      // Verify that the format width = declared width and also <= 64 bits wide.
+      if (format->declared_width() != width) {
+        error_listener_->semanticError(
+            file_names_[context_file_map_.at(format_decl_map_.at(format_name))],
+            ctx->start,
+            absl::StrCat("Width of format '", format_name, "' (",
+                         format->declared_width(),
+                         ") differs from the declared width of instruction "
+                         "group '",
+                         group_name, "' (", width, ")"));
+      }
+      if (format->declared_width() > 64) {
+        error_listener_->semanticError(
+            file_names_[context_file_map_.at(format_decl_map_.at(format_name))],
+            ctx->start,
+            absl::StrCat("Instruction group '", group_name,
+                         "': width must be <= 64 bits"));
+      }
     }
-    if (format->declared_width() > 64) {
-      error_listener_->semanticError(
-          file_names_[context_file_map_.at(format_decl_map_.at(format_name))],
-          ctx->start,
-          absl::StrCat("Instruction group '", group_name,
-                       "': width must be <= 64 bits"));
+    auto inst_group_res =
+        encoding_info->AddInstructionGroup(group_name, width, format_name);
+    if (!inst_group_res.ok()) {
+      error_listener_->semanticError(file_names_[context_file_map_.at(ctx)],
+                                     ctx->start,
+                                     inst_group_res.status().message());
+      return nullptr;
     }
+    // Parse the instruction encoding definitions in the instruction group.
+    auto *inst_group = inst_group_res.value();
+    int file_index = context_file_map_.at(ctx);
+    for (auto *inst_def : ctx->instruction_def_list()->instruction_def()) {
+      context_file_map_.insert({inst_def, file_index});
+      VisitInstructionDef(inst_def, inst_group);
+    }
+    return inst_group_res.value();
   }
-  auto inst_group_res =
-      encoding_info->AddInstructionGroup(group_name, width, format_name);
-  if (!inst_group_res.ok()) {
-    error_listener_->semanticError(file_names_[context_file_map_.at(ctx)],
-                                   ctx->start,
-                                   inst_group_res.status().message());
-    return nullptr;
-  }
-  // Parse the instruction encoding definitions in the instruction group.
-  auto *inst_group = inst_group_res.value();
-  int file_index = context_file_map_.at(ctx);
-  for (auto *inst_def : ctx->instruction_def_list()->instruction_def()) {
-    context_file_map_.insert({inst_def, file_index});
-    VisitInstructionDef(inst_def, inst_group);
-  }
-  return inst_group_res.value();
+  // This is a group that combines multiple other instruction groups.
+  absl::flat_hash_set<std::string> group_name_set;
+  auto file_index = context_file_map_.at(ctx);
+  context_file_map_.insert({ctx->group_name_list(), file_index});
+  return VisitInstructionGroupNameList(group_name, ctx->group_name_list(),
+                                       group_name_set, encoding_info);
 }
 
 void BinFormatVisitor::VisitInstructionDef(InstructionDefCtx *ctx,
@@ -1078,6 +1087,12 @@ std::unique_ptr<BinEncodingInfo> BinFormatVisitor::VisitDecoderDef(
     if ((attr_ctx->group_name() != nullptr) &&
         (attr_ctx->group_name()->group_name_list() == nullptr)) {
       std::string group_name = attr_ctx->group_name()->IDENT()->getText();
+      if (group_name_set.contains(group_name)) {
+        error_listener_->semanticError(
+            file_names_[context_file_map_.at(ctx)], attr_ctx->start,
+            absl::StrCat("Instruction group '", group_name, "' listed twice"));
+        continue;
+      }
 
       auto map_iter = encoding_info->instruction_group_map().find(group_name);
       InstructionGroup *inst_group = nullptr;
@@ -1097,12 +1112,6 @@ std::unique_ptr<BinEncodingInfo> BinFormatVisitor::VisitDecoderDef(
           continue;
         }
       }
-      if (group_name_set.contains(group_name)) {
-        error_listener_->semanticError(
-            file_names_[context_file_map_.at(ctx)], attr_ctx->start,
-            absl::StrCat("Instruction group '", group_name, "' listed twice"));
-        continue;
-      }
       group_name_set.insert(group_name);
       decoder->AddInstructionGroup(inst_group);
       continue;
@@ -1110,104 +1119,104 @@ std::unique_ptr<BinEncodingInfo> BinFormatVisitor::VisitDecoderDef(
     // If it is a parent group, process it here.
     if ((attr_ctx->group_name() != nullptr) &&
         (attr_ctx->group_name()->group_name_list() != nullptr)) {
-      // Check each of the child groups. Visit any that haven't been visited
-      // yet, and make sure they all specify the same format.
       std::string group_name = attr_ctx->group_name()->IDENT()->getText();
       if (group_name_set.contains(group_name)) {
         error_listener_->semanticError(
             file_names_[context_file_map_.at(ctx)], attr_ctx->start,
-            absl::StrCat("Instruction group '", group_name,
-                         "' listed twice - ignored"));
+            absl::StrCat("Instruction group '", group_name, "' listed twice"));
         continue;
       }
-      std::vector<InstructionGroup *> child_groups;
-      std::string group_format_name;
-      // Iterate through the list of named "child" groups to combine.
-      for (auto *ident : attr_ctx->group_name()->group_name_list()->IDENT()) {
-        auto child_name = ident->getText();
-        if (group_name_set.contains(child_name)) {
-          error_listener_->semanticError(
-              file_names_[context_file_map_.at(ctx)], attr_ctx->start,
-              absl::StrCat("Instruction group listed twice: '", child_name,
-                           "' - ignored"));
-          continue;
-        }
-        InstructionGroup *child_group = nullptr;
-        auto map_iter = encoding_info->instruction_group_map().find(child_name);
-        if (map_iter != encoding_info->instruction_group_map().end()) {
-          child_group = map_iter->second;
-          bool exists = false;
-          for (auto const *group : child_groups) {
-            if (child_name == group->name()) {
-              exists = true;
-              break;
-            }
-          }
-          if (exists) {
-            error_listener_->semanticError(
-                file_names_[context_file_map_.at(ctx)], attr_ctx->start,
-                absl::StrCat("Instruction group '", child_name,
-                             "' listed twice"));
-            continue;
-          }
-        } else {
-          // The instruction group hasn't been visited yet, so look up the
-          // declaration and visit it now.
-          auto iter = group_decl_map_.find(child_name);
-          if (iter != group_decl_map_.end()) {
-            child_group =
-                VisitInstructionGroupDef(iter->second, encoding_info.get());
-          }
-          if (child_group == nullptr) {
-            error_listener_->semanticError(
-                file_names_[context_file_map_.at(ctx)], attr_ctx->start,
-                absl::StrCat("Instruction group '", child_name, "' not found"));
-            continue;
-          }
-        }
-        if (child_groups.empty()) {
-          group_format_name = child_group->format_name();
-        }
-        // Check that the child groups all use the same instruction format.
-        if (group_format_name != child_group->format_name()) {
-          error_listener_->semanticError(
-              file_names_[context_file_map_.at(ctx)], attr_ctx->start,
-              absl::StrCat("Instruction group '", child_name,
-                           "' must use format '", group_format_name,
-                           ", to be merged into group '", group_name, "'"));
-          continue;
-        }
-        child_groups.push_back(child_group);
+      auto file_index = context_file_map_.at(ctx);
+      context_file_map_.insert(
+          {attr_ctx->group_name()->group_name_list(), file_index});
+      auto *parent_group = VisitInstructionGroupNameList(
+          group_name, attr_ctx->group_name()->group_name_list(), group_name_set,
+          encoding_info.get());
+      if (parent_group == nullptr) {
+        continue;
       }
 
-      if (child_groups.empty()) {
-        error_listener_->semanticError(attr_ctx->start, "No child groups");
-        continue;
-      }
-      // Create the "parent" group and add all of the instructions from the
-      // child groups to it.
-      auto width = child_groups.front()->width();
-      auto res = encoding_info->AddInstructionGroup(group_name, width,
-                                                    group_format_name);
-      if (!res.ok()) {
-        error_listener_->semanticError(attr_ctx->start, res.status().message());
-        continue;
-      }
-      auto parent_group = res.value();
-      for (auto *child_group : child_groups) {
-        for (auto *encoding : child_group->encoding_vec()) {
-          parent_group->AddInstructionEncoding(
-              new InstructionEncoding(*encoding));
-        }
-      }
-      group_name_set.insert(parent_group->name());
+      group_name_set.insert(group_name);
       decoder->AddInstructionGroup(parent_group);
+      continue;
     }
   }
   if (group_name_set.empty()) {
     error_listener_->semanticError(ctx->start, "No instruction groups found");
   }
   return encoding_info;
+}
+
+InstructionGroup *BinFormatVisitor::VisitInstructionGroupNameList(
+    const std::string &group_name, GroupNameListCtx *ctx,
+    absl::flat_hash_set<std::string> &group_name_set,
+    BinEncodingInfo *encoding_info) {
+  std::vector<InstructionGroup *> child_groups;
+  std::string group_format_name;
+  // Iterate through the list of named "child" groups to combine.
+  for (auto *ident : ctx->IDENT()) {
+    auto child_name = ident->getText();
+    if (group_name_set.contains(child_name)) {
+      error_listener_->semanticError(
+          file_names_[context_file_map_.at(ctx)], ctx->start,
+          absl::StrCat("Instruction group added twice: '", child_name,
+                       "' - ignored"));
+      continue;
+    }
+    InstructionGroup *child_group = nullptr;
+    auto map_iter = encoding_info->instruction_group_map().find(child_name);
+    if (map_iter != encoding_info->instruction_group_map().end()) {
+      child_group = map_iter->second;
+    } else {
+      // The instruction group hasn't been visited yet, so look up the
+      // declaration and visit it now.
+      auto iter = group_decl_map_.find(child_name);
+      if (iter != group_decl_map_.end()) {
+        child_group = VisitInstructionGroupDef(iter->second, encoding_info);
+      }
+      if (child_group == nullptr) {
+        error_listener_->semanticError(
+            file_names_[context_file_map_.at(ctx)], ctx->start,
+            absl::StrCat("Instruction group '", child_name, "' not found"));
+        continue;
+      }
+    }
+    // If this is the first child group, then set the format name.
+    if (child_groups.empty()) {
+      group_format_name = child_group->format_name();
+    } else if (group_format_name != child_group->format_name()) {
+      // Check that the child groups all use the same instruction format.
+      error_listener_->semanticError(
+          file_names_[context_file_map_.at(ctx)], ctx->start,
+          absl::StrCat("Instruction group '", child_name, "' must use format '",
+                       group_format_name, ", to be merged into group '",
+                       group_name, "'"));
+      continue;
+    }
+    group_name_set.insert(child_name);
+    child_groups.push_back(child_group);
+  }
+
+  if (child_groups.empty()) {
+    error_listener_->semanticError(ctx->start, "No child groups");
+    return nullptr;
+  }
+  // Create the "parent" group and add all of the instructions from the
+  // child groups to it.
+  auto width = child_groups.front()->width();
+  auto res =
+      encoding_info->AddInstructionGroup(group_name, width, group_format_name);
+  if (!res.ok()) {
+    error_listener_->semanticError(ctx->start, res.status().message());
+    return nullptr;
+  }
+  auto parent_group = res.value();
+  for (auto *child_group : child_groups) {
+    for (auto *encoding : child_group->encoding_vec()) {
+      parent_group->AddInstructionEncoding(new InstructionEncoding(*encoding));
+    }
+  }
+  return parent_group;
 }
 
 }  // namespace bin_format

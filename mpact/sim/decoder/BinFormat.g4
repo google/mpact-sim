@@ -117,6 +117,7 @@ bit_index_range
 instruction_group_def
   : INSTRUCTION GROUP name=IDENT '[' number ']' ':' format=IDENT
     '{' instruction_def_list '}' ';'?
+  | INSTRUCTION GROUP name=IDENT '=' '{' group_name_list '}' ';'?
   ;
 
 instruction_def_list

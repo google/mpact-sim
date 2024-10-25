@@ -618,13 +618,13 @@ TEST_F(BinFormatVisitorTest, InstructionGroupErrors) {
       "Error: No such instruction group: 'InstGroup'");
   EXPECT_TRUE(ptr != std::string::npos);
   ptr = log_sink.error_log().find(
-      "Error: Instruction group 'inst32a' listed twice - ignored");
+      "Error: Instruction group added twice: 'inst32a' - ignored");
   EXPECT_TRUE(ptr != std::string::npos);
   ptr = log_sink.error_log().find(
-      "Error: Instruction group 'InstGroup2' listed twice - ignored");
+      "Error: Instruction group 'InstGroup2' listed twice");
   EXPECT_TRUE(ptr != std::string::npos);
   ptr = log_sink.error_log().find(
-      "Error: Instruction group 'inst32c' listed twice");
+      "Error: Instruction group added twice: 'inst32c' - ignored");
   EXPECT_TRUE(ptr != std::string::npos);
   ptr =
       log_sink.error_log().find("Error: Instruction group 'inst32d' not found");

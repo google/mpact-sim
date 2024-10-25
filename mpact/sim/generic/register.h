@@ -23,7 +23,6 @@
 #include <any>
 #include <cstdint>
 #include <functional>
-#include <map>
 #include <string>
 #include <vector>
 
@@ -49,7 +48,7 @@ template <typename T>
 class RegisterSourceOperand : public SourceOperandInterface {
  public:
   // Constructor. Note, default constructor deleted.
-  RegisterSourceOperand(RegisterBase *reg, const std::string op_name);
+  RegisterSourceOperand(RegisterBase *reg, std::string op_name);
   explicit RegisterSourceOperand(RegisterBase *reg);
 
   RegisterSourceOperand() = delete;
