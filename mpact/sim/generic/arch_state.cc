@@ -17,8 +17,15 @@
 #include <string>
 #include <utility>
 
+#include "absl/container/flat_hash_set.h"
+#include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
+#include "mpact/sim/generic/component.h"
+#include "mpact/sim/generic/data_buffer.h"
 #include "mpact/sim/generic/fifo.h"
+#include "mpact/sim/generic/function_delay_line.h"
+#include "mpact/sim/generic/operand_interface.h"
+#include "mpact/sim/generic/program_error.h"
 #include "mpact/sim/generic/register.h"
 
 namespace mpact {

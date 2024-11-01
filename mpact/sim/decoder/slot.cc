@@ -383,12 +383,18 @@ std::string Slot::GenerateResourceSetter(
   if (!simple_refs.empty()) {
     // First gather the resource references into a single vector, then request
     // the resource operands for all the resource references in that vector.
-    std::string sep = "";
     absl::StrAppend(&output,
                     "    std::vector<SimpleResourceEnum> hold_vec = {");
     for (auto const *simple : simple_refs) {
-      absl::StrAppend(&output, sep, "\n        SimpleResourceEnum::k",
-                      simple->resource->pascal_name(), ", ");
+      std::string resource_name;
+      if (simple->is_array) {
+        resource_name = absl::StrCat("SimpleResourceEnum::k",
+                                     simple->resource->pascal_name());
+      } else {
+        resource_name = absl::StrCat("SimpleResourceEnum::k",
+                                     simple->resource->pascal_name());
+      }
+      absl::StrAppend(&output, "\n        ", resource_name, ", ");
     }
     absl::StrAppend(&output,
                     "};\n\n"
@@ -416,15 +422,27 @@ std::string Slot::GenerateResourceSetter(
           &output, "#error Unable to get value of begin or end expression\n");
       continue;
     }
-    absl::StrAppend(&output,
-                    "    res_op = enc->GetComplexResourceOperand(slot, entry, ",
-                    opcode_enum, ", ComplexResourceEnum::k",
-                    complex->resource->pascal_name(), ", ");
-    absl::StrAppend(&output, *begin, ", ", *end, ");\n");
-    absl::StrAppend(&output,
-                    "    if (res_op != nullptr) {\n"
-                    "      inst->AppendResourceHold(res_op);\n"
-                    "    }\n");
+    if (complex->is_array) {
+      absl::StrAppend(
+          &output,
+          "    auto res_op_vec = enc->GetComplexResourceOperands(slot, entry, ",
+          opcode_enum, ", ListComplexResourceEnum::k",
+          complex->resource->pascal_name(), *begin, ", ", *end, ");\n");
+      absl::StrAppend(&output,
+                      "    for (auto res_op : res_op_vec) {\n"
+                      "      inst->AppendResourceHold(res_op);\n"
+                      "    }\n");
+    } else {
+      absl::StrAppend(
+          &output, "    res_op = enc->GetComplexResourceOperand(slot, entry, ",
+          opcode_enum, ", ComplexResourceEnum::k",
+          complex->resource->pascal_name(), ", ");
+      absl::StrAppend(&output, *begin, ", ", *end, ");\n");
+      absl::StrAppend(&output,
+                      "    if (res_op != nullptr) {\n"
+                      "      inst->AppendResourceHold(res_op);\n"
+                      "    }\n");
+    }
   }
 
   // Get all the simple resources that need to be reserved, then all the complex
@@ -473,8 +491,15 @@ std::string Slot::GenerateResourceSetter(
       for (auto iter = latency_map.lower_bound(latency);
            iter != latency_map.upper_bound(latency); ++iter) {
         auto *simple = iter->second;
-        absl::StrAppend(&output, sep, "\n        SimpleResourceEnum::k",
-                        simple->resource->pascal_name(), ",");
+        std::string resource_name;
+        if (simple->is_array) {
+          resource_name = absl::StrCat("SimpleResourceEnum::k",
+                                       simple->resource->pascal_name());
+        } else {
+          resource_name = absl::StrCat("SimpleResourceEnum::k",
+                                       simple->resource->pascal_name());
+        }
+        absl::StrAppend(&output, sep, "\n        ", resource_name, ",");
       }
       absl::StrAppend(
           &output,
@@ -504,16 +529,29 @@ std::string Slot::GenerateResourceSetter(
       // Get the integer values from the begin and end expression values.
       int *begin = std::get_if<int>(&begin_value.value());
       int *end = std::get_if<int>(&end_value.value());
-      absl::StrAppend(
-          &output,
-          "    res_op = enc->GetComplexResourceOperand(ComplexResourceEnum::k",
-          complex->resource->pascal_name(), ", ResourceArgumentEnum::k");
-      absl::StrAppend(&output, "None, slot, entry, ", *begin, ", ", *end,
-                      ");\n");
-      absl::StrAppend(&output,
-                      "    if (res != nullptr) {\n"
-                      "      inst->AppendResourceAcquire(res_op);\n"
-                      "    }\n");
+      if (complex->is_array) {
+        absl::StrAppend(&output,
+                        "    auto res_op_vec = "
+                        "enc->GetComplexResourceOperands(slot, entry, ",
+                        opcode_enum, ", ListComplexResourceEnum::k",
+                        complex->resource->pascal_name(), *begin, ", ", *end,
+                        ");\n");
+        absl::StrAppend(&output,
+                        "    for (auto res_op : res_op_vec) {\n"
+                        "      inst->AppendResourceHold(res_op);\n"
+                        "    }\n");
+      } else {
+        absl::StrAppend(
+            &output,
+            "    res_op = enc->GetComplexResourceOperand(slot, entry, ",
+            opcode_enum, ", ComplexResourceEnum::k",
+            complex->resource->pascal_name(), ", ");
+        absl::StrAppend(&output, *begin, ", ", *end, ");\n");
+        absl::StrAppend(&output,
+                        "    if (res_op != nullptr) {\n"
+                        "      inst->AppendResourceHold(res_op);\n"
+                        "    }\n");
+      }
     }
   }
   absl::StrAppend(&output, "  };\n\n");
@@ -586,39 +624,76 @@ std::string Slot::ListFuncGetterInitializations(
       }
       // Generate code to set the instruction's source operands.
       int source_no = 0;
-      for (const auto &src_name : inst->opcode()->source_op_name_vec()) {
-        std::string src_op_enum =
-            absl::StrCat("SourceOpEnum::k", ToPascalCase(src_name));
-        absl::StrAppend(&output, "        inst->AppendSource(enc->GetSource",
-                        "(slot_, entry, ", opcode_enum, ", ", src_op_enum, ", ",
-                        source_no++, "));\n");
+      for (const auto &src_op : inst->opcode()->source_op_vec()) {
+        // If the source operand is an array, then we need to iterate over the
+        // vector of operands that GetSources returns.
+        if (src_op.is_array) {
+          std::string src_op_enum =
+              absl::StrCat("ListSourceOpEnum::k", ToPascalCase(src_op.name));
+          absl::StrAppend(
+              &output,
+              "      {\n"
+              "         auto vec = enc->GetSources",
+              "(slot_, entry, ", opcode_enum, ", ", src_op_enum, ", ",
+              source_no,
+              ");\n"
+              "         for (auto *op : vec) inst->AppendSource(op);\n"
+              "      }\n");
+        } else {
+          std::string src_op_enum =
+              absl::StrCat("SourceOpEnum::k", ToPascalCase(src_op.name));
+          absl::StrAppend(&output, "        inst->AppendSource(enc->GetSource",
+                          "(slot_, entry, ", opcode_enum, ", ", src_op_enum,
+                          ", ", source_no++, "));\n");
+        }
       }
       // Generate code to set the instruction's destination operands.
       int dest_no = 0;
       for (auto const *dst_op : inst->opcode()->dest_op_vec()) {
-        std::string dest_op_enum =
-            absl::StrCat("DestOpEnum::k", dst_op->pascal_case_name());
+        std::string dest_op_enum;
+        if (dst_op->is_array()) {
+          dest_op_enum =
+              absl::StrCat("ListDestOpEnum::k", dst_op->pascal_case_name());
+        } else {
+          dest_op_enum =
+              absl::StrCat("DestOpEnum::k", dst_op->pascal_case_name());
+        }
+        std::string latency;
         if (dst_op->expression() == nullptr) {
+          latency = absl::StrCat("enc->GetLatency(slot_, entry, ", opcode_enum,
+                                 ", ", dest_op_enum, ", ", dest_no, ")");
+        } else {
+          auto result = dst_op->GetLatency();
+          if (!result.ok()) {
+            absl::StrAppend(&output,
+                            "#error \"Failed to get latency for operand '",
+                            dst_op->name(), "'\"");
+            dest_no++;
+            continue;
+          }
+          latency = absl::StrCat(result.value());
+          // If the operand is an array, then the latency is a vector.
+          if (dst_op->is_array()) {
+            latency = absl::StrCat("{", latency, "}");
+          }
+        }
+        if (dst_op->is_array()) {
+          absl::StrAppend(
+              &output,
+              "      {\n"
+              "         auto vec = enc->GetDestinations",
+              "(slot_, entry, ", opcode_enum, ", ", dest_op_enum, ", ", dest_no,
+              ", ", latency,
+              ");\n"
+              "         for (auto *op : vec) inst->AppendDestination(op);\n"
+              "      }");
+        } else {
           absl::StrAppend(
               &output, "        inst->AppendDestination(enc->GetDestination(",
               "slot_, entry, ", opcode_enum, ", ", dest_op_enum, ", ", dest_no,
-              ", enc->GetLatency(slot_, entry, ", opcode_enum, ", ",
-              dest_op_enum, " , ", dest_no, ")));\n");
+              ", ", latency, "));\n");
           dest_no++;
-          continue;
         }
-        auto result = dst_op->GetLatency();
-        if (!result.ok()) {
-          absl::StrAppend(&output,
-                          "#error \"Failed to get latency for operand '",
-                          dst_op->name(), "'\"");
-          dest_no++;
-          continue;
-        }
-        absl::StrAppend(&output,
-                        "        inst->AppendDestination(enc->GetDestination",
-                        "(slot_, entry, ", opcode_enum, ", ", dest_op_enum,
-                        ", ", dest_no, ", ", result.value(), "));\n");
         dest_no++;
       }
       absl::StrAppend(&output, "      });\n\n");

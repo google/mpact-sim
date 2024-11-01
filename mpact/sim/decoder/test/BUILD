@@ -14,7 +14,7 @@
 
 # This contains the test projects for the decoder.
 
-load("//mpact/sim/decoder:mpact_sim_isa.bzl", "mpact_cc_library", "mpact_cc_test", "mpact_isa_decoder", "mpact_proto_fmt_decoder")
+load("//mpact/sim/decoder:mpact_sim_isa.bzl", "mpact_bin_fmt_decoder", "mpact_cc_library", "mpact_cc_test", "mpact_isa_decoder", "mpact_proto_fmt_decoder")
 
 package(
     default_applicable_licenses = ["//:license"],
@@ -86,6 +86,7 @@ mpact_cc_test(
     deps = [
         "//mpact/sim/decoder:isa_parser",
         "@com_google_absl//absl/memory",
+        "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_googletest//:gtest",
@@ -486,6 +487,85 @@ cc_test(
     deps = [
         "//mpact/sim/decoder:proto_format_visitor",
         "@com_google_absl//absl/log:check",
+        "@com_google_googletest//:gtest",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_library(
+    name = "push_pop_instructions",
+    srcs = [
+        "push_pop.cc",
+    ],
+    hdrs = [
+        "push_pop.h",
+    ],
+    deps = [
+        "//mpact/sim/generic:instruction",
+    ],
+)
+
+cc_library(
+    name = "push_pop_decoder",
+    srcs = [
+        "push_pop_decoder.cc",
+        "push_pop_encoding.cc",
+    ],
+    hdrs = [
+        "push_pop_decoder.h",
+        "push_pop_encoding.h",
+    ],
+    deps = [
+        ":push_pop_bin_fmt",
+        ":push_pop_isa",
+        "//mpact/sim/generic:arch_state",
+        "//mpact/sim/generic:core",
+        "//mpact/sim/generic:instruction",
+        "//mpact/sim/generic:type_helpers",
+        "//mpact/sim/util/memory",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/functional:any_invocable",
+        "@com_google_absl//absl/log",
+    ],
+)
+
+mpact_isa_decoder(
+    name = "push_pop_isa",
+    src = "push_pop.isa",
+    includes = [],
+    isa_name = "PushPopInst",
+    prefix = "push_pop_inst",
+    deps = [
+        ":push_pop_instructions",
+        "@com_google_absl//absl/functional:bind_front",
+    ],
+)
+
+mpact_bin_fmt_decoder(
+    name = "push_pop_bin_fmt",
+    src = "push_pop.bin_fmt",
+    decoder_name = "PushPopInst",
+    includes = [],
+    prefix = "push_pop_inst",
+    deps = [
+        ":push_pop_isa",
+    ],
+)
+
+mpact_cc_test(
+    name = "array_operand_test",
+    size = "small",
+    srcs = [
+        "array_operand_test.cc",
+    ],
+    deps = [
+        ":push_pop_decoder",
+        ":push_pop_isa",
+        "//mpact/sim/generic:arch_state",
+        "//mpact/sim/generic:core",
+        "//mpact/sim/util/memory",
+        "@com_google_absl//absl/log:check",
+        "@com_google_absl//absl/strings",
         "@com_google_googletest//:gtest",
         "@com_google_googletest//:gtest_main",
     ],

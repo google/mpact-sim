@@ -169,12 +169,24 @@ void InstructionSet::AddAttributeName(const std::string &name) {
 //                                             OpcodeEnum opcode,
 //                                             SourceOpEnum source,
 //                                             int source_no) = 0;
+//   virtual std::vector<SourceOperandInterface *> GetSources(
+//               SlotEnum slot,
+//               int entry,
+//               OpcodeEnum opcode,
+//               ListSourceOpEnum list_source_op,
+//               int source_no) = 0;
 //   virtual DestinationOperandInterface *GetDestination(int latency,
 //                                                       SlotEnum slot,
 //                                                       int entry,
 //                                                       OpcodeEnum opcode,
 //                                                       DestOpEnum dest,
 //                                                       int dest_no) = 0;
+//   virtual std::vector<DestinationOperandInterface *> GetDestinations(
+//               SlotEnum slot,
+//               int entry,
+//               OpcodeEnum opcode,
+//               ListDestOpEnum dest_op,
+//               int dest_no) = 0;
 //   virtual int GetLatency(SlotEnum slot, int entry, OpcodeEnum opcode,
 //                          DestOpEnum dest) = 0;
 //   virtual ResourceOperandInterface *GetSimpleResourceOperand(
@@ -438,7 +450,9 @@ InstructionSet::StringPair InstructionSet::GenerateEnums(
   // Btree sets to sort by name.
   absl::btree_set<std::string> predicate_operands;
   absl::btree_set<std::string> source_operands;
+  absl::btree_set<std::string> list_source_operands;
   absl::btree_set<std::string> dest_operands;
+  absl::btree_set<std::string> list_dest_operands;
   absl::btree_set<std::string> dest_latency;
   // Insert PascalCase operand names into the sets to select unique names.
   for (auto const *slot : slot_order_) {
@@ -450,11 +464,19 @@ InstructionSet::StringPair InstructionSet::GenerateEnums(
         if (!opcode->predicate_op_name().empty()) {
           predicate_operands.insert(ToPascalCase(opcode->predicate_op_name()));
         }
-        for (auto const &source_op_name : opcode->source_op_name_vec()) {
-          source_operands.insert(ToPascalCase(source_op_name));
+        for (auto const &source_op : opcode->source_op_vec()) {
+          if (source_op.is_array) {
+            list_source_operands.insert(ToPascalCase(source_op.name));
+          } else {
+            source_operands.insert(ToPascalCase(source_op.name));
+          }
         }
         for (auto const *dest_op : opcode->dest_op_vec()) {
-          dest_operands.insert(dest_op->pascal_case_name());
+          if (dest_op->is_array()) {
+            list_dest_operands.insert(dest_op->pascal_case_name());
+          } else {
+            dest_operands.insert(dest_op->pascal_case_name());
+          }
           if (dest_op->expression() == nullptr) {
             dest_latency.insert(dest_op->pascal_case_name());
           }
@@ -483,6 +505,17 @@ InstructionSet::StringPair InstructionSet::GenerateEnums(
   absl::StrAppend(&h_output, "    kPastMaxValue = ", src_count,
                   ",\n"
                   "  };\n\n");
+  // Create enum for list source operands.
+  absl::StrAppend(&h_output, "  enum class ListSourceOpEnum {\n");
+  int list_src_count = 0;
+  absl::StrAppend(&h_output, "    kNone = ", list_src_count++, ",\n");
+  for (auto const &source_name : list_source_operands) {
+    absl::StrAppend(&h_output, "    k", source_name, " = ", list_src_count++,
+                    ",\n");
+  }
+  absl::StrAppend(&h_output, "    kPastMaxValue = ", list_src_count,
+                  ",\n"
+                  "  };\n\n");
   // Create enum for destination operands.
   absl::StrAppend(&h_output, "  enum class DestOpEnum {\n");
   int dst_count = 0;
@@ -493,7 +526,17 @@ InstructionSet::StringPair InstructionSet::GenerateEnums(
   absl::StrAppend(&h_output, "    kPastMaxValue = ", dst_count,
                   ",\n"
                   "  };\n\n");
-
+  // Create enum for list destination operands.
+  absl::StrAppend(&h_output, "  enum class ListDestOpEnum {\n");
+  int list_dst_count = 0;
+  absl::StrAppend(&h_output, "    kNone = ", list_dst_count++, ",\n");
+  for (auto const &dest_name : list_dest_operands) {
+    absl::StrAppend(&h_output, "    k", dest_name, " = ", list_dst_count++,
+                    ",\n");
+  }
+  absl::StrAppend(&h_output, "    kPastMaxValue = ", list_dst_count,
+                  ",\n"
+                  "  };\n\n");
   // Emit opcode enumeration type.
   absl::StrAppend(&h_output,
                   "  enum class OpcodeEnum {\n"
@@ -540,14 +583,14 @@ InstructionSet::StringPair InstructionSet::GenerateEnums(
   }
   absl::StrAppend(&h_output, "    kPastMaxValue = ", resource_count,
                   "\n  };\n\n");
-
+  // Complex resource enumeration type.
   absl::StrAppend(&h_output,
                   "  enum class ComplexResourceEnum {\n"
                   "    kNone = 0,\n");
   resource_count = 1;
   name_set.clear();
   for (auto const &[unused, resource_ptr] : resource_factory_->resource_map()) {
-    if (!resource_ptr->is_simple()) {
+    if (!resource_ptr->is_simple() && !resource_ptr->is_array()) {
       name_set.insert(resource_ptr->pascal_name());
     }
   }
@@ -556,7 +599,22 @@ InstructionSet::StringPair InstructionSet::GenerateEnums(
   }
   absl::StrAppend(&h_output, "    kPastMaxValue = ", resource_count,
                   "\n  };\n\n");
-
+  // List complex resource enumeration type.
+  absl::StrAppend(&h_output,
+                  "  enum class ListComplexResourceEnum {\n"
+                  "    kNone = 0,\n");
+  resource_count = 1;
+  name_set.clear();
+  for (auto const &[unused, resource_ptr] : resource_factory_->resource_map()) {
+    if (!resource_ptr->is_simple() && resource_ptr->is_array()) {
+      name_set.insert(resource_ptr->pascal_name());
+    }
+  }
+  for (auto const &name : name_set) {
+    absl::StrAppend(&h_output, "    k", name, " = ", resource_count++, ",\n");
+  }
+  absl::StrAppend(&h_output, "    kPastMaxValue = ", resource_count,
+                  "\n  };\n\n");
   // Emit instruction attribute types.
   absl::StrAppend(&h_output, "  enum class AttributeEnum {\n");
   int attribute_count = 0;

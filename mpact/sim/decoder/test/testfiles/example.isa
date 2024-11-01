@@ -42,6 +42,8 @@ slot a_side_ops {
     cvtfs{(pred : sy : dest(base + 1))};
     adds{(pred : sy, sx : dest(base))},
       attributes: {five = 1, six};
+    push{(pred : [rlist]: )};
+    pop{(pred : : [rlist])};
     addf{(pred : sy, sx : dest(base))};
     subf{(pred : sy, sx : dest(base))};
     mulf{(pred : sy, sx : dest(mult_plus_2))};

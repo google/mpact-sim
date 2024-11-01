@@ -47,6 +47,8 @@ class Resource {
   void set_is_simple(bool value) { is_simple_ = value; }
   bool is_multi_valued() const { return is_multi_valued_; }
   void set_is_multi_valued(bool value) { is_multi_valued_ = value; }
+  bool is_array() const { return is_array_; }
+  void set_is_array(bool value) { is_array_ = value; }
 
   const std::string &name() const { return name_; }
   const std::string &pascal_name() const { return pascal_name_; }
@@ -57,6 +59,7 @@ class Resource {
   std::string pascal_name_;
   bool is_multi_valued_ = false;
   bool is_simple_ = true;
+  bool is_array_ = false;
 };
 
 // Resource factory class. This is used so that there's a single registry of

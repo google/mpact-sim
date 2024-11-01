@@ -50,26 +50,31 @@ namespace instruction_set {
 class DestinationOperand {
  public:
   // Operand latency is defined by the expression.
-  DestinationOperand(std::string name, TemplateExpression *expression)
+  DestinationOperand(std::string name, bool is_array,
+                     TemplateExpression *expression)
       : name_(std::move(name)),
         pascal_case_name_(ToPascalCase(name_)),
-        expression_(expression) {}
+        expression_(expression),
+        is_array_(is_array) {}
   // Operand latency is a constant.
-  DestinationOperand(std::string name, int latency)
+  DestinationOperand(std::string name, bool is_array, int latency)
       : name_(std::move(name)),
         pascal_case_name_(ToPascalCase(name_)),
-        expression_(new TemplateConstant(latency)) {}
+        expression_(new TemplateConstant(latency)),
+        is_array_(is_array) {}
   // This constructor is used when the destination operand latency is specified
   // as '*' - meaning that it will be computed at the time of decode.
-  explicit DestinationOperand(std::string name)
+  explicit DestinationOperand(std::string name, bool is_array)
       : name_(std::move(name)),
         pascal_case_name_(ToPascalCase(name_)),
-        expression_(nullptr) {}
+        expression_(nullptr),
+        is_array_(is_array) {}
   ~DestinationOperand() { delete expression_; }
 
   const std::string &name() const { return name_; }
   const std::string &pascal_case_name() const { return pascal_case_name_; }
   TemplateExpression *expression() const { return expression_; }
+  bool is_array() const { return is_array_; }
   bool HasLatency() const { return expression_ != nullptr; }
   absl::StatusOr<int> GetLatency() const {
     if (expression_ == nullptr) return -1;
@@ -90,6 +95,14 @@ class DestinationOperand {
   std::string name_;
   std::string pascal_case_name_;
   TemplateExpression *expression_;
+  bool is_array_ = false;
+};
+
+struct SourceOperand {
+  std::string name;
+  bool is_array;
+  SourceOperand(std::string name_, bool is_array_)
+      : name(std::move(name_)), is_array(is_array_) {}
 };
 
 // This struct is used to specify the location of an operand within an
@@ -145,18 +158,22 @@ struct DisasmFormat {
 
 struct ResourceReference {
   Resource *resource;
+  bool is_array;
   DestinationOperand *dest_op;
   TemplateExpression *begin_expression;
   TemplateExpression *end_expression;
-  ResourceReference(Resource *resource_, DestinationOperand *dest_op_,
+  ResourceReference(Resource *resource_, bool is_array_,
+                    DestinationOperand *dest_op_,
                     TemplateExpression *begin_expr_,
                     TemplateExpression *end_expr_)
       : resource(resource_),
+        is_array(is_array_),
         dest_op(dest_op_),
         begin_expression(begin_expr_),
         end_expression(end_expr_) {}
   ResourceReference(const ResourceReference &rhs) {
     resource = rhs.resource;
+    is_array = rhs.is_array;
     dest_op = rhs.dest_op;
     begin_expression = rhs.begin_expression->DeepCopy();
     end_expression = rhs.end_expression->DeepCopy();
@@ -187,9 +204,10 @@ class Opcode {
   // to get the Predicate, Source and Destination operand interfaces (defined
   // in .../sim/generic/operand_interfaces.h. The implementation of these
   // methods will be left to the user of this generator tool.
-  void AppendSourceOpName(absl::string_view op_name);
-  void AppendDestOp(absl::string_view op_name, TemplateExpression *expression);
-  void AppendDestOp(absl::string_view op_name);
+  void AppendSourceOp(absl::string_view op_name, bool is_array);
+  void AppendDestOp(absl::string_view op_name, bool is_array,
+                    TemplateExpression *expression);
+  void AppendDestOp(absl::string_view op_name, bool is_array);
   DestinationOperand *GetDestOp(absl::string_view op_name);
   // Append child opcode specification.
   void AppendChild(Opcode *op) { child_ = op; }
@@ -210,8 +228,8 @@ class Opcode {
   void set_predicate_op_name(absl::string_view op_name) {
     predicate_op_name_ = op_name;
   }
-  const std::vector<std::string> &source_op_name_vec() const {
-    return source_op_name_vec_;
+  const std::vector<SourceOperand> &source_op_vec() const {
+    return source_op_vec_;
   }
   const std::vector<DestinationOperand *> &dest_op_vec() const {
     return dest_op_vec_;
@@ -226,7 +244,7 @@ class Opcode {
   Opcode *child_ = nullptr;
   Opcode *parent_ = nullptr;
   std::string predicate_op_name_;
-  std::vector<std::string> source_op_name_vec_;
+  std::vector<SourceOperand> source_op_vec_;
   std::vector<DestinationOperand *> dest_op_vec_;
   absl::flat_hash_map<std::string, DestinationOperand *> dest_op_map_;
   std::string name_;

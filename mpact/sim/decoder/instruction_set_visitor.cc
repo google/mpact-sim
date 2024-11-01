@@ -21,7 +21,6 @@
 #include <iostream>
 #include <istream>
 #include <memory>
-#include <new>
 #include <optional>
 #include <string>
 #include <utility>
@@ -1285,9 +1284,20 @@ InstructionSetVisitor::ProcessResourceReference(
   auto *factory = slot->instruction_set()->resource_factory();
   DestinationOperand *dest_op = nullptr;
   // Extract the text from the resource reference.
-  std::string ident_text = resource_item->name->getText();
+  std::string ident_text;
+  bool is_array;
+  if (resource_item->name != nullptr) {
+    ident_text = resource_item->name->getText();
+    is_array = false;
+  } else {
+    // Prepend the name with [] so that it doesn't conflict with a non-array
+    // resource of the same name.
+    ident_text = resource_item->array_name->getText();
+    is_array = true;
+  }
   dest_op = inst->GetDestOp(ident_text);
   auto *resource = factory->GetOrInsertResource(ident_text);
+  resource->set_is_array(is_array);
   // Compute begin and end values.
   TemplateExpression *begin_expr;
   TemplateExpression *end_expr;
@@ -1346,7 +1356,8 @@ InstructionSetVisitor::ProcessResourceReference(
         {resource_item->end_cycle, context_file_map_.at(slot->ctx())});
     end_expr = VisitExpression(resource_item->end_cycle, slot, inst);
   }
-  auto *ref = new ResourceReference(resource, dest_op, begin_expr, end_expr);
+  auto *ref =
+      new ResourceReference(resource, is_array, dest_op, begin_expr, end_expr);
   return std::optional<ResourceReference *>(ref);
 }
 
@@ -1574,9 +1585,17 @@ void InstructionSetVisitor::VisitOpcodeOperands(OpcodeOperandsCtx *ctx,
   }
   if (ctx->source != nullptr) {
     int instance = 0;
-    for (auto *ident : ctx->source->IDENT()) {
-      std::string name = ident->getText();
-      child->opcode()->AppendSourceOpName(name);
+    for (auto *source_op : ctx->source->source_operand()) {
+      std::string name;
+      bool is_array;
+      if (source_op->source != nullptr) {
+        name = source_op->source->getText();
+        is_array = false;
+      } else {
+        name = source_op->array_source->getText();
+        is_array = true;
+      }
+      child->opcode()->AppendSourceOp(name, is_array);
       parent->opcode()->op_locator_map().insert(
           std::make_pair(name, OperandLocator(op_spec_number, 's', instance)));
       instance++;
@@ -1585,7 +1604,15 @@ void InstructionSetVisitor::VisitOpcodeOperands(OpcodeOperandsCtx *ctx,
   if (ctx->dest_list() != nullptr) {
     int instance = 0;
     for (auto *dest_op : ctx->dest_list()->dest_operand()) {
-      std::string ident = dest_op->dest->getText();
+      std::string ident;
+      bool is_array;
+      if (dest_op->dest != nullptr) {
+        ident = dest_op->dest->getText();
+        is_array = false;
+      } else {
+        ident = dest_op->array_dest->getText();
+        is_array = true;
+      }
       // The latency of the destination operand is either specified by an
       // expression, by '*' (wildcard), or omitted, in which case it
       // defaults to 1.
@@ -1593,14 +1620,15 @@ void InstructionSetVisitor::VisitOpcodeOperands(OpcodeOperandsCtx *ctx,
         context_file_map_.insert(
             {dest_op->expression(), context_file_map_.at(slot->ctx())});
         child->opcode()->AppendDestOp(
-            ident, VisitExpression(dest_op->expression(), slot, child));
+            ident, is_array,
+            VisitExpression(dest_op->expression(), slot, child));
       } else if (dest_op->wildcard != nullptr) {
-        child->opcode()->AppendDestOp(ident);
+        child->opcode()->AppendDestOp(ident, is_array);
       } else if (slot->default_latency() != nullptr) {
-        child->opcode()->AppendDestOp(ident,
+        child->opcode()->AppendDestOp(ident, is_array,
                                       slot->default_latency()->DeepCopy());
       } else {
-        child->opcode()->AppendDestOp(ident, new TemplateConstant(1));
+        child->opcode()->AppendDestOp(ident, is_array, new TemplateConstant(1));
       }
       parent->opcode()->op_locator_map().insert(
           std::make_pair(ident, OperandLocator(op_spec_number, 'd', instance)));
@@ -2146,32 +2174,54 @@ std::string InstructionSetVisitor::GenerateHdrFileProlog(
   absl::StrAppend(
       &output, "  virtual ResourceOperandInterface *GetSimpleResourceOperand",
       "(SlotEnum slot, int entry, OpcodeEnum opcode, SimpleResourceVector "
-      "&resource_vec, int end) = 0;\n");
+      "&resource_vec, int end) { return nullptr;}\n");
   absl::StrAppend(
-      &output, "  virtual ResourceOperandInterface *GetComplexResourceOperand",
+      &output,
+      "  virtual ResourceOperandInterface * "
+      "GetComplexResourceOperand",
       "(SlotEnum slot, int entry, OpcodeEnum opcode, ComplexResourceEnum "
-      "resource_op, int begin, int end) = 0;\n");
+      "resource_op, int begin, int end) { return {}; }\n");
+  absl::StrAppend(
+      &output,
+      "  virtual std::vector<ResourceOperandInterface *> "
+      "GetComplexResourceOperands",
+      "(SlotEnum slot, int entry, OpcodeEnum opcode, ComplexResourceEnum "
+      "resource_op, int begin, int end) { return {}; }\n");
   // For each operand type, declare the pure virtual method that returns the
   // given operand.
   absl::StrAppend(&output,
                   "  virtual PredicateOperandInterface *GetPredicate"
                   "(SlotEnum slot, int entry, OpcodeEnum opcode, PredOpEnum "
-                  "pred_op) = 0;\n");
+                  "pred_op) { return nullptr; }\n");
   absl::StrAppend(&output,
                   "  virtual SourceOperandInterface *GetSource"
                   "(SlotEnum slot, int entry, OpcodeEnum opcode, SourceOpEnum "
-                  "source_op, int source_no) = 0;\n");
+                  "source_op, int source_no) { return nullptr;}\n");
+  absl::StrAppend(
+      &output,
+      "  virtual std::vector<SourceOperandInterface *> GetSources"
+      "(SlotEnum slot, int entry, OpcodeEnum opcode, ListSourceOpEnum "
+      "list_source_op, int source_no) { return {};}\n");
   absl::StrAppend(&output,
                   "  virtual DestinationOperandInterface *GetDestination"
                   "(SlotEnum slot, int entry, OpcodeEnum opcode, "
-                  "DestOpEnum dest_op, int dest_no, int latency)"
-                  "= 0;\n");
+                  "DestOpEnum list_dest_op, int dest_no, int latency)"
+                  " { return nullptr; }\n");
+  absl::StrAppend(
+      &output,
+      "  virtual std::vector<DestinationOperandInterface *> GetDestinations"
+      "(SlotEnum slot, int entry, OpcodeEnum opcode, "
+      "ListDestOpEnum dest_op, int dest_no, const std::vector<int> &latency)"
+      " { return {}; };\n");
   // Destination operand latency getter for destination operands with '*'
   // as latency.
   absl::StrAppend(
       &output,
       "  virtual int GetLatency(SlotEnum slot, int entry, OpcodeEnum "
-      "opcode, DestOpEnum dest_op, int dest_no) = 0;\n");
+      "opcode, DestOpEnum dest_op, int dest_no) { return 0; };\n",
+      "  virtual std::vector<int> GetLatency(SlotEnum slot, int entry, "
+      "OpcodeEnum "
+      "opcode, ListDestOpEnum dest_op, int dest_no) { return {0}; }\n");
 
   absl::StrAppend(&output, "};\n\n");
   absl::StrAppend(

@@ -17,8 +17,10 @@
 #include <memory>
 #include <string>
 
+#include "absl/status/status.h"
 #include "absl/status/statusor.h"
-#include "googlemock/include/gmock/gmock.h"
+#include "absl/strings/str_cat.h"
+#include "googlemock/include/gmock/gmock.h"  // IWYU pragma: keep
 #include "googletest/include/gtest/gtest.h"
 #include "mpact/sim/decoder/instruction_set.h"
 
@@ -57,7 +59,7 @@ TEST_F(OpcodeTest, Basic) {
   EXPECT_STREQ(opcode_->name().c_str(), kOpcodeName0);
   EXPECT_EQ(opcode_->value(), 1);
   EXPECT_STREQ(opcode_->predicate_op_name().c_str(), "");
-  EXPECT_EQ(opcode_->source_op_name_vec().size(), 0);
+  EXPECT_EQ(opcode_->source_op_vec().size(), 0);
   EXPECT_EQ(opcode_->dest_op_vec().size(), 0);
 }
 
@@ -88,9 +90,9 @@ TEST_F(OpcodeTest, PredicateOperandName) {
 TEST_F(OpcodeTest, SourceOperandNames) {
   for (int indx = 0; indx < 3; indx++) {
     std::string source_op_name = absl::StrCat("SourceOp", indx);
-    opcode_->AppendSourceOpName(source_op_name);
-    EXPECT_EQ(opcode_->source_op_name_vec().size(), indx + 1);
-    EXPECT_STREQ(opcode_->source_op_name_vec()[indx].c_str(),
+    opcode_->AppendSourceOp(source_op_name, /*is_array=*/false);
+    EXPECT_EQ(opcode_->source_op_vec().size(), indx + 1);
+    EXPECT_STREQ(opcode_->source_op_vec()[indx].name.c_str(),
                  source_op_name.c_str());
   }
 }
@@ -100,10 +102,10 @@ TEST_F(OpcodeTest, DestOperandNames) {
   for (int indx = 0; indx < 2; indx++) {
     std::string dest_op_name = absl::StrCat("DestOp", indx);
     if (indx == 0) {
-      opcode_->AppendDestOp(dest_op_name);
+      opcode_->AppendDestOp(dest_op_name, /*is_array=*/false);
     } else if (indx == 1) {
       // Using nullptr - the value isn't checked upon append.
-      opcode_->AppendDestOp(dest_op_name, nullptr);
+      opcode_->AppendDestOp(dest_op_name, /*is_array=*/false, nullptr);
     }
     EXPECT_EQ(opcode_->dest_op_vec().size(), indx + 1);
     EXPECT_STREQ(opcode_->dest_op_vec()[indx]->name().c_str(),

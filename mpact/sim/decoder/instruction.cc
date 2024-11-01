@@ -185,8 +185,8 @@ absl::StatusOr<ResourceReference *> Instruction::CreateDerivedResourceRef(
     }
     end_expr = result.value();
   }
-  auto *new_ref =
-      new ResourceReference(ref->resource, ref->dest_op, begin_expr, end_expr);
+  auto *new_ref = new ResourceReference(ref->resource, ref->is_array,
+                                        ref->dest_op, begin_expr, end_expr);
   return new_ref;
 }
 

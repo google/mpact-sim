@@ -312,7 +312,16 @@ opcode_operands_list
   ;
 
 opcode_operands
-  : pred=IDENT? (':' source=ident_list? ( ':' dest_list? )? )?
+  : pred=IDENT? (':' source=source_list? ( ':' dest_list? )? )?
+  ;
+
+source_list
+  : source_operand (',' source_operand)*
+  ;
+
+source_operand
+  : source=IDENT
+  | '[' array_source=IDENT ']'
   ;
 
 // Destination operands may include a latency.
@@ -322,7 +331,8 @@ dest_list
   ;
 
 dest_operand
-  : dest=IDENT ( '(' (expression | wildcard='*' ) ')' )?
+  : (dest=IDENT | '[' array_dest=IDENT ']')
+    ( '(' (expression | wildcard='*' ) ')' )?
   ;
 
 // Special rules for generator instruction descriptions.
@@ -441,7 +451,7 @@ resource_item_list
 // x[2]: x is acquired starting at cycle 2 through the instruction latency.
 
 resource_item
-  : name=IDENT
+  : ( name=IDENT | '[' array_name=IDENT ']' )
         ('[' (begin_cycle=expression)? ('..' end_cycle=expression? )? ']')?
   ;
 
@@ -499,7 +509,7 @@ OPCODE : 'opcode';
 OPCODES : 'opcodes';
 OVERRIDE : 'override';
 NAMESPACE : 'namespace';
-RESOURCES: 'resources';
+RESOURCES : 'resources';
 SEMFUNC : 'semfunc';
 SLOT : 'slot';
 SLOTS : 'slots';

@@ -135,7 +135,9 @@ class Slot {
   absl::btree_map<std::string, ResourceDetailsCtx *> &resource_spec_map() {
     return resource_spec_map_;
   }
-
+  absl::btree_map<std::string, IdentListCtx *> &resource_array_ref_map() {
+    return resource_array_ref_map_;
+  }
   const absl::btree_map<std::string, TemplateExpression *> &attribute_map() {
     return attribute_map_;
   }
@@ -194,6 +196,7 @@ class Slot {
   absl::flat_hash_map<std::string, TemplateExpression *> constant_map_;
   // Named resource specifiers.
   absl::btree_map<std::string, ResourceDetailsCtx *> resource_spec_map_;
+  absl::btree_map<std::string, IdentListCtx *> resource_array_ref_map_;
   // Default instruction attributes.
   absl::btree_map<std::string, TemplateExpression *> attribute_map_;
 };

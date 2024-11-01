@@ -15,7 +15,6 @@
 #include "mpact/sim/decoder/opcode.h"
 
 #include <functional>
-#include <new>
 #include <string>
 #include <utility>
 
@@ -45,19 +44,19 @@ Opcode::~Opcode() {
   dest_op_map_.clear();
 }
 
-void Opcode::AppendSourceOpName(absl::string_view op_name) {
-  source_op_name_vec_.emplace_back(op_name);
+void Opcode::AppendSourceOp(absl::string_view op_name, bool is_array) {
+  source_op_vec_.emplace_back(std::string(op_name), is_array);
 }
 
-void Opcode::AppendDestOp(absl::string_view op_name) {
-  auto *op = new DestinationOperand(std::string(op_name));
+void Opcode::AppendDestOp(absl::string_view op_name, bool is_array) {
+  auto *op = new DestinationOperand(std::string(op_name), is_array);
   dest_op_vec_.push_back(op);
   dest_op_map_.insert(std::make_pair(std::string(op_name), op));
 }
 
-void Opcode::AppendDestOp(absl::string_view op_name,
+void Opcode::AppendDestOp(absl::string_view op_name, bool is_array,
                           TemplateExpression *expression) {
-  auto *op = new DestinationOperand(std::string(op_name), expression);
+  auto *op = new DestinationOperand(std::string(op_name), is_array, expression);
   dest_op_vec_.push_back(op);
   dest_op_map_.insert(std::make_pair(std::string(op_name), op));
 }
@@ -108,15 +107,15 @@ absl::StatusOr<Opcode *> OpcodeFactory::CreateDerivedOpcode(
   new_opcode->set_instruction_size(opcode->instruction_size());
   new_opcode->predicate_op_name_ = opcode->predicate_op_name();
   new_opcode->op_locator_map_ = opcode->op_locator_map();
-  for (auto const &op_name : opcode->source_op_name_vec()) {
-    new_opcode->AppendSourceOpName(op_name);
+  for (auto const &src_op : opcode->source_op_vec()) {
+    new_opcode->AppendSourceOp(src_op.name, src_op.is_array);
   }
 
   // Copy destination operands, but evaluate any latencies using the template
   // instantiation arguments, in case those expressions use them.
   for (auto const *dest_op : opcode->dest_op_vec()) {
     if (dest_op->expression() == nullptr) {
-      new_opcode->AppendDestOp(dest_op->name());
+      new_opcode->AppendDestOp(dest_op->name(), dest_op->is_array());
     } else {
       // For each destination operand that has an expression, evaluate it in the
       // context of the passed in TemplateInstantiationArgs. This creates a copy
@@ -124,7 +123,8 @@ absl::StatusOr<Opcode *> OpcodeFactory::CreateDerivedOpcode(
       // recursively folded into constant nodes.
       auto result = dest_op->expression()->Evaluate(args);
       if (result.ok()) {
-        new_opcode->AppendDestOp(dest_op->name(), result.value());
+        new_opcode->AppendDestOp(dest_op->name(), dest_op->is_array(),
+                                 result.value());
       } else {
         delete new_opcode;
         return absl::InternalError(absl::StrCat(
