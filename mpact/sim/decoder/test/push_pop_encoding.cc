@@ -126,7 +126,7 @@ PushPopEncoding::PushPopEncoding(ArchState *state) : state_(state) {
         result.push_back(GetRegisterSourceOp<TestRegister>(state_, "x25"));
         if (rlist == 14) return result;
         result.push_back(GetRegisterSourceOp<TestRegister>(state_, "x26"));
-        result.push_back(GetRegisterSourceOp<TestRegister>(state_, "x26"));
+        result.push_back(GetRegisterSourceOp<TestRegister>(state_, "x27"));
         return result;
       }));
 
@@ -181,7 +181,7 @@ PushPopEncoding::PushPopEncoding(ArchState *state) : state_(state) {
                        result.push_back(GetRegisterDestinationOp<TestRegister>(
                            state_, "x26", latency[result.size() % size]));
                        result.push_back(GetRegisterDestinationOp<TestRegister>(
-                           state_, "x26", latency[result.size() % size]));
+                           state_, "x27", latency[result.size() % size]));
                        return result;
                      }));
 }

@@ -16,8 +16,6 @@
 
 #include <cstdint>
 
-#include "mpact/sim/generic/state_item_base.h"
-
 namespace mpact {
 namespace sim {
 namespace generic {
