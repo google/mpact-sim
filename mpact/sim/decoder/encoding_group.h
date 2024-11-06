@@ -23,6 +23,7 @@
 #include "absl/container/flat_hash_set.h"
 #include "absl/strings/string_view.h"
 #include "mpact/sim/decoder/extract.h"
+#include "mpact/sim/decoder/format.h"
 
 namespace mpact {
 namespace sim {
@@ -32,6 +33,8 @@ namespace bin_format {
 class InstructionGroup;
 class InstructionEncoding;
 struct Constraint;
+class Field;
+class Overlay;
 
 // The encoding group is a class that allows instruction encodings to be grouped
 // together to facilitate breaking the instruction encodings into a tree like
@@ -117,6 +120,13 @@ class EncodingGroup {
   void ProcessConstraint(const absl::flat_hash_set<std::string> &extracted,
                          Constraint *constraint,
                          std::string *definitions_ptr) const;
+  void EmitFieldExtraction(const Field *field, const std::string &indent_str,
+                           absl::flat_hash_set<std::string> &extracted,
+                           std::string *definitions_ptr) const;
+  void EmitOverlayExtraction(const Overlay *overlay,
+                             const std::string &indent_str,
+                             absl::flat_hash_set<std::string> &extracted,
+                             std::string *definitions_ptr) const;
   void EmitExtractions(int indent, const std::vector<Constraint *> &constraints,
                        absl::flat_hash_set<std::string> &extracted,
                        std::string *definitions_ptr) const;
@@ -124,6 +134,10 @@ class EncodingGroup {
                                absl::string_view comparison,
                                std::string &connector,
                                std::string *condition) const;
+  int EmitOtherConstraintConditions(
+      const std::vector<Constraint *> &constraints, std::string &connector,
+      std::string *condition) const;
+
   InstructionGroup *inst_group_ = nullptr;
   EncodingGroup *parent_ = nullptr;
   uint64_t varying_ = 0;

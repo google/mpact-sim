@@ -21,6 +21,7 @@
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "mpact/sim/decoder/bin_format_visitor.h"
 #include "mpact/sim/decoder/format.h"
 #include "mpact/sim/decoder/overlay.h"
 
@@ -29,13 +30,13 @@ namespace sim {
 namespace decoder {
 namespace bin_format {
 
-enum class ConstraintType : int { kEq = 0, kNe, kLt, kLe, kGt, kGe };
-
 // Helper struct to group the information of a constraint (either == or !=).
 struct Constraint {
   ConstraintType type;
   Field *field = nullptr;
   Overlay *overlay = nullptr;
+  Field *rhs_field = nullptr;
+  Overlay *rhs_overlay = nullptr;
   bool can_ignore = false;
   uint64_t value;
 };
@@ -60,6 +61,11 @@ class InstructionEncoding {
   // instruction) needing a different comparison (ne, lt, le, etc.).
   absl::Status AddOtherConstraint(ConstraintType type, std::string field_name,
                                   int64_t value);
+  // Add a constraint on a field/overlay (in the format associated with the
+  // instruction) that compares against another field/overlay.
+  absl::Status AddOtherConstraint(ConstraintType type,
+                                  const std::string &lhs_name,
+                                  const std::string &rhs_name);
 
   // Get the value of the constant bits in the instruction (as defined by the
   // equal constraints).
@@ -95,6 +101,10 @@ class InstructionEncoding {
 
  private:
   // Internal helper to create and check a constraint.
+  absl::StatusOr<Constraint *> CreateConstraint(ConstraintType type,
+                                                std::string lhs_name,
+                                                std::string rhs_name);
+
   absl::StatusOr<Constraint *> CreateConstraint(ConstraintType type,
                                                 std::string field_name,
                                                 int64_t value);

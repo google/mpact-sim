@@ -513,8 +513,8 @@ int EncodingGroup::EmitEncodingIfStatement(
                                     "==", connector, &condition);
   count += EmitConstraintConditions(encoding->equal_extracted_constraints(),
                                     "==", connector, &condition);
-  count += EmitConstraintConditions(encoding->other_constraints(),
-                                    "!=", connector, &condition);
+  count += EmitOtherConstraintConditions(encoding->other_constraints(),
+                                         connector, &condition);
 
   // Ensure the number of parentheses are appropriate to the number of
   // conjunctions in the if statement.
@@ -532,6 +532,66 @@ int EncodingGroup::EmitEncodingIfStatement(
   return count != 0 ? 1 : 0;
 }
 
+void EncodingGroup::EmitFieldExtraction(
+    const Field *field, const std::string &indent_str,
+    absl::flat_hash_set<std::string> &extracted,
+    std::string *definitions_ptr) const {
+  std::string name = absl::StrCat(field->name, "_value");
+  if (!extracted.contains(name)) {
+    std::string data_type;
+    if (field->width > inst_group_->width()) {
+      auto shift = absl::bit_width(static_cast<unsigned>(field->width)) - 1;
+      if (absl::popcount(static_cast<unsigned>(field->width)) > 1) shift++;
+      shift = std::max(shift, 3);
+      if (shift > 6) {
+        LOG(ERROR) << "Field '" << field->name << "' width: " << field->width
+                   << " > 64 bits";
+        data_type =
+            absl::StrCat("#error field width ", field->width, " > 64 bits");
+      } else {
+        data_type = absl::StrCat("uint", 1 << shift, "_t");
+      }
+    } else {
+      data_type = inst_word_type_;
+    }
+    uint64_t mask = ((1ULL << field->width) - 1);
+    absl::StrAppend(definitions_ptr, indent_str, data_type, " ", name,
+                    " = (inst_word >> ", field->low, ") & 0x", absl::Hex(mask),
+                    ";\n");
+    extracted.insert(name);
+  }
+}
+
+void EncodingGroup::EmitOverlayExtraction(
+    const Overlay *overlay, const std::string &indent_str,
+    absl::flat_hash_set<std::string> &extracted,
+    std::string *definitions_ptr) const {
+  std::string name = absl::StrCat(overlay->name(), "_value");
+  if (!extracted.contains(name)) {
+    auto ovl_width = overlay->declared_width();
+    std::string data_type;
+    if (ovl_width > inst_group_->width()) {
+      auto shift = absl::bit_width(static_cast<unsigned>(ovl_width)) - 1;
+      if (absl::popcount(static_cast<unsigned>(ovl_width)) > 1) shift++;
+      shift = std::max(shift, 3);
+      if (shift > 6) {
+        LOG(ERROR) << "Field '" << overlay->name() << "' width: " << ovl_width
+                   << " > 64 bits";
+        data_type =
+            absl::StrCat("#error overlay width ", ovl_width, " > 64 bits");
+      } else {
+        data_type = absl::StrCat("uint", 1 << shift, "_t");
+      }
+    } else {
+      data_type = inst_word_type_;
+    }
+    absl::StrAppend(definitions_ptr, indent_str, data_type, " ", name, ";\n");
+    absl::StrAppend(definitions_ptr, indent_str,
+                    overlay->WriteSimpleValueExtractor("inst_word", name));
+    extracted.insert(name);
+  }
+}
+
 void EncodingGroup::EmitExtractions(
     int indent, const std::vector<Constraint *> &constraints,
     absl::flat_hash_set<std::string> &extracted,
@@ -544,60 +604,51 @@ void EncodingGroup::EmitExtractions(
   for (auto const *constraint : constraints) {
     if (constraint->can_ignore) continue;
     if (constraint->field != nullptr) {
-      Field *field = constraint->field;
-      std::string name = absl::StrCat(field->name, "_value");
-      if (!extracted.contains(name)) {
-        std::string data_type;
-        if (field->width > inst_group_->width()) {
-          auto shift = absl::bit_width(static_cast<unsigned>(field->width)) - 1;
-          if (absl::popcount(static_cast<unsigned>(field->width)) > 1) shift++;
-          shift = std::max(shift, 3);
-          if (shift > 6) {
-            LOG(ERROR) << "Field '" << field->name
-                       << "' width: " << field->width << " > 64 bits";
-            data_type =
-                absl::StrCat("#error field width ", field->width, " > 64 bits");
-          } else {
-            data_type = absl::StrCat("uint", 1 << shift, "_t");
-          }
-        } else {
-          data_type = inst_word_type_;
-        }
-        uint64_t mask = ((1ULL << field->width) - 1);
-        absl::StrAppend(definitions_ptr, indent_str, data_type, " ", name,
-                        " = (inst_word >> ", field->low, ") & 0x",
-                        absl::Hex(mask), ";\n");
-        extracted.insert(name);
-      }
+      EmitFieldExtraction(constraint->field, indent_str, extracted,
+                          definitions_ptr);
     } else {
-      Overlay *overlay = constraint->overlay;
-      std::string name = absl::StrCat(overlay->name(), "_value");
-      if (!extracted.contains(name)) {
-        auto ovl_width = overlay->declared_width();
-        std::string data_type;
-        if (ovl_width > inst_group_->width()) {
-          auto shift = absl::bit_width(static_cast<unsigned>(ovl_width)) - 1;
-          if (absl::popcount(static_cast<unsigned>(ovl_width)) > 1) shift++;
-          shift = std::max(shift, 3);
-          if (shift > 6) {
-            LOG(ERROR) << "Field '" << overlay->name()
-                       << "' width: " << ovl_width << " > 64 bits";
-            data_type =
-                absl::StrCat("#error overlay width ", ovl_width, " > 64 bits");
-          } else {
-            data_type = absl::StrCat("uint", 1 << shift, "_t");
-          }
-        } else {
-          data_type = inst_word_type_;
-        }
-        absl::StrAppend(definitions_ptr, indent_str, data_type, " ", name,
-                        ";\n");
-        absl::StrAppend(definitions_ptr, indent_str,
-                        overlay->WriteSimpleValueExtractor("inst_word", name));
-        extracted.insert(name);
-      }
+      EmitOverlayExtraction(constraint->overlay, indent_str, extracted,
+                            definitions_ptr);
+    }
+    if (constraint->rhs_field != nullptr) {
+      EmitFieldExtraction(constraint->rhs_field, indent_str, extracted,
+                          definitions_ptr);
+    } else if (constraint->rhs_overlay != nullptr) {
+      EmitOverlayExtraction(constraint->rhs_overlay, indent_str, extracted,
+                            definitions_ptr);
     }
   }
+}
+
+int EncodingGroup::EmitOtherConstraintConditions(
+    const std::vector<Constraint *> &constraints, std::string &connector,
+    std::string *condition) const {
+  int count = 0;
+  for (auto const *constraint : constraints) {
+    if (constraint->can_ignore) continue;
+
+    std::string comparison(kComparison[static_cast<int>(constraint->type)]);
+    std::string lhs_name = absl::StrCat((constraint->field != nullptr)
+                                            ? constraint->field->name
+                                            : constraint->overlay->name(),
+                                        "_value");
+    std::string rhs;
+    if ((constraint->rhs_field != nullptr) ||
+        (constraint->rhs_overlay != nullptr)) {
+      rhs = absl::StrCat((constraint->rhs_field != nullptr)
+                             ? constraint->rhs_field->name
+                             : constraint->rhs_overlay->name(),
+                         "_value");
+    } else {
+      rhs = absl::StrCat("0x", absl::Hex(constraint->value));
+    }
+
+    absl::StrAppend(condition, connector, "(", lhs_name, " ", comparison, " ",
+                    rhs, ")");
+    connector = " &&\n          ";
+    count++;
+  }
+  return count;
 }
 
 int EncodingGroup::EmitConstraintConditions(
@@ -613,7 +664,7 @@ int EncodingGroup::EmitConstraintConditions(
                                     "_value");
     absl::StrAppend(condition, connector, "(", name, " ", comparison, " 0x",
                     absl::Hex(constraint->value), ")");
-    connector = " &&\n      ";
+    connector = " &&\n          ";
     count++;
   }
   return count;

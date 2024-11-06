@@ -20,6 +20,7 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
+#include "mpact/sim/decoder/bin_format_visitor.h"
 #include "mpact/sim/decoder/format.h"
 
 namespace mpact {
@@ -52,6 +53,54 @@ InstructionEncoding::InstructionEncoding(const InstructionEncoding &encoding)
   for (auto *constraint : encoding.other_constraints_) {
     other_constraints_.push_back(new Constraint(*constraint));
   }
+}
+
+absl::StatusOr<Constraint *> InstructionEncoding::CreateConstraint(
+    ConstraintType type, std::string lhs_name, std::string rhs_name) {
+  Constraint constraint;
+  constraint.type = type;
+  // Check if the field name is indeed a field.
+  auto *lhs_field = format_->GetField(lhs_name);
+  if (lhs_field != nullptr) {
+    if (lhs_field->width >= 64) {
+      return absl::OutOfRangeError(absl::StrCat(
+          "Field '", lhs_field->name,
+          "' is too wide to create constraint - ust be <= 64 bits"));
+    }
+    constraint.field = lhs_field;
+  } else {
+    // If not a field, is it an overlay?
+    auto *lhs_overlay = format_->GetOverlay(lhs_name);
+    if (lhs_overlay == nullptr) {
+      // If neither, it's an error.
+      return absl::NotFoundError(absl::StrCat(
+          "Format '", format_->name(),
+          "' does not contain a field or overlay named ", lhs_name));
+    }
+    constraint.overlay = lhs_overlay;
+  }
+  // Check if the field name is indeed a field.
+  auto *rhs_field = format_->GetField(rhs_name);
+  if (rhs_field != nullptr) {
+    if (rhs_field->width >= 64) {
+      return absl::OutOfRangeError(absl::StrCat(
+          "Field '", rhs_field->name,
+          "' is too wide to create constraint - ust be <= 64 bits"));
+    }
+    constraint.rhs_field = rhs_field;
+  } else {
+    // If not a field, is it an overlay?
+    auto *rhs_overlay = format_->GetOverlay(rhs_name);
+    if (rhs_overlay == nullptr) {
+      // If neither, it's an error.
+      return absl::NotFoundError(absl::StrCat(
+          "Format '", format_->name(),
+          "' does not contain a field or overlay named ", rhs_name));
+    }
+    constraint.rhs_overlay = rhs_overlay;
+  }
+  Constraint *result = new Constraint(constraint);
+  return result;
 }
 
 absl::StatusOr<Constraint *> InstructionEncoding::CreateConstraint(
@@ -192,6 +241,16 @@ absl::Status InstructionEncoding::AddOtherConstraint(ConstraintType type,
   return absl::OkStatus();
 }
 
+absl::Status InstructionEncoding::AddOtherConstraint(
+    ConstraintType type, const std::string &lhs_name,
+    const std::string &rhs_name) {
+  auto res = CreateConstraint(type, lhs_name, rhs_name);
+  if (!res.ok()) return res.status();
+  auto *constraint = res.value();
+  other_constraints_.push_back(constraint);
+  return absl::OkStatus();
+}
+
 absl::Status InstructionEncoding::ComputeMaskAndValue() {
   // First consider equal constraints.
   mask_ = 0;
@@ -240,6 +299,17 @@ absl::Status InstructionEncoding::ComputeMaskAndValue() {
       mask = constraint->overlay->mask();
     }
     other_mask_ |= mask;
+    // If the rhs is a field or overlay, add to the mask.
+    if (constraint->rhs_field != nullptr) {
+      int width = constraint->rhs_field->width;
+      mask &= (1LLU << width) - 1;
+      int shift = constraint->rhs_field->low;
+      mask <<= shift;
+      other_mask_ |= mask;
+    } else if (constraint->rhs_overlay != nullptr) {
+      mask &= constraint->rhs_overlay->mask();
+      other_mask_ |= mask;
+    }
   }
   mask_set_ = true;
   return absl::OkStatus();

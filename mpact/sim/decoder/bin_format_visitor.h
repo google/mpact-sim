@@ -40,6 +40,8 @@ namespace sim {
 namespace decoder {
 namespace bin_format {
 
+enum class ConstraintType : int { kEq = 0, kNe, kLt, kLe, kGt, kGe };
+
 // This struct holds information about a range assignment in an instruction
 // generator.
 struct RangeAssignmentInfo {
@@ -75,7 +77,7 @@ class BinFormatVisitor {
     std::string cc_output;
   };
 
-  BinFormatVisitor() = default;
+  BinFormatVisitor();
   ~BinFormatVisitor();
 
   // Entry point for processing a source_stream input, generating any output
@@ -159,6 +161,8 @@ class BinFormatVisitor {
   absl::flat_hash_map<std::string, DecoderDefCtx *> decoder_decl_map_;
   // AntlrParserWrapper vector.
   std::vector<BinFmtAntlrParserWrapper *> antlr_parser_wrappers_;
+  // Map from comparator string to constraint type.
+  absl::flat_hash_map<std::string, ConstraintType> constraint_string_to_type_;
 };
 
 }  // namespace bin_format

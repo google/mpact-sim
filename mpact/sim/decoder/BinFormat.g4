@@ -169,7 +169,7 @@ field_constraint_list
 // be equal, not equal, greater/less, etc. to a number given by a numeric
 // literal.
 field_constraint
-  : field_name=IDENT constraint_op value=number
+  : field_name=IDENT constraint_op (value=number | rhs_field_name=IDENT)
   ;
 
 constraint_op

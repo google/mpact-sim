@@ -98,6 +98,15 @@ static inline T ExtractBits(const uint8_t *data, int data_size, int msb,
 
 )foo";
 
+BinFormatVisitor::BinFormatVisitor() {
+  constraint_string_to_type_.emplace("==", ConstraintType::kEq);
+  constraint_string_to_type_.emplace("!=", ConstraintType::kNe);
+  constraint_string_to_type_.emplace("<", ConstraintType::kLt);
+  constraint_string_to_type_.emplace("<=", ConstraintType::kLe);
+  constraint_string_to_type_.emplace(">", ConstraintType::kGt);
+  constraint_string_to_type_.emplace(">=", ConstraintType::kGe);
+}
+
 BinFormatVisitor::~BinFormatVisitor() {
   for (auto *wrapper : antlr_parser_wrappers_) {
     delete wrapper;
@@ -975,48 +984,43 @@ void BinFormatVisitor::VisitConstraint(Format *format, FieldConstraintCtx *ctx,
   // Constraints are based on field names ==/!=/>/>=/</<= to a value.
   std::string field_name = ctx->field_name->getText();
   std::string op = ctx->constraint_op()->getText();
-  // If the number is binary, let's get its length too and check against the
-  // field width.
-  if (ctx->number()->BIN_NUMBER() != nullptr) {
-    int length = ParseBinaryNum(ctx->number()->BIN_NUMBER()).width;
-    auto *field = format->GetField(field_name);
-    auto *overlay = format->GetOverlay(field_name);
-    if (field != nullptr) {
-      if (field->width != length) {
-        error_listener_->semanticWarning(
-            file_names_[context_file_map_.at(ctx)], ctx->start,
-            absl::StrCat("Field '", field_name, "' has width ", field->width,
-                         " but constraint value is ", length, " bits"));
-      }
-    } else if (overlay != nullptr) {
-      if (overlay->computed_width() != length) {
-        error_listener_->semanticWarning(
-            file_names_[context_file_map_.at(ctx)], ctx->start,
-            absl::StrCat("Overlay '", field_name, "' has width ",
-                         overlay->computed_width(), " but constraint value is ",
-                         length, " bits"));
+  absl::Status status;
+  ConstraintType constraint_type = constraint_string_to_type_.at(op);
+  if (ctx->rhs_field_name != nullptr) {
+    std::string rhs_name = ctx->rhs_field_name->getText();
+    status = inst_encoding->AddOtherConstraint(constraint_type, field_name,
+                                               rhs_name);
+  } else {
+    // If the number is binary, let's get its length too and check against the
+    // field width.
+    if (ctx->number()->BIN_NUMBER() != nullptr) {
+      int length = ParseBinaryNum(ctx->number()->BIN_NUMBER()).width;
+      auto *field = format->GetField(field_name);
+      auto *overlay = format->GetOverlay(field_name);
+      if (field != nullptr) {
+        if (field->width != length) {
+          error_listener_->semanticWarning(
+              file_names_[context_file_map_.at(ctx)], ctx->start,
+              absl::StrCat("Field '", field_name, "' has width ", field->width,
+                           " but constraint value is ", length, " bits"));
+        }
+      } else if (overlay != nullptr) {
+        if (overlay->computed_width() != length) {
+          error_listener_->semanticWarning(
+              file_names_[context_file_map_.at(ctx)], ctx->start,
+              absl::StrCat("Overlay '", field_name, "' has width ",
+                           overlay->computed_width(),
+                           " but constraint value is ", length, " bits"));
+        }
       }
     }
-  }
-  int value = ConvertToInt(ctx->number());
-  absl::Status status;
-  if (op == "==") {
-    status = inst_encoding->AddEqualConstraint(field_name, value);
-  } else if (op == "!=") {
-    status = inst_encoding->AddOtherConstraint(ConstraintType::kNe, field_name,
-                                               value);
-  } else if (op == ">") {
-    status = inst_encoding->AddOtherConstraint(ConstraintType::kGt, field_name,
-                                               value);
-  } else if (op == ">=") {
-    status = inst_encoding->AddOtherConstraint(ConstraintType::kGe, field_name,
-                                               value);
-  } else if (op == "<") {
-    status = inst_encoding->AddOtherConstraint(ConstraintType::kLt, field_name,
-                                               value);
-  } else if (op == "<=") {
-    status = inst_encoding->AddOtherConstraint(ConstraintType::kLe, field_name,
-                                               value);
+    int value = ConvertToInt(ctx->number());
+    if (constraint_type == ConstraintType::kEq) {
+      status = inst_encoding->AddEqualConstraint(field_name, value);
+    } else {
+      status =
+          inst_encoding->AddOtherConstraint(constraint_type, field_name, value);
+    }
   }
   if (!status.ok()) {
     error_listener_->semanticError(file_names_[context_file_map_.at(ctx)],

@@ -117,7 +117,7 @@ class Overlay {
   bool operator!=(const Overlay &rhs) const;
 
   // Accessors.
-  const std::string &name() { return name_; }
+  const std::string &name() const { return name_; }
   bool is_signed() const { return is_signed_; }
   int declared_width() const { return declared_width_; }
   int computed_width() const { return computed_width_; }
