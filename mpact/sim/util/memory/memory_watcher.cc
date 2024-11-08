@@ -14,8 +14,10 @@
 
 #include "mpact/sim/util/memory/memory_watcher.h"
 
+#include <cstdint>
 #include <utility>
 
+#include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 
 namespace mpact {
