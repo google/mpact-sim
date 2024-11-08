@@ -38,6 +38,32 @@ namespace instruction_set {
 
 absl::btree_set<std::string> *InstructionSet::attribute_names_ = nullptr;
 
+static void EmitEnumNames(const absl::btree_set<std::string> &names,
+                          absl::string_view namespace_name,
+                          absl::string_view op_name, std::string &h_output,
+                          std::string &cc_output) {
+  // Emit array of enum names.
+  absl::StrAppend(&cc_output, "const char *k", op_name,
+                  "Names[static_cast<int>(", op_name,
+                  "Enum::kPastMaxValue)] = {\n"
+                  "  ",
+                  namespace_name, "::kNoneName,\n");
+  absl::StrAppend(&h_output, "namespace ", namespace_name,
+                  " {\n"
+                  "  constexpr char kNoneName[] = \"none\";\n");
+  for (auto const &name : names) {
+    absl::StrAppend(&h_output, "  constexpr char k", name, "Name[] = \"", name,
+                    "\";\n");
+    absl::StrAppend(&cc_output, "  ", namespace_name, "::k", name, "Name,\n");
+  }
+  absl::StrAppend(&cc_output, "};\n\n");
+  absl::StrAppend(&h_output, "}  // namespace ", namespace_name,
+                  "\n\n"
+                  "  extern const char *k",
+                  op_name, "Names[static_cast<int>(", op_name,
+                  "Enum::kPastMaxValue)];\n\n");
+}
+
 InstructionSet::InstructionSet(absl::string_view name)
     : opcode_factory_(std::make_unique<OpcodeFactory>()),
       resource_factory_(std::make_unique<ResourceFactory>()),
@@ -552,6 +578,15 @@ InstructionSet::StringPair InstructionSet::GenerateEnums(
   absl::StrAppend(&h_output, "    kPastMaxValue = ", opcode_value, "\n");
   absl::StrAppend(&h_output, "  };\n\n");
 
+  EmitEnumNames(predicate_operands, "pred_op_names", "PredOp", h_output,
+                cc_output);
+  EmitEnumNames(source_operands, "source_op_names", "SourceOp", h_output,
+                cc_output);
+  EmitEnumNames(list_source_operands, "list_source_op_names", "ListSourceOp",
+                h_output, cc_output);
+  EmitEnumNames(dest_operands, "dest_op_names", "DestOp", h_output, cc_output);
+  EmitEnumNames(list_dest_operands, "list_dest_op_names", "ListDestOp",
+                h_output, cc_output);
   // Emit array of opcode names.
   absl::StrAppend(&cc_output,
                   "const char *kOpcodeNames[static_cast<int>("
@@ -583,6 +618,8 @@ InstructionSet::StringPair InstructionSet::GenerateEnums(
   }
   absl::StrAppend(&h_output, "    kPastMaxValue = ", resource_count,
                   "\n  };\n\n");
+  EmitEnumNames(name_set, "simple_resource_names", "SimpleResource", h_output,
+                cc_output);
   // Complex resource enumeration type.
   absl::StrAppend(&h_output,
                   "  enum class ComplexResourceEnum {\n"
@@ -599,6 +636,8 @@ InstructionSet::StringPair InstructionSet::GenerateEnums(
   }
   absl::StrAppend(&h_output, "    kPastMaxValue = ", resource_count,
                   "\n  };\n\n");
+  EmitEnumNames(name_set, "complex_resource_names", "ComplexResource", h_output,
+                cc_output);
   // List complex resource enumeration type.
   absl::StrAppend(&h_output,
                   "  enum class ListComplexResourceEnum {\n"
@@ -615,6 +654,8 @@ InstructionSet::StringPair InstructionSet::GenerateEnums(
   }
   absl::StrAppend(&h_output, "    kPastMaxValue = ", resource_count,
                   "\n  };\n\n");
+  EmitEnumNames(name_set, "list_complex_resource_names", "ListComplexResource",
+                h_output, cc_output);
   // Emit instruction attribute types.
   absl::StrAppend(&h_output, "  enum class AttributeEnum {\n");
   int attribute_count = 0;
