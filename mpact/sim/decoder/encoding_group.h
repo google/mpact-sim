@@ -33,7 +33,7 @@ namespace bin_format {
 class InstructionGroup;
 class InstructionEncoding;
 struct Constraint;
-class Field;
+struct Field;
 class Overlay;
 
 // The encoding group is a class that allows instruction encodings to be grouped

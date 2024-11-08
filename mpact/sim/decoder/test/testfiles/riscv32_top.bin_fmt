@@ -16,9 +16,6 @@
 decoder RiscV32G {
   namespace mpact::sim::riscv::encoding;
   opcode_enum = "isa32::OpcodeEnum";
-  includes {
-    #include "third_party/mpact_riscv/riscv32g_decoder.h"
-  }
   RiscVGInst32;
   RiscVCInst16;
 };
