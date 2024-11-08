@@ -725,9 +725,17 @@ std::string EncodingGroup::DumpGroup(std::string prefix, std::string indent) {
         std::string name = constraint->field == nullptr
                                ? constraint->overlay->name()
                                : constraint->field->name;
-        absl::StrAppend(&output, " ", name, " != ",
-                        absl::Hex(constraint->value, absl::PadSpec::kZeroPad8),
-                        " ");
+        std::string rhs_value;
+        if (constraint->rhs_field != nullptr) {
+          rhs_value = constraint->rhs_field->name;
+        } else if (constraint->rhs_overlay != nullptr) {
+          rhs_value = constraint->rhs_overlay->name();
+        } else {
+          rhs_value = absl::StrCat(
+              absl::Hex(constraint->value, absl::PadSpec::kZeroPad8));
+        }
+        absl::StrAppend(&output, " ", name, " ", constraint->type, " ",
+                        rhs_value, " ");
       }
       absl::StrAppend(&output, "\n");
     }
