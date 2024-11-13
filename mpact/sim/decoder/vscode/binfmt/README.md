@@ -8,7 +8,7 @@ instruction-set simulators. See https://github.com/google/mpact-sim for more
 information about syntax and how the description files are used to generate
 instruction decoder code.
 
-![IMG](https://github.com/google/mpact-sim/raw/HEAD/decoder/vscode/binfmt/images/bin_fmt.png a.png)
+![IMG](https://github.com/google/mpact-sim/raw/HEAD/decoder/vscode/binfmt/images/bin_fmt.png)
 
 ## Known Issues
 
