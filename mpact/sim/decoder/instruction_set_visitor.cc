@@ -2053,7 +2053,7 @@ absl::StatusOr<FormatInfo *> InstructionSetVisitor::ParseFormatExpression(
     if (num.empty()) {
       delete format_info;
       return absl::InternalError(
-          absl::StrCat("Malformed expression '", expr, "'"));
+          absl::StrCat("Malformed expression - no shift amount '", expr, "'"));
     }
     format_info->shift_amount = std::stoi(num);
 
@@ -2063,13 +2063,14 @@ absl::StatusOr<FormatInfo *> InstructionSetVisitor::ParseFormatExpression(
     if (expr[pos] != ')') {
       delete format_info;
       return absl::InternalError(
-          absl::StrCat("Malformed expression '", expr, "'"));
+          absl::StrCat("Malformed expression - expected ')' '", expr, "'"));
     }
+    pos++;
     pos = skip_space(expr, pos);
     if (pos != std::string::npos) {
       delete format_info;
-      return absl::InternalError(
-          absl::StrCat("Malformed expression '", expr, "'"));
+      return absl::InternalError(absl::StrCat(
+          "Malformed expression - extra characters after ')' '", expr, "'"));
     }
   }
   return format_info;

@@ -504,16 +504,18 @@ TEST_F(InstructionSetParserTest, DisasmFormats) {
   ptr = log_sink.error_log().find(
       "Error: Missing shift in expression '@+(rs1 +-)'");
   EXPECT_TRUE(ptr != std::string::npos);
-  ptr =
-      log_sink.error_log().find("Error: Malformed expression '@+(rs1 << 5x)'");
+  ptr = log_sink.error_log().find(
+      "Error: Malformed expression - expected ')' '@+(rs1 << 5x)'");
   EXPECT_TRUE(ptr != std::string::npos);
-  ptr = log_sink.error_log().find("Error: Malformed expression '@+(rs1 >> )'");
+  ptr = log_sink.error_log().find(
+      "Error: Malformed expression - no shift amount '@+(rs1 >> )'");
   EXPECT_TRUE(ptr != std::string::npos);
-  ptr =
-      log_sink.error_log().find("Error: Malformed expression '@+(rs1 << 5 x)'");
+  ptr = log_sink.error_log().find(
+      "Error: Malformed expression - expected ')' '@+(rs1 << 5 x)'");
   EXPECT_TRUE(ptr != std::string::npos);
-  ptr =
-      log_sink.error_log().find("Error: Malformed expression '@+(rs1 << 5) x'");
+  ptr = log_sink.error_log().find(
+      "Error: Malformed expression - extra characters after ')' '@+(rs1 << 5) "
+      "x'");
   EXPECT_TRUE(ptr != std::string::npos);
   ptr = log_sink.error_log().find(
       "Error: Format width required when a leading 0 is specified - '0x'");
