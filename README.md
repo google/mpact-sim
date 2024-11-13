@@ -49,9 +49,14 @@ top level directory. To run the tests, use the command `bazel test ...:all`
     instructions and instruction encodings of an ISA, and generate C++
     code for the instruction decoder for an MPACT-Sim simulator.
 
-    The tools are built automatically and the process is largly invisible when
+    The tools are built automatically and the process is largely invisible when
     using bazel with the appropriate build targets - see the tests in
     mpact/sim/decoder/test for examples.
+
+*   mpact/sim/decoder/vscode <br />
+    This directory contains files necessary to build syntax highlighting
+    extensions for VS Code for `.isa` and `.bin_fmt` files. Look in the
+    mpact/sim/decoder/vscode/README.md file for directions.
 
 *   mpact/sim/generic <br />
     This directory contains all the generic classes provided for use
