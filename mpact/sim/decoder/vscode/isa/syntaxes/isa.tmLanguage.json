@@ -1,0 +1,410 @@
+{
+  "name": "isa",
+  "scopeName": "source.isa",
+  "foldingStartMarker": "\\{\\s*$",
+  "foldingStopMarker": "^\\s*\\}",
+  "patterns": [
+    { "include": "#line_comments" },
+    { "include": "#block_comments" },
+    { "include": "#assignment" },
+    { "include": "#include_decl"},
+    { "include": "#include_file" },
+    { "include": "#isa_decl" },
+    { "include": "#template" },
+    { "include": "#bundle_decl" },
+    { "include": "#slot_decl" },
+    { "include": "#disasm_width" },
+    { "include": "#constants" }
+  ],
+  "repository": {
+    "line_comments": {
+      "name": "comment.line.double-slash.isa",
+      "begin": "//",
+      "end": "$"
+    },
+    "block_comments": {
+      "name": "comment.block.isa",
+      "begin": "/\\*",
+      "end": "\\*\\/"
+    },
+    "include_decl": {
+      "begin": "\\b(includes)\\s*{",
+      "end": "}",
+      "beginCaptures": {
+        "1": { "name": "keyword.control.isa" }
+      },
+      "patterns": [
+        { "include": "#line_comments" },
+        { "include": "#block_comments" },
+        { "include": "#include_file" }
+      ]
+    },
+    "include_file": {
+      "begin": "^\\s*(#include)\\b",
+      "end": "$",
+      "beginCaptures": {
+        "1": { "name": "keyword.control.isa" }
+      },
+      "patterns": [{ "include": "#strings" }]
+    },
+    "disasm_width": {
+      "begin": "\\b(disasm\\s+widths)\\b",
+      "end": ";",
+      "beginCaptures": {
+        "1": {"name": "variable.language.isa" }
+      },
+      "patterns": [
+        { "include": "#line_comments" },
+        { "include": "#block_comments" },
+        { "include": "#constants"}
+      ]
+    },
+    "template": {
+      "begin": "\\b(template)\\s*<",
+      "end": ">",
+      "beginCaptures": {
+        "1": { "name": "keyword.control.isa" }
+      },
+      "patterns": [
+        { "include": "#line_comments" },
+        { "include": "#block_comments" },
+        { "include": "#template_param" }
+      ]
+    },
+    "template_param": {
+      "match": "\\b(int)\\s+(\\w+)\\b",
+      "captures": {
+        "1": { "name": "support.type.isa" },
+        "2": { "name": "variable.parameter.isa" }
+      }
+    },
+    "isa_decl": {
+      "begin": "\\b(isa)\\b\\s*(\\w+)\\s*{",
+      "end": "}",
+      "beginCaptures": {
+        "1": { "name": "keyword.control.isa" },
+        "2": { "name": "support.class.isa" }
+      },
+      "patterns": [
+        { "include": "#line_comments" },
+        { "include": "#block_comments" },
+        { "include": "#namespace_decl" },
+        { "include": "#bundle_list" },
+        { "include": "#slot_list" }
+      ]
+    },
+    "bundle_list": {
+      "begin": "\\b(bundles)\\s*{",
+      "end": "}",
+      "beginCaptures": {
+        "1": { "name": "keyword.other.isa" }
+      },
+      "patterns": [
+        { "include": "#line_comments" },
+        { "include": "#block_comments" },
+        { "include": "#bundle_slot_ident" }
+      ]
+    },
+    "slot_list": {
+      "begin": "\\b(slots)\\s*{",
+      "end": "}",
+      "beginCaptures": {
+        "1": { "name": "keyword.other.isa" }
+      },
+      "patterns": [
+        { "include": "#line_comments" },
+        { "include": "#block_comments" },
+        { "include": "#array_spec" },
+        { "include": "#bundle_slot_ident" }
+      ]
+    },
+    "array_spec": {
+      "begin": "\\[",
+      "end": "\\]",
+      "patterns": [{ "include": "#expression" }]
+    },
+    "bundle_slot_ident": {
+      "match": "\\b([a-zA-Z_][a-zA-Z_0-9]*)\\b",
+      "name": "support.class.isa"
+    },
+    "bundle_decl": {
+      "begin": "\\b(bundle)\\s+(\\w+)\\s*{",
+      "end": "}",
+      "beginCaptures": {
+        "1": { "name": "keyword.other.isa" },
+        "2": { "name": "support.class.isa" }
+      },
+      "patterns": [
+        { "include": "#line_comments" },
+        { "include": "#block_comments" },
+        { "include": "#bundle_list" },
+        { "include": "#slot_list" }
+      ]
+    },
+    "slot_decl": {
+      "begin": "\\b(slot)\\b",
+      "end": "}",
+      "beginCaptures": {
+        "1": { "name": "keyword.control.isa" }
+      },
+      "patterns": [
+        { "include": "#line_comments" },
+        { "include": "#block_comments" },
+        { "include": "#include_decl" },
+        { "include": "#default_latency" },
+        { "include": "#default_size" },
+        { "include": "#default_opcode" },
+        { "include": "#default_attributes" },
+        { "include": "#assignment" },
+        { "include": "#opcodes_decl" },
+        { "include": "#resources_assign" },
+        { "include": "#slot_header" }
+      ]
+    },
+    "slot_header": {
+      "begin": "\\b(\\w+)\\b",
+      "end": "{",
+      "captures": {
+        "1": { "name": "support.class.isa" }
+      },
+      "patterns": [
+        { "include": "#slot_template_use" },
+        { "include": "#slot_name" }
+      ]
+    },
+    "slot_template_use": {
+      "begin": "\\b(\\w+)\\s*<",
+      "end": ">",
+      "beginCaptures": {
+        "1": { "name": "support.class.isa" }
+      },
+      "patterns": [{ "include": "#assignment" }]
+    },
+    "slot_name": {
+      "match": "\\b(\\w+)\\b",
+      "name": "support.class.isa"
+    },
+    "assignment": {
+      "begin": "\\b(int)\\s+(\\w+)\\s*=",
+      "end": ";",
+      "beginCaptures": {
+        "1": { "name": "support.type.isa" },
+        "2": { "name": "variable.other.isa" }
+      },
+      "patterns": [{ "include": "#expression" }]
+    },
+    "semfunc_decl": {
+      "match": "\\b(semfunc)\\s*:\\s*(\".*\")",
+      "captures": {
+        "1": { "name": "keyword.other.isa" },
+        "2": { "name": "string.quoted.double.isa" }
+      }
+    },
+    "disasm_decl": {
+      "match": "\\b(disasm)\\s*:\\s*(\".*\")",
+      "captures": {
+        "1": { "name": "keyword.other.isa" },
+        "2": { "name": "string.quoted.double.isa" }
+      }
+    },
+    "resources_decl_name": {
+      "match": "\\b(resources)\\s*:\\s*(\\w+)",
+      "captures": {
+        "1": { "name": "keyword.other.isa" },
+        "2": { "name": "variable.other.isa" }
+      }
+    },
+    "resources_decl": {
+      "begin": "\\b(resources)\\s*:\\s*{",
+      "end": "}",
+      "beginCaptures": {
+        "1": { "name": "keyword.other.isa" }
+      },
+      "patterns": [{ "include": "#dest_range" }, { "include": "#parameter" }]
+    },
+    "resources_assign": {
+      "begin": "\\b(resources)\\s*(\\w+)\\s*=\\s*{",
+      "end": "}",
+      "beginCaptures": {
+        "1": { "name": "keyword.other.isa" },
+        "2": { "name": "variable.other.isa" }
+      },
+      "patterns": [{ "include": "#dest_range" }, { "include": "#parameter" }]
+    },
+    "dest_parameter": {
+      "begin": "\\b([a-zA-Z_]\\w*)\\s*\\(",
+      "end": "\\)",
+      "beginCaptures": {
+        "1": { "name": "variable.parameter.isa" }
+      },
+      "patterns": [{ "include": "#expression" }]
+    },
+    "dest_range": {
+      "begin": "\\b([a-zA-Z_]\\w*)\\s*\\[",
+      "end": "\\]",
+      "beginCaptures": {
+        "1": { "name": "variable.parameter.isa" }
+      },
+      "patterns": [{ "include": "#expression" }]
+    },
+    "parameter": {
+      "match": "\\b([a-zA-Z_]\\w*)\\b",
+      "name": "variable.parameter.isa"
+    },
+    "default_size": {
+      "begin": "\\b(default)\\s+(size)\\s*=",
+      "end": ";",
+      "beginCaptures": {
+        "1": { "name": "keyword.other.isa" },
+        "2": { "name": "variable.language.isa" }
+      },
+      "patterns": [{ "include": "#expression" }]
+    },
+    "default_latency": {
+      "begin": "\\b(default)\\s+(latency)\\s*=",
+      "end": ";",
+      "beginCaptures": {
+        "1": { "name": "keyword.other.isa" },
+        "2": { "name": "variable.language.isa" }
+      },
+      "patterns": [{ "include": "#expression" }]
+    },
+    "default_opcode": {
+      "begin": "\\b(default)\\s+(opcode)\\s*=",
+      "end": ";",
+      "beginCaptures": {
+        "1": { "name": "keyword.other.isa" },
+        "2": { "name": "variable.language.isa" }
+      },
+      "patterns": [
+        { "include": "#line_comments" },
+        { "include": "#block_comments" },
+        { "include": "#semfunc_decl" },
+        { "include": "#disasm_decl" },
+        { "include": "#resources_decl_name" },
+        { "include": "#resources_decl" },
+        { "include": "#strings" }
+      ]
+    },
+    "default_attributes": {
+      "begin": "\\b(default)\\s+(attributes)\\s*=",
+      "end": ";",
+      "beginCaptures": {
+        "1": { "name": "keyword.other.isa" },
+        "2": { "name": "variable.language.isa" }
+      },
+      "patterns": [
+        { "include": "#line_comments" },
+        { "include": "#block_comments" },
+        { "include": "#parameter" },
+        { "include": "#assignment" }
+      ]
+    },
+    "opcode_decl": {
+      "begin": "\\b(\\w+)\\{",
+      "end": "}",
+      "beginCaptures": {
+        "1": { "name": "support.function.isa" }
+      },
+      "patterns": [
+        { "include": "#line_comments" },
+        { "include": "#block_comments" },
+        { "include": "#dest_parameter" },
+        { "include": "#parameter" }
+      ]
+    },
+    "opcode_delete": {
+      "match": "\\b(\\w+)\\s*=\\s*(delete)\\b",
+      "captures": {
+        "1": { "name": "support.function.isa" },
+        "2": { "name": "keyword.other.isa" }
+      }
+    },
+    "opcode_override": {
+      "match": "\\b(\\w+)\\s*=\\s*(override)\\b",
+      "captures": {
+        "1": { "name": "support.function.isa" },
+        "2": { "name": "keyword.other.isa" }
+      }
+    },
+    "opcodes_decl": {
+      "begin": "\\b(opcodes)\\s*{\\s*",
+      "end": "}",
+      "beginCaptures": {
+        "1": { "name": "keyword.control.isa" }
+      },
+      "patterns": [
+        { "include": "#line_comments" },
+        { "include": "#block_comments" },
+        { "include": "#semfunc_decl" },
+        { "include": "#disasm_decl" },
+        { "include": "#attribute_decl" },
+        { "include": "#resources_decl_name" },
+        { "include": "#resources_decl" },
+        { "include": "#opcode_decl" },
+        { "include": "#opcode_delete" },
+        { "include": "#opcode_override" },
+        { "include": "#strings" }
+      ]
+    },
+    "attribute_decl": {
+      "begin": "\\b(attributes)\\s*:\\s*{",
+      "end": "}",
+      "beginCaptures": {
+        "1": { "name": "keyword.other.isa" }
+      },
+      "patterns": [
+        { "include": "#line_comments" },
+        { "include": "#block_comments" },
+        { "include": "#parameter" },
+        { "include": "#assignment" }
+      ]
+    },
+    "namespace_decl": {
+      "begin": "\\b(namespace)\\s*",
+      "end": ";",
+      "beginCaptures": {
+        "1": { "name": "keyword.other.isa" }
+      },
+      "patterns": [
+        { "include": "#line_comments" },
+        { "include": "#block_comments" },
+        { "include": "#namespace_list"}
+      ]
+    },
+    "namespace_list": {
+      "match": "\\b(\\w+)\\b",
+      "captures": {
+        "1": { "name": "support.class.isa" }
+      }
+    },
+    "brackets": {
+      "name": "brackets.isa",
+      "match": "[\\{\\}\\(\\)\\[\\]]"
+    },
+    "strings": {
+      "name": "string.quoted.double.isa",
+      "begin": "\"",
+      "end": "\""
+    },
+    "constants": {
+      "name": "constant.numeric.isa",
+      "match": "\\b\\d+\\b"
+    },
+    "expression": {
+      "patterns": [
+        { "include": "#operators" },
+        { "include": "#constants" },
+        { "include": "#identifier" }
+      ]
+    },
+    "identifier": {
+      "match": "\\b([a-zA-Z_][a-zA-Z_0-9]*)\\b",
+      "name": "variable.other.isa"
+    },
+    "operators": {
+      "match": "\\b(\\+|-|\\*|/|\\.\\.)\\b",
+      "name": "keyword.operator.isa"
+    }
+  }
+}

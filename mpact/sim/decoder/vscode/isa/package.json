@@ -1,0 +1,26 @@
+{
+  "name": "vscode-mpact-sim-isa",
+  "displayName": "MPACT-Sim isa",
+  "description": "Syntax highlighting for .isa files for MPACT-Sim",
+  "icon": "icons/icon.png",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.86.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "contributes": {
+    "languages": [{
+      "id": "isa",
+      "aliases": ["isa", "isa"],
+      "extensions": [".isa"],
+      "configuration": "./language-configuration.json"
+    }],
+    "grammars": [{
+      "language": "isa",
+      "scopeName": "source.isa",
+      "path": "./syntaxes/isa.tmLanguage.json"
+    }]
+  }
+}

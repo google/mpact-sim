@@ -1,0 +1,26 @@
+{
+  "name": "vscode-mpact-sim-binfmt",
+  "displayName": "MPACT-Sim bin_fmt",
+  "description": "Syntax highlighting for .bin_fmt files for MPACT-Sim",
+  "icon": "icons/icon.png",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.86.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "contributes": {
+    "languages": [{
+      "id": "bin_fmt",
+      "aliases": ["bin_fmt", "bin_fmt"],
+      "extensions": [".bin_fmt"],
+      "configuration": "./language-configuration.json"
+    }],
+    "grammars": [{
+      "language": "bin_fmt",
+      "scopeName": "source.bin_fmt",
+      "path": "./syntaxes/bin_fmt.tmLanguage.json"
+    }]
+  }
+}

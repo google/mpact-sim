@@ -1,0 +1,236 @@
+{
+  "name": "bin_fmt",
+  "scopeName": "source.bin_fmt",
+  "foldingStartMarker": "\\{\\s*$",
+  "foldingStopMarker": "^\\s*\\}",
+  "patterns": [
+    { "include": "#assignment" },
+    { "include": "#block_comments" },
+    { "include": "#line_comments" },
+    { "include": "#include_file" },
+    { "include": "#include_decl" },
+    { "include": "#instruction_group"},
+    { "include": "#format_decl"},
+    { "include": "#field_decl"},
+    { "include": "#overlay_decl"},
+    { "include": "#decoder"},
+    { "include": "#signed_unsigned" },
+    { "include": "#bin_number" },
+    { "include": "#constants" },
+    { "include": "#strings"},
+    { "include": "#reserved_words"},
+    { "include": "#reserved_other"}
+  ],
+  "repository": {
+    "line_comments": {
+      "name": "comment.line.double-slash.bin_fmt",
+      "begin": "//",
+      "end": "$"
+    },
+    "block_comments": {
+      "name": "comment.block.bin_fmt",
+      "begin": "/\\*",
+      "end": "\\*\\/"
+    },
+    "namespace_decl": {
+      "begin": "\\b(namespace)\\s*",
+      "end": ";",
+      "beginCaptures": {
+        "1": { "name": "keyword.other.bin_fmt" }
+      },
+      "patterns": [
+        { "include": "#line_comments" },
+        { "include": "#block_comments" },
+        { "include": "#namespace_list"}
+      ]
+    },
+    "namespace_list": {
+      "match": "\\b(\\w+)\\b",
+      "captures": {
+        "1": { "name": "support.class.bin_fmt" }
+      }
+    },
+    "include_decl": {
+      "begin": "\\b(includes)\\s*{",
+      "end": "}",
+      "beginCaptures": {
+        "1": { "name": "keyword.other.bin_fmt" }
+      },
+      "patterns": [
+        { "include": "#line_comments" },
+        { "include": "#block_comments" },
+        { "include": "#include_file" }
+      ]
+    },
+    "include_file": {
+      "begin": "^\\s*(#include)\\b",
+      "end": "$",
+      "beginCaptures": {
+        "1": { "name": "keyword.control.bin_fmt" }
+      },
+      "patterns": [{ "include": "#strings" }]
+    },
+    "instruction_group": {
+      "begin": "\\b(instruction)\\s+(group)\\s+(\\w+)\\s*\\[(\\d+)\\]\\s*:\\s*(\\w+)\\s*{",
+      "end": "}",
+      "beginCaptures": {
+        "1": { "name": "keyword.control.bin_fmt" },
+        "2": { "name": "keyword.control.bin_fmt" },
+        "3": { "name": "constant.numeric.bin_fmt" },
+        "4": { "name": "support.class.bin_fmt" },
+        "5": { "name": "support.class.bin_fmt"}
+      },
+      "patterns": [
+        { "include": "#line_comments" },
+        { "include": "#block_comments" },
+        { "include": "#instruction" }
+      ]
+    },
+    "signed_unsigned": {
+      "match": "\\b(signed|unsigned)\\b",
+      "name": "support.type.bin_fmt"
+    },
+    "field_decl": {
+      "match": "\\b(signed|unsigned)\\s+(\\w+)\\s*\\[(\\d+)\\]\\s*;",
+      "captures": {
+        "1": { "name": "support.type.bin_fmt"},
+        "2": { "name": "variable.other.bin_fmt"},
+        "3": { "name": "constant.numeric.bin_fmt"}
+      }
+    },
+    "overlay_decl": {
+      "begin": "\\b(signed|unsigned)\\s+(\\w+)\\s*\\[(\\d+)\\]\\s*=",
+      "end": ";",
+      "beginCaptures": {
+        "1": { "name": "support.type.bin_fmt"},
+        "2": { "name": "variable.other.bin_fmt"},
+        "3": { "name": "constant.numeric.bin_fmt"}
+      },
+      "patterns": [
+        { "include": "#line_comments" },
+        { "include": "#block_comments" },
+        { "include": "#array_ref"},
+        { "include": "#identifier"},
+        { "include": "#bin_number"},
+        { "include": "#constants"}
+      ]
+    },
+    "format_decl": {
+      "begin": "\\b(format)\\s+(\\w+)\\s*\\[(\\d+)\\]\\s*:?",
+      "end": "{",
+      "beginCaptures": {
+        "1": { "name": "keyword.control.bin_fmt"},
+        "2": { "name": "support.class.bin_fmt"},
+        "3": { "name": "constant.numeric.bin_fmt"}
+      },
+      "patterns": [
+        { "include": "#format_name"}
+      ]
+    },
+    "instruction": {
+      "begin": "\\b(\\w+)\\s*:\\s*(\\w+)\\s*:",
+      "end": ";",
+      "beginCaptures": {
+        "1" : { "name": "support.function.bin_fmt"},
+        "2" : { "name": "support.class.bin_fmt"}
+      },
+      "patterns": [
+        { "include": "#identifier"},
+        { "include": "#array_ref"},
+        { "include": "#bin_number"},
+        { "include": "#constants"}
+      ]
+    },
+    "decoder": {
+      "begin": "\\b(decoder)\\s+(\\w+)\\s+{",
+      "end": "}",
+      "beginCaptures": {
+        "1": { "name": "keyword.control.bin_fmt"},
+        "2": { "name": "support.class.bin_fmt"}
+      },
+      "patterns": [
+        { "include": "#line_comments" },
+        { "include": "#block_comments" },
+        { "include": "#namespace_decl" },
+        { "include": "#include_decl" },
+        { "include": "#opcode_enum"},
+        { "include": "#format_list"},
+        { "include": "#format_name"}
+      ]
+    },
+    "opcode_enum": {
+      "begin": "\\b(opcode_enum)\\s*=\\s*",
+      "end": ";",
+      "beginCaptures": {
+        "1": { "name": "keyword.other.bin_fmt"}
+      },
+      "patterns": [
+        {"include": "#strings"}
+      ]
+    },
+    "reserved_words": {
+      "match": "\\b(format|fields|overlays|includes|instruction|group|decoder|opcode_enum)\\b",
+      "name": "keyword.control.bin_fmt"
+    },
+    "reserved_other": {
+      "match": "\\b(includes)\\b",
+      "name": "keyword.other.bin_fmt"
+    },
+    "brackets": {
+      "name": "brackets.bin_fmt",
+      "match": "[\\{\\}\\(\\)\\[\\]]"
+    },
+    "bin_number": {
+      "match": "\\b0b[01]+(\\'?[01])*\\b",
+      "name": "constant.numeric.bin_fmt"
+    },
+    "constants": {
+      "name": "constant.numeric.bin_fmt",
+      "match": "\\b\\d+\\b"
+    },
+    "array_ref": {
+      "begin": "\\b(\\w+)\\s*\\[",
+      "end": "\\]",
+      "beginCaptures": {
+        "1": { "name": "variable.other.bin_fmt"}
+      },
+      "patterns": [
+        { "include": "#range"},
+        { "include": "#bin_number"},
+        { "include": "#constants"}
+      ]
+    },
+    "range": {
+      "match": "\\b(\\d+)\\.\\.(\\d+)\\b",
+      "captures": {
+        "1": { "name": "constant.numeric.bin_fmt"},
+        "2": { "name": "constant.numeric.bin_fmt"}
+      }
+    },
+    "identifier": {
+      "match": "\\b([a-zA-Z_][a-zA-Z_0-9]*)\\b",
+      "name": "variable.other.bin_fmt"
+    },
+    "format_list": {
+      "begin": "\\b([a-zA-Z_][a-zA-Z_0-9]*)\\s*=\\s*{",
+      "end": "}\\s*;",
+      "beginCaptures" : {
+        "1": { "name": "support.class.bin_fmt"}
+      },
+      "patterns": [
+        { "include": "#line_comments" },
+        { "include": "#block_comments" },
+        { "include": "#format_name"}
+      ]
+    },
+    "format_name": {
+      "match": "\\b([a-zA-Z_][a-zA-Z_0-9]*)\\b",
+      "name": "support.class.bin_fmt"
+    },
+    "strings": {
+      "name": "string.quoted.double.bin_fmt",
+      "begin": "\"",
+      "end": "\""
+    }
+  }
+}
