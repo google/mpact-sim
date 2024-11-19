@@ -16,7 +16,6 @@
 
 #include <cstdlib>
 #include <fstream>
-#include <istream>
 #include <iterator>
 #include <string>
 #include <vector>
@@ -24,7 +23,7 @@
 #include "absl/log/check.h"
 #include "absl/log/log_sink_registry.h"
 #include "absl/strings/str_cat.h"
-#include "googlemock/include/gmock/gmock.h"
+#include "googlemock/include/gmock/gmock.h"  // IWYU pragma: keep
 #include "googletest/include/gtest/gtest.h"
 #include "mpact/sim/decoder/test/log_sink.h"
 #include "re2/re2.h"

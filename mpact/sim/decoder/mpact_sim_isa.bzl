@@ -106,16 +106,20 @@ def mpact_isa_decoder(name, includes, src = "", srcs = [], deps = [], isa_name =
     )
 
     # The rule for the lib that is built from the generated sources.
+    lib_deps = []
+    if "@com_google_absl//absl/container:flat_hash_map" not in deps:
+        lib_deps.append("@com_google_absl//absl/container:flat_hash_map")
+    if "@com_google_absl//absl/strings:str_format" not in deps:
+        lib_deps.append("@com_google_absl//absl/strings:str_format")
+    if "@com_google_mpact-sim//mpact/sim/generic:arch_state" not in deps:
+        lib_deps.append("@com_google_mpact-sim//mpact/sim/generic:arch_state")
+    if "@com_google_mpact-sim//mpact/sim/generic:instruction" not in deps:
+        lib_deps.append("@com_google_mpact-sim//mpact/sim/generic:instruction")
     native.cc_library(
         name = name,
         srcs = [f for f in out_files if f.endswith(".cc")],
         hdrs = [f for f in out_files if f.endswith(".h")],
-        deps = [
-            "@com_google_mpact-sim//mpact/sim/generic:arch_state",
-            "@com_google_mpact-sim//mpact/sim/generic:instruction",
-            "@com_google_absl//absl/container:flat_hash_map",
-            "@com_google_absl//absl/strings:str_format",
-        ] + deps,
+        deps = lib_deps + deps,
     )
 
 def mpact_bin_fmt_decoder(name, includes, src = "", srcs = [], deps = [], decoder_name = "", prefix = ""):
@@ -170,17 +174,22 @@ def mpact_bin_fmt_decoder(name, includes, src = "", srcs = [], deps = [], decode
     )
 
     # The rule for the lib that is built from the generated sources.
+    lib_deps = []
+    if "@com_google_absl//absl/container:flat_hash_map" not in deps:
+        lib_deps.append("@com_google_absl//absl/container:flat_hash_map")
+    if "@com_google_absl//absl/functional:any_invocable" not in deps:
+        lib_deps.append("@com_google_absl//absl/functional:any_invocable")
+    if "@com_google_absl//absl/strings:str_format" not in deps:
+        lib_deps.append("@com_google_absl//absl/strings:str_format")
+    if "@com_google_mpact-sim//mpact/sim/generic:arch_state" not in deps:
+        lib_deps.append("@com_google_mpact-sim//mpact/sim/generic:arch_state")
+    if "@com_google_mpact-sim//mpact/sim/generic:instruction" not in deps:
+        lib_deps.append("@com_google_mpact-sim//mpact/sim/generic:instruction")
     native.cc_library(
         name = name,
         srcs = [f for f in out_files if f.endswith(".cc")],
         hdrs = [f for f in out_files if f.endswith(".h")],
-        deps = [
-            "@com_google_mpact-sim//mpact/sim/generic:arch_state",
-            "@com_google_mpact-sim//mpact/sim/generic:instruction",
-            "@com_google_absl//absl/container:flat_hash_map",
-            "@com_google_absl//absl/functional:any_invocable",
-            "@com_google_absl//absl/strings:str_format",
-        ] + deps,
+        deps = lib_deps + deps,
     )
 
 def mpact_proto_fmt_decoder(name, includes, src = "", srcs = [], proto_files = [], deps = [], decoder_name = "", prefix = ""):

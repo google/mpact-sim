@@ -369,7 +369,7 @@ std::string InstructionSet::GenerateClassDefinitions(
 
   std::string class_name = pascal_name() + "InstructionSet";
   std::string factory_class_name = class_name + "Factory";
-  for (auto const *slot : slot_order_) {
+  for (auto *slot : slot_order_) {
     absl::StrAppend(&output, slot->GenerateClassDefinition(encoding_type));
   }
   // Constructor.
