@@ -284,7 +284,7 @@ std::string Slot::GenerateAttributeSetter(const Instruction *inst) {
   return iter->second;
 }
 
-// Generate a func tion that will set the disassembly string for the given
+// Generate a function that will set the disassembly string for the given
 // instruction.
 std::string Slot::GenerateDisasmSetterFcn(absl::string_view name,
                                           const Instruction *inst) const {
