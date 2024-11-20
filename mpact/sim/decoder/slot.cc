@@ -861,13 +861,13 @@ std::string Slot::ListFuncGetterInitializations(
                       absl::StrCat(pascal_name(), "SlotSetOperandsNull"),
                       encoding_type, default_instruction_->opcode()));
   absl::StrAppend(
-      &output, "    {{OperandSetter{", pascal_name(),
+      &output, "    {OperandSetter{", pascal_name(),
       "SlotSetOperandsNull},\n"
       "    ",
       GenerateDisassemblySetter(default_instruction_), ",\n", "    ",
       GenerateResourceSetter(default_instruction_, encoding_type), ",\n",
-      "    ", GenerateAttributeSetter(default_instruction_), ",\n", "    {",
-      default_instruction_->semfunc_code_string(), "}, ",
+      "    ", GenerateAttributeSetter(default_instruction_), ",\n",
+      "    SemFuncSetter{", default_instruction_->semfunc_code_string(), "}, ",
       default_instruction_->opcode()->instruction_size(), "},\n");
   for (auto const &[unused, inst_ptr] : instruction_map_) {
     auto *instruction = inst_ptr;
@@ -910,10 +910,9 @@ std::string Slot::ListFuncGetterInitializations(
                     "    ", GenerateDisassemblySetter(instruction), ",\n",
                     "    ", GenerateResourceSetter(instruction, encoding_type),
                     ",\n", "    ", GenerateAttributeSetter(instruction), ",\n",
-                    "    {", code_str, "}, ",
+                    "    SemFuncSetter{", code_str, "}, ",
                     instruction->opcode()->instruction_size(), "},\n");
   }
-  absl::StrAppend(&output, "  }");
   return output;
 }
 
@@ -957,8 +956,8 @@ std::string Slot::GenerateClassDefinition(absl::string_view encoding_type) {
       &output, class_name, "::", class_name,
       "(ArchState *arch_state) :\n"
       "  arch_state_(arch_state),\n",
-      "  instruction_info_(\n", ListFuncGetterInitializations(encoding_type),
-      ") {}\n",
+      "  instruction_info_{{\n", ListFuncGetterInitializations(encoding_type),
+      "}} {}\n",
       "\n"
       "Instruction *",
       class_name, "::Decode(uint64_t address, ", encoding_type,

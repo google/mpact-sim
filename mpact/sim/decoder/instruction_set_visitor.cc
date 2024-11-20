@@ -2234,13 +2234,14 @@ std::string InstructionSetVisitor::GenerateHdrFileProlog(
                   "using ResourceSetter = void(*)(Instruction *, ",
                   encoding_base_name,
                   "*, SlotEnum, int);\n"
+                  "using SemFuncSetter = std::vector<SemFunc>;\n"
                   "using AttributeSetter = void(*)(Instruction *);\n"
                   "struct InstructionInfo {\n"
                   "  OperandSetter operand_setter;\n"
                   "  DisassemblySetter disassembly_setter;\n"
                   "  ResourceSetter resource_setter;\n"
                   "  AttributeSetter attribute_setter;\n"
-                  "  std::vector<SemFunc> semfunc;\n"
+                  "  SemFuncSetter semfunc;\n"
                   "  int instruction_size;\n"
                   "};\n"
                   "\n");
@@ -2262,7 +2263,7 @@ std::string InstructionSetVisitor::GenerateCcFileProlog(
   // Include files.
   absl::StrAppend(&output, "#include \"", hdr_file_name, "\"\n");
   absl::StrAppend(&output,
-                  "\n"
+                  "\n#include <array>\n\n"
                   "#include \"absl/strings/str_format.h\"\n\n");
 
   for (auto &include_file : include_files_) {
