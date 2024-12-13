@@ -21,6 +21,7 @@
 #include <tuple>
 #include <utility>
 
+#include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "antlr4-runtime/Token.h"
 #include "mpact/sim/decoder/bin_encoding_info.h"
@@ -78,24 +79,24 @@ InstructionEncoding *InstructionGroup::AddInstructionEncoding(
   // Warn if the instruction name has been seen before. It might be fully valid
   // that an instruction name has multiple encodings, but warn about it, in
   // case it is an error.
-  if (encoding_name_set_.contains(name)) {
+  if (encoding_name_map_.contains(name)) {
     encoding_info_->error_listener()->semanticWarning(
         token, absl::StrCat("Duplicate instruction opcode name '", name,
                             "' in group '", this->name(), "'."));
   }
-  encoding_name_set_.insert(name);
   auto *encoding = new InstructionEncoding(name, format);
   encoding_vec_.push_back(encoding);
+  encoding_name_map_.insert(std::make_pair(name, encoding));
   return encoding;
 }
 
 void InstructionGroup::AddInstructionEncoding(InstructionEncoding *encoding) {
-  if (encoding_name_set_.contains(encoding->name())) {
+  if (encoding_name_map_.contains(encoding->name())) {
     encoding_info_->error_listener()->semanticWarning(
         nullptr, absl::StrCat("Duplicate instruction opcode name '",
                               encoding->name(), "' in group '", name(), "'."));
   }
-  encoding_name_set_.insert(encoding->name());
+  encoding_name_map_.insert(std::make_pair(encoding->name(), encoding));
   encoding_vec_.push_back(encoding);
 }
 
@@ -137,6 +138,23 @@ void InstructionGroup::CheckEncodings() {
   for (auto *enc_grp : encoding_group_vec_) {
     enc_grp->CheckEncodings();
   }
+}
+
+absl::Status InstructionGroup::AddSpecialization(
+    const std::string &name, const std::string &parent_name,
+    InstructionEncoding *encoding) {
+  if (encoding_name_map_.contains(name)) {
+    encoding_info_->error_listener()->semanticError(
+        nullptr,
+        absl::StrCat("Duplicate instruction specialization opcode name '", name,
+                     "' in group '", this->name(), "'."));
+    return absl::AlreadyExistsError(
+        absl::StrCat("Duplicate instruction specialization opcode name '", name,
+                     "' in group '", this->name(), "'."));
+  }
+  encoding_name_map_.insert(std::make_pair(name, encoding));
+  auto *parent_encoding = encoding_name_map_.at(parent_name);
+  return parent_encoding->AddSpecialization(name, encoding);
 }
 
 // Helper function used to sort the instruction group elements in a vector.

@@ -21,7 +21,8 @@
 #include <vector>
 
 #include "absl/container/btree_map.h"
-#include "absl/container/flat_hash_set.h"
+#include "absl/container/flat_hash_map.h"
+#include "absl/status/status.h"
 #include "antlr4-runtime/Token.h"
 #include "mpact/sim/decoder/bin_encoding_info.h"
 #include "mpact/sim/decoder/encoding_group.h"
@@ -59,6 +60,10 @@ class InstructionGroup {
   // Return a string containing information about this instruction group and
   // how it has been partitioned across encoding groups.
   std::string WriteGroup();
+  // Add a specialization to this instruction group.
+  absl::Status AddSpecialization(const std::string &name,
+                                 const std::string &parent_name,
+                                 InstructionEncoding *encoding);
 
   // Accessors.
   const std::string &name() const { return name_; }
@@ -69,6 +74,12 @@ class InstructionGroup {
   }
   int width() const { return width_; }
   BinEncodingInfo *encoding_info() const { return encoding_info_; }
+  const absl::flat_hash_map<std::string, InstructionEncoding *> &
+  encoding_name_map() const {
+    return encoding_name_map_;
+  }
+
+  Format *format() const { return format_; }
 
  private:
   std::string name_;
@@ -78,7 +89,7 @@ class InstructionGroup {
   std::string opcode_enum_;
   BinEncodingInfo *encoding_info_;
   std::vector<InstructionEncoding *> encoding_vec_;
-  absl::flat_hash_set<std::string> encoding_name_set_;
+  absl::flat_hash_map<std::string, InstructionEncoding *> encoding_name_map_;
   absl::btree_multimap<uint64_t, InstructionEncoding *> encoding_map_;
   std::vector<EncodingGroup *> encoding_group_vec_;
 };

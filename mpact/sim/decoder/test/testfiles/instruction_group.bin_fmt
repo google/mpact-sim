@@ -282,6 +282,12 @@ instruction group RiscVCsrInst32[32] : Inst32Format {
   csrrwi_nr: IType  : func3 == 0b101, rd == 0,  opcode == 0b111'0011;
   csrrsi_nw: IType  : func3 == 0b110, rs1 == 0, opcode == 0b111'0011;
   csrrci_nw: IType  : func3 == 0b111, rs1 == 0, opcode == 0b111'0011;
+  rdcycle    : specializes csrrs_nw : imm12 == 0xc00;
+  rdtime     : specializes csrrs_nw : imm12 == 0xc01;
+  rdinstret  : specializes csrrs_nw : imm12 == 0xc02;
+  rdcycleh   : specializes csrrs_nw : imm12 == 0xc80;
+  rdtimeh    : specializes csrrs_nw : imm12 == 0xc81;
+  rdinstreth : specializes csrrs_nw : imm12 == 0xc82;
 };
 
 // RiscV32 Privileged instructions.

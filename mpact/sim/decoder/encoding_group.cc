@@ -118,6 +118,7 @@ bool EncodingGroup::IsSimpleDecode() {
   for (auto *enc : encoding_vec_) {
     if (!enc->other_constraints().empty()) return false;
     if (!enc->equal_extracted_constraints().empty()) return false;
+    if (!enc->HasSpecialization()) return false;
   }
   return discriminator_ == varying_;
 }
@@ -504,6 +505,16 @@ int EncodingGroup::EmitEncodingIfStatement(
                   definitions_ptr);
   EmitExtractions(indent, encoding->other_constraints(), extracted,
                   definitions_ptr);
+  // Write any field/overlay extractions needed for the specializations (that
+  // haven't already been extracted).
+  for (auto const &[unused, encoding] : encoding->specializations()) {
+    EmitExtractions(indent, encoding->equal_constraints(), extracted,
+                    definitions_ptr);
+    EmitExtractions(indent, encoding->equal_extracted_constraints(), extracted,
+                    definitions_ptr);
+    EmitExtractions(indent, encoding->other_constraints(), extracted,
+                    definitions_ptr);
+  }
   // Construct the if statement.
   std::string condition;
   std::string connector;
@@ -516,19 +527,62 @@ int EncodingGroup::EmitEncodingIfStatement(
   count += EmitOtherConstraintConditions(encoding->other_constraints(),
                                          connector, &condition);
 
+  bool specialization = encoding->HasSpecialization();
   // Ensure the number of parentheses are appropriate to the number of
   // conjunctions in the if statement.
   if (count > 1) {
-    absl::StrAppend(definitions_ptr, indent_str, "if (", condition, ")\n");
+    absl::StrAppend(definitions_ptr, indent_str, "if (", condition,
+                    specialization ? ") {\n" : ")\n");
     indent_str.append("  ");
   } else if (count == 1) {
-    absl::StrAppend(definitions_ptr, indent_str, "if ", condition, "\n");
+    absl::StrAppend(definitions_ptr, indent_str, "if ", condition,
+                    specialization ? " {\n" : "\n");
+    indent_str.append("  ");
+  }
+  // If the instruction has specializations, emit the if statement for each
+  // specialization.
+  std::string if_str = "if ";
+  if (specialization) {
+    for (auto const &[name, encoding] : encoding->specializations()) {
+      int spec_count = 0;
+      std::string spec_condition;
+      std::string spec_connector;
+      // Construct the condition for the specialization instruction.
+      spec_count += EmitConstraintConditions(
+          encoding->equal_constraints(), "==", spec_connector, &spec_condition);
+      spec_count +=
+          EmitConstraintConditions(encoding->equal_extracted_constraints(),
+                                   "==", spec_connector, &spec_condition);
+      spec_count += EmitOtherConstraintConditions(
+          encoding->other_constraints(), spec_connector, &spec_condition);
+      if (spec_count > 1) {
+        absl::StrAppend(definitions_ptr, indent_str, if_str, "(",
+                        spec_condition, ") {\n");
+        indent_str.append("  ");
+      } else if (spec_count == 1) {
+        absl::StrAppend(definitions_ptr, indent_str, if_str, spec_condition,
+                        " {\n");
+      }
+      absl::StrAppend(definitions_ptr, indent_str, "  return std::make_pair(",
+                      opcode_enum, "::k", ToPascalCase(encoding->name()),
+                      ", FormatEnum::k", ToPascalCase(encoding->format_name()),
+                      ");\n");
+      if_str = "} else if ";
+    }
+    absl::StrAppend(definitions_ptr, indent_str, "} else {\n");
     indent_str.append("  ");
   }
   absl::StrAppend(definitions_ptr, indent_str, "return std::make_pair(",
                   opcode_enum, "::k", ToPascalCase(encoding->name()),
                   ", FormatEnum::k", ToPascalCase(encoding->format_name()),
                   ");\n");
+  if (specialization) {
+    // Close the if statements.
+    indent_str = indent_str.substr(2);
+    absl::StrAppend(definitions_ptr, indent_str, "}\n");
+    indent_str = indent_str.substr(2);
+    absl::StrAppend(definitions_ptr, indent_str, "}\n");
+  }
   return count != 0 ? 1 : 0;
 }
 
@@ -599,8 +653,8 @@ void EncodingGroup::EmitExtractions(
   std::string indent_str(indent + 2, ' ');
   // Write any field/overlay extractions needed for the constraints.
   // Note, the extractions may be wider than the instruction word width, due
-  // to constant bits being added, so make sure to use appropriate type for each
-  // extraction.
+  // to constant bits being added, so make sure to use appropriate type for
+  // each extraction.
   for (auto const *constraint : constraints) {
     if (constraint->can_ignore) continue;
     if (constraint->field != nullptr) {

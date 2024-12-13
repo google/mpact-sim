@@ -133,6 +133,7 @@ class BinFormatVisitor {
       const std::string &group_name, GroupNameListCtx *ctx,
       absl::flat_hash_set<std::string> &group_name_set,
       BinEncodingInfo *encoding_info);
+  void ProcessSpecializations(BinEncodingInfo *encoding_info);
 
   // Accessors.
   decoder::DecoderErrorListener *error_listener() const {
@@ -163,6 +164,8 @@ class BinFormatVisitor {
   std::vector<BinFmtAntlrParserWrapper *> antlr_parser_wrappers_;
   // Map from comparator string to constraint type.
   absl::flat_hash_map<std::string, ConstraintType> constraint_string_to_type_;
+  // Specializations to process after all instructions have been processed.
+  std::vector<InstructionDefCtx *> specializations_;
 };
 
 }  // namespace bin_format

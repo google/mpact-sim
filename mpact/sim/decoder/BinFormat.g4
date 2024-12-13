@@ -130,6 +130,7 @@ instruction_def
   : name=IDENT ':' format_name=IDENT ':' field_constraint_list ';'
   | generate=GENERATE '(' range_assignment (',' range_assignment)* ')'
     '{' generator_instruction_def_list '}' ';'
+  | name=IDENT ':' SPECIALIZES parent=IDENT ':' field_constraint_list ';'
   ;
 
 
@@ -257,6 +258,7 @@ OVERLAYS : 'overlays';
 INSTRUCTION : 'instruction';
 GROUP : 'group';
 DECODER : 'decoder';
+SPECIALIZES : 'specializes';
 
 // Other tokens.
 STRING_LITERAL : UNTERMINATED_STRING_LITERAL '"';

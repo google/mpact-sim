@@ -16,6 +16,7 @@
 
 #include <cstdint>
 #include <string>
+#include <utility>
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -53,6 +54,25 @@ InstructionEncoding::InstructionEncoding(const InstructionEncoding &encoding)
   for (auto *constraint : encoding.other_constraints_) {
     other_constraints_.push_back(new Constraint(*constraint));
   }
+}
+
+InstructionEncoding::~InstructionEncoding() {
+  for (auto *constraint : equal_constraints_) {
+    delete constraint;
+  }
+  equal_constraints_.clear();
+  for (auto *constraint : equal_extracted_constraints_) {
+    delete constraint;
+  }
+  equal_extracted_constraints_.clear();
+  for (auto *constraint : other_constraints_) {
+    delete constraint;
+  }
+  other_constraints_.clear();
+  for (auto &[name, enc_ptr] : specializations_) {
+    delete enc_ptr;
+  }
+  specializations_.clear();
 }
 
 absl::StatusOr<Constraint *> InstructionEncoding::CreateConstraint(
@@ -196,21 +216,6 @@ absl::StatusOr<Constraint *> InstructionEncoding::CreateConstraint(
   return constraint;
 }
 
-InstructionEncoding::~InstructionEncoding() {
-  for (auto *constraint : equal_constraints_) {
-    delete constraint;
-  }
-  equal_constraints_.clear();
-  for (auto *constraint : equal_extracted_constraints_) {
-    delete constraint;
-  }
-  equal_extracted_constraints_.clear();
-  for (auto *constraint : other_constraints_) {
-    delete constraint;
-  }
-  other_constraints_.clear();
-}
-
 absl::Status InstructionEncoding::AddEqualConstraint(std::string field_name,
                                                      int64_t value) {
   // Invalidate the computed masks and values when a new constraint is added.
@@ -335,6 +340,20 @@ uint64_t InstructionEncoding::GetCombinedMask() {
     }
   }
   return mask_ | extracted_mask_ | other_mask_;
+}
+
+absl::Status InstructionEncoding::AddSpecialization(
+    const std::string &name, InstructionEncoding *encoding) {
+  if (specializations_.contains(name)) {
+    format_->encoding_info()->error_listener()->semanticError(
+        nullptr, absl::StrCat("Duplicate instruction specialization name '",
+                              name, "' in format '", format_name_, "'."));
+    return absl::AlreadyExistsError(
+        absl::StrCat("Duplicate instruction specialization name '", name,
+                     "' in format '", format_name_, "'."));
+  }
+  specializations_.insert(std::make_pair(name, encoding));
+  return absl::OkStatus();
 }
 
 uint64_t InstructionEncoding::GetValue() {

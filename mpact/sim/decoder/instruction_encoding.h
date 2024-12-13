@@ -19,6 +19,7 @@
 #include <string>
 #include <vector>
 
+#include "absl/container/btree_map.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "mpact/sim/decoder/bin_format_visitor.h"
@@ -76,6 +77,10 @@ class InstructionEncoding {
   // Get the mask of the instruction word based on the bits in both equal and
   // not equal constraints.
   uint64_t GetCombinedMask();
+  // Add specialization to this encoding.
+  absl::Status AddSpecialization(const std::string &name,
+                                 InstructionEncoding *encoding);
+  bool HasSpecialization() const { return !specializations_.empty(); }
 
   // Accessors.
   const std::string &name() const { return name_; }
@@ -98,6 +103,13 @@ class InstructionEncoding {
   const std::vector<Constraint *> &other_constraints() const {
     return other_constraints_;
   }
+
+  const absl::btree_map<std::string, InstructionEncoding *> &specializations()
+      const {
+    return specializations_;
+  }
+
+  Format *format() const { return format_; }
 
  private:
   // Internal helper to create and check a constraint.
@@ -122,6 +134,7 @@ class InstructionEncoding {
   uint64_t other_mask_ = 0;
   uint64_t extracted_mask_ = 0;
   uint64_t value_ = 0;
+  absl::btree_map<std::string, InstructionEncoding *> specializations_;
 };
 
 }  // namespace bin_format

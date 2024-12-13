@@ -171,6 +171,8 @@ absl::Status BinFormatVisitor::Process(
   if (error_listener_->HasError() > 0) {
     return absl::InternalError("Errors encountered - terminating.");
   }
+  // Process specializations.
+  ProcessSpecializations(encoding_info.get());
 
   // Create output streams for .h and .cc files.
   std::string dot_h_name = absl::StrCat(prefix, "_bin_decoder.h");
@@ -779,9 +781,17 @@ InstructionGroup *BinFormatVisitor::VisitInstructionGroupDef(
 void BinFormatVisitor::VisitInstructionDef(InstructionDefCtx *ctx,
                                            InstructionGroup *inst_group) {
   if (ctx == nullptr) return;
-
+  // If it is a generator, process it.
   if (ctx->generate != nullptr) {
     ProcessInstructionDefGenerator(ctx, inst_group);
+    return;
+  }
+  // Check to see if it is a specialization. If it is a specialization, save it
+  // for later processing when all the instructions have been processed.
+  int file_index = context_file_map_.at(ctx);
+  if (ctx->parent != nullptr) {
+    specializations_.push_back(ctx);
+    context_file_map_.insert({ctx, file_index});
     return;
   }
   // Get the instruction name and the format it refers to.
@@ -813,7 +823,6 @@ void BinFormatVisitor::VisitInstructionDef(InstructionDefCtx *ctx,
       inst_group->AddInstructionEncoding(ctx->format_name, name, format);
   if (format == nullptr) return;
   // Add constraints to the instruction encoding.
-  int file_index = context_file_map_.at(ctx);
   for (auto *constraint : ctx->field_constraint_list()->field_constraint()) {
     context_file_map_.insert({constraint, file_index});
     VisitConstraint(format, constraint, inst_encoding);
@@ -1221,6 +1230,33 @@ InstructionGroup *BinFormatVisitor::VisitInstructionGroupNameList(
     }
   }
   return parent_group;
+}
+
+void BinFormatVisitor::ProcessSpecializations(BinEncodingInfo *encoding_info) {
+  for (auto *ctx : specializations_) {
+    auto file_index = context_file_map_.at(ctx);
+    std::string name = ctx->name->getText();
+    std::string parent_name = ctx->parent->getText();
+    for (auto &[unused, grp_ptr] : encoding_info->instruction_group_map()) {
+      auto iter = grp_ptr->encoding_name_map().find(parent_name);
+      if (iter != grp_ptr->encoding_name_map().end()) {
+        auto *parent_encoding = iter->second;
+        auto *format = parent_encoding->format();
+        auto *inst_encoding = new InstructionEncoding(name, format);
+        for (auto *constraint :
+             ctx->field_constraint_list()->field_constraint()) {
+          context_file_map_.insert({constraint, file_index});
+          VisitConstraint(format, constraint, inst_encoding);
+        }
+        if (!grp_ptr->AddSpecialization(name, parent_name, inst_encoding)
+                 .ok()) {
+          delete inst_encoding;
+          continue;
+        }
+        break;
+      }
+    }
+  }
 }
 
 }  // namespace bin_format
