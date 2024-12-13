@@ -10,6 +10,7 @@
     { "include": "#include_file" },
     { "include": "#include_decl" },
     { "include": "#instruction_group"},
+    { "include": "#specialization"},
     { "include": "#format_decl"},
     { "include": "#field_decl"},
     { "include": "#overlay_decl"},
@@ -83,7 +84,8 @@
       "patterns": [
         { "include": "#line_comments" },
         { "include": "#block_comments" },
-        { "include": "#instruction" }
+        { "include": "#instruction" },
+        { "include": "#specialization" }
       ]
     },
     "signed_unsigned": {
@@ -138,6 +140,23 @@
         { "include": "#identifier"},
         { "include": "#array_ref"},
         { "include": "#bin_number"},
+        { "include": "#hex_number"},
+        { "include": "#constants"}
+      ]
+    },
+    "specialization": {
+      "begin": "\\b(\\w+)\\s*:\\s*(specializes)\\s*(\\w+)\\s*:",
+      "end": ";",
+      "beginCaptures": {
+        "1" : { "name": "support.function.bin_fmt"},
+        "2" : { "name": "keyword.control.bin_fmt"},
+        "3" : { "name": "support.function.bin_fmt"}
+      },
+      "patterns": [
+        { "include": "#identifier"},
+        { "include": "#array_ref"},
+        { "include": "#bin_number"},
+        { "include": "#hex_number"},
         { "include": "#constants"}
       ]
     },
@@ -179,6 +198,10 @@
     "brackets": {
       "name": "brackets.bin_fmt",
       "match": "[\\{\\}\\(\\)\\[\\]]"
+    },
+    "hex_number": {
+      "match": "\\b0x[0-9a-fA-F]+(\\'?[0-9a-fA-F])*\\b",
+      "name": "constant.numeric.bin_fmt"
     },
     "bin_number": {
       "match": "\\b0b[01]+(\\'?[01])*\\b",
