@@ -56,7 +56,10 @@ class InstructionGroup {
   // Check encodings for duplicates etc.
   void CheckEncodings();
   // Generate and emit code for decoding this instruction group.
-  std::tuple<std::string, std::string> EmitCode();
+  std::tuple<std::string, std::string> EmitDecoderCode();
+  // Collect the encodings for these instructions.
+  void GetInstructionEncodings(
+      absl::btree_map<std::string, std::tuple<uint64_t, int>> &encodings);
   // Return a string containing information about this instruction group and
   // how it has been partitioned across encoding groups.
   std::string WriteGroup();

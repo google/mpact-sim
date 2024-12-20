@@ -15,15 +15,12 @@
 #ifndef LMPACT_SIM_DECODER_BUNDLE_H_
 #define LMPACT_SIM_DECODER_BUNDLE_H_
 
-#include <iostream>
 #include <string>
 #include <utility>
 #include <vector>
 
-#include "absl/container/flat_hash_map.h"
 #include "absl/strings/string_view.h"
 #include "mpact/sim/decoder/instruction_set_contexts.h"
-#include "mpact/sim/decoder/opcode.h"
 #include "mpact/sim/decoder/slot.h"
 
 namespace mpact {

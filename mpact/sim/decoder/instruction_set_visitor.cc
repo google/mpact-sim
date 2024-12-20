@@ -23,6 +23,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <tuple>
 #include <utility>
 #include <variant>
 #include <vector>
@@ -166,42 +167,68 @@ absl::Status InstructionSetVisitor::Process(
       absl::StrCat(ToPascalCase(isa_name), "EncodingBase");
 
   // Create output streams for .h and .cc files.
-  std::string dot_h_name = absl::StrCat(isa_prefix, "_decoder.h");
-  std::string dot_cc_name = absl::StrCat(isa_prefix, "_decoder.cc");
+  std::string dec_dot_h_name = absl::StrCat(isa_prefix, "_decoder.h");
+  std::string dec_dot_cc_name = absl::StrCat(isa_prefix, "_decoder.cc");
+  std::string enc_dot_h_name = absl::StrCat(isa_prefix, "_encoder.h");
+  std::string enc_dot_cc_name = absl::StrCat(isa_prefix, "_encoder.cc");
   std::string enum_h_name = absl::StrCat(isa_prefix, "_enums.h");
   std::string enum_cc_name = absl::StrCat(isa_prefix, "_enums.cc");
-  std::ofstream dot_h_file(absl::StrCat(directory, "/", dot_h_name));
-  std::ofstream dot_cc_file(absl::StrCat(directory, "/", dot_cc_name));
+  std::ofstream dec_dot_h_file(absl::StrCat(directory, "/", dec_dot_h_name));
+  std::ofstream dec_dot_cc_file(absl::StrCat(directory, "/", dec_dot_cc_name));
+  std::ofstream enc_dot_h_file(absl::StrCat(directory, "/", enc_dot_h_name));
+  std::ofstream enc_dot_cc_file(absl::StrCat(directory, "/", enc_dot_cc_name));
   std::ofstream enum_h_file(absl::StrCat(directory, "/", enum_h_name));
   std::ofstream enum_cc_file(absl::StrCat(directory, "/", enum_cc_name));
   // Generate the code, close the files and return.
-  std::string guard_name = ToHeaderGuard(dot_h_name);
-  dot_h_file << GenerateHdrFileProlog(dot_h_name, enum_h_name, guard_name,
-                                      encoding_type_name,
-                                      instruction_set->namespaces());
-  dot_h_file << instruction_set->GenerateClassDeclarations(
-      dot_h_name, enum_h_name, encoding_type_name);
-  dot_h_file << GenerateHdrFileEpilog(guard_name,
-                                      instruction_set->namespaces());
-  dot_cc_file << GenerateCcFileProlog(dot_h_name,
-                                      instruction_set->namespaces());
-  dot_cc_file << instruction_set->GenerateClassDefinitions(dot_h_name,
-                                                           encoding_type_name);
-  dot_cc_file << GenerateNamespaceEpilog(instruction_set->namespaces());
-  enum_cc_file << GenerateCcFileProlog(enum_h_name,
-                                       instruction_set->namespaces());
+  std::string guard_name = ToHeaderGuard(dec_dot_h_name);
+  // Decoder .h file.
+  dec_dot_h_file << GenerateHdrFileProlog(dec_dot_h_name, enum_h_name,
+                                          guard_name, encoding_type_name,
+                                          instruction_set->namespaces());
+  dec_dot_h_file << instruction_set->GenerateClassDeclarations(
+      dec_dot_h_name, enum_h_name, encoding_type_name);
+  dec_dot_h_file << GenerateHdrFileEpilog(guard_name,
+                                          instruction_set->namespaces());
+  dec_dot_h_file.close();
+  // Decoder .cc file.
+  dec_dot_cc_file << GenerateCcFileProlog(dec_dot_h_name,
+                                          instruction_set->namespaces());
+  dec_dot_cc_file << instruction_set->GenerateClassDefinitions(
+      dec_dot_h_name, encoding_type_name);
+  dec_dot_cc_file << GenerateNamespaceEpilog(instruction_set->namespaces());
+  dec_dot_cc_file.close();
+
+  // Enum files.
   enum_h_file << GenerateSimpleHdrProlog(ToHeaderGuard(enum_h_name),
                                          instruction_set->namespaces());
+  enum_cc_file << GenerateCcFileProlog(enum_h_name,
+                                       instruction_set->namespaces());
   auto [h_output, cc_output] = instruction_set->GenerateEnums(enum_h_name);
   enum_h_file << h_output;
   enum_cc_file << cc_output;
   enum_h_file << GenerateHdrFileEpilog(ToHeaderGuard(enum_h_name),
                                        instruction_set->namespaces());
   enum_cc_file << GenerateNamespaceEpilog(instruction_set->namespaces());
-  dot_h_file.close();
-  dot_cc_file.close();
   enum_h_file.close();
   enum_cc_file.close();
+
+  // Encoder files
+  guard_name = ToHeaderGuard(enc_dot_h_name);
+  auto [enc_dot_h_prolog, enc_dot_cc_prolog] =
+      GenerateEncFilePrologs(enc_dot_h_name, guard_name, enum_h_name,
+                             encoding_type_name, instruction_set->namespaces());
+  enc_dot_h_file << enc_dot_h_prolog;
+  enc_dot_cc_file << enc_dot_cc_prolog;
+  auto [h_enc, cc_enc] = instruction_set->GenerateEncClasses(
+      enc_dot_h_name, enum_h_name, encoding_type_name);
+  enc_dot_h_file << h_enc;
+  enc_dot_cc_file << cc_enc;
+  enc_dot_h_file << GenerateHdrFileEpilog(guard_name,
+                                          instruction_set->namespaces());
+  enc_dot_cc_file << GenerateNamespaceEpilog(
+      instruction_set->namespaces());  // Enum .h  and .cc files.
+  enc_dot_h_file.close();
+  enc_dot_cc_file.close();
 
   return absl::OkStatus();
 }
@@ -1515,6 +1542,7 @@ void InstructionSetVisitor::ProcessOpcodeSpec(
 
   Opcode *top = result.value();
   auto inst = new Instruction(top, slot);
+  slot->instruction_set()->AddInstruction(inst);
 
   // Get the size of the instruction if specified, otherwise use default size.
   if (opcode_ctx->size_spec() != nullptr) {
@@ -1596,8 +1624,9 @@ void InstructionSetVisitor::VisitOpcodeOperands(OpcodeOperandsCtx *ctx,
         is_array = true;
       }
       child->opcode()->AppendSourceOp(name, is_array);
-      parent->opcode()->op_locator_map().insert(
-          std::make_pair(name, OperandLocator(op_spec_number, 's', instance)));
+      parent->opcode()->op_locator_map().insert(std::make_pair(
+          name,
+          OperandLocator(op_spec_number, is_array ? 't' : 's', instance)));
       instance++;
     }
   }
@@ -1630,8 +1659,9 @@ void InstructionSetVisitor::VisitOpcodeOperands(OpcodeOperandsCtx *ctx,
       } else {
         child->opcode()->AppendDestOp(ident, is_array, new TemplateConstant(1));
       }
-      parent->opcode()->op_locator_map().insert(
-          std::make_pair(ident, OperandLocator(op_spec_number, 'd', instance)));
+      parent->opcode()->op_locator_map().insert(std::make_pair(
+          ident,
+          OperandLocator(op_spec_number, is_array ? 'e' : 'd', instance)));
       instance++;
     }
   }
@@ -2246,6 +2276,58 @@ std::string InstructionSetVisitor::GenerateHdrFileProlog(
                   "};\n"
                   "\n");
   return output;
+}
+
+std::tuple<std::string, std::string>
+InstructionSetVisitor::GenerateEncFilePrologs(
+    absl::string_view file_name, absl::string_view guard_name,
+    absl::string_view opcode_file_name, absl::string_view encoding_type_name,
+    const std::vector<std::string> &namespaces) {
+  std::string h_output;
+  std::string cc_output;
+  absl::StrAppend(&h_output, "#ifndef ", guard_name,
+                  "\n"
+                  "#define ",
+                  guard_name,
+                  "\n"
+                  "\n"
+                  "#include <array>\n"
+                  "#include <string>\n"
+                  "#include <vector>\n"
+                  "\n"
+                  "#include \"absl/status/status.h\"\n"
+                  "#include \"absl/status/statusor.h\"\n"
+                  "#include \"absl/strings/string_view.h\"\n"
+                  "#include \"re2/re2.h\"\n"
+                  "#include \"re2/set.h\"\n"
+                  "#include \"",
+                  opcode_file_name,
+                  "\"\n"
+                  "\n");
+  absl::StrAppend(&cc_output, "#include \"", file_name,
+                  "\"\n"
+                  "\n"
+                  "#include <array>\n"
+                  "#include <string>\n"
+                  "#include <vector>\n"
+                  "\n"
+                  "#include \"absl/status/status.h\"\n"
+                  "#include \"absl/status/statusor.h\"\n"
+                  "#include \"absl/strings/string_view.h\"\n"
+                  "#include \"re2/re2.h\"\n"
+                  "#include \"re2/set.h\"\n"
+                  "#include \"",
+                  opcode_file_name,
+                  "\"\n"
+                  "\n");
+
+  for (const auto &namespace_name : namespaces) {
+    absl::StrAppend(&h_output, "namespace ", namespace_name, " {\n");
+    absl::StrAppend(&cc_output, "namespace ", namespace_name, " {\n");
+  }
+  absl::StrAppend(&h_output, "\n");
+  absl::StrAppend(&cc_output, "\n");
+  return {h_output, cc_output};
 }
 
 std::string InstructionSetVisitor::GenerateHdrFileEpilog(

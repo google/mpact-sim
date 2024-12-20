@@ -86,6 +86,8 @@ def mpact_isa_decoder(name, includes, src = "", srcs = [], deps = [], isa_name =
         "%s_decoder.cc" % base_file_prefix,
         "%s_enums.h" % base_file_prefix,
         "%s_enums.cc" % base_file_prefix,
+        "%s_encoder.h" % base_file_prefix,
+        "%s_encoder.cc" % base_file_prefix,
     ]
 
     # The command to generate the files.
@@ -115,6 +117,14 @@ def mpact_isa_decoder(name, includes, src = "", srcs = [], deps = [], isa_name =
         lib_deps.append("@com_google_mpact-sim//mpact/sim/generic:arch_state")
     if "@com_google_mpact-sim//mpact/sim/generic:instruction" not in deps:
         lib_deps.append("@com_google_mpact-sim//mpact/sim/generic:instruction")
+    if "@com_googlesource_code_re2//:re2" not in deps:
+        lib_deps.append("@com_googlesource_code_re2//:re2")
+    if "@com_google_absl//absl/status" not in deps:
+        lib_deps.append("@com_google_absl//absl/status")
+    if "@com_google_absl//absl/status:statusor" not in deps:
+        lib_deps.append("@com_google_absl//absl/status:statusor")
+    if "@com_google_absl//absl/strings" not in deps:
+        lib_deps.append("@com_google_absl//absl/strings")
     native.cc_library(
         name = name,
         srcs = [f for f in out_files if f.endswith(".cc")],
@@ -154,6 +164,8 @@ def mpact_bin_fmt_decoder(name, includes, src = "", srcs = [], deps = [], decode
     out_files = [
         "%s_bin_decoder.h" % base_file_prefix,
         "%s_bin_decoder.cc" % base_file_prefix,
+        "%s_bin_encoder.h" % base_file_prefix,
+        "%s_bin_encoder.cc" % base_file_prefix,
     ]
 
     # The command to generate the files.

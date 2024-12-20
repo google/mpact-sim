@@ -21,6 +21,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -179,6 +180,10 @@ class InstructionSetVisitor {
                                     absl::string_view guard_name,
                                     absl::string_view encoding_base_name,
                                     const std::vector<std::string> &namespaces);
+  std::tuple<std::string, std::string> GenerateEncFilePrologs(
+      absl::string_view file_name, absl::string_view guard_name,
+      absl::string_view opcode_file_name, absl::string_view encoding_type_name,
+      const std::vector<std::string> &namespaces);
   std::string GenerateHdrFileEpilog(absl::string_view guard_name,
                                     const std::vector<std::string> &namespaces);
   std::string GenerateCcFileProlog(absl::string_view hdr_file_name,

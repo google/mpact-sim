@@ -75,6 +75,7 @@ class BinEncodingInfo {
     return include_files_;
   }
   BinDecoder *decoder() const { return decoder_; }
+  std::string opcode_enum() const { return opcode_enum_; }
 
  private:
   std::string opcode_enum_;

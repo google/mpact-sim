@@ -54,8 +54,12 @@ class BoolLiteralPredicateOperand : public PredicateOperandInterface {
 template <bool literal>
 class BoolLiteralOperand : public SourceOperandInterface {
  public:
-  BoolLiteralOperand() = default;
-  explicit BoolLiteralOperand(const std::vector<int> &shape) : shape_(shape) {}
+  BoolLiteralOperand() : as_string_(absl::StrCat(literal)) {}
+  BoolLiteralOperand(absl::string_view as_string) : as_string_(as_string) {}
+  BoolLiteralOperand(const std::vector<int> &shape, absl::string_view as_string)
+      : shape_(shape), as_string_(as_string) {}
+  explicit BoolLiteralOperand(const std::vector<int> &shape)
+      : BoolLiteralOperand(shape, absl::StrCat(literal)) {}
 
   // Methods for accessing the literal value. Always returns the same
   // value regardless of the index parameter.
@@ -78,7 +82,7 @@ class BoolLiteralOperand : public SourceOperandInterface {
   // 128 element vector quantity.
   std::vector<int> shape() const override { return shape_; }
 
-  std::string AsString() const override { return absl::StrCat(literal); }
+  std::string AsString() const override { return as_string_; }
 
  private:
   std::string as_string_;
@@ -89,7 +93,8 @@ class BoolLiteralOperand : public SourceOperandInterface {
 template <int literal>
 class IntLiteralOperand : public SourceOperandInterface {
  public:
-  IntLiteralOperand() = default;
+  IntLiteralOperand() : as_string_(absl::StrCat(literal)) {};
+  IntLiteralOperand(absl::string_view as_string) : as_string_(as_string) {}
   IntLiteralOperand(const std::vector<int> &shape, absl::string_view as_string)
       : shape_(shape), as_string_(as_string) {}
   explicit IntLiteralOperand(const std::vector<int> &shape)
@@ -116,7 +121,7 @@ class IntLiteralOperand : public SourceOperandInterface {
   // 128 element vector quantity.
   std::vector<int> shape() const override { return shape_; }
 
-  std::string AsString() const override { return absl::StrCat(literal); }
+  std::string AsString() const override { return as_string_; }
 
  private:
   std::vector<int> shape_;

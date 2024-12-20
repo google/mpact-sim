@@ -15,7 +15,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <map>
 #include <string>
 #include <tuple>
 #include <vector>
@@ -140,7 +139,9 @@ class Format {
   void PropagateExtractorsUp();
   void PropagateExtractorsDown();
   // Generates definitions of the field and overlay extractors in the format.
-  std::tuple<std::string, std::string> GenerateExtractors();
+  std::tuple<std::string, std::string> GenerateExtractors() const;
+  // Generates definitions of the field and overlay inserters in the format.
+  std::string GenerateInserters() const;
 
   // True if the current format is a descendent of format.
   bool IsDerivedFrom(const Format *format);
@@ -165,6 +166,12 @@ class Format {
                                       const Format *format, int high,
                                       int size) const;
   std::string GenerateOverlayExtractor(Overlay *overlay) const;
+  // Inserters.
+  std::string GenerateFieldInserter(const Field *field) const;
+  std::string GenerateFormatInserter(std::string_view format_alias,
+                                     const Format *format, int high,
+                                     int size) const;
+  std::string GenerateOverlayInserter(Overlay *overlay) const;
   // Return string representation of the int type that contains bitwidth bits.
   std::string GetIntType(int bitwidth) const;
   int GetIntTypeBitWidth(int bitwidth) const;

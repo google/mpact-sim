@@ -388,6 +388,116 @@ std::string Format::GenerateFieldExtractor(const Field *field) const {
   return h_output;
 }
 
+// This method generates the C++ code for field inserters for the current
+// format. That is, the generated code will take the value of a field and insert
+// it into the right place in the instruction word.
+std::string Format::GenerateFieldInserter(const Field *field) const {
+  std::string h_output;
+  absl::StrAppend(&h_output, "static inline uint64_t Insert",
+                  ToPascalCase(field->name),
+                  "(uint64_t value, uint64_t inst_word) {\n");
+  if (declared_width_ <= 64) {
+    uint64_t mask = ((1ULL << field->width) - 1) << field->low;
+    std::string shift;
+    if (field->low != 0) {
+      shift = absl::StrCat(" << ", field->low);
+    }
+    absl::StrAppend(&h_output, "  inst_word = (inst_word & ~0x",
+                    absl::Hex(mask), "ULL)", " | ((value", shift, ") & 0x",
+                    absl::Hex(mask), "ULL);\n");
+  } else {
+    absl::StrAppend(
+        &h_output,
+        "  #error Support for formats > 64 bits not implemented - yet.");
+  }
+  absl::StrAppend(&h_output,
+                  "  return inst_word;\n"
+                  "}\n");
+  return h_output;
+}
+
+// This method generates the C++ code for overlay inserters for the current
+// format. That is, the generated code will take the value of an overlay and
+// insert its components into the right places in the instruction word.
+std::string Format::GenerateOverlayInserter(Overlay *overlay) const {
+  std::string h_output;
+  absl::StrAppend(&h_output, "static inline uint64_t Insert",
+                  ToPascalCase(overlay->name()),
+                  "(uint64_t value, uint64_t inst_word) {\n");
+  // Mark error if either the overlay or the format is > 64 bits.
+  if (overlay->declared_width() > 64) {
+    absl::StrAppend(&h_output,
+                    "  #error Support for overlays > 64 bits not implemented - "
+                    "yet.\n}\n");
+    return h_output;
+  }
+  if (computed_width_ > 64) {
+    absl::StrAppend(&h_output,
+                    "  #error Support for formats > 64 bits not implemented - "
+                    "yet.\n}\n");
+    return h_output;
+  }
+  absl::StrAppend(&h_output, "  uint64_t tmp;\n");
+  // Track the leftmost bit in the overlay.
+  int left = overlay->declared_width();
+  for (auto &bits_or_field : overlay->component_vec()) {
+    int width = bits_or_field->width();
+    // Ignore the bit fields in the overlay.
+    if (bits_or_field->high() < 0) {
+      left -= width;
+      continue;
+    }
+    uint64_t mask = ((1ULL << width) - 1);
+    std::string shift;
+    if (left - width > 0) {
+      shift = absl::StrCat(" >> ", left - width);
+    }
+    // Extract the bits from the overlay value for the current component.
+    absl::StrAppend(&h_output, "  tmp = (value ", shift, ") & 0x", mask,
+                    "ULL;\n");
+    shift.clear();
+    if (bits_or_field->low() != 0) {
+      shift = absl::StrCat(" << ", bits_or_field->low());
+    }
+    absl::StrAppend(&h_output, "  inst_word |= (tmp ", shift,
+                    ");\n"
+                    "  return inst_word;\n");
+    left -= width;
+  }
+  absl::StrAppend(&h_output, "}\n");
+  return h_output;
+}
+
+// This method generates the C++ code for format inserters for the current
+// format. That is, the generated code will take the value of a format and
+// insert it into the right place in the instruction word.
+std::string Format::GenerateFormatInserter(std::string_view format_alias,
+                                           const Format *format, int high,
+                                           int size) const {
+  std::string h_output;
+  std::string target_type_name = absl::StrCat("u", GetIntType(computed_width_));
+  absl::StrAppend(&h_output, "static inline uint64_tInsert",
+                  ToPascalCase(format_alias),
+                  "(uint64_t value, uint64_t inst_word) {\n");
+  if (declared_width_ > 64) {
+    absl::StrAppend(&h_output,
+                    "  #error Support for formats > 64 bits not implemented - "
+                    "yet.\n}\n");
+    return h_output;
+  }
+  int width = format->declared_width();
+  int low = high - width + 1;
+  uint64_t mask = (1ULL << width) << low;
+  std::string shift;
+  if (low != 0) {
+    shift = absl::StrCat(" << ", low);
+  }
+  absl::StrAppend(&h_output, "  return (inst_word & (~0x", absl::Hex(mask),
+                  "ULL))", " | ((value ", shift, ") & 0x", absl::Hex(mask),
+                  "ULL);\n}\n");
+  return h_output;
+}
+
 // This method generates the format extractors for the current format (for when
 // a format contains other formats).
 std::string Format::GenerateFormatExtractor(absl::string_view format_alias,
@@ -485,8 +595,37 @@ std::string Format::GenerateOverlayExtractor(Overlay *overlay) const {
   return h_output;
 }
 
+// Top level function called to generate all the inserters for this format.
+std::string Format::GenerateInserters() const {
+  std::string class_output;
+  std::string h_output;
+  if (extractors_.empty() && overlay_extractors_.empty()) {
+    return h_output;
+  }
+  absl::StrAppend(&h_output, "struct ", ToPascalCase(name()), " {\n\n");
+  // First fields and formats.
+  for (auto &[unused, field_or_format_ptr] : extractors_) {
+    if (field_or_format_ptr->is_field()) {
+      auto inserter = GenerateFieldInserter(field_or_format_ptr->field());
+      absl::StrAppend(&h_output, inserter);
+    } else {
+      auto inserter = GenerateFormatInserter(
+          field_or_format_ptr->format_alias(), field_or_format_ptr->format(),
+          field_or_format_ptr->high(), field_or_format_ptr->size());
+      absl::StrAppend(&h_output, inserter);
+    }
+  }
+  // Next the overlays.
+  for (auto &[unused, overlay_ptr] : overlay_extractors_) {
+    auto inserter = GenerateOverlayInserter(overlay_ptr);
+    absl::StrAppend(&h_output, inserter);
+  }
+  absl::StrAppend(&h_output, "};  // struct ", ToPascalCase(name()), "\n\n");
+  return h_output;
+}
+
 // Top level function called to generate all the extractors for this format.
-std::tuple<std::string, std::string> Format::GenerateExtractors() {
+std::tuple<std::string, std::string> Format::GenerateExtractors() const {
   std::string class_output;
   std::string h_output;
   if (extractors_.empty() && overlay_extractors_.empty()) {

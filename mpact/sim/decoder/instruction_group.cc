@@ -21,6 +21,7 @@
 #include <tuple>
 #include <utility>
 
+#include "absl/container/btree_map.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "antlr4-runtime/Token.h"
@@ -28,12 +29,15 @@
 #include "mpact/sim/decoder/decoder_error_listener.h"
 #include "mpact/sim/decoder/encoding_group.h"
 #include "mpact/sim/decoder/extract.h"
+#include "mpact/sim/decoder/format_name.h"
 #include "mpact/sim/decoder/instruction_encoding.h"
 
 namespace mpact {
 namespace sim {
 namespace decoder {
 namespace bin_format {
+
+using ::mpact::sim::machine_description::instruction_set::ToPascalCase;
 
 InstructionGroup::InstructionGroup(std::string name, int width,
                                    std::string format_name,
@@ -174,66 +178,75 @@ static bool InstructionGroupLess(EncodingGroup *lhs, EncodingGroup *rhs) {
 }
 
 // Emit the code in the form of two strings that are returned in a tuple.
-std::tuple<std::string, std::string> InstructionGroup::EmitCode() {
+std::tuple<std::string, std::string> InstructionGroup::EmitDecoderCode() {
   std::string h_string;
   std::string cc_string;
+
+  if (encoding_group_vec_.empty()) return std::make_tuple(h_string, cc_string);
 
   // First sort the encoding group vector according to the value of the
   // discriminator bits.
   std::sort(encoding_group_vec_.begin(), encoding_group_vec_.end(),
             &InstructionGroupLess);
 
-  if (!encoding_group_vec_.empty()) {
-    std::string initializers;
-    // The signature for the top level decode function for this instruction
-    // group.
-    std::string signature =
-        absl::StrCat(opcode_enum_, " Decode", this->name(), "(",
-                     format_->uint_type_name(), " inst_word)");
-    std::string w_format_signature = absl::StrCat(
-        "std::pair<", opcode_enum_, ", FormatEnum> Decode", this->name(),
-        "WithFormat(", format_->uint_type_name(), " inst_word)");
-    // First part of the definition of the top level decoder function.
-    std::string top_level_decoder = absl::StrCat(signature, " {\n");
-    std::string w_format_top_level_decoder =
-        absl::StrCat(w_format_signature, " {\n");
-    std::string declarations =
-        absl::StrCat("std::pair<", opcode_enum_, ", FormatEnum> Decode",
-                     this->name(), "None(", format_->uint_type_name(), ");\n");
-    std::string definitions = absl::StrCat(
-        "std::pair<", opcode_enum_, ", FormatEnum> Decode", this->name(),
-        "None(", format_->uint_type_name(), ") {\n  return std::make_pair(",
-        opcode_enum_, "::kNone, FormatEnum::kNone);\n}\n\n");
-    for (size_t i = 0; i < encoding_group_vec_.size(); i++) {
-      auto *grp = encoding_group_vec_[i];
-      std::string name = absl::StrCat(this->name(), "_", absl::Hex(i));
-      grp->EmitInitializers(name, &initializers, opcode_enum_);
-      grp->EmitDecoders(name, &declarations, &definitions, opcode_enum_);
-      absl::StrAppend(&top_level_decoder, "  auto opcode = Decode", name,
-                      "(inst_word).first;\n");
-      absl::StrAppend(&w_format_top_level_decoder,
-                      "  auto opcode_format = Decode", name, "(inst_word);\n");
-      if (encoding_group_vec_.size() > 1) {
-        absl::StrAppend(&top_level_decoder, "  if (opcode != ", opcode_enum_,
-                        "::kNone) return opcode;\n");
-        absl::StrAppend(&w_format_top_level_decoder,
-                        "  if (opcode_format.first != ", opcode_enum_,
-                        "::kNone) return opcode_format;\n");
-      }
-    }
-    // Last part of the definition of the top level decoder function.
-    absl::StrAppend(&top_level_decoder,
-                    "  return opcode;\n"
-                    "}\n");
+  std::string initializers;
+  // The signature for the top level decode function for this instruction
+  // group.
+  std::string signature =
+      absl::StrCat(opcode_enum_, " Decode", this->name(), "(",
+                   format_->uint_type_name(), " inst_word)");
+  std::string w_format_signature = absl::StrCat(
+      "std::pair<", opcode_enum_, ", FormatEnum> Decode", this->name(),
+      "WithFormat(", format_->uint_type_name(), " inst_word)");
+  // First part of the definition of the top level decoder function.
+  std::string top_level_decoder = absl::StrCat(signature, " {\n");
+  std::string w_format_top_level_decoder =
+      absl::StrCat(w_format_signature, " {\n");
+  std::string declarations =
+      absl::StrCat("std::pair<", opcode_enum_, ", FormatEnum> Decode",
+                   this->name(), "None(", format_->uint_type_name(), ");\n");
+  std::string definitions = absl::StrCat(
+      "std::pair<", opcode_enum_, ", FormatEnum> Decode", this->name(), "None(",
+      format_->uint_type_name(), ") {\n  return std::make_pair(", opcode_enum_,
+      "::kNone, FormatEnum::kNone);\n}\n\n");
+  for (size_t i = 0; i < encoding_group_vec_.size(); i++) {
+    auto *grp = encoding_group_vec_[i];
+    std::string name = absl::StrCat(this->name(), "_", absl::Hex(i));
+    grp->EmitInitializers(name, &initializers, opcode_enum_);
+    grp->EmitDecoders(name, &declarations, &definitions, opcode_enum_);
+    absl::StrAppend(&top_level_decoder, "  auto opcode = Decode", name,
+                    "(inst_word).first;\n");
     absl::StrAppend(&w_format_top_level_decoder,
-                    "  return opcode_format;\n"
-                    "}\n");
-    // String the different strings together in order and return.
-    absl::StrAppend(&cc_string, declarations, initializers, definitions,
-                    top_level_decoder, w_format_top_level_decoder);
-    absl::StrAppend(&h_string, signature, ";\n", w_format_signature, ";\n");
+                    "  auto opcode_format = Decode", name, "(inst_word);\n");
+    if (encoding_group_vec_.size() > 1) {
+      absl::StrAppend(&top_level_decoder, "  if (opcode != ", opcode_enum_,
+                      "::kNone) return opcode;\n");
+      absl::StrAppend(&w_format_top_level_decoder,
+                      "  if (opcode_format.first != ", opcode_enum_,
+                      "::kNone) return opcode_format;\n");
+    }
   }
+  // Last part of the definition of the top level decoder function.
+  absl::StrAppend(&top_level_decoder,
+                  "  return opcode;\n"
+                  "}\n");
+  absl::StrAppend(&w_format_top_level_decoder,
+                  "  return opcode_format;\n"
+                  "}\n");
+  // String the different strings together in order and return.
+  absl::StrAppend(&cc_string, declarations, initializers, definitions,
+                  top_level_decoder, w_format_top_level_decoder);
+  absl::StrAppend(&h_string, signature, ";\n", w_format_signature, ";\n");
   return std::make_tuple(h_string, cc_string);
+}
+
+// Emit code to encode the instructions in the group.
+void InstructionGroup::GetInstructionEncodings(
+    absl::btree_map<std::string, std::tuple<uint64_t, int>> &encodings) {
+  for (auto *enc : encoding_vec_) {
+    encodings.insert(std::make_pair(ToPascalCase(enc->name()),
+                                    std::make_tuple(enc->GetValue(), width())));
+  }
 }
 
 // Write out instruction group information.

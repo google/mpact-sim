@@ -14,12 +14,14 @@
 
 #include "mpact/sim/decoder/slot.h"
 
+#include <algorithm>
 #include <cctype>
 #include <cstddef>
 #include <cstdlib>
 #include <map>
 #include <stack>
 #include <string>
+#include <tuple>
 #include <utility>
 #include <variant>
 #include <vector>
@@ -58,9 +60,9 @@ static absl::StatusOr<std::string> TranslateLocator(
   }
   if (locator.type == 'p') {
     absl::StrAppend(&code, "Predicate()");
-  } else if (locator.type == 's') {
+  } else if (locator.type == 's' || locator.type == 't') {
     absl::StrAppend(&code, "Source(", locator.instance, ")");
-  } else if (locator.type == 'd') {
+  } else if (locator.type == 'd' || locator.type == 'e') {
     absl::StrAppend(&code, "Destination(", locator.instance, ")");
   } else {
     return absl::InternalError(absl::StrCat("Unknown locator type '",
@@ -284,6 +286,301 @@ std::string Slot::GenerateAttributeSetter(const Instruction *inst) {
   return iter->second;
 }
 
+namespace {
+
+std::string EscapeRegexCharacters(const std::string &str) {
+  std::string output;
+  if (str.empty()) return output;
+  auto pos = str.find_last_not_of(' ');
+  if (pos == std::string::npos) {
+    return "\\s+";
+  }
+  std::string input(str.substr(pos));
+  bool in_space = false;
+  char p;
+  for (auto c : str) {
+    if (isspace(c)) {
+      if (!in_space) {
+        if (ispunct(p)) {
+          absl::StrAppend(&output, "\\s*");
+        } else {
+          absl::StrAppend(&output, "\\s+");
+        }
+      }
+      in_space = true;
+      continue;
+    }
+    p = c;
+    in_space = false;
+    switch (c) {
+      case '.':
+        absl::StrAppend(&output, "\\.");
+        break;
+      case '(':
+        absl::StrAppend(&output, "\\(");
+        break;
+      case ')':
+        absl::StrAppend(&output, "\\)");
+        break;
+      case '[':
+        absl::StrAppend(&output, "\\[");
+        break;
+      case ']':
+        absl::StrAppend(&output, "\\]");
+        break;
+      case '*':
+        absl::StrAppend(&output, "\\*");
+        break;
+      case '+':
+        absl::StrAppend(&output, "\\+");
+        break;
+      case '?':
+        absl::StrAppend(&output, "\\?");
+        break;
+      case '|':
+        absl::StrAppend(&output, "\\|");
+        break;
+      case '{':
+        absl::StrAppend(&output, "\\{");
+        break;
+      case '}':
+        absl::StrAppend(&output, "\\}");
+        break;
+      case '^':
+        absl::StrAppend(&output, "\\^");
+        break;
+      case '$':
+        absl::StrAppend(&output, "\\$");
+        break;
+      case '!':
+        absl::StrAppend(&output, "\\!");
+        break;
+      case '\\':
+        absl::StrAppend(&output, "\\\\");
+        break;
+      default:
+        absl::StrAppend(&output, std::string(1, c));
+        break;
+    }
+  }
+  return output;
+}
+
+}  // namespace
+
+std::tuple<std::string, std::vector<OperandLocator>> Slot::GenerateRegEx(
+    const Instruction *inst, std::vector<std::string> &formats) const {
+  std::string output = "R\"(";
+  std::string sep = "^\\s*";
+  int args = 0;
+  std::vector<OperandLocator> opnd_locators;
+  // Iterate over the vector of disasm formats. These will end up concatenated
+  // with \s+ separators.
+  for (auto const *disasm_fmt : inst->disasm_format_vec()) {
+    absl::StrAppend(&output, sep);
+    sep = "\\s+";
+    auto fragment_iter = disasm_fmt->format_fragment_vec.begin();
+    auto fragment_end = disasm_fmt->format_fragment_vec.end();
+    auto format_iter = disasm_fmt->format_info_vec.begin();
+    auto format_end = disasm_fmt->format_info_vec.end();
+    char prev = '\0';
+    // Iterate over the format fragments.
+    while (fragment_iter != fragment_end) {
+      auto fragment = *fragment_iter;
+      if (!fragment.empty()) {
+        auto str = EscapeRegexCharacters(fragment);
+        absl::StrAppend(&output, str);
+        prev = str.back();
+      } else {
+        prev = '\0';
+      }
+      fragment_iter++;
+      if (format_iter != format_end) {
+        // If the previous character is punctuation, but not '.' or '_', add a
+        // space separator.
+        if ((prev != '\0') &&
+            !(isalnum(prev) || (prev == '_') || (prev == '.'))) {
+          absl::StrAppend(&output, "\\s*");
+        }
+        args++;
+        std::string op_name = (*format_iter)->op_name;
+        absl::StrAppend(&output, "(?<", op_name, ">\\S*?)");
+        opnd_locators.push_back(inst->opcode()->op_locator_map().at(op_name));
+        if ((fragment_iter != fragment_end) && (!(*fragment_iter).empty())) {
+          char c = (*fragment_iter)[0];
+          // If the next fragment is not alnum or underscore, add a space
+          // separator.
+          if (!isalnum(c) || (c != '_')) {
+            absl::StrAppend(&output, "\\s*");
+          }
+        }
+        format_iter++;
+      }
+    }
+  }
+  absl::StrAppend(&output, "\\s*(#.*)?$)\"");
+  return {output, opnd_locators};
+}
+
+std::string GenerateEncodingFunctions(const std::string &encoder,
+                                      InstructionSet instruction_set) {
+  std::string output;
+  absl::StrAppend(&output, "namespace {\n\n");
+  absl::StrAppend(
+      &output, "absl::StatusOr<std::tuple<uint64_t, int>> EncodeNone(", encoder,
+      "*, SlotEnum, int, OpcodeEnum, uint64_t, const "
+      "std::vector<std::string> &) {\n"
+      "  return absl::NotFoundError(\"No such opcode\");\n"
+      "}\n\n");
+  return output;
+}
+// Generate a regex to match the assembly string for the instructions.
+std::tuple<std::string, std::string> Slot::GenerateAsmRegexMatcher() const {
+  std::string h_output;
+  std::string cc_output;
+  std::string class_name = pascal_name() + "SlotMatcher";
+  size_t max_args = 0;
+
+  // Generate the encoder function for each instruction.
+  std::string encoder =
+      absl::StrCat(instruction_set_->pascal_name(), "EncoderInterfaceBase");
+
+  // Generate the matcher class.
+  absl::StrAppend(
+      &h_output,
+      "// Assembly matcher.\n"
+      "class ",
+      class_name,
+      " {\n"
+      " public:\n"
+      "  ",
+      class_name, "(", instruction_set_->pascal_name(),
+      "EncoderInterfaceBase *encoder);\n"
+      "  ~",
+      class_name,
+      "();\n"
+      "  absl::Status Initialize();\n"
+      "  bool Match(absl::string_view text, std::vector<int> &matches);\n"
+      "  bool Extract(absl::string_view text, int index, "
+      "std::vector<std::string> &values);\n"
+      "absl::StatusOr<std::tuple<uint64_t, int>> "
+      "Encode(uint64_t address, absl::string_view text, int entry);\n"
+      " private:\n"
+      "  ",
+      encoder,
+      " *encoder_;\n"
+      "  std::vector<RE2 *> regex_vec_;\n"
+      "  RE2::Set regex_set_;\n");
+  absl::StrAppend(&cc_output, class_name, "::", class_name, "(",
+                  instruction_set_->pascal_name(),
+                  "EncoderInterfaceBase *encoder) :\n"
+                  "  encoder_(encoder),\n"
+                  "  regex_set_(RE2::Options(), RE2::ANCHOR_BOTH) {}\n"
+                  "\n",
+                  class_name, "::~", class_name,
+                  "() {\n"
+                  "  for (int i = 0; i < re2_args.size(); ++i) {\n"
+                  "    delete re2_args[i];\n"
+                  "  }\n"
+                  "}\n\n"
+                  "absl::Status ",
+                  class_name,
+                  "::Initialize() {\n"
+                  "  int index;\n"
+                  "  std::string error;\n"
+                  "  index = regex_set_.Add(\"^$\", &error);\n"
+                  "  regex_vec_.push_back(new RE2(\"^$\"));\n");
+  std::vector<std::string> formats;
+  for (auto const &[name, inst_ptr] : instruction_map_) {
+    auto [regex, opnd_locators] = GenerateRegEx(inst_ptr, formats);
+    max_args = std::max(max_args, opnd_locators.size());
+    absl::StrAppend(&cc_output, "  regex_vec_.push_back(new RE2(", regex,
+                    "));\n"
+                    "  index = regex_set_.Add(",
+                    regex,
+                    ", &error);\n"
+                    "  if (index == -1) return absl::InternalError(error);\n");
+  }
+  absl::StrAppend(&h_output, "  std::string args[", max_args,
+                  "];\n"
+                  "  std::array<RE2::Arg*, ",
+                  max_args, "> re2_args = {");
+  for (int i = 0; i < max_args; ++i) absl::StrAppend(&h_output, "nullptr, ");
+  absl::StrAppend(&h_output, "  };\n");
+  // Construct the RE2::Arg objects.
+  absl::StrAppend(&cc_output,
+                  "  auto ok = regex_set_.Compile();\n"
+                  "  if (!ok) return absl::InternalError(\"Failed to compile "
+                  "regex set\");\n"
+                  "  for (int i = 0; i < ",
+                  max_args,
+                  "; ++i) {\n"
+                  "    re2_args[i] = new RE2::Arg(&args[i]);\n"
+                  "  }\n");
+  absl::StrAppend(
+      &cc_output,
+      "  return absl::OkStatus();\n"
+      "}\n\n"
+      "bool ",
+      class_name,
+      "::Match(absl::string_view text, std::vector<int> &matches) {\n"
+      "  return regex_set_.Match(text, &matches);\n"
+      "}\n\n"
+      "bool ",
+      class_name,
+      "::Extract(absl::string_view text, int index, "
+      "std::vector<std::string> &values) {\n"
+      "  auto &regex = regex_vec_.at(index);\n"
+      "  int arg_count = regex->NumberOfCapturingGroups();\n"
+      "  if (!regex_vec_.at(index)->FullMatchN(text, *regex, "
+      "re2_args.data(), "
+      "arg_count))\n"
+      "    return false;\n"
+      "  for (int i = 0; i < arg_count; ++i) {\n"
+      "    values.push_back(args[i]);\n"
+      "  }\n"
+      "  return true;\n"
+      "}\n\n"
+      "absl::StatusOr<std::tuple<uint64_t, int>> ",
+      pascal_name(),
+      "SlotMatcher::Encode(\n"
+      R"(
+    uint64_t address, absl::string_view text, int entry) {
+  std::vector<int> matches;
+  std::string error_message = absl::StrCat("Failed to encode '", text, "':");
+  if (!Match(text, matches) || (matches.size() == 0)) {
+    return absl::NotFoundError(error_message);
+  }
+  std::vector<std::tuple<uint64_t, int>> encodings;
+  for (auto index : matches) {
+    std::vector<std::string> values;
+    if (!Extract(text, index, values)) continue;
+)",
+      "    auto result = encode_fcns[index](encoder_, SlotEnum::k",
+      pascal_name(),
+      ", entry, \n"
+      "                                     "
+      "static_cast<OpcodeEnum>(index), address, values);\n",
+      R"(
+    if (!result.status().ok()) {
+      absl::StrAppend(&error_message, "\n    ", result.status().message());
+      continue;
+    }
+    encodings.push_back(result.value());
+  }
+  if (encodings.empty()) return absl::NotFoundError(error_message);
+  if (encodings.size() > 1) {
+    return absl::NotFoundError(
+        absl::StrCat("Failed to encode '", text, "': ambiguous"));
+  }
+  return encodings[0];
+}
+
+)");
+  absl::StrAppend(&h_output, "};\n\n");
+  return {h_output, cc_output};
+}
+
 // Generate a function that will set the disassembly string for the given
 // instruction.
 std::string Slot::GenerateDisasmSetterFcn(absl::string_view name,
@@ -328,8 +625,8 @@ std::string Slot::GenerateDisasmSetterFcn(absl::string_view name,
       in_strcat.push(true);
     }
     // Generate the strings from the format fragments and the format info.
+    std::string next_sep;
     for (auto const &frag : disasm_fmt->format_fragment_vec) {
-      std::string next_sep;
       if (!frag.empty()) {
         absl::StrAppend(&output, inner_sep, indent_string(indent), "\"", frag,
                         "\"");
@@ -369,6 +666,7 @@ std::string Slot::GenerateDisasmSetterFcn(absl::string_view name,
           }
         }
       }
+      next_sep = ", ";
       index++;
       if (inner_sep.empty()) inner_sep = ",\n";
     }
@@ -416,8 +714,58 @@ std::string Slot::GenerateDisassemblySetter(const Instruction *inst) {
   return absl::StrCat(iter->second);
 }
 
-// Generate a string that is a unique identifier from the resources to determine
-// which instructions can share resource setter functions.
+// Generate the assembler function for the given instruction.
+std::string Slot::GenerateAssemblerFcn(const Instruction *inst,
+                                       absl::string_view encoder_type) const {
+  std::string output;
+  int num_values = inst->opcode()->source_op_vec().size() +
+                   inst->opcode()->dest_op_vec().size();
+  absl::StrAppend(
+      &output, "absl::StatusOr<std::tuple<int, uint64_t>> ", pascal_name(),
+      "Slot", "Assemble", inst->opcode()->pascal_name(), "(", encoder_type,
+      " *enc, const std::vector<std::string> &values, SlotEnum "
+      "slot, int entry) {\n",
+      "  if (values.size() != ", num_values,
+      ")\n"
+      "    return absl::InvalidArgumentError(\"Wrong number of values\");\n"
+      "  constexpr OpcodeEnum opcode = OpcodeEnum::k",
+      inst->opcode()->pascal_name(),
+      ";\n"
+      "auto [inst_word, num_bits] = enc->GetOpEncoding(opcode, slot, "
+      "entry);\n",
+      "  absl::Status status;\n");
+  auto const &source_op_vec = inst->opcode()->source_op_vec();
+  for (int i = 0; i < source_op_vec.size(); ++i) {
+    std::string op_name = ToPascalCase(source_op_vec[i].name);
+    absl::StrAppend(&output, "  status = enc->SetSrcEncoding(values.at(", i,
+                    "), slot, entry,\n"
+                    "SourceOpEnum::k",
+                    op_name, ", ", i,
+                    ", opcode);\n"
+                    "  if (!stats.ok()) return status;\n");
+  }
+  auto const &dest_op_vec = inst->opcode()->dest_op_vec();
+  for (int i = 0; i < dest_op_vec.size(); ++i) {
+    absl::StrAppend(&output, "  status = enc->SetDestEncoding(values.at(", i,
+                    "), slot, entry,\n"
+                    "DestOpEnum::k",
+                    dest_op_vec[i]->pascal_case_name(), ", ", i,
+                    ", opcode);\n"
+                    "  if (!stats.ok()) return status;\n");
+  }
+  absl::StrAppend(
+      &output,
+      "  auto ok = enc->ValidateEncoding(opcode, slot, entry, inst_word);\n"
+      "  if (!ok) return absl::InvalidArgumentError(\"Invalid "
+      "encoding\");\n");
+  absl::StrAppend(&output,
+                  "return std::tie(num_bits, inst_word);\n"
+                  "}\n\n");
+  return output;
+}
+
+// Generate a string that is a unique identifier from the resources to
+// determine which instructions can share resource setter functions.
 std::string Slot::CreateResourceKey(
     const std::vector<const ResourceReference *> &refs) const {
   std::string key;
@@ -480,8 +828,8 @@ std::string Slot::CreateResourceKey(
   return key;
 }
 
-// Generate a resource setter function call for the resource "key" of the given
-// instruction. If a matching one does not exist, call to create such a
+// Generate a resource setter function call for the resource "key" of the
+// given instruction. If a matching one does not exist, call to create such a
 // function.
 std::string Slot::GenerateResourceSetter(const Instruction *inst,
                                          absl::string_view encoding_type) {
@@ -590,8 +938,8 @@ std::string Slot::GenerateResourceSetterFcn(
     }
   }
 
-  // Get all the simple resources that need to be reserved, then all the complex
-  // resources that need to be reserved when issuing this instruction.
+  // Get all the simple resources that need to be reserved, then all the
+  // complex resources that need to be reserved when issuing this instruction.
   complex_refs.clear();
   simple_refs.clear();
   for (auto const *ref : inst->resource_acquire_vec()) {
@@ -701,8 +1049,8 @@ std::string Slot::GenerateResourceSetterFcn(
   return output;
 }
 
-// Generates a string that is a unique identifier from the operands to determine
-// which instructions can share operand getter functions.
+// Generates a string that is a unique identifier from the operands to
+// determine which instructions can share operand getter functions.
 std::string Slot::CreateOperandLookupKey(const Opcode *opcode) const {
   std::string key;
   // Generate identifier for the predicate operand, if the opcode has one.
@@ -850,9 +1198,10 @@ std::string Slot::ListFuncGetterInitializations(
   if (instruction_map_.empty()) return output;
   std::string class_name = pascal_name() + "Slot";
   // For each instruction create two lambda functions. One that is used to
-  // obtain the semantic function object for the instruction, the other a lambda
-  // that sets the predicate, source and target operands. Both lambdas use calls
-  // to virtual functions declared in the current class or a base class thereof.
+  // obtain the semantic function object for the instruction, the other a
+  // lambda that sets the predicate, source and target operands. Both lambdas
+  // use calls to virtual functions declared in the current class or a base
+  // class thereof.
   std::string signature =
       absl::StrCat("(Instruction *inst, ", encoding_type,
                    " *enc, OpcodeEnum opcode, SlotEnum slot, int entry)");
@@ -884,8 +1233,8 @@ std::string Slot::ListFuncGetterInitializations(
       // Construct operand getter lookup key.
       std::string key = CreateOperandLookupKey(inst->opcode());
       auto iter = operand_setter_name_map_.find(key);
-      // If the key is not found, create a new getter function, otherwise reuse
-      // the existing one.
+      // If the key is not found, create a new getter function, otherwise
+      // reuse the existing one.
       if (iter == operand_setter_name_map_.end()) {
         auto index = operand_setter_name_map_.size();
         std::string setter_name =

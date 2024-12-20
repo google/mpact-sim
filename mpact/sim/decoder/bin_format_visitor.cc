@@ -22,6 +22,7 @@
 #include <list>
 #include <memory>
 #include <string>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -175,24 +176,43 @@ absl::Status BinFormatVisitor::Process(
   ProcessSpecializations(encoding_info.get());
 
   // Create output streams for .h and .cc files.
-  std::string dot_h_name = absl::StrCat(prefix, "_bin_decoder.h");
-  std::string dot_cc_name = absl::StrCat(prefix, "_bin_decoder.cc");
-  std::ofstream dot_h_file(absl::StrCat(directory, "/", dot_h_name));
-  std::ofstream dot_cc_file(absl::StrCat(directory, "/", dot_cc_name));
+  std::string dec_dot_h_name = absl::StrCat(prefix, "_bin_decoder.h");
+  std::string dec_dot_cc_name = absl::StrCat(prefix, "_bin_decoder.cc");
+  std::string enc_dot_h_name = absl::StrCat(prefix, "_bin_encoder.h");
+  std::string enc_dot_cc_name = absl::StrCat(prefix, "_bin_encoder.cc");
+  std::ofstream dec_dot_h_file(absl::StrCat(directory, "/", dec_dot_h_name));
+  std::ofstream dec_dot_cc_file(absl::StrCat(directory, "/", dec_dot_cc_name));
+  std::ofstream enc_dot_h_file(absl::StrCat(directory, "/", enc_dot_h_name));
+  std::ofstream enc_dot_cc_file(absl::StrCat(directory, "/", enc_dot_cc_name));
 
-  auto [h_output, cc_output] = EmitFilePrefix(dot_h_name, encoding_info.get());
-  dot_h_file << h_output;
-  dot_cc_file << cc_output;
+  auto [dec_h_output, dec_cc_output] =
+      EmitDecoderFilePrefix(dec_dot_h_name, encoding_info.get());
+  dec_dot_h_file << dec_h_output;
+  dec_dot_cc_file << dec_cc_output;
+  auto [enc_h_output, enc_cc_output] =
+      EmitEncoderFilePrefix(enc_dot_h_name, encoding_info.get());
+  enc_dot_h_file << enc_h_output;
+  enc_dot_cc_file << enc_cc_output;
   // Output file prefix is the input file name.
-  auto [h_output2, cc_output2] = EmitCode(encoding_info.get());
-  dot_h_file << h_output2;
-  dot_cc_file << cc_output2;
-  auto [h_output3, cc_output3] =
-      EmitFileSuffix(dot_h_name, encoding_info.get());
-  dot_h_file << h_output3;
-  dot_cc_file << cc_output3;
-  dot_h_file.close();
-  dot_cc_file.close();
+  auto [dec_h_output2, dec_cc_output2] = EmitDecoderCode(encoding_info.get());
+  dec_dot_h_file << dec_h_output2;
+  dec_dot_cc_file << dec_cc_output2;
+  auto [dec_h_output3, dec_cc_output3] =
+      EmitFileSuffix(dec_dot_h_name, encoding_info.get());
+  dec_dot_h_file << dec_h_output3;
+  dec_dot_cc_file << dec_cc_output3;
+  auto [enc_h_output2, enc_cc_output2] = EmitEncoderCode(encoding_info.get());
+  enc_dot_h_file << enc_h_output2;
+  enc_dot_cc_file << enc_cc_output2;
+  auto [enc_h_output3, enc_cc_output3] =
+      EmitFileSuffix(enc_dot_h_name, encoding_info.get());
+  enc_dot_h_file << enc_h_output3;
+  enc_dot_cc_file << enc_cc_output3;
+
+  dec_dot_h_file.close();
+  dec_dot_cc_file.close();
+  enc_dot_h_file.close();
+  enc_dot_cc_file.close();
   return absl::OkStatus();
 }
 
@@ -200,8 +220,8 @@ void BinFormatVisitor::PerformEncodingChecks(BinEncodingInfo *encoding) {
   encoding->decoder()->CheckEncodings();
 }
 
-BinFormatVisitor::StringPair BinFormatVisitor::EmitFilePrefix(
-    const std::string &dot_h_name, BinEncodingInfo *encoding_info) {
+BinFormatVisitor::StringPair BinFormatVisitor::EmitDecoderFilePrefix(
+    const std::string &dot_h_name, BinEncodingInfo *encoding_info) const {
   std::string h_string;
   std::string cc_string;
 
@@ -262,7 +282,7 @@ BinFormatVisitor::StringPair BinFormatVisitor::EmitFileSuffix(
   return {h_string, cc_string};
 }
 
-BinFormatVisitor::StringPair BinFormatVisitor::EmitCode(
+BinFormatVisitor::StringPair BinFormatVisitor::EmitDecoderCode(
     BinEncodingInfo *encoding) {
   std::string h_string;
   std::string cc_string;
@@ -276,11 +296,10 @@ BinFormatVisitor::StringPair BinFormatVisitor::EmitCode(
     absl::StrAppend(&extractor_class, classes);
   }
   absl::StrAppend(&h_string, extractor_class, "};\n\n");
-  absl::flat_hash_set<std::string> groups;
   auto *decoder = encoding->decoder();
   // Generate the code for decoders.
   for (auto *group : decoder->instruction_group_vec()) {
-    auto [h_decoder, cc_decoder] = group->EmitCode();
+    auto [h_decoder, cc_decoder] = group->EmitDecoderCode();
     absl::StrAppend(&h_string, h_decoder);
     absl::StrAppend(&cc_string, cc_decoder);
     // Write out some summary information about the instruction encodings.
@@ -289,6 +308,71 @@ BinFormatVisitor::StringPair BinFormatVisitor::EmitCode(
   }
   absl::StrAppend(&h_string, group_string);
   return {h_string, cc_string};
+}
+
+std::tuple<std::string, std::string> BinFormatVisitor::EmitEncoderFilePrefix(
+    const std::string &dot_h_name, BinEncodingInfo *encoding_info) const {
+  std::string h_string;
+  std::string cc_string;
+
+  std::string guard_name = ToHeaderGuard(dot_h_name);
+  absl::StrAppend(&h_string, "#ifndef ", guard_name,
+                  "\n"
+                  "#define ",
+                  guard_name,
+                  "\n"
+                  "\n"
+                  "#include <iostream>\n"
+                  "#include <cstdint>\n\n");
+  absl::StrAppend(&cc_string, "#include \"", dot_h_name,
+                  "\"\n\n"
+                  "#include <cstdint>\n\n");
+  for (auto &name_space : encoding_info->decoder()->namespaces()) {
+    auto name_space_str = absl::StrCat("namespace ", name_space, " {\n");
+    absl::StrAppend(&cc_string, name_space_str);
+    absl::StrAppend(&h_string, name_space_str);
+  }
+  absl::StrAppend(&h_string, "\n");
+  absl::StrAppend(&cc_string, "\n");
+  return std::tie(h_string, cc_string);
+}
+
+std::tuple<std::string, std::string> BinFormatVisitor::EmitEncoderCode(
+    BinEncodingInfo *encoding) {
+  std::string h_string;
+  std::string cc_string;
+  // Write out the inline functions for bitfield and overlay encoding.
+  absl::StrAppend(&h_string, "struct Encoder {\n\n");
+  for (auto &[unused, format_ptr] : encoding->format_map()) {
+    auto functions = format_ptr->GenerateInserters();
+    absl::StrAppend(&h_string, functions);
+  }
+  absl::StrAppend(&h_string, "};  // struct Encoder\n\n");
+  absl::flat_hash_set<std::string> groups;
+  auto *decoder = encoding->decoder();
+  // Generate the code for decoders.
+  absl::btree_map<std::string, std::tuple<uint64_t, int>> encodings;
+  for (auto *group : decoder->instruction_group_vec()) {
+    group->GetInstructionEncodings(encodings);
+  }
+  std::string opcode_enum = encoding->opcode_enum();
+  absl::StrAppend(&h_string,
+                  "extern const std::tuple<uint64_t, int> kOpcodeEncodings[",
+                  encodings.size() + 1, "];\n");
+  absl::StrAppend(&cc_string,
+                  "const std::tuple<uint64_t, int> kOpcodeEncodings[",
+                  encodings.size() + 1, "] = {\n");
+  absl::StrAppend(&cc_string, "  /* ", opcode_enum,
+                  "::kNone = */ {0x0ULL, 0},\n");
+  for (auto &[name, pair] : encodings) {
+    auto [value, width] = pair;
+    std::string enum_name =
+        absl::StrCat(opcode_enum, "::k", ToPascalCase(name));
+    absl::StrAppend(&cc_string, "  /* ", enum_name, " = */ {0x",
+                    absl::Hex(value), "ULL, ", width, "},\n");
+  }
+  absl::StrAppend(&cc_string, "};\n");
+  return std::tie(h_string, cc_string);
 }
 
 // Parse the range and convert to a BitRange.

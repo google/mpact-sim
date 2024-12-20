@@ -108,10 +108,16 @@ struct SourceOperand {
 // This struct is used to specify the location of an operand within an
 // instruction. It specifies which instruction (or child instruction) number. In
 // this case, 0 is the top level instruction, 1 is the first child instruction
-// etc. The type is 'p' for predicate operand, 's' for source operand, and 'd'
-// for destination operand. The instance number specifies the entry index in the
+// etc. The type is 'p' for predicate operand, 's' for source operand, 't' for
+// source array operand, 'd' for destination operand, and 'e' for destination
+// array operand. The instance number specifies the entry index in the
 // source or destination operand vector.
 struct OperandLocator {
+  static constexpr char kPredicate = 'p';
+  static constexpr char kSource = 's';
+  static constexpr char kSourceArray = 't';
+  static constexpr char kDestination = 'd';
+  static constexpr char kDestinationArray = 'e';
   int op_spec_number;
   char type;
   int instance;

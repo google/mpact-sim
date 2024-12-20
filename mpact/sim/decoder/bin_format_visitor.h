@@ -20,6 +20,7 @@
 #include <list>
 #include <memory>
 #include <string>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -93,9 +94,16 @@ class BinFormatVisitor {
   void PerformEncodingChecks(BinEncodingInfo *encoding);
   // Called to generate and emit code for the decoder according to the parsed
   // input file.
-  StringPair EmitCode(BinEncodingInfo *encoding);
-  StringPair EmitFilePrefix(const std::string &dot_h_name,
-                            BinEncodingInfo *encoding_info);
+  StringPair EmitDecoderCode(BinEncodingInfo *encoding);
+  StringPair EmitDecoderFilePrefix(const std::string &dot_h_name,
+                                   BinEncodingInfo *encoding_info) const;
+  // Called to generate and emit code for the decoder according to the parsed
+  // input file.
+  std::tuple<std::string, std::string> EmitEncoderCode(
+      BinEncodingInfo *encoding);
+  std::tuple<std::string, std::string> EmitEncoderFilePrefix(
+      const std::string &dot_h_name, BinEncodingInfo *encoding_info) const;
+  // Generate the file suffixes (namespace closing etc.)
   StringPair EmitFileSuffix(const std::string &dot_h_name,
                             BinEncodingInfo *encoding_info);
   // Utility methods to parse certain nodes.

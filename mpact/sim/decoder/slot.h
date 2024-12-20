@@ -17,6 +17,7 @@
 
 #include <limits>
 #include <string>
+#include <tuple>
 #include <vector>
 
 #include "absl/container/btree_map.h"
@@ -90,6 +91,19 @@ class Slot {
   // formal parameter.
   absl::Status AddTemplateFormal(const std::string &name);
   TemplateFormal *GetTemplateFormal(const std::string &name) const;
+
+  // Generate the calls to encode the given operand.
+  std::string GenerateOperandEncoder(int position, absl::string_view op_name,
+                                     const OperandLocator &locator,
+                                     const Opcode *opcode) const;
+  // Generate regex for a given instruction.
+  std::tuple<std::string, std::vector<OperandLocator>> GenerateRegEx(
+      const Instruction *inst, std::vector<std::string> &formats) const;
+  // Generate regexes to match the assembly string for the instructions.
+  std::tuple<std::string, std::string> GenerateAsmRegexMatcher() const;
+  // Generate assembler function for the given instruction.
+  std::string GenerateAssemblerFcn(const Instruction *inst,
+                                   absl::string_view encoder_type) const;
 
   // Resources
   Resource *GetOrInsertResource(const std::string &name);
