@@ -227,7 +227,7 @@ ProtoConstraint *ProtoInstructionEncoding::AddHasConstraint(
 
   ProtoConstraint *constraint = new ProtoConstraint{
       nullptr, field_descriptor, ConstraintType::kHas, nullptr, 0, depends_on};
-  has_constraints_.insert({field_descriptor->full_name(), constraint});
+  has_constraints_.emplace(field_descriptor->full_name(), constraint);
   return constraint;
 }
 

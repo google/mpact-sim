@@ -155,7 +155,7 @@ void ProtoEncodingGroup::AddEncoding(ProtoInstructionEncoding *enc) {
       field_info->min_value = std::numeric_limits<int64_t>::max();
       field_info->max_value = std::numeric_limits<int64_t>::min();
       field_info->ctx = qualifed_ident_ctx;
-      field_map_.insert({name, field_info});
+      field_map_.emplace(name, field_info);
     } else {
       field_info = iter->second;
     }

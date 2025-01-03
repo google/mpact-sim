@@ -193,7 +193,7 @@ StringPair ProtoEncodingInfo::GenerateDecoderClass() {
         inst_group->message_type()->full_name(), {{".", "::"}});
     absl::StrAppend(&type_aliases, "using ", ToPascalCase(inst_group->name()),
                     "MessageType = ", qualified_message_type, ";\n");
-    std::string file_name = inst_group->message_type()->file()->name();
+    absl::string_view file_name = inst_group->message_type()->file()->name();
     // Verify that this is a .proto file.
 
     if ((file_name.size() <= 5) &&
