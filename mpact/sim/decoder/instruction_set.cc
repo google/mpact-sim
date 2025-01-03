@@ -691,7 +691,7 @@ std::string InstructionSet::GenerateOperandEncoder(
           position,
           "], slot, "
           "entry, opcode, ",
-          pred_op, ");\n");
+          pred_op, ", resolver);\n");
       break;
     }
     case OperandLocator::kSource: {
@@ -703,7 +703,7 @@ std::string InstructionSet::GenerateOperandEncoder(
                       position,
                       "], slot, "
                       "entry, opcode, ",
-                      source_op, ", ", locator.instance, ");\n");
+                      source_op, ", ", locator.instance, ", resolver);\n");
       break;
     }
     case OperandLocator::kSourceArray: {
@@ -716,7 +716,7 @@ std::string InstructionSet::GenerateOperandEncoder(
           position,
           "], slot, "
           "entry, opcode, ",
-          list_source_op, ", ", locator.instance, ");\n");
+          list_source_op, ", ", locator.instance, ", resolver);\n");
       break;
     }
     case OperandLocator::kDestination: {
@@ -728,7 +728,7 @@ std::string InstructionSet::GenerateOperandEncoder(
           position,
           "], slot, "
           "entry, opcode, ",
-          dest_op, ", ", locator.instance, ");\n");
+          dest_op, ", ", locator.instance, ", resolver);\n");
       break;
     }
     case OperandLocator::kDestinationArray: {
@@ -742,7 +742,7 @@ std::string InstructionSet::GenerateOperandEncoder(
           position,
           "], slot, "
           "entry, opcode, ",
-          list_dest_op, ", ", locator.instance, ");\n");
+          list_dest_op, ", ", locator.instance, ", resolver);\n");
       break;
     }
     default:
@@ -762,7 +762,11 @@ std::tuple<std::string, std::string> InstructionSet::GenerateEncClasses(
   std::string cc_output;
   std::string encoder = absl::StrCat(pascal_name(), "EncoderInterfaceBase");
   // Generate the bin encoder base class.
-  absl::StrAppend(&h_output, "class ", encoder,
+  absl::StrAppend(&h_output,
+                  "using ::mpact::sim::util::assembler::ResolverInterface;\n"
+                  "\n"
+                  "class ",
+                  encoder,
                   " {\n"
                   " public:\n"
                   "  virtual ~",
@@ -771,32 +775,34 @@ std::tuple<std::string, std::string> InstructionSet::GenerateEncClasses(
                   R"(
   // Returns the opcode encoding and size (in bits) of the opcode.
   virtual absl::StatusOr<std::tuple<uint64_t, int>> GetOpcodeEncoding(
-      SlotEnum slot, int entry, OpcodeEnum opcode) = 0;
+      SlotEnum slot, int entry, OpcodeEnum opcode, ResolverInterface *resolver) = 0;
   virtual absl::StatusOr<uint64_t> GetSrcOpEncoding(uint64_t address,
       absl::string_view text, SlotEnum slot, int entry, OpcodeEnum opcode,
-      SourceOpEnum source_op, int source_num) = 0;
+      SourceOpEnum source_op, int source_num, ResolverInterface *resolver) = 0;
   virtual absl::StatusOr<uint64_t> GetDestOpEncoding(uint64_t address,
       absl::string_view text, SlotEnum slot, int entry, OpcodeEnum opcode,
-      DestOpEnum dest_op, int dest_num) = 0;
+      DestOpEnum dest_op, int dest_num, ResolverInterface *resolver) = 0;
   virtual absl::StatusOr<uint64_t> GetListDestOpEncoding(uint64_t address,
       absl::string_view text, SlotEnum slot, int entry, OpcodeEnum opcode,
-      ListDestOpEnum dest_op, int dest_num) = 0;
+      ListDestOpEnum dest_op, int dest_num, ResolverInterface *resolver) = 0;
   virtual absl::StatusOr<uint64_t> GetListSourceOpEncoding( uint64_t address,
       absl::string_view text,SlotEnum slot, int entry, OpcodeEnum opcode,
-      ListSourceOpEnum source_op, int source_num) = 0;
+      ListSourceOpEnum source_op, int source_num, ResolverInterface *resolver) = 0;
   virtual absl::StatusOr<uint64_t> GetPredOpEncoding(uint64_t address,
       absl::string_view text, SlotEnum slot, int entry, OpcodeEnum opcode,
-      PredOpEnum pred_op) = 0;
+      PredOpEnum pred_op, ResolverInterface *resolver) = 0;
 };
 
 )");
 
   absl::StrAppend(&cc_output,
+                  "using ::mpact::sim::util::assembler::ResolverInterface;\n"
+                  "\n"
                   "namespace {\n\n"
                   "absl::StatusOr<std::tuple<uint64_t, int>> EncodeNone(",
                   encoder,
                   "*, SlotEnum, int, OpcodeEnum, uint64_t, const "
-                  "std::vector<std::string> &) {\n"
+                  "std::vector<std::string> &, ResolverInterface *) {\n"
                   "  return absl::NotFoundError(\"No such opcode\");\n"
                   "}\n\n");
   std::string array;
@@ -806,7 +812,7 @@ std::tuple<std::string, std::string> InstructionSet::GenerateEncClasses(
       encoder,
       "*, SlotEnum, int, OpcodeEnum, uint64_t, const "
       "std::vector<std::string> "
-      "&);\n"
+      "&, ResolverInterface *);\n"
       "EncodeFcn encode_fcns[] = {\n"
       "  EncodeNone,\n");
   for (auto &[name, inst_ptr] : instruction_map_) {
@@ -814,12 +820,13 @@ std::tuple<std::string, std::string> InstructionSet::GenerateEncClasses(
     absl::StrAppend(&array, "  Encode", opcode->pascal_name(), ",\n");
     absl::StrAppend(
         &cc_output, "absl::StatusOr<std::tuple<uint64_t, int>> Encode",
-        opcode->pascal_name(), "(", encoder,
-        " *encoder, SlotEnum slot, int entry,\n"
-        "     OpcodeEnum opcode, uint64_t address, const "
-        "std::vector<std::string> &operands) "
+        opcode->pascal_name(), "(\n     ", encoder,
+        " *encoder, SlotEnum slot, int entry, OpcodeEnum opcode,\n"
+        "     uint64_t address, const "
+        "std::vector<std::string> &operands, ResolverInterface *resolver) "
         "{\n"
-        "  auto res_opcode = encoder->GetOpcodeEncoding(slot, entry, opcode);\n"
+        "  auto res_opcode = encoder->GetOpcodeEncoding(slot, "
+        "entry, opcode, resolver);\n"
         "  if (!res_opcode.ok()) return res_opcode.status();\n"
         "  auto [encoding, bit_size] = res_opcode.value();\n"
         "  absl::StatusOr<uint64_t> result;\n");

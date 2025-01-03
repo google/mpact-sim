@@ -102,7 +102,8 @@ class BinFormatVisitor {
   std::tuple<std::string, std::string> EmitEncoderCode(
       BinEncodingInfo *encoding);
   std::tuple<std::string, std::string> EmitEncoderFilePrefix(
-      const std::string &dot_h_name, BinEncodingInfo *encoding_info) const;
+      const std::string &dot_h_name, const std::string &enum_h_name,
+      BinEncodingInfo *encoding_info) const;
   // Generate the file suffixes (namespace closing etc.)
   StringPair EmitFileSuffix(const std::string &dot_h_name,
                             BinEncodingInfo *encoding_info);

@@ -2298,6 +2298,7 @@ InstructionSetVisitor::GenerateEncFilePrologs(
                   "#include \"absl/status/status.h\"\n"
                   "#include \"absl/status/statusor.h\"\n"
                   "#include \"absl/strings/string_view.h\"\n"
+                  "#include \"mpact/sim/util/asm/resolver_interface.h\"\n"
                   "#include \"re2/re2.h\"\n"
                   "#include \"re2/set.h\"\n"
                   "#include \"",
@@ -2314,6 +2315,7 @@ InstructionSetVisitor::GenerateEncFilePrologs(
                   "#include \"absl/status/status.h\"\n"
                   "#include \"absl/status/statusor.h\"\n"
                   "#include \"absl/strings/string_view.h\"\n"
+                  "#include \"mpact/sim/util/asm/resolver_interface.h\"\n"
                   "#include \"re2/re2.h\"\n"
                   "#include \"re2/set.h\"\n"
                   "#include \"",

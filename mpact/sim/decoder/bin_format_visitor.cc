@@ -180,6 +180,7 @@ absl::Status BinFormatVisitor::Process(
   std::string dec_dot_cc_name = absl::StrCat(prefix, "_bin_decoder.cc");
   std::string enc_dot_h_name = absl::StrCat(prefix, "_bin_encoder.h");
   std::string enc_dot_cc_name = absl::StrCat(prefix, "_bin_encoder.cc");
+  std::string enum_dot_h_name = absl::StrCat(prefix, "_enums.h");
   std::ofstream dec_dot_h_file(absl::StrCat(directory, "/", dec_dot_h_name));
   std::ofstream dec_dot_cc_file(absl::StrCat(directory, "/", dec_dot_cc_name));
   std::ofstream enc_dot_h_file(absl::StrCat(directory, "/", enc_dot_h_name));
@@ -189,8 +190,8 @@ absl::Status BinFormatVisitor::Process(
       EmitDecoderFilePrefix(dec_dot_h_name, encoding_info.get());
   dec_dot_h_file << dec_h_output;
   dec_dot_cc_file << dec_cc_output;
-  auto [enc_h_output, enc_cc_output] =
-      EmitEncoderFilePrefix(enc_dot_h_name, encoding_info.get());
+  auto [enc_h_output, enc_cc_output] = EmitEncoderFilePrefix(
+      enc_dot_h_name, enum_dot_h_name, encoding_info.get());
   enc_dot_h_file << enc_h_output;
   enc_dot_cc_file << enc_cc_output;
   // Output file prefix is the input file name.
@@ -311,7 +312,8 @@ BinFormatVisitor::StringPair BinFormatVisitor::EmitDecoderCode(
 }
 
 std::tuple<std::string, std::string> BinFormatVisitor::EmitEncoderFilePrefix(
-    const std::string &dot_h_name, BinEncodingInfo *encoding_info) const {
+    const std::string &dot_h_name, const std::string &enum_h_name,
+    BinEncodingInfo *encoding_info) const {
   std::string h_string;
   std::string cc_string;
 
@@ -323,10 +325,18 @@ std::tuple<std::string, std::string> BinFormatVisitor::EmitEncoderFilePrefix(
                   "\n"
                   "\n"
                   "#include <iostream>\n"
-                  "#include <cstdint>\n\n");
+                  "#include <cstdint>\n\n"
+                  "#include \"absl/base/no_destructor.h\"\n"
+                  "#include \"absl/container/flat_hash_map.h\"\n\n"
+                  "#include \"",
+                  enum_h_name, "\"\n");
   absl::StrAppend(&cc_string, "#include \"", dot_h_name,
                   "\"\n\n"
-                  "#include <cstdint>\n\n");
+                  "#include <cstdint>\n\n"
+                  "#include \"absl/base/no_destructor.h\"\n"
+                  "#include \"absl/container/flat_hash_map.h\"\n\n"
+                  "#include \"",
+                  enum_h_name, "\"\n");
   for (auto &name_space : encoding_info->decoder()->namespaces()) {
     auto name_space_str = absl::StrCat("namespace ", name_space, " {\n");
     absl::StrAppend(&cc_string, name_space_str);
@@ -356,22 +366,21 @@ std::tuple<std::string, std::string> BinFormatVisitor::EmitEncoderCode(
     group->GetInstructionEncodings(encodings);
   }
   std::string opcode_enum = encoding->opcode_enum();
-  absl::StrAppend(&h_string,
-                  "extern const std::tuple<uint64_t, int> kOpcodeEncodings[",
-                  encodings.size() + 1, "];\n");
-  absl::StrAppend(&cc_string,
-                  "const std::tuple<uint64_t, int> kOpcodeEncodings[",
-                  encodings.size() + 1, "] = {\n");
-  absl::StrAppend(&cc_string, "  /* ", opcode_enum,
-                  "::kNone = */ {0x0ULL, 0},\n");
+  absl::StrAppend(&h_string, "extern absl::NoDestructor<absl::flat_hash_map<",
+                  opcode_enum,
+                  ", std::tuple<uint64_t, int>>> kOpcodeEncodings;\n");
+  absl::StrAppend(&cc_string, "absl::NoDestructor<absl::flat_hash_map<",
+                  opcode_enum,
+                  ", std::tuple<uint64_t, int>>> kOpcodeEncodings({\n");
+  absl::StrAppend(&cc_string, "  {", opcode_enum, "::kNone, {0x0ULL, 0}},\n");
   for (auto &[name, pair] : encodings) {
     auto [value, width] = pair;
     std::string enum_name =
         absl::StrCat(opcode_enum, "::k", ToPascalCase(name));
-    absl::StrAppend(&cc_string, "  /* ", enum_name, " = */ {0x",
-                    absl::Hex(value), "ULL, ", width, "},\n");
+    absl::StrAppend(&cc_string, "  {", enum_name, ", {0x", absl::Hex(value),
+                    "ULL, ", width, "}},\n");
   }
-  absl::StrAppend(&cc_string, "};\n");
+  absl::StrAppend(&cc_string, "});\n");
   return std::tie(h_string, cc_string);
 }
 

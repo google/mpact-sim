@@ -51,7 +51,7 @@ def mpact_cc_test(name, size = "small", srcs = [], deps = [], copts = [], data =
         data = data,
     )
 
-def mpact_isa_decoder(name, includes, src = "", srcs = [], deps = [], isa_name = "", prefix = ""):
+def mpact_isa_decoder(name, includes, src = "", srcs = [], deps = [], isa_name = "", prefix = "", testonly = False):
     """Generates the C++ source corresponding to an MPACT Isa decoder definition.
 
     Args:
@@ -105,6 +105,7 @@ def mpact_isa_decoder(name, includes, src = "", srcs = [], deps = [], isa_name =
         cmd = command,
         heuristic_label_expansion = 0,
         tools = ["@com_google_mpact-sim//mpact/sim/decoder:decoder_gen"],
+        testonly = testonly,
     )
 
     # The rule for the lib that is built from the generated sources.
@@ -117,6 +118,8 @@ def mpact_isa_decoder(name, includes, src = "", srcs = [], deps = [], isa_name =
         lib_deps.append("@com_google_mpact-sim//mpact/sim/generic:arch_state")
     if "@com_google_mpact-sim//mpact/sim/generic:instruction" not in deps:
         lib_deps.append("@com_google_mpact-sim//mpact/sim/generic:instruction")
+    if "@com_google_mpact-sim//mpact/sim/util/asm" not in deps:
+        lib_deps.append("@com_google_mpact-sim//mpact/sim/util/asm")
     if "@com_googlesource_code_re2//:re2" not in deps:
         lib_deps.append("@com_googlesource_code_re2//:re2")
     if "@com_google_absl//absl/status" not in deps:
@@ -130,9 +133,10 @@ def mpact_isa_decoder(name, includes, src = "", srcs = [], deps = [], isa_name =
         srcs = [f for f in out_files if f.endswith(".cc")],
         hdrs = [f for f in out_files if f.endswith(".h")],
         deps = lib_deps + deps,
+        testonly = testonly,
     )
 
-def mpact_bin_fmt_decoder(name, includes, src = "", srcs = [], deps = [], decoder_name = "", prefix = ""):
+def mpact_bin_fmt_decoder(name, includes, src = "", srcs = [], deps = [], decoder_name = "", prefix = "", testonly = False):
     """Generates the C++ source corresponding to an MPACT Bin Format decoder definition.
 
     Args:
@@ -183,10 +187,13 @@ def mpact_bin_fmt_decoder(name, includes, src = "", srcs = [], deps = [], decode
         cmd = command,
         heuristic_label_expansion = 0,
         tools = ["@com_google_mpact-sim//mpact/sim/decoder:bin_format_gen"],
+        testonly = testonly,
     )
 
     # The rule for the lib that is built from the generated sources.
     lib_deps = []
+    if "@com_google_absl//absl/base:no_destructor" not in deps:
+        lib_deps.append("@com_google_absl//absl/base:no_destructor")
     if "@com_google_absl//absl/container:flat_hash_map" not in deps:
         lib_deps.append("@com_google_absl//absl/container:flat_hash_map")
     if "@com_google_absl//absl/functional:any_invocable" not in deps:
@@ -202,9 +209,10 @@ def mpact_bin_fmt_decoder(name, includes, src = "", srcs = [], deps = [], decode
         srcs = [f for f in out_files if f.endswith(".cc")],
         hdrs = [f for f in out_files if f.endswith(".h")],
         deps = lib_deps + deps,
+        testonly = testonly,
     )
 
-def mpact_proto_fmt_decoder(name, includes, src = "", srcs = [], proto_files = [], deps = [], decoder_name = "", prefix = ""):
+def mpact_proto_fmt_decoder(name, includes, src = "", srcs = [], proto_files = [], deps = [], decoder_name = "", prefix = "", testonly = False):
     """Generates the C++ source corresponding to an MPACT Bin Format decoder definition.
 
     Args:
@@ -266,6 +274,7 @@ def mpact_proto_fmt_decoder(name, includes, src = "", srcs = [], proto_files = [
             "@com_google_absl//absl/functional:any_invocable",
             "@com_google_absl//absl/strings:str_format",
         ] + deps,
+        testonly = testonly,
     )
 
 # Strip any path component from text. Return only the string that follows the last "/".

@@ -371,16 +371,19 @@ std::string EscapeRegexCharacters(const std::string &str) {
 std::tuple<std::string, std::vector<OperandLocator>> Slot::GenerateRegEx(
     const Instruction *inst, std::vector<std::string> &formats) const {
   std::string output = "R\"(";
-  std::string sep = "^\\s*";
-  int args = 0;
+  std::string sep = "^";
   std::vector<OperandLocator> opnd_locators;
   // Iterate over the vector of disasm formats. These will end up concatenated
   // with \s+ separators.
   for (auto const *disasm_fmt : inst->disasm_format_vec()) {
     absl::StrAppend(&output, sep);
     sep = "\\s+";
+    // The fragments are the text part (not part of operands), that occur
+    // between the operand of the format. E.g., the commas in "r1, r2, r3".
     auto fragment_iter = disasm_fmt->format_fragment_vec.begin();
     auto fragment_end = disasm_fmt->format_fragment_vec.end();
+    // The formats are the instruction formats, E.g., the register names in
+    // "r1, r2, r3".
     auto format_iter = disasm_fmt->format_info_vec.begin();
     auto format_end = disasm_fmt->format_info_vec.end();
     char prev = '\0';
@@ -396,15 +399,17 @@ std::tuple<std::string, std::vector<OperandLocator>> Slot::GenerateRegEx(
       }
       fragment_iter++;
       if (format_iter != format_end) {
-        // If the previous character is punctuation, but not '.' or '_', add a
-        // space separator.
-        if ((prev != '\0') &&
-            !(isalnum(prev) || (prev == '_') || (prev == '.'))) {
-          absl::StrAppend(&output, "\\s*");
+        // If the trailling part of output is not '\\s*', and prev is
+        // punctuation, but not '.' or '_', add a space separator.
+        auto len = output.size();
+        if (output.substr(len - 3) != "\\s*") {
+          if ((prev != '\0') &&
+              !(isalnum(prev) || (prev == '_') || (prev == '.'))) {
+            absl::StrAppend(&output, "\\s*");
+          }
         }
-        args++;
         std::string op_name = (*format_iter)->op_name;
-        absl::StrAppend(&output, "(?<", op_name, ">\\S*?)");
+        absl::StrAppend(&output, "(\\S*?)");
         opnd_locators.push_back(inst->opcode()->op_locator_map().at(op_name));
         if ((fragment_iter != fragment_end) && (!(*fragment_iter).empty())) {
           char c = (*fragment_iter)[0];
@@ -418,7 +423,7 @@ std::tuple<std::string, std::vector<OperandLocator>> Slot::GenerateRegEx(
       }
     }
   }
-  absl::StrAppend(&output, "\\s*(#.*)?$)\"");
+  absl::StrAppend(&output, "$)\"");
   return {output, opnd_locators};
 }
 
@@ -464,7 +469,8 @@ std::tuple<std::string, std::string> Slot::GenerateAsmRegexMatcher() const {
       "  bool Extract(absl::string_view text, int index, "
       "std::vector<std::string> &values);\n"
       "absl::StatusOr<std::tuple<uint64_t, int>> "
-      "Encode(uint64_t address, absl::string_view text, int entry);\n"
+      "Encode(uint64_t address, absl::string_view text, int entry, "
+      "ResolverInterface *resolver);\n"
       " private:\n"
       "  ",
       encoder,
@@ -482,6 +488,8 @@ std::tuple<std::string, std::string> Slot::GenerateAsmRegexMatcher() const {
                   "  for (int i = 0; i < re2_args.size(); ++i) {\n"
                   "    delete re2_args[i];\n"
                   "  }\n"
+                  "  for (auto *regex : regex_vec_) delete regex;\n"
+                  "  regex_vec_.clear();\n"
                   "}\n\n"
                   "absl::Status ",
                   class_name,
@@ -545,7 +553,7 @@ std::tuple<std::string, std::string> Slot::GenerateAsmRegexMatcher() const {
       pascal_name(),
       "SlotMatcher::Encode(\n"
       R"(
-    uint64_t address, absl::string_view text, int entry) {
+    uint64_t address, absl::string_view text, int entry, ResolverInterface *resolver) {
   std::vector<int> matches;
   std::string error_message = absl::StrCat("Failed to encode '", text, "':");
   if (!Match(text, matches) || (matches.size() == 0)) {
@@ -560,7 +568,7 @@ std::tuple<std::string, std::string> Slot::GenerateAsmRegexMatcher() const {
       pascal_name(),
       ", entry, \n"
       "                                     "
-      "static_cast<OpcodeEnum>(index), address, values);\n",
+      "static_cast<OpcodeEnum>(index), address, values, resolver);\n",
       R"(
     if (!result.status().ok()) {
       absl::StrAppend(&error_message, "\n    ", result.status().message());
@@ -638,9 +646,11 @@ std::string Slot::GenerateDisasmSetterFcn(absl::string_view name,
           if (!format_info->is_formatted) {
             absl::StrAppend(&output, "\n#error Missing locator information");
           } else {
-            absl::StrAppend(&output, next_sep, "absl::StrFormat(\"",
-                            format_info->number_format, "\", ",
-                            ExpandExpression(*format_info, ""), ")");
+            absl::StrAppend(
+                &output, next_sep, "absl::StrFormat(\"",
+                format_info->number_format.back() == 'x' ? "0x" : "",
+                format_info->number_format, "\", ",
+                ExpandExpression(*format_info, ""), ")");
           }
         } else {
           auto key = format_info->op_name;
@@ -659,10 +669,11 @@ std::string Slot::GenerateDisasmSetterFcn(absl::string_view name,
           if (!format_info->is_formatted) {
             absl::StrAppend(&output, next_sep, result.value(), "->AsString()");
           } else {
-            absl::StrAppend(&output, next_sep, "absl::StrFormat(\"",
-                            format_info->number_format, "\", ",
-                            ExpandExpression(*format_info, result.value()),
-                            ")");
+            absl::StrAppend(
+                &output, next_sep, "absl::StrFormat(\"",
+                format_info->number_format.back() == 'x' ? "0x" : "",
+                format_info->number_format, "\", ",
+                ExpandExpression(*format_info, result.value()), ")");
           }
         }
       }

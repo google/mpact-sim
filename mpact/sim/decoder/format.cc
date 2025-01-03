@@ -453,18 +453,16 @@ std::string Format::GenerateOverlayInserter(Overlay *overlay) const {
       shift = absl::StrCat(" >> ", left - width);
     }
     // Extract the bits from the overlay value for the current component.
-    absl::StrAppend(&h_output, "  tmp = (value ", shift, ") & 0x", mask,
-                    "ULL;\n");
+    absl::StrAppend(&h_output, "  tmp = (value ", shift, ") & 0x",
+                    absl::Hex(mask), "ULL;\n");
     shift.clear();
     if (bits_or_field->low() != 0) {
       shift = absl::StrCat(" << ", bits_or_field->low());
     }
-    absl::StrAppend(&h_output, "  inst_word |= (tmp ", shift,
-                    ");\n"
-                    "  return inst_word;\n");
+    absl::StrAppend(&h_output, "  inst_word |= (tmp ", shift, ");\n");
     left -= width;
   }
-  absl::StrAppend(&h_output, "}\n");
+  absl::StrAppend(&h_output, "  return inst_word;\n}\n");
   return h_output;
 }
 

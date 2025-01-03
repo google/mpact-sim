@@ -1,4 +1,4 @@
-// Copyright 2023 Google LLC
+// Copyright 2025 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,14 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "googlemock/include/gmock/gmock.h"  // IWYU pragma: keep
-#include "googletest/include/gtest/gtest.h"
+#ifndef MPACT_SIM_UTIL_ASM_TEST_RISC64X_INSTRUCTIONS_H_
+#define MPACT_SIM_UTIL_ASM_TEST_RISC64X_INSTRUCTIONS_H_
 
-namespace {
+#include "mpact/sim/generic/instruction.h"
 
-// Trivial case that succeeds as long as the generated code compiles, including
-// base classes, as this test file build dependency includes the .isa grammar
-// file. See the BUILD file for details.
-TEST(ExampleDecoderTest, Trivial) { EXPECT_TRUE(true); }
+namespace mpact::sim::riscv {
 
-}  // namespace
+using ::mpact::sim::generic::Instruction;
+
+void RiscVIllegalInstruction(const generic::Instruction *inst);
+
+}  // namespace mpact::sim::riscv
+
+#endif  // MPACT_SIM_UTIL_ASM_TEST_RISC64X_INSTRUCTIONS_H_

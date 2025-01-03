@@ -1,0 +1,58 @@
+// Copyright 2025 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// This file contains the subset of the ISA description for the RiscV64G architecture for
+// the purpose of generating a simple "subset" assembler for testing
+
+// First disasm field is 18 char wide and left justified.
+disasm widths = {-18};
+
+int global_latency = 1;
+
+isa RiscV64X {
+  namespace mpact::sim::riscv::isa64;
+  slots { riscv64x; }
+}
+
+// Minimal set of instructions for hello world.
+slot riscv64x {
+  includes {
+    #include "mpact/sim/util/asm/test/riscv64x_instructions.h"
+  }
+  default size = 4;
+  default latency = global_latency;
+  default opcode =
+    disasm: "Illegal instruction at %(@:08x)",
+    semfunc: "&RiscVIllegalInstruction";
+  opcodes {
+    addi{: rs1, I_imm12 : rd},
+      disasm: "addi", "%rd, %rs1, %I_imm12";
+    lui{: U_imm20 : rd},
+      disasm: "lui", "%rd, %(U_imm20:08x)";
+    sd{: rs1, S_imm12, rs2 : },
+      disasm: "sd", "%rs2, %S_imm12(%rs1)";
+    jal{: J_imm20 : next_pc, rd},
+      disasm: "jal", "%rd, %(@+J_imm20:08x)";
+    j{: J_imm20 : next_pc, rd},
+      disasm: "j", "%(@+J_imm20:08x)";
+    slli{: rs1, I_uimm6 : rd},
+      disasm: "slli", "%rd, %rs1, %(I_uimm6:x)";
+    ebreak{},
+      disasm: "ebreak";
+    srai{: rs1, I_uimm6 : rd},
+      disasm: "srai", "%rd, %rs1, %(I_uimm6:x)";
+    jr{: rs1, J_imm12 : next_pc, rd},
+      disasm: "jr", "%rs1, %(J_imm12:08x)";
+  }
+}

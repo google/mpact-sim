@@ -1,0 +1,108 @@
+// Copyright 2025 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// RiscV 64 bit G instruction decoder for testing assembler.
+decoder RiscV64X {
+  opcode_enum = "isa64::OpcodeEnum";
+  includes {
+    #include "mpact/sim/util/asm/test/riscv64x_decoder.h"
+  }
+  namespace mpact::sim::riscv::encoding64;
+  RiscVXInst32;
+};
+
+format Inst32Format[32] {
+  fields:
+    unsigned bits[25];
+    unsigned opcode[7];
+};
+
+format RType[32] : Inst32Format {
+  fields:
+    unsigned func7[7];
+    unsigned rs2[5];
+    unsigned rs1[5];
+    unsigned func3[3];
+    unsigned rd[5];
+    unsigned opcode[7];
+  overlays:
+    unsigned r_uimm5[5] = rs2;
+};
+
+// Format for shift immediate for RV64, note 6 bit immediate.
+format RSType[32] : Inst32Format {
+  fields:
+    unsigned func6[6];
+    unsigned r_uimm6[6];
+    unsigned rs1[5];
+    unsigned func3[3];
+    unsigned rd[5];
+    unsigned opcode[7];
+};
+
+format IType[32] : Inst32Format {
+  fields:
+    signed imm12[12];
+    unsigned rs1[5];
+    unsigned func3[3];
+    unsigned rd[5];
+    unsigned opcode[7];
+  overlays:
+    unsigned u_imm12[12] = imm12;
+    unsigned i_uimm5[5] = rs1;
+};
+
+format SType[32] : Inst32Format {
+  fields:
+    unsigned imm7[7];
+    unsigned rs2[5];
+    unsigned rs1[5];
+    unsigned func3[3];
+    unsigned imm5[5];
+    unsigned opcode[7];
+  overlays:
+    signed s_imm[12] = imm7, imm5;
+};
+
+
+format UType[32] : Inst32Format {
+  fields:
+    unsigned imm20[20];
+    unsigned rd[5];
+    unsigned opcode[7];
+  overlays:
+    unsigned u_imm[32] = imm20, 0b0000'0000'0000;
+    signed   s_imm[32] = imm20, 0b0000'0000'0000;
+};
+
+format JType[32] : Inst32Format {
+  fields:
+    signed imm20[20];
+    unsigned rd[5];
+    unsigned opcode[7];
+  overlays:
+    signed j_imm[21] = imm20[19, 7..0, 8, 18..9], 0b0;
+};
+
+instruction group RiscVXInst32[32] : Inst32Format {
+  addi   : IType  : func3 == 0b000, opcode == 0b001'0011;
+  lui    : UType  : opcode == 0b011'0111;
+  sd     : SType  : func3 == 0b011, opcode == 0b010'0011;
+  jal    : JType  : rd != 0, opcode == 0b110'1111;
+  j      : JType  : rd == 0, opcode == 0b110'1111;
+  slli   : RSType : func6 == 0b000'000,  func3==0b001, opcode == 0b001'0011;
+  ebreak : Inst32Format : bits == 0b0000'0000'0001'00000'000'00000, opcode == 0b111'0011;
+  srai   : RSType : func6 == 0b010'000,  func3==0b101, opcode == 0b001'0011;
+  jr     : IType  : rd == 0, func3 == 0b000, opcode == 0b110'0111;
+};
