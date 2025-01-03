@@ -56,7 +56,7 @@ class RiscV64XBinEncoderInterface : public RiscV64XEncoderInterfaceBase {
       uint64_t address, absl::string_view text, SlotEnum slot, int entry,
       OpcodeEnum opcode, ListDestOpEnum dest_op, int dest_num,
       ResolverInterface *resolver) override;
-  absl::StatusOr<uint64_t> GetListSourceOpEncoding(
+  absl::StatusOr<uint64_t> GetListSrcOpEncoding(
       uint64_t address, absl::string_view text, SlotEnum slot, int entry,
       OpcodeEnum opcode, ListSourceOpEnum source_op, int source_num,
       ResolverInterface *resolver) override;

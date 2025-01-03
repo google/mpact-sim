@@ -712,7 +712,7 @@ std::string InstructionSet::GenerateOperandEncoder(
       absl::StrAppend(&output, "  // Source array operand ", op_name, "\n");
       absl::StrAppend(
           &output,
-          "  result = encoder->GetListSourceOpEncoding(address, operands[",
+          "  result = encoder->GetListSrcOpEncoding(address, operands[",
           position,
           "], slot, "
           "entry, opcode, ",
@@ -782,12 +782,12 @@ std::tuple<std::string, std::string> InstructionSet::GenerateEncClasses(
   virtual absl::StatusOr<uint64_t> GetDestOpEncoding(uint64_t address,
       absl::string_view text, SlotEnum slot, int entry, OpcodeEnum opcode,
       DestOpEnum dest_op, int dest_num, ResolverInterface *resolver) = 0;
+  virtual absl::StatusOr<uint64_t> GetListSrcOpEncoding( uint64_t address,
+      absl::string_view text,SlotEnum slot, int entry, OpcodeEnum opcode,
+      ListSourceOpEnum source_op, int source_num, ResolverInterface *resolver) = 0;
   virtual absl::StatusOr<uint64_t> GetListDestOpEncoding(uint64_t address,
       absl::string_view text, SlotEnum slot, int entry, OpcodeEnum opcode,
       ListDestOpEnum dest_op, int dest_num, ResolverInterface *resolver) = 0;
-  virtual absl::StatusOr<uint64_t> GetListSourceOpEncoding( uint64_t address,
-      absl::string_view text,SlotEnum slot, int entry, OpcodeEnum opcode,
-      ListSourceOpEnum source_op, int source_num, ResolverInterface *resolver) = 0;
   virtual absl::StatusOr<uint64_t> GetPredOpEncoding(uint64_t address,
       absl::string_view text, SlotEnum slot, int entry, OpcodeEnum opcode,
       PredOpEnum pred_op, ResolverInterface *resolver) = 0;

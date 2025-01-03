@@ -465,13 +465,13 @@ std::tuple<std::string, std::string> Slot::GenerateAsmRegexMatcher() const {
       class_name,
       "();\n"
       "  absl::Status Initialize();\n"
+      "absl::StatusOr<std::tuple<uint64_t, int>> "
+      "Encode(uint64_t address, absl::string_view text, int entry, "
+      "ResolverInterface *resolver);\n\n"
+      " private:\n"
       "  bool Match(absl::string_view text, std::vector<int> &matches);\n"
       "  bool Extract(absl::string_view text, int index, "
       "std::vector<std::string> &values);\n"
-      "absl::StatusOr<std::tuple<uint64_t, int>> "
-      "Encode(uint64_t address, absl::string_view text, int entry, "
-      "ResolverInterface *resolver);\n"
-      " private:\n"
       "  ",
       encoder,
       " *encoder_;\n"

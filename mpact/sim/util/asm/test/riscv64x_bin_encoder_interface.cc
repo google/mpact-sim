@@ -85,7 +85,7 @@ absl::StatusOr<uint64_t> RiscV64XBinEncoderInterface::GetListDestOpEncoding(
   return iter->second(address, text, resolver);
 }
 
-absl::StatusOr<uint64_t> RiscV64XBinEncoderInterface::GetListSourceOpEncoding(
+absl::StatusOr<uint64_t> RiscV64XBinEncoderInterface::GetListSrcOpEncoding(
     uint64_t address, absl::string_view text, SlotEnum slot, int entry,
     OpcodeEnum opcode, ListSourceOpEnum source_op, int source_num,
     ResolverInterface *resolver) {
