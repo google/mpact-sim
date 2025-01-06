@@ -2314,6 +2314,7 @@ InstructionSetVisitor::GenerateEncFilePrologs(
                   "\n"
                   "#include \"absl/status/status.h\"\n"
                   "#include \"absl/status/statusor.h\"\n"
+                  "#include \"absl/strings/str_cat.h\"\n"
                   "#include \"absl/strings/string_view.h\"\n"
                   "#include \"mpact/sim/util/asm/resolver_interface.h\"\n"
                   "#include \"re2/re2.h\"\n"
