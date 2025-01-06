@@ -51,7 +51,8 @@ namespace assembler {
 
 class SimpleAssembler {
  public:
-  SimpleAssembler(int os_abi, int type, int machine, uint64_t base_address,
+  SimpleAssembler(int elf_file_class, int os_abi, int type, int machine,
+                  uint64_t base_address,
                   OpcodeAssemblerInterface *opcode_assembler_if);
   SimpleAssembler(const SimpleAssembler &) = delete;
   SimpleAssembler &operator=(const SimpleAssembler &) = delete;
@@ -89,6 +90,8 @@ class SimpleAssembler {
   void SetDataSection(const std::string &name);
   void SetBssSection(const std::string &name);
 
+  // ELF file class.
+  int elf_file_class_ = 0;
   // Elf file top level object.
   ELFIO::elfio writer_;
   // The current section being processed.

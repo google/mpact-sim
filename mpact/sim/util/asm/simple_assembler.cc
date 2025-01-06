@@ -55,10 +55,12 @@ class ZeroResolver : public ResolverInterface {
 // resolve symbol names to values.
 class SymbolResolver : public ResolverInterface {
  public:
-  explicit SymbolResolver(
-      ELFIO::section *symtab,
+  SymbolResolver(
+      int elf_file_class, ELFIO::section *symtab,
       const absl::flat_hash_map<std::string, ELFIO::Elf_Xword> &symbol_indices)
-      : symtab_(symtab), symbol_indices_(symbol_indices) {}
+      : elf_file_class_(elf_file_class),
+        symtab_(symtab),
+        symbol_indices_(symbol_indices) {}
   absl::StatusOr<uint64_t> Resolve(absl::string_view text) override {
     auto iter = symbol_indices_.find(text);
     if (iter == symbol_indices_.end()) {
@@ -66,21 +68,32 @@ class SymbolResolver : public ResolverInterface {
           absl::StrCat("Symbol '", text, "' not found"));
     }
     auto index = iter->second;
-    auto *sym = reinterpret_cast<const ELFIO::Elf64_Sym *>(symtab_->get_data());
-    return sym[index].st_value;
+    if (elf_file_class_ == ELFCLASS64) {
+      auto *sym =
+          reinterpret_cast<const ELFIO::Elf64_Sym *>(symtab_->get_data());
+      return sym[index].st_value;
+    } else if (elf_file_class_ == ELFCLASS32) {
+      auto *sym =
+          reinterpret_cast<const ELFIO::Elf32_Sym *>(symtab_->get_data());
+      return sym[index].st_value;
+    }
+    return absl::InternalError("Unsupported ELF file class");
   }
 
  private:
+  // Elf file class.
+  int elf_file_class_ = 0;
   // The symbol table ELF section.
   ELFIO::section *symtab_;
   // Map from symbol name to symbol index in the symbol table.
   const absl::flat_hash_map<std::string, ELFIO::Elf_Xword> &symbol_indices_;
 };
 
-SimpleAssembler::SimpleAssembler(int os_abi, int type, int machine,
-                                 uint64_t base_address,
+SimpleAssembler::SimpleAssembler(int elf_file_class, int os_abi, int type,
+                                 int machine, uint64_t base_address,
                                  OpcodeAssemblerInterface *opcode_assembler_if)
-    : opcode_assembler_if_(opcode_assembler_if),
+    : elf_file_class_(elf_file_class),
+      opcode_assembler_if_(opcode_assembler_if),
       base_address_(base_address),
       comment_re_("^\\s*(?:;(.*))?$"),
       asm_line_re_("^(?:(?:(\\S+)\\s*:)?|\\s)\\s*([^;]*?)?\\s*(?:;(.*))?$"),
@@ -91,14 +104,16 @@ SimpleAssembler::SimpleAssembler(int os_abi, int type, int machine,
           ")?\\s*"
           "$") {
   // Configure the ELF file writer.
-  writer_.create(ELFCLASS64, ELFDATA2LSB);
+  writer_.create(elf_file_class_, ELFDATA2LSB);
   writer_.set_os_abi(os_abi);
   writer_.set_type(ET_EXEC);
   writer_.set_machine(machine);
   // Create the symbol table section.
   symtab_ = writer_.sections.add(".symtab");
   symtab_->set_type(SHT_SYMTAB);
-  symtab_->set_entry_size(sizeof(ELFIO::Elf64_Sym));
+  symtab_->set_entry_size(elf_file_class_ == ELFCLASS64
+                              ? sizeof(ELFIO::Elf64_Sym)
+                              : sizeof(ELFIO::Elf32_Sym));
   // Create the string table section.
   strtab_ = writer_.sections.add(".strtab");
   strtab_->set_type(SHT_STRTAB);
@@ -239,7 +254,8 @@ absl::Status SimpleAssembler::Parse(std::istream &is) {
 
   // For the second pass, we need a symbol resolver that uses the symbol table
   // and the symbol indices.
-  symbol_resolver_ = new SymbolResolver(symtab_, symbol_indices_);
+  symbol_resolver_ =
+      new SymbolResolver(elf_file_class_, symtab_, symbol_indices_);
 
   // Update the section address map so that each section starts at the right
   // address, i.e., it no longer tracks the offset within each section, but the

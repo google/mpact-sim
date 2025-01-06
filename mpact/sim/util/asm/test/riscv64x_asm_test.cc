@@ -115,11 +115,12 @@ class RiscV64XAssemblerTest : public ::testing::Test {
       : matcher_(&bin_encoder_interface_), riscv_64x_assembler_(&matcher_) {
     CHECK_OK(matcher_.Initialize());
     // Create the assembler.
-    assembler_ = new SimpleAssembler(ELFOSABI_LINUX, ET_EXEC, EM_RISCV, 0x1000,
-                                     &riscv_64x_assembler_);
+    assembler_ = new SimpleAssembler(ELFCLASS64, ELFOSABI_LINUX, ET_EXEC,
+                                     EM_RISCV, 0x1000, &riscv_64x_assembler_);
     std::istringstream source(*kTestAssembly);
     // Parse the assembly code.
-    CHECK_OK(assembler_->Parse(source));
+    auto status = assembler_->Parse(source);
+    CHECK_OK(status) << status.message();
   }
 
   ~RiscV64XAssemblerTest() override { delete assembler_; }
