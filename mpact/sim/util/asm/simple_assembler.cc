@@ -488,6 +488,11 @@ absl::Status SimpleAssembler::SetEntryPoint(const std::string &value) {
   return absl::OkStatus();
 }
 
+absl::Status SimpleAssembler::SetEntryPoint(uint64_t value) {
+  entry_point_ = value;
+  return absl::OkStatus();
+}
+
 // Top level function that writes the ELF file out to disk.
 absl::Status SimpleAssembler::Write(std::ostream &os) {
   if (entry_point_.empty()) return absl::NotFoundError("Entry point not set");

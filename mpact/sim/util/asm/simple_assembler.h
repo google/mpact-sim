@@ -51,9 +51,8 @@ namespace assembler {
 
 class SimpleAssembler {
  public:
-  explicit SimpleAssembler(int os_abi, int type, int machine,
-                           uint64_t base_address,
-                           OpcodeAssemblerInterface *opcode_assembler_if);
+  SimpleAssembler(int os_abi, int type, int machine, uint64_t base_address,
+                  OpcodeAssemblerInterface *opcode_assembler_if);
   SimpleAssembler(const SimpleAssembler &) = delete;
   SimpleAssembler &operator=(const SimpleAssembler &) = delete;
   virtual ~SimpleAssembler();
@@ -62,6 +61,7 @@ class SimpleAssembler {
   absl::Status Parse(std::istream &is);
   // Set the entry point. Either pass a symbol or an address.
   absl::Status SetEntryPoint(const std::string &value);
+  absl::Status SetEntryPoint(uint64_t value);
   // Write out the ELF file.
   absl::Status Write(std::ostream &os);
 

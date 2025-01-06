@@ -59,11 +59,9 @@ cc_library(
     name = "riscv64x_encoder",
     testonly = True,
     srcs = [
-        "riscv64x_assembler.cc",
         "riscv64x_bin_encoder_interface.cc",
     ],
     hdrs = [
-        "riscv64x_assembler.h",
         "riscv64x_bin_encoder_interface.h",
         "riscv_bin_setters.h",
         "riscv_getter_helpers.h",
