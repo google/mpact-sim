@@ -38,7 +38,7 @@ slot a_side_ops {
   int mult_plus_2 = mult + my_const;
   default attributes = { one, two = 3, three = base, four = base_plus_1, five = 0};
   opcodes {
-    vctsf{(pred : sy : dest(base_plus_1))};
+    vctsf{(pred : sy : %reloc(dest)(base_plus_1))};
     cvtfs{(pred : sy : dest(base + 1))};
     adds{(pred : sy, sx : dest(base))},
       attributes: {five = 1, six};
@@ -80,7 +80,7 @@ slot a_side_1 : a_side, a_side_ops<1, 4> {
   default opcode =
     semfunc: "[](Instruction *) {}";
   opcodes {
-    ld{(pred : yop : ),(: : dest)},
+    ld{(pred : %reloc(yop) : ),(: : dest)},
       disasm:"%dest = sld %pred [smem:%yop]";
     ld_offset{(pred : xop, yop : dest(abs(-2)))};
     st{(pred)};

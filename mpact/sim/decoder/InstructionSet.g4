@@ -320,8 +320,13 @@ source_list
   ;
 
 source_operand
-  : source=IDENT
+  : operand
   | '[' array_source=IDENT ']'
+  ;
+
+operand
+  : op_attribute=OP_ATTRIBUTE '(' op_name=IDENT ')'
+  | op_name=IDENT
   ;
 
 // Destination operands may include a latency.
@@ -331,7 +336,7 @@ dest_list
   ;
 
 dest_operand
-  : (dest=IDENT | '[' array_dest=IDENT ']')
+  : (operand | '[' array_dest=IDENT ']')
     ( '(' (expression | wildcard='*' ) ')' )?
   ;
 
@@ -514,6 +519,8 @@ SEMFUNC : 'semfunc';
 SLOT : 'slot';
 SLOTS : 'slots';
 TEMPLATE : 'template';
+
+OP_ATTRIBUTE : '%reloc';
 
 // Other tokens.
 STRING_LITERAL : UNTERMINATED_STRING_LITERAL '"';

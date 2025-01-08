@@ -15,6 +15,8 @@
 #ifndef MPACT_SIM_DECODER_OPCODE_H_
 #define MPACT_SIM_DECODER_OPCODE_H_
 
+#include <stdbool.h>
+
 #include <functional>
 #include <string>
 #include <utility>
@@ -50,31 +52,39 @@ namespace instruction_set {
 class DestinationOperand {
  public:
   // Operand latency is defined by the expression.
-  DestinationOperand(std::string name, bool is_array,
+  DestinationOperand(std::string name, bool is_array, bool is_reloc,
                      TemplateExpression *expression)
       : name_(std::move(name)),
         pascal_case_name_(ToPascalCase(name_)),
         expression_(expression),
-        is_array_(is_array) {}
+        is_array_(is_array),
+        is_reloc_(is_reloc) {}
   // Operand latency is a constant.
-  DestinationOperand(std::string name, bool is_array, int latency)
+  DestinationOperand(std::string name, bool is_array, bool is_reloc,
+                     int latency)
       : name_(std::move(name)),
         pascal_case_name_(ToPascalCase(name_)),
         expression_(new TemplateConstant(latency)),
-        is_array_(is_array) {}
+        is_array_(is_array),
+        is_reloc_(is_reloc) {}
   // This constructor is used when the destination operand latency is specified
   // as '*' - meaning that it will be computed at the time of decode.
-  explicit DestinationOperand(std::string name, bool is_array)
+  DestinationOperand(std::string name, bool is_array, bool is_reloc)
       : name_(std::move(name)),
         pascal_case_name_(ToPascalCase(name_)),
         expression_(nullptr),
-        is_array_(is_array) {}
-  ~DestinationOperand() { delete expression_; }
+        is_array_(is_array),
+        is_reloc_(is_reloc) {}
+  ~DestinationOperand() {
+    delete expression_;
+    expression_ = nullptr;
+  }
 
   const std::string &name() const { return name_; }
   const std::string &pascal_case_name() const { return pascal_case_name_; }
   TemplateExpression *expression() const { return expression_; }
   bool is_array() const { return is_array_; }
+  bool is_reloc() const { return is_reloc_; }
   bool HasLatency() const { return expression_ != nullptr; }
   absl::StatusOr<int> GetLatency() const {
     if (expression_ == nullptr) return -1;
@@ -96,13 +106,15 @@ class DestinationOperand {
   std::string pascal_case_name_;
   TemplateExpression *expression_;
   bool is_array_ = false;
+  bool is_reloc_ = false;
 };
 
 struct SourceOperand {
   std::string name;
   bool is_array;
-  SourceOperand(std::string name_, bool is_array_)
-      : name(std::move(name_)), is_array(is_array_) {}
+  bool is_reloc;
+  SourceOperand(std::string name_, bool is_array_, bool is_reloc_)
+      : name(std::move(name_)), is_array(is_array_), is_reloc(is_reloc_) {}
 };
 
 // This struct is used to specify the location of an operand within an
@@ -120,9 +132,13 @@ struct OperandLocator {
   static constexpr char kDestinationArray = 'e';
   int op_spec_number;
   char type;
+  bool is_reloc;
   int instance;
-  OperandLocator(int op_spec_number_, char type_, int instance_)
-      : op_spec_number(op_spec_number_), type(type_), instance(instance_) {}
+  OperandLocator(int op_spec_number_, char type_, bool is_reloc_, int instance_)
+      : op_spec_number(op_spec_number_),
+        type(type_),
+        is_reloc(is_reloc_),
+        instance(instance_) {}
 };
 
 struct FormatInfo {
@@ -210,10 +226,10 @@ class Opcode {
   // to get the Predicate, Source and Destination operand interfaces (defined
   // in .../sim/generic/operand_interfaces.h. The implementation of these
   // methods will be left to the user of this generator tool.
-  void AppendSourceOp(absl::string_view op_name, bool is_array);
-  void AppendDestOp(absl::string_view op_name, bool is_array,
+  void AppendSourceOp(absl::string_view op_name, bool is_array, bool is_reloc);
+  void AppendDestOp(absl::string_view op_name, bool is_array, bool is_reloc,
                     TemplateExpression *expression);
-  void AppendDestOp(absl::string_view op_name, bool is_array);
+  void AppendDestOp(absl::string_view op_name, bool is_array, bool is_reloc);
   DestinationOperand *GetDestOp(absl::string_view op_name);
   // Append child opcode specification.
   void AppendChild(Opcode *op) { child_ = op; }

@@ -90,7 +90,8 @@ TEST_F(OpcodeTest, PredicateOperandName) {
 TEST_F(OpcodeTest, SourceOperandNames) {
   for (int indx = 0; indx < 3; indx++) {
     std::string source_op_name = absl::StrCat("SourceOp", indx);
-    opcode_->AppendSourceOp(source_op_name, /*is_array=*/false);
+    opcode_->AppendSourceOp(source_op_name, /*is_array=*/false,
+                            /*is_reloc=*/false);
     EXPECT_EQ(opcode_->source_op_vec().size(), indx + 1);
     EXPECT_STREQ(opcode_->source_op_vec()[indx].name.c_str(),
                  source_op_name.c_str());
@@ -102,10 +103,12 @@ TEST_F(OpcodeTest, DestOperandNames) {
   for (int indx = 0; indx < 2; indx++) {
     std::string dest_op_name = absl::StrCat("DestOp", indx);
     if (indx == 0) {
-      opcode_->AppendDestOp(dest_op_name, /*is_array=*/false);
+      opcode_->AppendDestOp(dest_op_name, /*is_array=*/false,
+                            /*is_reloc=*/false);
     } else if (indx == 1) {
       // Using nullptr - the value isn't checked upon append.
-      opcode_->AppendDestOp(dest_op_name, /*is_array=*/false, nullptr);
+      opcode_->AppendDestOp(dest_op_name, /*is_array=*/false,
+                            /*is_reloc=*/false, nullptr);
     }
     EXPECT_EQ(opcode_->dest_op_vec().size(), indx + 1);
     EXPECT_STREQ(opcode_->dest_op_vec()[indx]->name().c_str(),

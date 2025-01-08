@@ -1608,25 +1608,37 @@ void InstructionSetVisitor::VisitOpcodeOperands(OpcodeOperandsCtx *ctx,
   if (ctx->pred != nullptr) {
     std::string name = ctx->pred->getText();
     child->opcode()->set_predicate_op_name(name);
-    parent->opcode()->op_locator_map().insert(
-        std::make_pair(name, OperandLocator(op_spec_number, 'p', 0)));
+    parent->opcode()->op_locator_map().insert(std::make_pair(
+        name, OperandLocator(op_spec_number, 'p', /*is_reloc=*/false,
+                             /*instance=*/0)));
   }
   if (ctx->source != nullptr) {
     int instance = 0;
     for (auto *source_op : ctx->source->source_operand()) {
       std::string name;
-      bool is_array;
-      if (source_op->source != nullptr) {
-        name = source_op->source->getText();
-        is_array = false;
+      bool is_array = false;
+      bool is_reloc = false;
+      if (source_op->operand() != nullptr) {
+        name = source_op->operand()->op_name->getText();
+        if (source_op->operand()->op_attribute != nullptr) {
+          auto attr = source_op->operand()->op_attribute->getText();
+          if (attr == "%reloc") {
+            is_reloc = true;
+          } else {
+            error_listener()->semanticError(
+                file_names_[context_file_map_.at(slot->ctx())],
+                source_op->operand()->op_attribute,
+                absl::StrCat("Invalid operand attribute '", attr, "'"));
+          }
+        }
       } else {
         name = source_op->array_source->getText();
         is_array = true;
       }
-      child->opcode()->AppendSourceOp(name, is_array);
+      child->opcode()->AppendSourceOp(name, is_array, is_reloc);
       parent->opcode()->op_locator_map().insert(std::make_pair(
-          name,
-          OperandLocator(op_spec_number, is_array ? 't' : 's', instance)));
+          name, OperandLocator(op_spec_number, is_array ? 't' : 's', is_reloc,
+                               instance)));
       instance++;
     }
   }
@@ -1634,10 +1646,21 @@ void InstructionSetVisitor::VisitOpcodeOperands(OpcodeOperandsCtx *ctx,
     int instance = 0;
     for (auto *dest_op : ctx->dest_list()->dest_operand()) {
       std::string ident;
-      bool is_array;
-      if (dest_op->dest != nullptr) {
-        ident = dest_op->dest->getText();
-        is_array = false;
+      bool is_array = false;
+      bool is_reloc = false;
+      if (dest_op->operand() != nullptr) {
+        ident = dest_op->operand()->op_name->getText();
+        if (dest_op->operand()->op_attribute != nullptr) {
+          auto attr = dest_op->operand()->op_attribute->getText();
+          if (attr == "%reloc") {
+            is_reloc = true;
+          } else {
+            error_listener()->semanticError(
+                file_names_[context_file_map_.at(slot->ctx())],
+                dest_op->operand()->op_attribute,
+                absl::StrCat("Invalid operand attribute '", attr, "'"));
+          }
+        }
       } else {
         ident = dest_op->array_dest->getText();
         is_array = true;
@@ -1649,19 +1672,20 @@ void InstructionSetVisitor::VisitOpcodeOperands(OpcodeOperandsCtx *ctx,
         context_file_map_.insert(
             {dest_op->expression(), context_file_map_.at(slot->ctx())});
         child->opcode()->AppendDestOp(
-            ident, is_array,
+            ident, is_array, is_reloc,
             VisitExpression(dest_op->expression(), slot, child));
       } else if (dest_op->wildcard != nullptr) {
-        child->opcode()->AppendDestOp(ident, is_array);
+        child->opcode()->AppendDestOp(ident, is_array, is_reloc);
       } else if (slot->default_latency() != nullptr) {
-        child->opcode()->AppendDestOp(ident, is_array,
+        child->opcode()->AppendDestOp(ident, is_array, is_reloc,
                                       slot->default_latency()->DeepCopy());
       } else {
-        child->opcode()->AppendDestOp(ident, is_array, new TemplateConstant(1));
+        child->opcode()->AppendDestOp(ident, is_array, is_reloc,
+                                      new TemplateConstant(1));
       }
       parent->opcode()->op_locator_map().insert(std::make_pair(
-          ident,
-          OperandLocator(op_spec_number, is_array ? 'e' : 'd', instance)));
+          ident, OperandLocator(op_spec_number, is_array ? 'e' : 'd', is_reloc,
+                                instance)));
       instance++;
     }
   }
