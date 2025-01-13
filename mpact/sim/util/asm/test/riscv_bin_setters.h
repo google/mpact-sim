@@ -17,7 +17,9 @@
 
 #include <cstdint>
 #include <initializer_list>
+#include <string>
 #include <utility>
+#include <vector>
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
@@ -25,13 +27,16 @@
 #include "absl/strings/numbers.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
+#include "mpact/sim/util/asm/opcode_assembler_interface.h"
 #include "mpact/sim/util/asm/resolver_interface.h"
 #include "mpact/sim/util/asm/test/riscv_getter_helpers.h"
+#include "re2/re2.h"
 
 namespace mpact {
 namespace sim {
 namespace riscv {
 
+using ::mpact::sim::util::assembler::RelocationInfo;
 using ::mpact::sim::util::assembler::ResolverInterface;
 
 constexpr std::initializer_list<const std::pair<absl::string_view, uint64_t>>
@@ -51,21 +56,41 @@ constexpr std::initializer_list<const std::pair<absl::string_view, uint64_t>>
         {"t3", 28},  {"t4", 29},  {"t5", 30},  {"t6", 31}};
 
 template <typename T>
-absl::StatusOr<T> SimpleTextToInt(absl::string_view text,
+absl::StatusOr<T> SimpleTextToInt(absl::string_view op_text,
                                   ResolverInterface *resolver) {
   T value;
-  if (text.substr(0, 2) == "0x") {
-    if (absl::SimpleHexAtoi(text.substr(2), &value)) return value;
+  static RE2 hex_re("^\\s*0x([0-9a-fA-F]+)\\s*$");
+  static RE2 dec_re("^\\s*(-?[0-9]+)\\s*$");
+  static RE2 relo_re("^\\s*\\%[a-zA-Z0-9_]+\\s*\\(([a-zA-Z0-9_]+)\\s*\\)\\s*$");
+  static RE2 symbol_re("^\\s*([a-zA-Z0-9_]+)\\s*$");
+  std::string str;
+  std::string text(op_text);
+  // First see if the operand is a relocation function, and extract the text
+  // argument. A relocation function is on the form of %name(arg).
+  if (RE2::FullMatch(op_text, relo_re, &str)) {
+    text = str;
+  }
+  // Extract the hex immediate.
+  if (RE2::FullMatch(text, hex_re, &str)) {
+    if (absl::SimpleHexAtoi(str, &value)) return value;
     return absl::InvalidArgumentError(
         absl::StrCat("Invalid hexadecimal immediate: ", text));
   }
-  if (absl::SimpleAtoi(text, &value)) return value;
-  if (resolver != nullptr) {
-    auto res = resolver->Resolve(text);
-    if (!res.ok()) {
-      return res.status();
+  // Extract the decimal immediate.
+  if (RE2::FullMatch(text, dec_re, &str)) {
+    if (absl::SimpleAtoi(str, &value)) return value;
+    return absl::InvalidArgumentError(
+        absl::StrCat("Invalid decimal immediate: ", text));
+  }
+  // Extract the symbol.
+  if (RE2::FullMatch(text, symbol_re, &str)) {
+    if (resolver != nullptr) {
+      auto res = resolver->Resolve(str);
+      if (!res.ok()) {
+        return res.status();
+      }
+      return static_cast<T>(res.value());
     }
-    return static_cast<T>(res.value());
   }
   return absl::InvalidArgumentError(absl::StrCat("Invalid argument: ", text));
 }
@@ -155,6 +180,41 @@ void AddRiscvDestOpBinSetters(Map &map) {
            }
            return Encoder::RSType::InsertRd(iter->second, 0ULL);
          });
+}
+
+namespace internal {
+
+absl::Status RelocateAddiIImm12(uint64_t address, absl::string_view text,
+                                ResolverInterface *resolver,
+                                std::vector<RelocationInfo> &relocations);
+absl::Status RelocateJJImm20(uint64_t address, absl::string_view text,
+                             ResolverInterface *resolver,
+                             std::vector<RelocationInfo> &relocations);
+absl::Status RelocateJrJImm12(uint64_t address, absl::string_view text,
+                              ResolverInterface *resolver,
+                              std::vector<RelocationInfo> &relocations);
+absl::Status RelocateLuiUImm20(uint64_t address, absl::string_view text,
+                               ResolverInterface *resolver,
+                               std::vector<RelocationInfo> &relocations);
+absl::Status RelocateSdSImm12(uint64_t address, absl::string_view text,
+                              ResolverInterface *resolver,
+                              std::vector<RelocationInfo> &relocations);
+
+}  // namespace internal
+
+template <typename OpcodeEnum, typename SourceOpEnum, typename Map>
+void AddRiscvSourceOpRelocationSetters(Map &map) {
+  Insert(map, OpcodeEnum::kAddi, SourceOpEnum::kIImm12,
+         internal::RelocateAddiIImm12);
+  Insert(map, OpcodeEnum::kJal, SourceOpEnum::kJImm20,
+         internal::RelocateJJImm20);
+  Insert(map, OpcodeEnum::kJ, SourceOpEnum::kJImm20, internal::RelocateJJImm20);
+  Insert(map, OpcodeEnum::kJr, SourceOpEnum::kJImm12,
+         internal::RelocateJrJImm12);
+  Insert(map, OpcodeEnum::kLui, SourceOpEnum::kUImm20,
+         internal::RelocateLuiUImm20);
+  Insert(map, OpcodeEnum::kSd, SourceOpEnum::kSImm12,
+         internal::RelocateSdSImm12);
 }
 
 }  // namespace riscv

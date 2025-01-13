@@ -36,15 +36,15 @@ slot riscv64x {
     disasm: "Illegal instruction at %(@:08x)",
     semfunc: "&RiscVIllegalInstruction";
   opcodes {
-    addi{: rs1, I_imm12 : rd},
+    addi{: rs1, %reloc(I_imm12) : rd},
       disasm: "addi", "%rd, %rs1, %I_imm12";
-    lui{: U_imm20 : rd},
+    lui{: %reloc(U_imm20) : rd},
       disasm: "lui", "%rd, %(U_imm20:08x)";
-    sd{: rs1, S_imm12, rs2 : },
+    sd{: rs1, %reloc(S_imm12), rs2 : },
       disasm: "sd", "%rs2, %S_imm12(%rs1)";
-    jal{: J_imm20 : next_pc, rd},
+    jal{: %reloc(J_imm20) : next_pc, rd},
       disasm: "jal", "%rd, %(@+J_imm20:08x)";
-    j{: J_imm20 : next_pc, rd},
+    j{: %reloc(J_imm20) : next_pc, rd},
       disasm: "j", "%(@+J_imm20:08x)";
     slli{: rs1, I_uimm6 : rd},
       disasm: "slli", "%rd, %rs1, %(I_uimm6:x)";
@@ -52,7 +52,7 @@ slot riscv64x {
       disasm: "ebreak";
     srai{: rs1, I_uimm6 : rd},
       disasm: "srai", "%rd, %rs1, %(I_uimm6:x)";
-    jr{: rs1, J_imm12 : next_pc, rd},
+    jr{: rs1, %reloc(J_imm12) : next_pc, rd},
       disasm: "jr", "%rs1, %(J_imm12:08x)";
   }
 }

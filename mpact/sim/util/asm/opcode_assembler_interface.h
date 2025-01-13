@@ -16,6 +16,7 @@
 #define MPACT_SIM_UTIL_ASM_OPCODE_ASSEMBLER_INTERFACE_H_
 
 #include <cstdint>
+#include <string>
 #include <vector>
 
 #include "absl/status/status.h"
@@ -31,6 +32,14 @@ namespace sim {
 namespace util {
 namespace assembler {
 
+struct RelocationInfo {
+  uint64_t offset;
+  std::string symbol;
+  uint32_t type;
+  uint64_t addend;
+  uint16_t section_index;
+};
+
 class OpcodeAssemblerInterface {
  public:
   virtual ~OpcodeAssemblerInterface() = default;
@@ -39,7 +48,8 @@ class OpcodeAssemblerInterface {
   // encoded into the bytes vector.
   virtual absl::Status Encode(uint64_t address, absl::string_view text,
                               ResolverInterface *resolver,
-                              std::vector<uint8_t> &bytes) = 0;
+                              std::vector<uint8_t> &bytes,
+                              std::vector<RelocationInfo> &relocations) = 0;
 };
 
 }  // namespace assembler

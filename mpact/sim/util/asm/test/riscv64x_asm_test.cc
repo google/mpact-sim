@@ -1,3 +1,17 @@
+// Copyright 2025 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #include <cstdint>
 #include <sstream>
 #include <string>
@@ -7,6 +21,7 @@
 #include "absl/log/check.h"
 #include "absl/status/status.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/span.h"
 #include "elfio/elf_types.hpp"
 #include "elfio/elfio.hpp"
 #include "elfio/elfio_symbols.hpp"
@@ -26,6 +41,7 @@ namespace {
 using ::mpact::sim::riscv::isa64::RiscV64XBinEncoderInterface;
 using ::mpact::sim::riscv::isa64::Riscv64xSlotMatcher;
 using ::mpact::sim::util::assembler::OpcodeAssemblerInterface;
+using ::mpact::sim::util::assembler::RelocationInfo;
 using ::mpact::sim::util::assembler::ResolverInterface;
 using ::mpact::sim::util::assembler::SimpleAssembler;
 
@@ -35,10 +51,10 @@ class RiscV64XAssembler : public OpcodeAssemblerInterface {
   RiscV64XAssembler(Riscv64xSlotMatcher* matcher) : matcher_(matcher) {};
   ~RiscV64XAssembler() override = default;
   absl::Status Encode(uint64_t address, absl::string_view text,
-                      ResolverInterface* resolver,
-                      std::vector<uint8_t>& bytes) override {
+                      ResolverInterface* resolver, std::vector<uint8_t>& bytes,
+                      std::vector<RelocationInfo>& relocations) override {
     // Call the slot matcher to get the encoded value.
-    auto res = matcher_->Encode(address, text, 0, resolver);
+    auto res = matcher_->Encode(address, text, 0, resolver, relocations);
     if (!res.status().ok()) return res.status();
     // Convert the value to a byte array.
     auto [value, size] = res.value();
@@ -62,15 +78,14 @@ absl::NoDestructor<std::string> kTestAssembly(R"(
 ; text section
     .text
     .global main
-    .entry main
 main:
     addi a0, zero, 5
-    lui a1, semihost_param
-    addi a1, a1, semihost_param
+    lui a1, %hi(semihost_param)
+    addi a1, a1, %lo(semihost_param)
     addi t0, zero, 2
     sd t0, 0(a1)
-    lui t2, hello
-    addi t2, t2, hello
+    lui t2, %hi(hello)
+    addi t2, t2, %lo(hello)
     sd t2, 8(a1)
     addi t0, zero, 12
     sd t0, 0x10(a1)
@@ -116,7 +131,7 @@ class RiscV64XAssemblerTest : public ::testing::Test {
     CHECK_OK(matcher_.Initialize());
     // Create the assembler.
     assembler_ = new SimpleAssembler(ELFCLASS64, ELFOSABI_LINUX, ET_EXEC,
-                                     EM_RISCV, 0x1000, &riscv_64x_assembler_);
+                                     EM_RISCV, &riscv_64x_assembler_);
     std::istringstream source(*kTestAssembly);
     // Parse the assembly code.
     auto status = assembler_->Parse(source);
@@ -127,6 +142,7 @@ class RiscV64XAssemblerTest : public ::testing::Test {
 
   // Access the ELF writer.
   ELFIO::elfio& elf() { return assembler_->writer(); }
+  SimpleAssembler* assembler() const { return assembler_; }
 
  private:
   RiscV64XBinEncoderInterface bin_encoder_interface_;
@@ -150,6 +166,8 @@ TEST_F(RiscV64XAssemblerTest, Sections) {
 
 // Verify that the information about the text section is as expected.
 TEST_F(RiscV64XAssemblerTest, Text) {
+  auto status = assembler()->CreateExecutable(0x1000, "main");
+  CHECK_OK(status) << status.message();
   auto* text = elf().sections[".text"];
   EXPECT_EQ(text->get_type(), SHT_PROGBITS);
   EXPECT_EQ(text->get_flags(), SHF_ALLOC | SHF_EXECINSTR);
@@ -158,6 +176,8 @@ TEST_F(RiscV64XAssemblerTest, Text) {
 }
 
 TEST_F(RiscV64XAssemblerTest, Data) {
+  auto status = assembler()->CreateExecutable(0x1000, "main");
+  CHECK_OK(status) << status.message();
   auto* data = elf().sections[".data"];
   EXPECT_EQ(data->get_type(), SHT_PROGBITS);
   EXPECT_EQ(data->get_flags(), SHF_ALLOC | SHF_WRITE);
@@ -168,6 +188,8 @@ TEST_F(RiscV64XAssemblerTest, Data) {
 }
 
 TEST_F(RiscV64XAssemblerTest, Bss) {
+  auto status = assembler()->CreateExecutable(0x1000, "main");
+  CHECK_OK(status) << status.message();
   auto* bss = elf().sections[".bss"];
   EXPECT_EQ(bss->get_type(), SHT_NOBITS);
   EXPECT_EQ(bss->get_flags(), SHF_ALLOC | SHF_WRITE);
@@ -176,7 +198,48 @@ TEST_F(RiscV64XAssemblerTest, Bss) {
   EXPECT_EQ(bss->get_size(), 32);
 }
 
-TEST_F(RiscV64XAssemblerTest, Symbols) {
+TEST_F(RiscV64XAssemblerTest, RelocatableSymbols) {
+  auto status = assembler()->CreateRelocatable();
+  CHECK_OK(status) << status.message();
+  auto* symtab = elf().sections[".symtab"];
+  ELFIO::symbol_section_accessor symbols(elf(), symtab);
+  ELFIO::Elf64_Addr value;
+  ELFIO::Elf_Xword size;
+  unsigned char bind;
+  unsigned char type;
+  ELFIO::Elf_Half section_index;
+  unsigned char other;
+  // Verify that main is valued 0x0, global and located in the text section.
+  symbols.get_symbol("main", value, size, bind, type, section_index, other);
+  EXPECT_EQ(value, 0x0);
+  EXPECT_EQ(section_index, elf().sections[".text"]->get_index());
+  EXPECT_EQ(type, STT_NOTYPE);
+  // Verify that exit is valued 16 * 4, local and located in the text
+  // section.
+  symbols.get_symbol("exit", value, size, bind, type, section_index, other);
+  EXPECT_EQ(value, 16 * 4);
+  EXPECT_EQ(bind, STB_LOCAL);
+  EXPECT_EQ(section_index, elf().sections[".text"]->get_index());
+  EXPECT_EQ(type, STT_NOTYPE);
+  // Verify that hello is global and located in the data section at 0x2000.
+  symbols.get_symbol("hello", value, size, bind, type, section_index, other);
+  EXPECT_EQ(value, 0);
+  EXPECT_EQ(section_index, elf().sections[".data"]->get_index());
+  EXPECT_EQ(bind, STB_GLOBAL);
+  EXPECT_EQ(type, STT_NOTYPE);
+  // Verify that semihost_param is global and located in the bss section at
+  // 16 bytes.
+  symbols.get_symbol("semihost_param", value, size, bind, type, section_index,
+                     other);
+  EXPECT_EQ(value, 16);
+  EXPECT_EQ(section_index, elf().sections[".bss"]->get_index());
+  EXPECT_EQ(bind, STB_LOCAL);
+  EXPECT_EQ(type, STT_NOTYPE);
+}
+
+TEST_F(RiscV64XAssemblerTest, ExecutableSymbols) {
+  auto status = assembler()->CreateExecutable(0x1000, "main");
+  CHECK_OK(status) << status.message();
   auto* symtab = elf().sections[".symtab"];
   ELFIO::symbol_section_accessor symbols(elf(), symtab);
   ELFIO::Elf64_Addr value;
@@ -214,7 +277,9 @@ TEST_F(RiscV64XAssemblerTest, Symbols) {
 }
 
 // Verify that the first 16 instructions were assembled correctly.
-TEST_F(RiscV64XAssemblerTest, TextContent) {
+TEST_F(RiscV64XAssemblerTest, ExecutableTextContent) {
+  auto status = assembler()->CreateExecutable(0x1000, "main");
+  CHECK_OK(status) << status.message();
   auto* text = elf().sections[".text"];
   auto* data = text->get_data();
   auto* word_data = reinterpret_cast<const uint32_t*>(data);
@@ -235,6 +300,46 @@ TEST_F(RiscV64XAssemblerTest, TextContent) {
   EXPECT_EQ(word_data[13], 0x02628293);  // addi t0, t0, 0x20026
   EXPECT_EQ(word_data[14], 0x0055b023);  // sd t0, 0(a1)
   EXPECT_EQ(word_data[15], 0x008000ef);  // jal ra, semihost
+}
+
+// Verify that the first 16 instructions were assembled correctly.
+TEST_F(RiscV64XAssemblerTest, RelocatableTextContent) {
+  auto status = assembler()->CreateRelocatable();
+  CHECK_OK(status) << status.message();
+  auto* text = elf().sections[".text"];
+  auto* data = text->get_data();
+  auto* word_data = reinterpret_cast<const uint32_t*>(data);
+  // Verify the first 16 instructions. These will be slightly different from
+  // the executable version since the symbol values are not relocated to their
+  // final memory values.
+  EXPECT_EQ(word_data[0], 0x00500513);   // addi a0, zero, 5
+  EXPECT_EQ(word_data[1], 0x000005b7);   // lui a1, semihost_param
+  EXPECT_EQ(word_data[2], 0x01058593);   // addi a1, a1, semihost_param
+  EXPECT_EQ(word_data[3], 0x00200293);   // addi t0, zero, 2
+  EXPECT_EQ(word_data[4], 0x0055b023);   // sd t0, 0(a1)
+  EXPECT_EQ(word_data[5], 0x000003b7);   // lui t2, hello
+  EXPECT_EQ(word_data[6], 0x00038393);   // addi t2, t2, hello
+  EXPECT_EQ(word_data[7], 0x0075b423);   // sd t2, 8(a1)
+  EXPECT_EQ(word_data[8], 0x00c00293);   // addi t0, zero, 12
+  EXPECT_EQ(word_data[9], 0x0055b823);   // sd t0, 0x10(a1)
+  EXPECT_EQ(word_data[10], 0x01c000ef);  // jal ra, semihost
+  EXPECT_EQ(word_data[11], 0x01800513);  // addi a0, zero, 24
+  EXPECT_EQ(word_data[12], 0x000202b7);  // lui t0, 0x20026
+  EXPECT_EQ(word_data[13], 0x02628293);  // addi t0, t0, 0x20026
+  EXPECT_EQ(word_data[14], 0x0055b023);  // sd t0, 0(a1)
+  EXPECT_EQ(word_data[15], 0x008000ef);  // jal ra, semihost
+}
+
+TEST_F(RiscV64XAssemblerTest, TextRelocations) {
+  auto status = assembler()->CreateRelocatable();
+  CHECK_OK(status) << status.message();
+  auto* rela_section = elf().sections[".rela.text"];
+  EXPECT_NE(rela_section, nullptr);
+  auto* rela_data = rela_section->get_data();
+  auto rela =
+      absl::MakeSpan(reinterpret_cast<const ELFIO::Elf64_Rela*>(rela_data),
+                     rela_section->get_size() / sizeof(ELFIO::Elf64_Rela));
+  EXPECT_EQ(rela.size(), 4);
 }
 
 }  // namespace

@@ -16,6 +16,7 @@
 
 #include <cstdint>
 #include <tuple>
+#include <vector>
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -24,6 +25,7 @@
 #include "mpact/sim/generic/type_helpers.h"
 #include "mpact/sim/util/asm/resolver_interface.h"
 #include "mpact/sim/util/asm/test/riscv64x_bin_encoder.h"
+#include "mpact/sim/util/asm/test/riscv64x_encoder.h"
 #include "mpact/sim/util/asm/test/riscv64x_enums.h"
 #include "mpact/sim/util/asm/test/riscv_bin_setters.h"
 
@@ -40,6 +42,8 @@ RiscV64XBinEncoderInterface::RiscV64XBinEncoderInterface() {
       source_op_map_);
   AddRiscvDestOpBinSetters<DestOpEnum, OpMap, encoding64::Encoder>(
       dest_op_map_);
+  AddRiscvSourceOpRelocationSetters<OpcodeEnum, SourceOpEnum, RelocationMap>(
+      relocation_source_op_map_);
 }
 
 absl::StatusOr<std::tuple<uint64_t, int>>
@@ -61,6 +65,15 @@ absl::StatusOr<uint64_t> RiscV64XBinEncoderInterface::GetSrcOpEncoding(
   return iter->second(address, text, resolver);
 }
 
+absl::Status RiscV64XBinEncoderInterface::AppendSrcOpRelocation(
+    uint64_t address, absl::string_view text, SlotEnum slot, int entry,
+    OpcodeEnum opcode, SourceOpEnum source_op, int source_num,
+    ResolverInterface *resolver, std::vector<RelocationInfo> &relocations) {
+  auto iter = relocation_source_op_map_.find(std::tie(opcode, source_op));
+  if (iter == relocation_source_op_map_.end()) return absl::OkStatus();
+  return iter->second(address, text, resolver, relocations);
+}
+
 absl::StatusOr<uint64_t> RiscV64XBinEncoderInterface::GetDestOpEncoding(
     uint64_t address, absl::string_view text, SlotEnum slot, int entry,
     OpcodeEnum opcode, DestOpEnum dest_op, int dest_num,
@@ -71,6 +84,14 @@ absl::StatusOr<uint64_t> RiscV64XBinEncoderInterface::GetDestOpEncoding(
         absl::StrCat("Dest operand not found for op enum value ", *dest_op));
   }
   return iter->second(address, text, resolver);
+}
+
+absl::Status RiscV64XBinEncoderInterface::AppendDestOpRelocation(
+    uint64_t address, absl::string_view text, SlotEnum slot, int entry,
+    OpcodeEnum opcode, DestOpEnum dest_op, int dest_num,
+    ResolverInterface *resolver, std::vector<RelocationInfo> &relocations) {
+  // There are no destination operands that require relocation.
+  return absl::OkStatus();
 }
 
 absl::StatusOr<uint64_t> RiscV64XBinEncoderInterface::GetListDestOpEncoding(

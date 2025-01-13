@@ -60,6 +60,7 @@ cc_library(
     testonly = True,
     srcs = [
         "riscv64x_bin_encoder_interface.cc",
+        "riscv_bin_setters.cc",
     ],
     hdrs = [
         "riscv64x_bin_encoder_interface.h",
@@ -71,6 +72,7 @@ cc_library(
         ":riscv64x_isa",
         "//mpact/sim/generic:type_helpers",
         "//mpact/sim/util/asm",
+        "@com_google_absl//absl/base:no_destructor",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/functional:any_invocable",
         "@com_google_absl//absl/log",
@@ -78,11 +80,13 @@ cc_library(
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
+        "@com_googlesource_code_re2//:re2",
     ],
 )
 
 cc_test(
     name = "riscv64x_asm_test",
+    size = "small",
     srcs = ["riscv64x_asm_test.cc"],
     deps = [
         ":riscv64x_bin_fmt",
@@ -97,6 +101,7 @@ cc_test(
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/types:span",
         "@com_google_googletest//:gtest_main",
     ],
 )

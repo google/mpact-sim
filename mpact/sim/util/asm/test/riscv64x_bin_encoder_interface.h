@@ -18,8 +18,10 @@
 #include <cstdint>
 #include <functional>
 #include <tuple>
+#include <vector>
 
 #include "absl/container/flat_hash_map.h"
+#include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "mpact/sim/util/asm/resolver_interface.h"
@@ -48,10 +50,20 @@ class RiscV64XBinEncoderInterface : public RiscV64XEncoderInterfaceBase {
       uint64_t address, absl::string_view text, SlotEnum slot, int entry,
       OpcodeEnum opcode, SourceOpEnum source_op, int source_num,
       ResolverInterface *resolver) override;
+  absl::Status AppendSrcOpRelocation(
+      uint64_t address, absl::string_view text, SlotEnum slot, int entry,
+      OpcodeEnum opcode, SourceOpEnum source_op, int source_num,
+      ResolverInterface *resolver,
+      std::vector<RelocationInfo> &relocations) override;
   absl::StatusOr<uint64_t> GetDestOpEncoding(
       uint64_t address, absl::string_view text, SlotEnum slot, int entry,
       OpcodeEnum opcode, DestOpEnum dest_op, int dest_num,
       ResolverInterface *resolver) override;
+  absl::Status AppendDestOpRelocation(
+      uint64_t address, absl::string_view text, SlotEnum slot, int entry,
+      OpcodeEnum opcode, DestOpEnum dest_op, int dest_num,
+      ResolverInterface *resolver,
+      std::vector<RelocationInfo> &relocations) override;
   absl::StatusOr<uint64_t> GetListDestOpEncoding(
       uint64_t address, absl::string_view text, SlotEnum slot, int entry,
       OpcodeEnum opcode, ListDestOpEnum dest_op, int dest_num,
@@ -69,8 +81,14 @@ class RiscV64XBinEncoderInterface : public RiscV64XEncoderInterfaceBase {
   using OpMap = absl::flat_hash_map<
       int, std::function<absl::StatusOr<uint64_t>(uint64_t, absl::string_view,
                                                   ResolverInterface *)>>;
+  using RelocationMap =
+      absl::flat_hash_map<std::tuple<OpcodeEnum, SourceOpEnum>,
+                          std::function<absl::Status(
+                              uint64_t, absl::string_view, ResolverInterface *,
+                              std::vector<RelocationInfo> &)>>;
 
   OpMap source_op_map_;
+  RelocationMap relocation_source_op_map_;
   OpMap dest_op_map_;
   OpMap list_dest_op_map_;
   OpMap list_source_op_map_;

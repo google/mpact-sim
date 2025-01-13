@@ -466,8 +466,9 @@ std::tuple<std::string, std::string> Slot::GenerateAsmRegexMatcher() const {
       "();\n"
       "  absl::Status Initialize();\n"
       "absl::StatusOr<std::tuple<uint64_t, int>> "
-      "Encode(uint64_t address, absl::string_view text, int entry, "
-      "ResolverInterface *resolver);\n\n"
+      "  Encode(uint64_t address, absl::string_view text, int entry, "
+      "ResolverInterface *resolver, std::vector<RelocationInfo> "
+      "&relocations);\n\n"
       " private:\n"
       "  bool Match(absl::string_view text, std::vector<int> &matches);\n"
       "  bool Extract(absl::string_view text, int index, "
@@ -553,7 +554,8 @@ std::tuple<std::string, std::string> Slot::GenerateAsmRegexMatcher() const {
       pascal_name(),
       "SlotMatcher::Encode(\n"
       R"(
-    uint64_t address, absl::string_view text, int entry, ResolverInterface *resolver) {
+    uint64_t address, absl::string_view text, int entry, ResolverInterface *resolver,
+    std::vector<RelocationInfo> &relocations) {
   std::vector<int> matches;
   std::string error_message = absl::StrCat("Failed to encode '", text, "':");
   if (!Match(text, matches) || (matches.size() == 0)) {
@@ -568,7 +570,8 @@ std::tuple<std::string, std::string> Slot::GenerateAsmRegexMatcher() const {
       pascal_name(),
       ", entry, \n"
       "                                     "
-      "static_cast<OpcodeEnum>(index), address, values, resolver);\n",
+      "static_cast<OpcodeEnum>(index), address, values, resolver, "
+      "relocations);\n",
       R"(
     if (!result.status().ok()) {
       absl::StrAppend(&error_message, "\n    ", result.status().message());

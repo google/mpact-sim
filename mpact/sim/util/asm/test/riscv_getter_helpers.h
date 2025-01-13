@@ -15,12 +15,6 @@
 #ifndef MPACT_SIM_UTIL_ASM_TEST_RISCV_GETTER_HELPERS_H_
 #define MPACT_SIM_UTIL_ASM_TEST_RISCV_GETTER_HELPERS_H_
 
-#include <string>
-#include <vector>
-
-#include "absl/container/flat_hash_map.h"
-#include "absl/functional/any_invocable.h"
-#include "absl/log/log.h"
 #include "absl/strings/string_view.h"
 
 // This file contains helper functions that are used to create commonly used
@@ -38,6 +32,16 @@ inline void Insert(M &map, E entry, G getter) {
     map.insert(std::make_pair(static_cast<int>(entry), getter));
   } else {
     map.at(static_cast<int>(entry)) = getter;
+  }
+}
+
+template <typename M, typename E1, typename E2, typename G>
+inline void Insert(M &map, E1 entry1, E2 entry2, G getter) {
+  auto key = std::tie(entry1, entry2);
+  if (!map.contains(key)) {
+    map.insert(std::make_pair(key, getter));
+  } else {
+    map.at(key) = getter;
   }
 }
 

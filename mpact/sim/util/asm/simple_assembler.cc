@@ -20,9 +20,13 @@
 #include <istream>
 #include <ostream>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
+#include "absl/container/flat_hash_set.h"
+#include "absl/functional/any_invocable.h"
+#include "absl/functional/bind_front.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
@@ -46,9 +50,24 @@ namespace assembler {
 // the symbols and computing the sizes of the sections.
 class ZeroResolver : public ResolverInterface {
  public:
+  // Constructor takes a callback function that will be called for each symbol
+  // name encountered so that it can be added to the symbol table.
+  template <typename T>
+  ZeroResolver(T add_symbol_fcn) : add_symbol_fcn_(add_symbol_fcn) {}
   absl::StatusOr<uint64_t> Resolve(absl::string_view text) override {
+    // Any symbol name should be added to the symbol table as an undefined
+    // symbol if it is not already there. When the symbol is defined, the
+    // symbol table will be updated. In the case of generating an executable
+    // ELF file, any unresolved symbols will result in an error. When generating
+    // an object file, any unresolved symbols will remain in the symbol table
+    // and must be handled by the linker.
+    add_symbol_fcn_(text);
+    // Return 0 for any symbol name.
     return 0;
   }
+
+ private:
+  absl::AnyInvocable<void(absl::string_view)> add_symbol_fcn_;
 };
 
 // A symbol resolver that uses the symbol table and the symbol indices to
@@ -57,7 +76,7 @@ class SymbolResolver : public ResolverInterface {
  public:
   SymbolResolver(
       int elf_file_class, ELFIO::section *symtab,
-      const absl::flat_hash_map<std::string, ELFIO::Elf_Xword> &symbol_indices)
+      const absl::flat_hash_map<std::string, ELFIO::Elf_Word> &symbol_indices)
       : elf_file_class_(elf_file_class),
         symtab_(symtab),
         symbol_indices_(symbol_indices) {}
@@ -86,216 +105,8 @@ class SymbolResolver : public ResolverInterface {
   // The symbol table ELF section.
   ELFIO::section *symtab_;
   // Map from symbol name to symbol index in the symbol table.
-  const absl::flat_hash_map<std::string, ELFIO::Elf_Xword> &symbol_indices_;
+  const absl::flat_hash_map<std::string, ELFIO::Elf_Word> &symbol_indices_;
 };
-
-SimpleAssembler::SimpleAssembler(int elf_file_class, int os_abi, int type,
-                                 int machine, uint64_t base_address,
-                                 OpcodeAssemblerInterface *opcode_assembler_if)
-    : elf_file_class_(elf_file_class),
-      opcode_assembler_if_(opcode_assembler_if),
-      base_address_(base_address),
-      comment_re_("^\\s*(?:;(.*))?$"),
-      asm_line_re_("^(?:(?:(\\S+)\\s*:)?|\\s)\\s*([^;]*?)?\\s*(?:;(.*))?$"),
-      directive_re_(
-          "^\\.(align|bss|bytes|char|cstring|data|entry|global|long|sect"
-          "|short|space|string|type|text|uchar|ulong|ushort|uword|word)(?:\\s+("
-          ".*)"
-          ")?\\s*"
-          "$") {
-  // Configure the ELF file writer.
-  writer_.create(elf_file_class_, ELFDATA2LSB);
-  writer_.set_os_abi(os_abi);
-  writer_.set_type(ET_EXEC);
-  writer_.set_machine(machine);
-  // Create the symbol table section.
-  symtab_ = writer_.sections.add(".symtab");
-  symtab_->set_type(SHT_SYMTAB);
-  symtab_->set_entry_size(elf_file_class_ == ELFCLASS64
-                              ? sizeof(ELFIO::Elf64_Sym)
-                              : sizeof(ELFIO::Elf32_Sym));
-  // Create the string table section.
-  strtab_ = writer_.sections.add(".strtab");
-  strtab_->set_type(SHT_STRTAB);
-  // Link the symbol table to the string table.
-  symtab_->set_link(strtab_->get_index());
-  // Create the symbol and string table accessors.
-  symbol_accessor_ = new ELFIO::symbol_section_accessor(writer_, symtab_);
-  string_accessor_ =
-      new ELFIO::string_section_accessor(writer_.sections[".strtab"]);
-}
-
-SimpleAssembler::~SimpleAssembler() {
-  delete symbol_resolver_;
-  delete symbol_accessor_;
-  delete string_accessor_;
-}
-
-absl::Status SimpleAssembler::Parse(std::istream &is) {
-  // A trivial symbol resolver that always returns 0.
-  ZeroResolver zero_resolver;
-  // Create the sections we will need: .text, .data, and .bss.
-  ELFIO::section *text_section = writer_.sections.add(".text");
-  text_section->set_type(SHT_PROGBITS);
-  text_section->set_flags(SHF_ALLOC | SHF_EXECINSTR);
-  text_section->set_addr_align(0x10);
-  ELFIO::section *data_section = writer_.sections.add(".data");
-  data_section->set_type(SHT_PROGBITS);
-  data_section->set_flags(SHF_ALLOC | SHF_WRITE);
-  data_section->set_addr_align(0x10);
-  ELFIO::section *bss_section = writer_.sections.add(".bss");
-  bss_section->set_type(SHT_NOBITS);
-  bss_section->set_flags(SHF_ALLOC | SHF_WRITE);
-  bss_section->set_addr_align(0x10);
-
-  // First pass of parsing the input stream. This will add symbols to the symbol
-  // table and compute the sizes of all instructions and the sections. The
-  // section_address_map_ will keep track of the current location within each
-  // section (i.e., the offset within the section of the next
-  // instruction/object).
-  std::string line;
-  std::string label;
-  std::string statement;
-  while (is.good() && !is.eof()) {
-    getline(is, line);
-    if (RE2::FullMatch(line, comment_re_)) continue;
-    if (RE2::FullMatch(line, asm_line_re_, &label, &statement)) {
-      std::vector<uint8_t> byte_vector;
-      auto *section = current_section_;
-      uint64_t address =
-          (section == nullptr) ? 0 : section_address_map_[section];
-      if (!statement.empty()) {
-        absl::Status status;
-        if (statement[0] == '.') {
-          status = ParseAsmDirective(statement, &zero_resolver, byte_vector);
-        } else {
-          status = ParseAsmStatement(statement, &zero_resolver, byte_vector);
-        }
-        if (!status.ok()) return status;
-        // Save the statements for processing in pass two.
-        lines_.push_back(statement);
-      }
-
-      if (!label.empty()) {
-        // When initially adding symbols, the address is relative to the start
-        // of the containing section. This will be corrected later.
-        if (section == nullptr) {
-          return absl::InvalidArgumentError(absl::StrCat(
-              "Label: '", label, "' defined outside of a section"));
-        }
-        auto size = section_address_map_[section] - address;
-        auto status =
-            AddSymbol(label, address, size, STT_NOTYPE, STB_LOCAL, 0, section);
-      }
-      continue;
-    }
-    return absl::AbortedError(absl::StrCat("Parse failure: '", line, "'"));
-  }
-  if (!is.eof()) return absl::InternalError("Input stream entered bad state");
-
-  // Section sizes are now known. So let's compute the layout and update all
-  // the symbol values/addresses before the next pass.
-  // The layout is:
-  //   text segment starting at base address + any alignment.
-  //   data segment starting at the end of the text segment + any alignment.
-  // The bss section is added to the end of the data segment + any alignment.
-
-  auto text_segment_start = base_address_ & ~4095ULL;
-  ELFIO::segment *text_segment = writer_.segments.add();
-  text_segment->set_type(PT_LOAD);
-  text_segment->set_virtual_address(text_segment_start);
-  text_segment->set_physical_address(text_segment_start);
-  text_segment->set_flags(PF_X | PF_R);
-  text_segment->set_align(4096);
-
-  uint64_t data_segment_start = (text_segment->get_virtual_address() +
-                                 section_address_map_[text_section] + 4095) &
-                                ~4095ULL;
-
-  ELFIO::segment *data_segment = writer_.segments.add();
-  data_segment->set_type(PT_LOAD);
-  data_segment->set_virtual_address(data_segment_start);
-  data_segment->set_physical_address(data_segment_start);
-  data_segment->set_flags(PF_W | PF_R);
-  data_segment->set_align(4096);
-
-  uint64_t bss_size = section_address_map_[bss_section];
-  uint64_t bss_align = bss_section->get_addr_align() - 1;
-  uint64_t bss_segment_start =
-      (data_segment_start + section_address_map_[data_section] + bss_align) &
-      ~bss_align;
-
-  // Now we can update the symbol table based on the new section sizes.
-
-  // Copy the symbol table from the section data.
-  auto num_symbols = symbol_accessor_->get_symbols_num();
-  auto size = symtab_->get_size();
-  auto *symbols = new ELFIO::Elf64_Sym[num_symbols];
-  std::memcpy(symbols, symtab_->get_data(), size);
-  // Convert the section offsets to the absolute addresses.
-  for (int i = 0; i < num_symbols; ++i) {
-    auto &sym = symbols[i];
-    auto shndx = sym.st_shndx;
-    auto sym_name = string_accessor_->get_string(sym.st_name);
-    if (global_symbols_.contains(sym_name)) {
-      sym.st_info = ELF_ST_INFO(STB_GLOBAL, ELF_ST_TYPE(sym.st_info));
-    }
-    if (shndx == text_section->get_index()) {
-      sym.st_value += text_segment_start;
-    } else if (shndx == data_section->get_index()) {
-      sym.st_value += data_segment_start;
-    } else if (shndx == bss_section->get_index()) {
-      sym.st_value += bss_segment_start;
-    }
-  }
-  // Update the symbol table section data with the updated symbols.
-  symtab_->set_data(reinterpret_cast<char *>(symbols), size);
-  delete[] symbols;
-
-  // For the second pass, we need a symbol resolver that uses the symbol table
-  // and the symbol indices.
-  symbol_resolver_ =
-      new SymbolResolver(elf_file_class_, symtab_, symbol_indices_);
-
-  // Update the section address map so that each section starts at the right
-  // address, i.e., it no longer tracks the offset within each section, but the
-  // absolute address.
-  section_address_map_[text_section] = text_segment_start;
-  section_address_map_[data_section] = data_segment_start;
-  section_address_map_[bss_section] = bss_segment_start;
-
-  // Now fill in the sections. Parse each of the lines saved in the first pass.
-  for (auto const &line : lines_) {
-    std::vector<uint8_t> byte_vector;
-    absl::Status status;
-    auto *section = current_section_;
-    if (line[0] == '.') {
-      auto status = ParseAsmDirective(line, symbol_resolver_, byte_vector);
-    } else {
-      auto status = ParseAsmStatement(line, symbol_resolver_, byte_vector);
-    }
-    if (!status.ok()) return status;
-    if (byte_vector.empty()) continue;
-    // Add data to the section, but first make sure it's not bss.
-    if (section != bss_section) {
-      section->append_data(reinterpret_cast<const char *>(byte_vector.data()),
-                           byte_vector.size());
-    }
-  }
-
-  bss_section->set_size(bss_size);
-
-  // Add sections to the segments. First segment gets the text section. The
-  // second segment gets the data and bss sections.
-  text_segment->add_section_index(text_section->get_index(),
-                                  text_section->get_addr_align());
-  data_segment->add_section_index(data_section->get_index(),
-                                  data_section->get_addr_align());
-  data_segment->add_section_index(bss_section->get_index(),
-                                  bss_section->get_addr_align());
-
-  return absl::OkStatus();
-}
 
 // Helper functions for parsing the assembly code.
 namespace {
@@ -497,34 +308,413 @@ inline void ConvertToBytes(const std::vector<T> &values,
 
 }  // namespace
 
-absl::Status SimpleAssembler::SetEntryPoint(const std::string &value) {
-  auto res = SimpleTextToInt<uint64_t>(value, symbol_resolver_);
-  if (!res.ok()) return res.status();
-  entry_point_ = res.value();
+SimpleAssembler::SimpleAssembler(int elf_file_class, int os_abi, int type,
+                                 int machine,
+                                 OpcodeAssemblerInterface *opcode_assembler_if)
+    : elf_file_class_(elf_file_class),
+      opcode_assembler_if_(opcode_assembler_if),
+      comment_re_("^\\s*(?:;(.*))?$"),
+      asm_line_re_("^(?:(?:(\\S+)\\s*:)?|\\s)\\s*([^;]*?)?\\s*(?:;(.*))?$"),
+      directive_re_(
+          "^\\.(align|bss|bytes|char|cstring|data|global|long|sect"
+          "|short|space|string|type|text|uchar|ulong|ushort|uword|word)(?:\\s+("
+          ".*)"
+          ")?\\s*"
+          "$") {
+  // Configure the ELF file writer.
+  writer_.create(elf_file_class_, ELFDATA2LSB);
+  writer_.set_os_abi(os_abi);
+  writer_.set_type(ET_EXEC);
+  writer_.set_machine(machine);
+  // Create the symbol table section.
+  symtab_ = writer_.sections.add(".symtab");
+  section_index_map_.insert({symtab_->get_index(), symtab_});
+  symtab_->set_type(SHT_SYMTAB);
+  symtab_->set_entry_size(elf_file_class_ == ELFCLASS64
+                              ? sizeof(ELFIO::Elf64_Sym)
+                              : sizeof(ELFIO::Elf32_Sym));
+  // Create the string table section.
+  strtab_ = writer_.sections.add(".strtab");
+  section_index_map_.insert({strtab_->get_index(), strtab_});
+  strtab_->set_type(SHT_STRTAB);
+  // Link the symbol table to the string table.
+  symtab_->set_link(strtab_->get_index());
+  // Create the symbol and string table accessors.
+  symbol_accessor_ = new ELFIO::symbol_section_accessor(writer_, symtab_);
+  string_accessor_ =
+      new ELFIO::string_section_accessor(writer_.sections[".strtab"]);
+}
+
+SimpleAssembler::~SimpleAssembler() {
+  delete symbol_resolver_;
+  delete symbol_accessor_;
+  delete string_accessor_;
+}
+
+absl::Status SimpleAssembler::Parse(std::istream &is) {
+  // A trivial symbol resolver that always returns 0.
+  ZeroResolver zero_resolver(
+      absl::bind_front(&SimpleAssembler::SimpleAddSymbol, this));
+  // First pass of parsing the input stream. This will add symbols to the symbol
+  // table and compute the sizes of all instructions and the sections. The
+  // section_address_map_ will keep track of the current location within each
+  // section (i.e., the offset within the section of the next
+  // instruction/object).
+  std::string line;
+  std::string label;
+  std::string statement;
+  while (is.good() && !is.eof()) {
+    getline(is, line);
+    if (RE2::FullMatch(line, comment_re_)) continue;
+    if (RE2::FullMatch(line, asm_line_re_, &label, &statement)) {
+      std::vector<uint8_t> byte_vector;
+      std::vector<RelocationInfo> relo_vector;
+      auto *section = current_section_;
+      uint64_t address =
+          (section == nullptr) ? 0 : section_address_map_[section];
+      if (!statement.empty()) {
+        absl::Status status;
+        if (statement[0] == '.') {
+          status = ParseAsmDirective(statement, &zero_resolver, byte_vector);
+        } else {
+          status = ParseAsmStatement(statement, &zero_resolver, byte_vector,
+                                     relo_vector);
+        }
+        if (!status.ok()) return status;
+        // Save the statements for processing in pass two.
+        lines_.push_back(statement);
+      }
+
+      if (!label.empty()) {
+        // When initially adding symbols, the address is relative to the start
+        // of the containing section. This will be corrected later.
+        if (section == nullptr) {
+          return absl::InvalidArgumentError(absl::StrCat(
+              "Label: '", label, "' defined outside of a section"));
+        }
+        auto size = section_address_map_[section] - address;
+        auto status =
+            AddSymbol(label, address, size, STT_NOTYPE, STB_LOCAL, 0, section);
+      }
+      continue;
+    }
+    return absl::AbortedError(absl::StrCat("Parse failure: '", line, "'"));
+  }
+
+  if (!is.eof()) return absl::InternalError("Input stream entered bad state");
+
+  // Add undefined symbols to the symbol table.
+  for (auto const &symbol : undefined_symbols_) {
+    auto status = AddSymbol(symbol, 0, 0, STT_NOTYPE, 0, 0, nullptr);
+    if (!status.ok()) {
+      return absl::InternalError(
+          absl::StrCat("Failed to add undefined symbol: ", symbol));
+    }
+  }
+
+  if (bss_section_ != nullptr) {
+    bss_section_->set_size(section_address_map_[bss_section_]);
+  }
   return absl::OkStatus();
 }
 
-absl::Status SimpleAssembler::SetEntryPoint(uint64_t value) {
-  entry_point_ = value;
+absl::Status SimpleAssembler::CreateExecutable(uint64_t base_address,
+                                               uint64_t entry_point) {
+  return CreateExecutable(base_address, absl::StrCat(entry_point));
+}
+
+// Helper function to update the symbol table entries for an executable file.
+template <typename SymbolType>
+void SimpleAssembler::UpdateSymbolsForExecutable(uint64_t text_segment_start,
+                                                 uint64_t data_segment_start,
+                                                 uint64_t bss_segment_start) {
+  auto num_symbols = symtab_->get_size() / sizeof(SymbolType);
+  auto size = num_symbols * sizeof(SymbolType);
+  auto *symbols = new SymbolType[num_symbols];
+  std::memcpy(symbols, symtab_->get_data(), size);
+  for (int i = 0; i < num_symbols; ++i) {
+    auto &sym = symbols[i];
+    auto shndx = sym.st_shndx;
+    std::string name = string_accessor_->get_string(sym.st_name);
+    if (global_symbols_.contains(name)) {
+      sym.st_info = ELF_ST_INFO(STB_GLOBAL, ELF_ST_TYPE(sym.st_info));
+    }
+    if ((text_section_ != nullptr) && (shndx == text_section_->get_index())) {
+      sym.st_value += text_segment_start;
+    } else if ((data_section_ != nullptr) &&
+               (shndx == data_section_->get_index())) {
+      sym.st_value += data_segment_start;
+    } else if ((bss_section_ != nullptr) &&
+               (shndx == bss_section_->get_index())) {
+      sym.st_value += bss_segment_start;
+    }
+  }
+  symtab_->set_data(reinterpret_cast<char *>(symbols), size);
+  delete[] symbols;
+}
+
+template <typename SymbolType>
+void SimpleAssembler::UpdateSymbolsForRelocatable() {
+  auto num_symbols = symtab_->get_size() / sizeof(SymbolType);
+  auto size = num_symbols * sizeof(SymbolType);
+  auto *symbols = new SymbolType[num_symbols];
+  std::memcpy(symbols, symtab_->get_data(), size);
+  for (int i = 0; i < num_symbols; ++i) {
+    auto &sym = symbols[i];
+    std::string name = string_accessor_->get_string(sym.st_name);
+    symbol_indices_.insert({name, i});
+    if (global_symbols_.contains(name)) {
+      sym.st_info = ELF_ST_INFO(STB_GLOBAL, ELF_ST_TYPE(sym.st_info));
+    }
+  }
+  symtab_->set_data(reinterpret_cast<char *>(symbols), size);
+  delete[] symbols;
+}
+
+absl::Status SimpleAssembler::CreateExecutable(uint64_t base_address,
+                                               const std::string &entry_point) {
+  if (!undefined_symbols_.empty()) {
+    std::string message;
+    absl::StrAppend(
+        &message,
+        "Cannot create executable with the following undefined symbols: ");
+    for (auto const &symbol : undefined_symbols_) {
+      absl::StrAppend(&message, "    ", symbol, "\n");
+    }
+    return absl::InvalidArgumentError(message);
+  }
+  // Section sizes are now known. So let's compute the layout and update all
+  // the symbol values/addresses before the next pass.
+  // The layout is:
+  //   text segment starting at base address + any alignment.
+  //   data segment starting at the end of the text segment + any alignment.
+  // The bss section is added to the end of the data segment + any alignment.
+
+  ELFIO::segment *text_segment = nullptr;
+  uint64_t text_segment_start = 0;
+  if (text_section_ != nullptr) {
+    text_segment_start = base_address & ~4095ULL;
+    ELFIO::segment *text_segment = writer_.segments.add();
+    text_segment->set_type(PT_LOAD);
+    text_segment->set_virtual_address(text_segment_start);
+    text_segment->set_physical_address(text_segment_start);
+    text_segment->set_flags(PF_X | PF_R);
+    text_segment->set_align(4096);
+  }
+
+  ELFIO::segment *data_segment = nullptr;
+  uint64_t data_segment_start = 0;
+  uint64_t bss_segment_start = 0;
+  if ((data_section_ != nullptr) || (bss_section_ != nullptr)) {
+    data_segment_start =
+        (text_segment_start + section_address_map_[text_section_] + 4095) &
+        ~4095ULL;
+
+    ELFIO::segment *data_segment = writer_.segments.add();
+    data_segment->set_type(PT_LOAD);
+    data_segment->set_virtual_address(data_segment_start);
+    data_segment->set_physical_address(data_segment_start);
+    data_segment->set_flags(PF_W | PF_R);
+    data_segment->set_align(4096);
+
+    uint64_t bss_align = bss_section_->get_addr_align() - 1;
+    bss_segment_start =
+        (data_segment_start + section_address_map_[data_section_] + bss_align) &
+        ~bss_align;
+  }
+
+  // Now we can update the symbol table based on the new section sizes.
+
+  // Different size symbol table entries for 32 and 64 bit ELF files.
+  if (elf_file_class_ == ELFCLASS64) {
+    UpdateSymbolsForExecutable<ELFIO::Elf64_Sym>(
+        text_segment_start, data_segment_start, bss_segment_start);
+  } else if (elf_file_class_ == ELFCLASS32) {
+    UpdateSymbolsForExecutable<ELFIO::Elf32_Sym>(
+        text_segment_start, data_segment_start, bss_segment_start);
+  } else {
+    return absl::InternalError(
+        absl::StrCat("Unsupported ELF file class: ", elf_file_class_));
+  }
+
+  // Update the section address map so that each section starts at the right
+  // address, i.e., it no longer tracks the offset within each section, but the
+  // absolute address.
+  section_address_map_[text_section_] = text_segment_start;
+  section_address_map_[data_section_] = data_segment_start;
+  section_address_map_[bss_section_] = bss_segment_start;
+
+  // Pass in the relocation vector to the second pass of parsing, but ignore
+  // the values, since we are creating an executable file, and all the symbols
+  // are resolved.
+  std::vector<RelocationInfo> relo_vector;
+  auto status = ParsePassTwo(relo_vector);
+  if (!status.ok()) return status;
+
+  // Add sections to the segments. First segment gets the text section. The
+  // second segment gets the data and bss sections.
+  if (text_segment != nullptr) {
+    text_segment->add_section_index(text_section_->get_index(),
+                                    text_section_->get_addr_align());
+  }
+  if (data_segment != nullptr) {
+    data_segment->add_section_index(data_section_->get_index(),
+                                    data_section_->get_addr_align());
+    data_segment->add_section_index(bss_section_->get_index(),
+                                    bss_section_->get_addr_align());
+  }
+
+  auto res = SimpleTextToInt<uint64_t>(entry_point, symbol_resolver_);
+  if (!res.ok()) return res.status();
+  uint64_t entry_point_value = res.value();
+
+  symbol_accessor_->arrange_local_symbols();
+  writer_.set_entry(entry_point_value);
+  return absl::OkStatus();
+}
+
+namespace {
+
+// Helper function to add a relocation entry to a relocation section.
+template <typename RelocaType>
+absl::Status AddRelocationEntries(
+    const std::vector<RelocationInfo> &relo_vector,
+    absl::flat_hash_map<std::string, ELFIO::Elf_Word> &symbol_indices,
+    ELFIO::section *reloca_section) {
+  for (auto const &relo : relo_vector) {
+    RelocaType rela;
+    rela.r_offset = relo.offset;
+    rela.r_addend = relo.addend;
+    auto iter = symbol_indices.find(relo.symbol);
+    if (iter == symbol_indices.end()) {
+      return absl::InvalidArgumentError(
+          absl::StrCat("Symbol '", relo.symbol, "' not found"));
+    }
+    if (sizeof(RelocaType) == sizeof(ELFIO::Elf64_Rela)) {
+      rela.r_info = ELF64_R_INFO(iter->second, relo.type);
+    } else {
+      rela.r_info = ELF32_R_INFO(iter->second, relo.type);
+    }
+    reloca_section->append_data(reinterpret_cast<const char *>(&rela),
+                                sizeof(RelocaType));
+  }
+  return absl::OkStatus();
+}
+
+}  // namespace
+
+absl::Status SimpleAssembler::CreateRelocatable() {
+  // Reset the section address map to zero since we are creating a relocatable
+  // file.
+  section_address_map_[text_section_] = 0;
+  section_address_map_[data_section_] = 0;
+  section_address_map_[bss_section_] = 0;
+
+  // Rearrange local symbols.
+  symbol_accessor_->arrange_local_symbols(nullptr);
+  // Since the symbols now are rearranged, recompute the symbol index map, and
+  // also set global symbols flag for those in the global_symbols_ set.
+  symbol_indices_.clear();
+  // Different size symbol table entries for 32 and 64 bit ELF files.
+  if (elf_file_class_ == ELFCLASS64) {
+    UpdateSymbolsForRelocatable<ELFIO::Elf64_Sym>();
+  } else if (elf_file_class_ == ELFCLASS32) {
+    UpdateSymbolsForRelocatable<ELFIO::Elf32_Sym>();
+  } else {
+    return absl::InternalError(
+        absl::StrCat("Unsupported ELF file class: ", elf_file_class_));
+  }
+
+  // Parse the source again, collect relocations.
+  std::vector<RelocationInfo> relo_vector;
+  auto status = ParsePassTwo(relo_vector);
+  if (!status.ok()) return status;
+
+  // Handle relocations if there are any.
+  if (!relo_vector.empty()) {
+    // First scan through the entries relocation vector and group them by
+    // the section in which the relocation is to be applied.
+    absl::flat_hash_map<uint16_t, std::vector<RelocationInfo>> relo_map;
+    for (auto const &relo : relo_vector) {
+      relo_map[relo.section_index].push_back(relo);
+    }
+    for (auto const &[section_index, relo_vec] : relo_map) {
+      if (section_index == 0) {
+        return absl::InternalError(
+            "Relocation entry with section index 0 not supported");
+      }
+      if (!section_index_map_.contains(section_index)) {
+        return absl::InternalError(
+            absl::StrCat("Section index not found: ", section_index));
+      }
+      // Now, create a relocation section for each key in the map.
+      std::string name =
+          absl::StrCat(".rela", section_index_map_[section_index]->get_name());
+      auto *rela_section = writer_.sections.add(name);
+      // Process the relocation vector entries.
+      absl::Status status;
+      if (elf_file_class_ == ELFCLASS64) {
+        status = AddRelocationEntries<ELFIO::Elf64_Rela>(
+            relo_vec, symbol_indices_, rela_section);
+      } else if (elf_file_class_ == ELFCLASS32) {
+        status = AddRelocationEntries<ELFIO::Elf32_Rela>(
+            relo_vec, symbol_indices_, rela_section);
+      } else {
+        return absl::InternalError(
+            absl::StrCat("Unsupported ELF file class: ", elf_file_class_));
+      }
+      if (!status.ok()) return status;
+    }
+  }
+  return absl::OkStatus();
+}
+
+absl::Status SimpleAssembler::ParsePassTwo(
+    std::vector<RelocationInfo> &relo_vector) {
+  // For the second pass, we need a symbol resolver that uses the symbol
+  // table and the symbol indices.
+  symbol_resolver_ =
+      new SymbolResolver(elf_file_class_, symtab_, symbol_indices_);
+
+  // Now fill in the sections. Parse each of the lines saved in the first
+  // pass.
+  for (auto const &line : lines_) {
+    std::vector<uint8_t> byte_vector;
+    absl::Status status;
+    auto *section = current_section_;
+    if (line[0] == '.') {
+      auto status = ParseAsmDirective(line, symbol_resolver_, byte_vector);
+    } else {
+      auto relo_size = relo_vector.size();
+      auto status =
+          ParseAsmStatement(line, symbol_resolver_, byte_vector, relo_vector);
+      // Update section information in the relocation vector.
+      for (int i = relo_size; i < relo_vector.size(); ++i) {
+        relo_vector[i].section_index = section->get_index();
+      }
+    }
+    if (!status.ok()) return status;
+    if (byte_vector.empty()) continue;
+    // Add data to the section, but first make sure it's not bss.
+    if (section != bss_section_) {
+      section->append_data(reinterpret_cast<const char *>(byte_vector.data()),
+                           byte_vector.size());
+    }
+  }
   return absl::OkStatus();
 }
 
 // Top level function that writes the ELF file out to disk.
 absl::Status SimpleAssembler::Write(std::ostream &os) {
-  if (entry_point_.empty()) return absl::NotFoundError("Entry point not set");
-  auto res = SimpleTextToInt<uint64_t>(entry_point_, symbol_resolver_);
-  if (!res.ok()) return res.status();
-  symbol_accessor_->arrange_local_symbols();
-  writer_.set_entry(res.value());
   writer_.save(os);
   return absl::OkStatus();
 }
 
-// Parse and process an assembly directive. The assembly directive is expected
-// to be in the form of a line starting with a period followed by a directive
-// name and an optional argument. The argument is a string of tokens separated
-// by spaces. The argument is parsed using regular expressions. The byte values
-// are appended to the given vector.
+// Parse and process an assembly directive. The assembly directive is
+// expected to be in the form of a line starting with a period followed by a
+// directive name and an optional argument. The argument is a string of
+// tokens separated by spaces. The argument is parsed using regular
+// expressions. The byte values are appended to the given vector.
 absl::Status SimpleAssembler::ParseAsmDirective(
     absl::string_view directive, ResolverInterface *resolver,
     std::vector<uint8_t> &byte_values) {
@@ -583,9 +773,6 @@ absl::Status SimpleAssembler::ParseAsmDirective(
   } else if (match == "data") {
     // .data
     SetDataSection(".data");
-  } else if (match == "entry") {
-    // .entry <name>|<address>
-    entry_point_ = remainder;
   } else if (match == "global") {
     // .global <name>
     auto res = GetLabels(remainder);
@@ -679,15 +866,17 @@ absl::Status SimpleAssembler::ParseAsmDirective(
   return absl::OkStatus();
 }
 
-// Parse and process an assembly statement. The assembly statement is expected
-// to be a single line of text. The byte values are appended to the given
-// vector.
+// Parse and process an assembly statement. The assembly statement is
+// expected to be a single line of text. The byte values are appended to the
+// given vector.
 absl::Status SimpleAssembler::ParseAsmStatement(
     absl::string_view statement, ResolverInterface *resolver,
-    std::vector<uint8_t> &byte_values) {
+    std::vector<uint8_t> &byte_values,
+    std::vector<RelocationInfo> &relocations) {
   // Call the target specific assembler to encode the statement.
   auto status = opcode_assembler_if_->Encode(
-      section_address_map_[current_section_], statement, resolver, byte_values);
+      section_address_map_[current_section_], statement, resolver, byte_values,
+      relocations);
   if (!status.ok()) return status;
   section_address_map_[current_section_] += byte_values.size();
   return absl::OkStatus();
@@ -706,6 +895,8 @@ void SimpleAssembler::SetTextSection(const std::string &name) {
   section->set_addr_align(0x10);
   // Should probably add the section symbol to the symbol table.
   current_section_ = section;
+  text_section_ = section;
+  section_index_map_.insert({section->get_index(), text_section_});
 }
 
 void SimpleAssembler::SetDataSection(const std::string &name) {
@@ -721,6 +912,8 @@ void SimpleAssembler::SetDataSection(const std::string &name) {
   section->set_addr_align(0x10);
   // Should probably add the section symbol to the symbol table.
   current_section_ = section;
+  data_section_ = section;
+  section_index_map_.insert({section->get_index(), data_section_});
 }
 
 void SimpleAssembler::SetBssSection(const std::string &name) {
@@ -732,8 +925,12 @@ void SimpleAssembler::SetBssSection(const std::string &name) {
   }
   section = writer_.sections.add(name);
   section->set_type(SHT_NOBITS);
-  section->set_flags(SHF_ALLOC);
+  section->set_flags(SHF_ALLOC | SHF_WRITE);
   section->set_addr_align(0x10);
+  // Should probably add the section symbol to the symbol table.
+  current_section_ = section;
+  bss_section_ = section;
+  section_index_map_.insert({section->get_index(), bss_section_});
 }
 
 absl::Status SimpleAssembler::AddSymbol(const std::string &name,
@@ -741,15 +938,26 @@ absl::Status SimpleAssembler::AddSymbol(const std::string &name,
                                         ELFIO::Elf_Xword size, uint8_t type,
                                         uint8_t binding, uint8_t other,
                                         ELFIO::section *section) {
-  if (symbol_indices_.contains(name)) {
+  auto iter = symbol_indices_.find(name);
+  if (iter != symbol_indices_.end()) {
     return absl::AlreadyExistsError(
         absl::StrCat("Symbol '", name, "' already exists"));
   }
-  auto res =
-      symbol_accessor_->add_symbol(*string_accessor_, name.c_str(), value, size,
-                                   binding, type, other, section->get_index());
-  symbol_indices_.insert({name, res});
+  auto index = symbol_accessor_->add_symbol(
+      *string_accessor_, name.c_str(), value, size, binding, type, other,
+      section == nullptr ? SHN_UNDEF : section->get_index());
+  symbol_indices_.insert({name, index});
+  // If the symbol was marked undefined previously, remove it from the set.
+  if (undefined_symbols_.contains(name)) undefined_symbols_.erase(name);
   return absl::OkStatus();
+}
+
+void SimpleAssembler::SimpleAddSymbol(absl::string_view name) {
+  // If the symbol exists, then just return.
+  if (symbol_indices_.contains(name)) return;
+  if (undefined_symbols_.contains(name)) return;
+  std::string name_str(name);
+  undefined_symbols_.insert(name_str);
 }
 
 absl::Status SimpleAssembler::AppendData(const char *data, size_t size) {

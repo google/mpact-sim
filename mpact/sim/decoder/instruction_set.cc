@@ -698,6 +698,15 @@ std::string InstructionSet::GenerateOperandEncoder(
       std::string source_op =
           absl::StrCat("SourceOpEnum::k", ToPascalCase(op_name));
       absl::StrAppend(&output, "  // Source operand ", op_name, "\n");
+      if (locator.is_reloc) {
+        absl::StrAppend(&output,
+                        "  auto status = encoder->AppendSrcOpRelocation(\n"
+                        "      address, operands[",
+                        position, "], slot, entry, opcode, ", source_op, ", ",
+                        locator.instance,
+                        ", resolver, relocations);\n"
+                        "  if (!status.ok()) return status;\n");
+      }
       absl::StrAppend(&output,
                       "  result = encoder->GetSrcOpEncoding(address, operands[",
                       position,
@@ -723,6 +732,15 @@ std::string InstructionSet::GenerateOperandEncoder(
       std::string dest_op =
           absl::StrCat("DestOpEnum::k", ToPascalCase(op_name));
       absl::StrAppend(&output, "  // Destination operand ", op_name, "\n");
+      if (locator.is_reloc) {
+        absl::StrAppend(&output,
+                        "  auto status = encoder->AppendDestOpRelocation(\n"
+                        "      address, operands[",
+                        position, "], slot, entry, opcode, ", dest_op, ", ",
+                        locator.instance,
+                        ", resolver, relocations);\n"
+                        "  if (!status.ok()) return status;\n");
+      }
       absl::StrAppend(
           &output, "  result = encoder->GetDestOpEncoding(address, operands[",
           position,
@@ -763,6 +781,7 @@ std::tuple<std::string, std::string> InstructionSet::GenerateEncClasses(
   std::string encoder = absl::StrCat(pascal_name(), "EncoderInterfaceBase");
   // Generate the bin encoder base class.
   absl::StrAppend(&h_output,
+                  "using ::mpact::sim::util::assembler::RelocationInfo;\n"
                   "using ::mpact::sim::util::assembler::ResolverInterface;\n"
                   "\n"
                   "class ",
@@ -779,9 +798,17 @@ std::tuple<std::string, std::string> InstructionSet::GenerateEncClasses(
   virtual absl::StatusOr<uint64_t> GetSrcOpEncoding(uint64_t address,
       absl::string_view text, SlotEnum slot, int entry, OpcodeEnum opcode,
       SourceOpEnum source_op, int source_num, ResolverInterface *resolver) = 0;
+  virtual absl::Status AppendSrcOpRelocation(uint64_t address,
+      absl::string_view text, SlotEnum slot, int entry, OpcodeEnum opcode,
+      SourceOpEnum source_op, int source_num, ResolverInterface *resolver,
+      std::vector<RelocationInfo> &relocations) = 0;
   virtual absl::StatusOr<uint64_t> GetDestOpEncoding(uint64_t address,
       absl::string_view text, SlotEnum slot, int entry, OpcodeEnum opcode,
       DestOpEnum dest_op, int dest_num, ResolverInterface *resolver) = 0;
+  virtual absl::Status AppendDestOpRelocation(uint64_t address,
+      absl::string_view text, SlotEnum slot, int entry, OpcodeEnum opcode,
+      DestOpEnum dest_op, int dest_num, ResolverInterface *resolver,
+      std::vector<RelocationInfo> &relocations) = 0;
   virtual absl::StatusOr<uint64_t> GetListSrcOpEncoding( uint64_t address,
       absl::string_view text,SlotEnum slot, int entry, OpcodeEnum opcode,
       ListSourceOpEnum source_op, int source_num, ResolverInterface *resolver) = 0;
@@ -802,7 +829,8 @@ std::tuple<std::string, std::string> InstructionSet::GenerateEncClasses(
                   "absl::StatusOr<std::tuple<uint64_t, int>> EncodeNone(",
                   encoder,
                   "*, SlotEnum, int, OpcodeEnum, uint64_t, const "
-                  "std::vector<std::string> &, ResolverInterface *) {\n"
+                  "std::vector<std::string> &, ResolverInterface *, "
+                  "std::vector<RelocationInfo> &) {\n"
                   "  return absl::NotFoundError(\"No such opcode\");\n"
                   "}\n\n");
   std::string array;
@@ -812,24 +840,26 @@ std::tuple<std::string, std::string> InstructionSet::GenerateEncClasses(
       encoder,
       "*, SlotEnum, int, OpcodeEnum, uint64_t, const "
       "std::vector<std::string> "
-      "&, ResolverInterface *);\n"
+      "&, ResolverInterface *, std::vector<RelocationInfo> &);\n"
       "EncodeFcn encode_fcns[] = {\n"
       "  EncodeNone,\n");
   for (auto &[name, inst_ptr] : instruction_map_) {
     auto *opcode = inst_ptr->opcode();
     absl::StrAppend(&array, "  Encode", opcode->pascal_name(), ",\n");
-    absl::StrAppend(
-        &cc_output, "absl::StatusOr<std::tuple<uint64_t, int>> Encode",
-        opcode->pascal_name(), "(\n     ", encoder,
-        " *encoder, SlotEnum slot, int entry, OpcodeEnum opcode,\n"
-        "     uint64_t address, const "
-        "std::vector<std::string> &operands, ResolverInterface *resolver) "
-        "{\n"
-        "  auto res_opcode = encoder->GetOpcodeEncoding(slot, "
-        "entry, opcode, resolver);\n"
-        "  if (!res_opcode.ok()) return res_opcode.status();\n"
-        "  auto [encoding, bit_size] = res_opcode.value();\n"
-        "  absl::StatusOr<uint64_t> result;\n");
+    absl::StrAppend(&cc_output,
+                    "absl::StatusOr<std::tuple<uint64_t, int>> Encode",
+                    opcode->pascal_name(), "(\n     ", encoder,
+                    " *encoder, SlotEnum slot, int entry, OpcodeEnum opcode,\n"
+                    "     uint64_t address, const "
+                    "std::vector<std::string> &operands,\n"
+                    "     ResolverInterface *resolver, "
+                    "std::vector<RelocationInfo> &relocations) "
+                    "{\n"
+                    "  auto res_opcode = encoder->GetOpcodeEncoding(slot, "
+                    "entry, opcode, resolver);\n"
+                    "  if (!res_opcode.ok()) return res_opcode.status();\n"
+                    "  auto [encoding, bit_size] = res_opcode.value();\n"
+                    "  absl::StatusOr<uint64_t> result;\n");
     int position = 0;
     for (auto const *disasm_format : inst_ptr->disasm_format_vec()) {
       for (auto const *format_info : disasm_format->format_info_vec) {

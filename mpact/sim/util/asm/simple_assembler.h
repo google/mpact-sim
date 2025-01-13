@@ -52,7 +52,6 @@ namespace assembler {
 class SimpleAssembler {
  public:
   SimpleAssembler(int elf_file_class, int os_abi, int type, int machine,
-                  uint64_t base_address,
                   OpcodeAssemblerInterface *opcode_assembler_if);
   SimpleAssembler(const SimpleAssembler &) = delete;
   SimpleAssembler &operator=(const SimpleAssembler &) = delete;
@@ -60,15 +59,32 @@ class SimpleAssembler {
 
   // Parse the input stream as assembly.
   absl::Status Parse(std::istream &is);
-  // Set the entry point. Either pass a symbol or an address.
-  absl::Status SetEntryPoint(const std::string &value);
-  absl::Status SetEntryPoint(uint64_t value);
+  // Create executable ELF file with the given value as the entry point.
+  // The text segment will be laid out starting at base address, followed by
+  // the data segment.
+  absl::Status CreateExecutable(uint64_t base_address,
+                                const std::string &entry_point);
+  absl::Status CreateExecutable(uint64_t base_address, uint64_t entry_point);
+  // Helper function called during symbol accessor arrange_local_symbols() to
+  // swap the local and non-local symbols.
+  void SwapSymbols(ELFIO::Elf_Half non_local, ELFIO::Elf_Half local);
+  // Create a relocatable ELF file.
+  absl::Status CreateRelocatable();
   // Write out the ELF file.
   absl::Status Write(std::ostream &os);
 
   ELFIO::elfio &writer() { return writer_; }
 
  private:
+  // Helper function to update the symbol table entries.
+  template <typename SymbolType>
+  void UpdateSymbolsForExecutable(uint64_t text_segment_start,
+                                  uint64_t data_segment_start,
+                                  uint64_t bss_segment_start);
+  template <typename SymbolType>
+  void UpdateSymbolsForRelocatable();
+  // Perform second pass of parsing.
+  absl::Status ParsePassTwo(std::vector<RelocationInfo> &relo_vector);
   // Parse and process an assembly directive.
   absl::Status ParseAsmDirective(absl::string_view directive,
                                  ResolverInterface *resolver,
@@ -76,11 +92,14 @@ class SimpleAssembler {
   // Parse and process and assembly statement.
   absl::Status ParseAsmStatement(absl::string_view statement,
                                  ResolverInterface *resolver,
-                                 std::vector<uint8_t> &byte_values);
+                                 std::vector<uint8_t> &byte_values,
+                                 std::vector<RelocationInfo> &relocations);
   // Add the symbol to the symbol table.
   absl::Status AddSymbol(const std::string &name, ELFIO::Elf64_Addr value,
                          ELFIO::Elf_Xword size, uint8_t type, uint8_t binding,
                          uint8_t other, ELFIO::section *section);
+  // Add a symbol reference to the symbol table if it is not already defined.
+  void SimpleAddSymbol(absl::string_view name);
   // Append the data to the current section.
   absl::Status AppendData(const char *data, size_t size);
 
@@ -96,6 +115,8 @@ class SimpleAssembler {
   ELFIO::elfio writer_;
   // The current section being processed.
   ELFIO::section *current_section_ = nullptr;
+  // Map from section index to section pointer.
+  absl::flat_hash_map<uint16_t, ELFIO::section *> section_index_map_;
   // Interface used to parse and encode assembly statements.
   OpcodeAssemblerInterface *opcode_assembler_if_ = nullptr;
   // Interface used to access strings in the string table.
@@ -109,14 +130,14 @@ class SimpleAssembler {
   // Map that tracks the current address of each section.
   absl::flat_hash_map<ELFIO::section *, uint64_t> section_address_map_;
 
-  // Base address of the ELF file that is to be written.
-  uint64_t base_address_ = 0;
-  // Program entry point.
-  std::string entry_point_;
   // Current symbol resolver (looks up symbols in the symbol table and returns
   // their values).
   ResolverInterface *symbol_resolver_ = nullptr;
   std::vector<std::string> lines_;
+  // Section pointers.
+  ELFIO::section *text_section_ = nullptr;
+  ELFIO::section *data_section_ = nullptr;
+  ELFIO::section *bss_section_ = nullptr;
   // Regular expressions used to parse the assembly source.
   RE2 comment_re_;
   RE2 asm_line_re_;
@@ -124,7 +145,9 @@ class SimpleAssembler {
   // Set of symbol names declared as global.
   absl::flat_hash_set<std::string> global_symbols_;
   // Map from symbol name to symbol index in the symbol table.
-  absl::flat_hash_map<std::string, ELFIO::Elf_Xword> symbol_indices_;
+  absl::flat_hash_map<std::string, ELFIO::Elf_Word> symbol_indices_;
+  // Set of undefined symbols.
+  absl::flat_hash_set<std::string> undefined_symbols_;
 };
 
 }  // namespace assembler
