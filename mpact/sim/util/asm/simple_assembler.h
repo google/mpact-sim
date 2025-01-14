@@ -51,8 +51,8 @@ namespace assembler {
 
 class SimpleAssembler {
  public:
-  SimpleAssembler(int elf_file_class, int os_abi, int type, int machine,
-                  OpcodeAssemblerInterface *opcode_assembler_if);
+  SimpleAssembler(absl::string_view comment, int elf_file_class, int os_abi,
+                  int machine, OpcodeAssemblerInterface *opcode_assembler_if);
   SimpleAssembler(const SimpleAssembler &) = delete;
   SimpleAssembler &operator=(const SimpleAssembler &) = delete;
   virtual ~SimpleAssembler();
@@ -83,6 +83,8 @@ class SimpleAssembler {
                                   uint64_t bss_segment_start);
   template <typename SymbolType>
   void UpdateSymbolsForRelocatable();
+  template <typename SymbolType>
+  void UpdateSymtabHeaderInfo();
   // Perform second pass of parsing.
   absl::Status ParsePassTwo(std::vector<RelocationInfo> &relo_vector);
   // Parse and process an assembly directive.

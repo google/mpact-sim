@@ -27,10 +27,12 @@
 #include "absl/container/flat_hash_set.h"
 #include "absl/functional/any_invocable.h"
 #include "absl/functional/bind_front.h"
+#include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/span.h"
 #include "elfio/elf_types.hpp"
 #include "elfio/elfio_section.hpp"
 #include "elfio/elfio_segment.hpp"
@@ -84,7 +86,7 @@ class SymbolResolver : public ResolverInterface {
     auto iter = symbol_indices_.find(text);
     if (iter == symbol_indices_.end()) {
       return absl::InvalidArgumentError(
-          absl::StrCat("Symbol '", text, "' not found"));
+          absl::StrCat("SymbolResolver: Symbol '", text, "' not found"));
     }
     auto index = iter->second;
     if (elf_file_class_ == ELFCLASS64) {
@@ -308,12 +310,12 @@ inline void ConvertToBytes(const std::vector<T> &values,
 
 }  // namespace
 
-SimpleAssembler::SimpleAssembler(int elf_file_class, int os_abi, int type,
-                                 int machine,
+SimpleAssembler::SimpleAssembler(absl::string_view comment, int elf_file_class,
+                                 int os_abi, int machine,
                                  OpcodeAssemblerInterface *opcode_assembler_if)
     : elf_file_class_(elf_file_class),
       opcode_assembler_if_(opcode_assembler_if),
-      comment_re_("^\\s*(?:;(.*))?$"),
+      comment_re_(absl::StrCat("^\\s*(?:", comment, "(.*))?$")),
       asm_line_re_("^(?:(?:(\\S+)\\s*:)?|\\s)\\s*([^;]*?)?\\s*(?:;(.*))?$"),
       directive_re_(
           "^\\.(align|bss|bytes|char|cstring|data|global|long|sect"
@@ -324,12 +326,12 @@ SimpleAssembler::SimpleAssembler(int elf_file_class, int os_abi, int type,
   // Configure the ELF file writer.
   writer_.create(elf_file_class_, ELFDATA2LSB);
   writer_.set_os_abi(os_abi);
-  writer_.set_type(ET_EXEC);
   writer_.set_machine(machine);
   // Create the symbol table section.
   symtab_ = writer_.sections.add(".symtab");
   section_index_map_.insert({symtab_->get_index(), symtab_});
   symtab_->set_type(SHT_SYMTAB);
+  symtab_->set_addr_align(0x8);
   symtab_->set_entry_size(elf_file_class_ == ELFCLASS64
                               ? sizeof(ELFIO::Elf64_Sym)
                               : sizeof(ELFIO::Elf32_Sym));
@@ -337,12 +339,17 @@ SimpleAssembler::SimpleAssembler(int elf_file_class, int os_abi, int type,
   strtab_ = writer_.sections.add(".strtab");
   section_index_map_.insert({strtab_->get_index(), strtab_});
   strtab_->set_type(SHT_STRTAB);
+  strtab_->set_addr_align(0x1);
   // Link the symbol table to the string table.
   symtab_->set_link(strtab_->get_index());
   // Create the symbol and string table accessors.
   symbol_accessor_ = new ELFIO::symbol_section_accessor(writer_, symtab_);
   string_accessor_ =
       new ELFIO::string_section_accessor(writer_.sections[".strtab"]);
+  // Create .text, .data. and .bss sections.
+  SetTextSection(".text");
+  SetDataSection(".data");
+  SetBssSection(".bss");
 }
 
 SimpleAssembler::~SimpleAssembler() {
@@ -407,10 +414,11 @@ absl::Status SimpleAssembler::Parse(std::istream &is) {
   for (auto const &symbol : undefined_symbols_) {
     auto status = AddSymbol(symbol, 0, 0, STT_NOTYPE, 0, 0, nullptr);
     if (!status.ok()) {
-      return absl::InternalError(
-          absl::StrCat("Failed to add undefined symbol: ", symbol));
+      return absl::InternalError(absl::StrCat(
+          "Failed to add undefined symbol '", symbol, "': ", status.message()));
     }
   }
+  undefined_symbols_.clear();
 
   if (bss_section_ != nullptr) {
     bss_section_->set_size(section_address_map_[bss_section_]);
@@ -462,7 +470,6 @@ void SimpleAssembler::UpdateSymbolsForRelocatable() {
   for (int i = 0; i < num_symbols; ++i) {
     auto &sym = symbols[i];
     std::string name = string_accessor_->get_string(sym.st_name);
-    symbol_indices_.insert({name, i});
     if (global_symbols_.contains(name)) {
       sym.st_info = ELF_ST_INFO(STB_GLOBAL, ELF_ST_TYPE(sym.st_info));
     }
@@ -483,6 +490,7 @@ absl::Status SimpleAssembler::CreateExecutable(uint64_t base_address,
     }
     return absl::InvalidArgumentError(message);
   }
+  writer_.set_type(ET_EXEC);
   // Section sizes are now known. So let's compute the layout and update all
   // the symbol values/addresses before the next pass.
   // The layout is:
@@ -603,18 +611,30 @@ absl::Status AddRelocationEntries(
 
 }  // namespace
 
+template <typename SymbolType>
+void SimpleAssembler::UpdateSymtabHeaderInfo() {
+  int last_local = 0;
+  auto syms =
+      absl::MakeSpan(reinterpret_cast<const SymbolType *>(symtab_->get_data()),
+                     symtab_->get_size() / sizeof(SymbolType));
+  for (int i = 0; i < syms.size(); ++i) {
+    auto name = string_accessor_->get_string(syms[i].st_name);
+    symbol_indices_.insert({name, i});
+    if (ELF_ST_BIND(syms[i].st_info) == STB_LOCAL) last_local = i;
+  }
+  symtab_->set_info(last_local + 1);
+}
+
 absl::Status SimpleAssembler::CreateRelocatable() {
+  writer_.set_type(ET_REL);
   // Reset the section address map to zero since we are creating a relocatable
   // file.
   section_address_map_[text_section_] = 0;
   section_address_map_[data_section_] = 0;
   section_address_map_[bss_section_] = 0;
 
-  // Rearrange local symbols.
-  symbol_accessor_->arrange_local_symbols(nullptr);
-  // Since the symbols now are rearranged, recompute the symbol index map, and
-  // also set global symbols flag for those in the global_symbols_ set.
-  symbol_indices_.clear();
+  // Since the symbols now are rearranged, we need to set global symbols flag
+  // for those in the global_symbols_ set.
   // Different size symbol table entries for 32 and 64 bit ELF files.
   if (elf_file_class_ == ELFCLASS64) {
     UpdateSymbolsForRelocatable<ELFIO::Elf64_Sym>();
@@ -623,6 +643,17 @@ absl::Status SimpleAssembler::CreateRelocatable() {
   } else {
     return absl::InternalError(
         absl::StrCat("Unsupported ELF file class: ", elf_file_class_));
+  }
+  // Rearrange local symbols in the symbol table so that they are at the
+  // beginning (ELF requirement).
+  symbol_accessor_->arrange_local_symbols(nullptr);
+  // Find the last local symbol and set the section header info for symbtab
+  // to point to 1 past that. Update the symbol_indices_ map.
+  symbol_indices_.clear();
+  if (elf_file_class_ == ELFCLASS64) {
+    UpdateSymtabHeaderInfo<ELFIO::Elf64_Sym>();
+  } else {
+    UpdateSymtabHeaderInfo<ELFIO::Elf32_Sym>();
   }
 
   // Parse the source again, collect relocations.
@@ -651,6 +682,14 @@ absl::Status SimpleAssembler::CreateRelocatable() {
       std::string name =
           absl::StrCat(".rela", section_index_map_[section_index]->get_name());
       auto *rela_section = writer_.sections.add(name);
+      rela_section->set_type(SHT_RELA);
+      rela_section->set_flags(SHF_INFO_LINK);
+      rela_section->set_entry_size(elf_file_class_ == ELFCLASS64
+                                       ? sizeof(ELFIO::Elf64_Rela)
+                                       : sizeof(ELFIO::Elf32_Rela));
+      rela_section->set_link(symtab_->get_index());
+      rela_section->set_info(text_section_->get_index());
+      rela_section->set_addr_align(8);
       // Process the relocation vector entries.
       absl::Status status;
       if (elf_file_class_ == ELFCLASS64) {
@@ -686,11 +725,13 @@ absl::Status SimpleAssembler::ParsePassTwo(
       auto status = ParseAsmDirective(line, symbol_resolver_, byte_vector);
     } else {
       auto relo_size = relo_vector.size();
+      auto address = section_address_map_[section];
       auto status =
           ParseAsmStatement(line, symbol_resolver_, byte_vector, relo_vector);
       // Update section information in the relocation vector.
       for (int i = relo_size; i < relo_vector.size(); ++i) {
         relo_vector[i].section_index = section->get_index();
+        relo_vector[i].offset = address;
       }
     }
     if (!status.ok()) return status;
@@ -890,6 +931,10 @@ void SimpleAssembler::SetTextSection(const std::string &name) {
     return;
   }
   section = writer_.sections.add(name);
+  auto status = AddSymbol(name, 0, 0, STT_SECTION, STB_LOCAL, 0, section);
+  if (!status.ok()) {
+    LOG(ERROR) << "Failed to add symbol for data section: " << status.message();
+  }
   section->set_type(SHT_PROGBITS);
   section->set_flags(SHF_ALLOC | SHF_EXECINSTR);
   section->set_addr_align(0x10);
@@ -907,6 +952,10 @@ void SimpleAssembler::SetDataSection(const std::string &name) {
     return;
   }
   section = writer_.sections.add(name);
+  auto status = AddSymbol(name, 0, 0, STT_SECTION, STB_LOCAL, 0, section);
+  if (!status.ok()) {
+    LOG(ERROR) << "Failed to add symbol for data section: " << status.message();
+  }
   section->set_type(SHT_PROGBITS);
   section->set_flags(SHF_ALLOC | SHF_WRITE);
   section->set_addr_align(0x10);
@@ -924,6 +973,10 @@ void SimpleAssembler::SetBssSection(const std::string &name) {
     return;
   }
   section = writer_.sections.add(name);
+  auto status = AddSymbol(name, 0, 0, STT_SECTION, STB_LOCAL, 0, section);
+  if (!status.ok()) {
+    LOG(ERROR) << "Failed to add symbol for bss section: " << status.message();
+  }
   section->set_type(SHT_NOBITS);
   section->set_flags(SHF_ALLOC | SHF_WRITE);
   section->set_addr_align(0x10);
@@ -940,6 +993,7 @@ absl::Status SimpleAssembler::AddSymbol(const std::string &name,
                                         ELFIO::section *section) {
   auto iter = symbol_indices_.find(name);
   if (iter != symbol_indices_.end()) {
+    if (section == nullptr) return absl::OkStatus();
     return absl::AlreadyExistsError(
         absl::StrCat("Symbol '", name, "' already exists"));
   }
@@ -947,8 +1001,14 @@ absl::Status SimpleAssembler::AddSymbol(const std::string &name,
       *string_accessor_, name.c_str(), value, size, binding, type, other,
       section == nullptr ? SHN_UNDEF : section->get_index());
   symbol_indices_.insert({name, index});
-  // If the symbol was marked undefined previously, remove it from the set.
-  if (undefined_symbols_.contains(name)) undefined_symbols_.erase(name);
+  // If this is not an undefined symbol reference, then see if the symbol name
+  // is part of the "current" undefined symbols, and if so, remove it.
+  if (section != nullptr) {
+    auto iter = undefined_symbols_.find(name);
+    if (iter != undefined_symbols_.end()) {
+      undefined_symbols_.erase(iter);
+    }
+  }
   return absl::OkStatus();
 }
 

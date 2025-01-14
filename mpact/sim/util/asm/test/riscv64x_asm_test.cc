@@ -18,12 +18,14 @@
 #include <vector>
 
 #include "absl/base/no_destructor.h"
+#include "absl/container/flat_hash_map.h"
 #include "absl/log/check.h"
 #include "absl/status/status.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
 #include "elfio/elf_types.hpp"
 #include "elfio/elfio.hpp"
+#include "elfio/elfio_strings.hpp"
 #include "elfio/elfio_symbols.hpp"
 #include "googlemock/include/gmock/gmock.h"  // IWYU pragma: keep
 #include "googletest/include/gtest/gtest.h"
@@ -130,8 +132,8 @@ class RiscV64XAssemblerTest : public ::testing::Test {
       : matcher_(&bin_encoder_interface_), riscv_64x_assembler_(&matcher_) {
     CHECK_OK(matcher_.Initialize());
     // Create the assembler.
-    assembler_ = new SimpleAssembler(ELFCLASS64, ELFOSABI_LINUX, ET_EXEC,
-                                     EM_RISCV, &riscv_64x_assembler_);
+    assembler_ = new SimpleAssembler(";", ELFCLASS64, ELFOSABI_LINUX, EM_RISCV,
+                                     &riscv_64x_assembler_);
     std::istringstream source(*kTestAssembly);
     // Parse the assembly code.
     auto status = assembler_->Parse(source);
@@ -209,32 +211,46 @@ TEST_F(RiscV64XAssemblerTest, RelocatableSymbols) {
   unsigned char type;
   ELFIO::Elf_Half section_index;
   unsigned char other;
+  int num_symbols = symtab->get_size() / sizeof(ELFIO::Elf64_Sym);
+  auto symspan = absl::MakeSpan(
+      reinterpret_cast<const ELFIO::Elf64_Sym*>(symtab->get_data()),
+      num_symbols);
+  absl::flat_hash_map<std::string, int> symbol_map;
+  auto* string_accessor =
+      new ELFIO::string_section_accessor(elf().sections[".strtab"]);
+  for (int i = 0; i < num_symbols; ++i) {
+    auto name = string_accessor->get_string(symspan[i].st_name);
+    symbol_map.insert({name, i});
+  }
   // Verify that main is valued 0x0, global and located in the text section.
   symbols.get_symbol("main", value, size, bind, type, section_index, other);
-  EXPECT_EQ(value, 0x0);
-  EXPECT_EQ(section_index, elf().sections[".text"]->get_index());
-  EXPECT_EQ(type, STT_NOTYPE);
+  auto* sym = &symspan[symbol_map["main"]];
+  EXPECT_EQ(sym->st_value, 0x0);
+  EXPECT_EQ(ELF_ST_BIND(sym->st_info), STB_GLOBAL);
+  EXPECT_EQ(sym->st_shndx, elf().sections[".text"]->get_index());
+  EXPECT_EQ(ELF_ST_TYPE(sym->st_info), STT_NOTYPE);
   // Verify that exit is valued 16 * 4, local and located in the text
   // section.
-  symbols.get_symbol("exit", value, size, bind, type, section_index, other);
-  EXPECT_EQ(value, 16 * 4);
-  EXPECT_EQ(bind, STB_LOCAL);
-  EXPECT_EQ(section_index, elf().sections[".text"]->get_index());
-  EXPECT_EQ(type, STT_NOTYPE);
+  sym = &symspan[symbol_map["exit"]];
+  EXPECT_EQ(sym->st_value, 16 * 4);
+  EXPECT_EQ(ELF_ST_BIND(sym->st_info), STB_LOCAL);
+  EXPECT_EQ(sym->st_shndx, elf().sections[".text"]->get_index());
+  EXPECT_EQ(ELF_ST_TYPE(sym->st_info), STT_NOTYPE);
   // Verify that hello is global and located in the data section at 0x2000.
   symbols.get_symbol("hello", value, size, bind, type, section_index, other);
-  EXPECT_EQ(value, 0);
-  EXPECT_EQ(section_index, elf().sections[".data"]->get_index());
-  EXPECT_EQ(bind, STB_GLOBAL);
-  EXPECT_EQ(type, STT_NOTYPE);
+  sym = &symspan[symbol_map["hello"]];
+  EXPECT_EQ(sym->st_value, 0);
+  EXPECT_EQ(sym->st_shndx, elf().sections[".data"]->get_index());
+  EXPECT_EQ(ELF_ST_BIND(sym->st_info), STB_GLOBAL);
+  EXPECT_EQ(ELF_ST_TYPE(sym->st_info), STT_NOTYPE);
   // Verify that semihost_param is global and located in the bss section at
   // 16 bytes.
-  symbols.get_symbol("semihost_param", value, size, bind, type, section_index,
-                     other);
-  EXPECT_EQ(value, 16);
-  EXPECT_EQ(section_index, elf().sections[".bss"]->get_index());
-  EXPECT_EQ(bind, STB_LOCAL);
-  EXPECT_EQ(type, STT_NOTYPE);
+  sym = &symspan[symbol_map["semihost_param"]];
+  EXPECT_EQ(sym->st_value, 16);
+  EXPECT_EQ(sym->st_shndx, elf().sections[".bss"]->get_index());
+  EXPECT_EQ(ELF_ST_BIND(sym->st_info), STB_LOCAL);
+  EXPECT_EQ(ELF_ST_TYPE(sym->st_info), STT_NOTYPE);
+  delete string_accessor;
 }
 
 TEST_F(RiscV64XAssemblerTest, ExecutableSymbols) {
