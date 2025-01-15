@@ -350,6 +350,8 @@ SimpleAssembler::SimpleAssembler(absl::string_view comment, int elf_file_class,
   SetTextSection(".text");
   SetDataSection(".data");
   SetBssSection(".bss");
+  // Clear the current section.
+  current_section_ = nullptr;
 }
 
 SimpleAssembler::~SimpleAssembler() {
