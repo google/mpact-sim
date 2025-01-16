@@ -61,11 +61,6 @@ namespace assembler {
 
 class SimpleAssembler {
  public:
-  /*
-  SimpleAssembler(int elf_file_class, absl::string_view terminator_regex,
-                  absl::string_view comment_regex,
-                  OpcodeAssemblerInterface *opcode_assembler_if);
-  */
   // The constructor takes the following parameters:
   //   comment: The comment string or character that starts a comment.
   //   elf_file_class: The ELF file class (32 or 64 bit). Use either ELFCLASS32

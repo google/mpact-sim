@@ -85,8 +85,8 @@ class BoolLiteralOperand : public SourceOperandInterface {
   std::string AsString() const override { return as_string_; }
 
  private:
-  std::string as_string_;
   std::vector<int> shape_;
+  std::string as_string_;
 };
 
 // Integer valued literal operand.

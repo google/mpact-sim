@@ -495,9 +495,9 @@ std::tuple<std::string, std::string> Slot::GenerateAsmRegexMatcher() const {
                   "absl::Status ",
                   class_name,
                   "::Initialize() {\n"
-                  "  int index;\n"
                   "  std::string error;\n"
-                  "  index = regex_set_.Add(\"^$\", &error);\n"
+                  "  int index = regex_set_.Add(\"^$\", &error);\n"
+                  "  if (index == -1) return absl::InternalError(error);\n"
                   "  regex_vec_.push_back(new RE2(\"^$\"));\n");
   std::vector<std::string> formats;
   for (auto const &[name, inst_ptr] : instruction_map_) {

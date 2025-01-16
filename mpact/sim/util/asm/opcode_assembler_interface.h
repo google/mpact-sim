@@ -40,6 +40,13 @@ struct RelocationInfo {
   uint32_t type;
   uint64_t addend;
   uint16_t section_index;
+  RelocationInfo(uint64_t offset, const std::string &symbol, uint32_t type,
+                 uint64_t addend, uint16_t section_index)
+      : offset(offset),
+        symbol(symbol),
+        type(type),
+        addend(addend),
+        section_index(section_index) {}
 };
 
 class OpcodeAssemblerInterface {
