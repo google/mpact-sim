@@ -844,17 +844,19 @@ std::tuple<std::string, std::string> InstructionSet::GenerateEncClasses(
       "EncodeFcn encode_fcns[] = {\n"
       "  EncodeNone,\n");
   for (auto &[name, inst_ptr] : instruction_map_) {
+    std::string prefix;
+    std::string suffix;
     auto *opcode = inst_ptr->opcode();
     absl::StrAppend(&array, "  Encode", opcode->pascal_name(), ",\n");
-    absl::StrAppend(&cc_output,
-                    "absl::StatusOr<std::tuple<uint64_t, int>> Encode",
+    absl::StrAppend(&prefix, "absl::StatusOr<std::tuple<uint64_t, int>> Encode",
                     opcode->pascal_name(), "(\n     ", encoder,
                     " *encoder, SlotEnum slot, int entry, OpcodeEnum opcode,\n"
                     "     uint64_t address, const "
                     "std::vector<std::string> &operands,\n"
                     "     ResolverInterface *resolver, "
                     "std::vector<RelocationInfo> &relocations) "
-                    "{\n"
+                    "{\n");
+    absl::StrAppend(&suffix,
                     "  auto res_opcode = encoder->GetOpcodeEncoding(slot, "
                     "entry, opcode, resolver);\n"
                     "  if (!res_opcode.ok()) return res_opcode.status();\n"
@@ -866,19 +868,31 @@ std::tuple<std::string, std::string> InstructionSet::GenerateEncClasses(
         if (format_info->op_name.empty()) continue;
         auto iter = opcode->op_locator_map().find(format_info->op_name);
         if (iter == opcode->op_locator_map().end()) {
-          absl::StrAppend(&cc_output, "  #error ", format_info->op_name,
+          absl::StrAppend(&suffix, "  #error ", format_info->op_name,
                           " not found in instruction opcodes\n");
           continue;
         }
         auto locator = iter->second;
-        absl::StrAppend(&cc_output,
+        absl::StrAppend(&suffix,
                         GenerateOperandEncoder(position++, format_info->op_name,
                                                locator, opcode));
       }
     }
-    absl::StrAppend(&cc_output,
+    absl::StrAppend(&suffix,
                     "  return std::make_tuple(encoding, bit_size);\n"
                     "}\n\n");
+    absl::StrAppend(&cc_output, prefix,
+                    "  auto num_args = operands.size();\n"
+                    "  if (num_args != ",
+                    position,
+                    ") {\n"
+                    "    return absl::InvalidArgumentError(\n"
+                    "        absl::StrCat(\"Invalid number of operands (\", "
+                    "num_args, \") - expected ",
+                    position,
+                    "\"));\n"
+                    "  }\n",
+                    suffix);
   }
   absl::StrAppend(&array, "};\n\n");
   absl::StrAppend(&cc_output, array, "\n}  // namespace\n\n");

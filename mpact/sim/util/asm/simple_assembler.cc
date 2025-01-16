@@ -311,12 +311,11 @@ inline void ConvertToBytes(const std::vector<T> &values,
 }  // namespace
 
 SimpleAssembler::SimpleAssembler(absl::string_view comment, int elf_file_class,
-                                 int os_abi, int machine,
                                  OpcodeAssemblerInterface *opcode_assembler_if)
     : elf_file_class_(elf_file_class),
       opcode_assembler_if_(opcode_assembler_if),
-      comment_re_(absl::StrCat("^\\s*(?:", comment, "(.*))?$")),
-      asm_line_re_("^(?:(?:(\\S+)\\s*:)?|\\s)\\s*([^;]*?)?\\s*(?:;(.*))?$"),
+      comment_re_(absl::StrCat("^(.*?)(?:", comment, ".*?)?(\\\\)?$")),
+      asm_line_re_("^(?:(?:(\\S+)\\s*:)?|\\s)\\s*(.*)\\s*$"),
       directive_re_(
           "^\\.(align|bss|bytes|char|cstring|data|global|long|sect"
           "|short|space|string|type|text|uchar|ulong|ushort|uword|word)(?:\\s+("
@@ -325,8 +324,8 @@ SimpleAssembler::SimpleAssembler(absl::string_view comment, int elf_file_class,
           "$") {
   // Configure the ELF file writer.
   writer_.create(elf_file_class_, ELFDATA2LSB);
-  writer_.set_os_abi(os_abi);
-  writer_.set_machine(machine);
+  writer_.set_os_abi(ELFOSABI_NONE);
+  writer_.set_machine(EM_NONE);
   // Create the symbol table section.
   symtab_ = writer_.sections.add(".symtab");
   section_index_map_.insert({symtab_->get_index(), symtab_});
@@ -369,12 +368,36 @@ absl::Status SimpleAssembler::Parse(std::istream &is) {
   // section_address_map_ will keep track of the current location within each
   // section (i.e., the offset within the section of the next
   // instruction/object).
-  std::string line;
   std::string label;
   std::string statement;
   while (is.good() && !is.eof()) {
-    getline(is, line);
-    if (RE2::FullMatch(line, comment_re_)) continue;
+    std::string line;
+    while (true) {
+      std::string tmp;
+      if (!is.good() || is.eof()) break;
+      getline(is, tmp);
+      std::string prefix;
+      std::string suffix;
+      // Remove comments from the input line.
+      if (!RE2::FullMatch(tmp, comment_re_, &prefix, &suffix)) {
+        return absl::InternalError("Failed to parse comment");
+      }
+      tmp = absl::StrCat(prefix, suffix);
+      int len = tmp.length();
+      // If there is an escaped newline then append the line, up to the  '\',
+      // and continue.
+      if ((len >= 1) && (tmp[len - 1] == '\\')) {
+        // Insert the escaped newline that getline removed.
+        absl::StrAppend(&line, tmp, "\n");
+        continue;
+      }
+      absl::StrAppend(&line, tmp);
+      break;
+    }
+    if (line.empty()) continue;
+    // Parse the line into a label and a statement. This is done to determine if
+    // the line contains a label, only a label, or if the statement is directive
+    // or not.
     if (RE2::FullMatch(line, asm_line_re_, &label, &statement)) {
       std::vector<uint8_t> byte_vector;
       std::vector<RelocationInfo> relo_vector;
@@ -383,30 +406,28 @@ absl::Status SimpleAssembler::Parse(std::istream &is) {
           (section == nullptr) ? 0 : section_address_map_[section];
       if (!statement.empty()) {
         absl::Status status;
+        // Pass the full line into the parse functions, they are responsible
+        // for handling the labels in pass one.
         if (statement[0] == '.') {
-          status = ParseAsmDirective(statement, &zero_resolver, byte_vector);
+          status = ParseAsmDirective(line, address, &zero_resolver, byte_vector,
+                                     relo_vector);
         } else {
-          status = ParseAsmStatement(statement, &zero_resolver, byte_vector,
+          status = ParseAsmStatement(line, address, &zero_resolver, byte_vector,
                                      relo_vector);
         }
         if (!status.ok()) return status;
-        // Save the statements for processing in pass two.
+        // Save the statements for processing in pass two (labels are all
+        // processed in pass one).
         lines_.push_back(statement);
-      }
-
-      if (!label.empty()) {
-        // When initially adding symbols, the address is relative to the start
-        // of the containing section. This will be corrected later.
-        if (section == nullptr) {
-          return absl::InvalidArgumentError(absl::StrCat(
-              "Label: '", label, "' defined outside of a section"));
-        }
-        auto size = section_address_map_[section] - address;
+      } else if (!label.empty()) {
+        // This is just a single label definition. Add it to the symbol table.
         auto status =
-            AddSymbol(label, address, size, STT_NOTYPE, STB_LOCAL, 0, section);
+            AddSymbolToCurrentSection(label, address, 0, STT_NOTYPE, 0, 0);
+        if (!status.ok()) return status;
       }
       continue;
     }
+    // Parse failure.
     return absl::AbortedError(absl::StrCat("Parse failure: '", line, "'"));
   }
 
@@ -723,20 +744,22 @@ absl::Status SimpleAssembler::ParsePassTwo(
     std::vector<uint8_t> byte_vector;
     absl::Status status;
     auto *section = current_section_;
+    auto relo_size = relo_vector.size();
+    auto address = section_address_map_[section];
     if (line[0] == '.') {
-      auto status = ParseAsmDirective(line, symbol_resolver_, byte_vector);
+      auto status = ParseAsmDirective(line, address, symbol_resolver_,
+                                      byte_vector, relo_vector);
     } else {
-      auto relo_size = relo_vector.size();
-      auto address = section_address_map_[section];
-      auto status =
-          ParseAsmStatement(line, symbol_resolver_, byte_vector, relo_vector);
-      // Update section information in the relocation vector.
-      for (int i = relo_size; i < relo_vector.size(); ++i) {
-        relo_vector[i].section_index = section->get_index();
-        relo_vector[i].offset = address;
-      }
+      auto status = ParseAsmStatement(line, address, symbol_resolver_,
+                                      byte_vector, relo_vector);
     }
     if (!status.ok()) return status;
+    // Update section information in the relocation vector.
+    for (int i = relo_size; i < relo_vector.size(); ++i) {
+      relo_vector[i].section_index = section->get_index();
+      relo_vector[i].offset = address;
+    }
+    // Go to the next line if there is no data to add to the section.
     if (byte_vector.empty()) continue;
     // Add data to the section, but first make sure it's not bss.
     if (section != bss_section_) {
@@ -759,12 +782,19 @@ absl::Status SimpleAssembler::Write(std::ostream &os) {
 // tokens separated by spaces. The argument is parsed using regular
 // expressions. The byte values are appended to the given vector.
 absl::Status SimpleAssembler::ParseAsmDirective(
-    absl::string_view directive, ResolverInterface *resolver,
-    std::vector<uint8_t> &byte_values) {
+    absl::string_view line, uint64_t address, ResolverInterface *resolver,
+    std::vector<uint8_t> &byte_values,
+    std::vector<RelocationInfo> &relocations) {
   std::string match;
   std::string remainder;
   ELFIO::section *section = current_section_;
   uint64_t size = 0;
+  std::string directive;
+  std::string label;
+  if (!RE2::FullMatch(line, asm_line_re_, &label, &directive)) {
+    return absl::InvalidArgumentError(
+        absl::StrCat("Invalid assembly line: '", line, "'"));
+  }
   if (!RE2::FullMatch(directive, directive_re_, &match, &remainder)) {
     return absl::InvalidArgumentError(
         absl::StrCat("Invalid directive: '", directive, "'"));
@@ -906,6 +936,17 @@ absl::Status SimpleAssembler::ParseAsmDirective(
     }
     section_address_map_[section] += size;
   }
+
+  if (!label.empty()) {
+    // When initially adding symbols, the address is relative to the start
+    // of the containing section. This will be corrected later.
+    if (section == nullptr) {
+      return absl::InvalidArgumentError(
+          absl::StrCat("Label: '", label, "' defined outside of a section"));
+    }
+    auto status =
+        AddSymbol(label, address, size, STT_NOTYPE, STB_LOCAL, 0, section);
+  }
   return absl::OkStatus();
 }
 
@@ -913,13 +954,14 @@ absl::Status SimpleAssembler::ParseAsmDirective(
 // expected to be a single line of text. The byte values are appended to the
 // given vector.
 absl::Status SimpleAssembler::ParseAsmStatement(
-    absl::string_view statement, ResolverInterface *resolver,
+    absl::string_view line, uint64_t address, ResolverInterface *resolver,
     std::vector<uint8_t> &byte_values,
     std::vector<RelocationInfo> &relocations) {
   // Call the target specific assembler to encode the statement.
   auto status = opcode_assembler_if_->Encode(
-      section_address_map_[current_section_], statement, resolver, byte_values,
-      relocations);
+      address, line,
+      absl::bind_front(&SimpleAssembler::AddSymbolToCurrentSection, this),
+      resolver, byte_values, relocations);
   if (!status.ok()) return status;
   section_address_map_[current_section_] += byte_values.size();
   return absl::OkStatus();
@@ -987,6 +1029,27 @@ void SimpleAssembler::SetBssSection(const std::string &name) {
   bss_section_ = section;
   section_index_map_.insert({section->get_index(), bss_section_});
 }
+absl::Status SimpleAssembler::AddSymbolToCurrentSection(
+    const std::string &name, ELFIO::Elf64_Addr value, ELFIO::Elf_Xword size,
+    uint8_t type, uint8_t binding, uint8_t other) {
+  return AddSymbol(name, value, size, type, binding, other, current_section_);
+}
+
+absl::Status SimpleAssembler::AddSymbol(const std::string &name,
+                                        ELFIO::Elf64_Addr value,
+                                        ELFIO::Elf_Xword size, uint8_t type,
+                                        uint8_t binding, uint8_t other,
+                                        const std::string &section_name) {
+  ELFIO::section *section = nullptr;
+  if (!section_name.empty()) {
+    section = writer_.sections[section_name];
+    if (section == nullptr) {
+      return absl::InvalidArgumentError(
+          absl::StrCat("Section '", section_name, "' not found"));
+    }
+  }
+  return AddSymbol(name, value, size, type, binding, other, section);
+}
 
 absl::Status SimpleAssembler::AddSymbol(const std::string &name,
                                         ELFIO::Elf64_Addr value,
@@ -995,7 +1058,6 @@ absl::Status SimpleAssembler::AddSymbol(const std::string &name,
                                         ELFIO::section *section) {
   auto iter = symbol_indices_.find(name);
   if (iter != symbol_indices_.end()) {
-    if (section == nullptr) return absl::OkStatus();
     return absl::AlreadyExistsError(
         absl::StrCat("Symbol '", name, "' already exists"));
   }

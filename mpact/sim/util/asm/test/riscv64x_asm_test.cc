@@ -34,6 +34,7 @@
 #include "mpact/sim/util/asm/simple_assembler.h"
 #include "mpact/sim/util/asm/test/riscv64x_bin_encoder_interface.h"
 #include "mpact/sim/util/asm/test/riscv64x_encoder.h"
+#include "re2/re2.h"
 
 // This file contains tests for the simple assembler using a very reduced
 // subset of the RISC-V ISA.
@@ -50,11 +51,20 @@ using ::mpact::sim::util::assembler::SimpleAssembler;
 // This class implements the OpcodeAssemblerInterface using the slot matcher.
 class RiscV64XAssembler : public OpcodeAssemblerInterface {
  public:
-  RiscV64XAssembler(Riscv64xSlotMatcher* matcher) : matcher_(matcher) {};
+  RiscV64XAssembler(Riscv64xSlotMatcher* matcher)
+      : label_re_("^(\\S+)\\s*:"), matcher_(matcher) {};
   ~RiscV64XAssembler() override = default;
   absl::Status Encode(uint64_t address, absl::string_view text,
+                      AddSymbolCallback add_symbol_callback,
                       ResolverInterface* resolver, std::vector<uint8_t>& bytes,
                       std::vector<RelocationInfo>& relocations) override {
+    // First check to see if there is a label, if so, add it to the symbol table
+    // with the current address.
+    std::string label;
+    if (RE2::Consume(&text, label_re_, &label)) {
+      auto status = add_symbol_callback(label, address, 0, STT_NOTYPE, 0, 0);
+      if (!status.ok()) return status;
+    }
     // Call the slot matcher to get the encoded value.
     auto res = matcher_->Encode(address, text, 0, resolver, relocations);
     if (!res.status().ok()) return res.status();
@@ -72,6 +82,7 @@ class RiscV64XAssembler : public OpcodeAssemblerInterface {
   }
 
  private:
+  RE2 label_re_;
   Riscv64xSlotMatcher* matcher_;
 };
 
@@ -132,8 +143,9 @@ class RiscV64XAssemblerTest : public ::testing::Test {
       : matcher_(&bin_encoder_interface_), riscv_64x_assembler_(&matcher_) {
     CHECK_OK(matcher_.Initialize());
     // Create the assembler.
-    assembler_ = new SimpleAssembler(";", ELFCLASS64, ELFOSABI_LINUX, EM_RISCV,
-                                     &riscv_64x_assembler_);
+    assembler_ = new SimpleAssembler(";", ELFCLASS64, &riscv_64x_assembler_);
+    assembler_->writer().set_os_abi(ELFOSABI_LINUX);
+    assembler_->writer().set_machine(EM_RISCV);
     std::istringstream source(*kTestAssembly);
     // Parse the assembly code.
     auto status = assembler_->Parse(source);

@@ -371,7 +371,7 @@ std::string EscapeRegexCharacters(const std::string &str) {
 std::tuple<std::string, std::vector<OperandLocator>> Slot::GenerateRegEx(
     const Instruction *inst, std::vector<std::string> &formats) const {
   std::string output = "R\"(";
-  std::string sep = "^";
+  std::string sep = "^\\s*";
   std::vector<OperandLocator> opnd_locators;
   // Iterate over the vector of disasm formats. These will end up concatenated
   // with \s+ separators.
@@ -423,7 +423,7 @@ std::tuple<std::string, std::vector<OperandLocator>> Slot::GenerateRegEx(
       }
     }
   }
-  absl::StrAppend(&output, "$)\"");
+  absl::StrAppend(&output, "\\s*$)\"");
   return {output, opnd_locators};
 }
 

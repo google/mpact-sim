@@ -19,8 +19,10 @@
 #include <string>
 #include <vector>
 
+#include "absl/functional/any_invocable.h"
 #include "absl/status/status.h"
 #include "absl/strings/string_view.h"
+#include "elfio/elf_types.hpp"
 #include "mpact/sim/util/asm/resolver_interface.h"
 
 // This file defines the interface that the opcode assembler must implement. It
@@ -43,10 +45,16 @@ struct RelocationInfo {
 class OpcodeAssemblerInterface {
  public:
   virtual ~OpcodeAssemblerInterface() = default;
-  // Takes the current address, the text for the assembly instruction, and a
-  // symbol resolver interface.Return ok status if the text is successfully
-  // encoded into the bytes vector.
+  using AddSymbolCallback = absl::AnyInvocable<absl::Status(
+      const std::string &, ELFIO::Elf64_Addr /*value*/,
+      ELFIO::Elf_Xword /*size*/, uint8_t /*type*/, uint8_t /*binding*/,
+      uint8_t /*other*/)>;
+  // Takes the current address, the text for the assembly instruction (including
+  // any label definitions), and a symbol resolver interface.Return ok status if
+  // the text is successfully encoded into the bytes vector. Symbols for any
+  // labels are added using the callback function interface.
   virtual absl::Status Encode(uint64_t address, absl::string_view text,
+                              AddSymbolCallback add_symbol_callback,
                               ResolverInterface *resolver,
                               std::vector<uint8_t> &bytes,
                               std::vector<RelocationInfo> &relocations) = 0;

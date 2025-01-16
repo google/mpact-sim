@@ -37,13 +37,14 @@
 
 // This file declares the SimpleAssembler class, which provides simple handling
 // of assembly source, including a number of assembly directives. It currently
-// handles three sections: .text, .data, and .bss. It produces an executable
-// ELF file with the text section in its own segment starting at the base
-// address, followed by the data section, and then the bss section. The entry
-// point is set either by calling SetEntryPoint(), or by specifying the entry
-// symbol with the .entry directive inside the text section of the input
-// assembly source. If SetEntryPoint() is called after parsing it overrides the
-// entry point set by the .entry directive.
+// handles three sections: .text, .data, and .bss. It produces either a
+// relocatable file or an executable ELF file with the text section in its own
+// segment starting at the base address, followed by the data section, and then
+// the bss section. For the executable file, the entry point is set by calling
+// SetEntryPoint().
+//
+// Only little-endian ELF files are currently supported.
+
 namespace mpact {
 namespace sim {
 namespace util {
@@ -51,28 +52,39 @@ namespace assembler {
 
 class SimpleAssembler {
  public:
-  SimpleAssembler(absl::string_view comment, int elf_file_class, int os_abi,
-                  int machine, OpcodeAssemblerInterface *opcode_assembler_if);
+  /*
+  SimpleAssembler(int elf_file_class, absl::string_view terminator_regex,
+                  absl::string_view comment_regex,
+                  OpcodeAssemblerInterface *opcode_assembler_if);
+  */
+  SimpleAssembler(absl::string_view comment, int elf_file_class,
+                  OpcodeAssemblerInterface *opcode_assembler_if);
   SimpleAssembler(const SimpleAssembler &) = delete;
   SimpleAssembler &operator=(const SimpleAssembler &) = delete;
   virtual ~SimpleAssembler();
 
   // Parse the input stream as assembly.
   absl::Status Parse(std::istream &is);
+  // Add the symbol to the symbol table for the current section.
+  absl::Status AddSymbolToCurrentSection(const std::string &name,
+                                         ELFIO::Elf64_Addr value,
+                                         ELFIO::Elf_Xword size, uint8_t type,
+                                         uint8_t binding, uint8_t other);
+  // Add the symbol to the symbol table for the named section.
+  absl::Status AddSymbol(const std::string &name, ELFIO::Elf64_Addr value,
+                         ELFIO::Elf_Xword size, uint8_t type, uint8_t binding,
+                         uint8_t other, const std::string &section_name);
   // Create executable ELF file with the given value as the entry point.
   // The text segment will be laid out starting at base address, followed by
   // the data segment.
   absl::Status CreateExecutable(uint64_t base_address,
                                 const std::string &entry_point);
   absl::Status CreateExecutable(uint64_t base_address, uint64_t entry_point);
-  // Helper function called during symbol accessor arrange_local_symbols() to
-  // swap the local and non-local symbols.
-  void SwapSymbols(ELFIO::Elf_Half non_local, ELFIO::Elf_Half local);
   // Create a relocatable ELF file.
   absl::Status CreateRelocatable();
-  // Write out the ELF file.
+  // Write the ELF file to the given output stream.
   absl::Status Write(std::ostream &os);
-
+  // Access the ELF writer.
   ELFIO::elfio &writer() { return writer_; }
 
  private:
@@ -88,11 +100,12 @@ class SimpleAssembler {
   // Perform second pass of parsing.
   absl::Status ParsePassTwo(std::vector<RelocationInfo> &relo_vector);
   // Parse and process an assembly directive.
-  absl::Status ParseAsmDirective(absl::string_view directive,
+  absl::Status ParseAsmDirective(absl::string_view line, uint64_t address,
                                  ResolverInterface *resolver,
-                                 std::vector<uint8_t> &byte_values);
+                                 std::vector<uint8_t> &byte_values,
+                                 std::vector<RelocationInfo> &relocations);
   // Parse and process and assembly statement.
-  absl::Status ParseAsmStatement(absl::string_view statement,
+  absl::Status ParseAsmStatement(absl::string_view line, uint64_t address,
                                  ResolverInterface *resolver,
                                  std::vector<uint8_t> &byte_values,
                                  std::vector<RelocationInfo> &relocations);

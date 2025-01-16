@@ -282,7 +282,7 @@ void Format::PropagateExtractorsUp() {
 // e.g., two fields were named the same in different formats but referred to
 // different bits.
 void Format::PropagateExtractorsDown() {
-  // Remove the extractor entries with nullptrs and any extractors that
+  // Remove the extractor entries with null ptrs and any extractors that
   // have been promoted.
   auto e_iter = extractors_.begin();
   while (e_iter != extractors_.end()) {
@@ -299,7 +299,7 @@ void Format::PropagateExtractorsDown() {
       continue;
     }
   }
-  // Remove the overlay extractor entries with nullptrs.
+  // Remove the overlay extractor entries with null ptrs.
   auto o_iter = overlay_extractors_.begin();
   while (o_iter != overlay_extractors_.end()) {
     auto cur = o_iter++;
