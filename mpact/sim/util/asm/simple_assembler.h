@@ -44,6 +44,15 @@
 // SetEntryPoint().
 //
 // Only little-endian ELF files are currently supported.
+//
+// The ELF file class is specified in the constructor. Any other ELF header
+// values have to be set using methods in the ELFIO writer that is accessed
+// using the writer() method.
+// At the very least, the following methods should be called:
+//   writer().set_os_abi()
+//   writer().set_machine()
+// If additional sections need to be created, use the add_section() method of
+// the writer (see ELFIO documentation for details).
 
 namespace mpact {
 namespace sim {
@@ -57,6 +66,12 @@ class SimpleAssembler {
                   absl::string_view comment_regex,
                   OpcodeAssemblerInterface *opcode_assembler_if);
   */
+  // The constructor takes the following parameters:
+  //   comment: The comment string or character that starts a comment.
+  //   elf_file_class: The ELF file class (32 or 64 bit). Use either ELFCLASS32
+  //     or ELFCLASS64 from ELFIO.
+  //   opcode_assembler_if: The opcode assembler interface to use for parsing
+  //     and encoding assembly statements.
   SimpleAssembler(absl::string_view comment, int elf_file_class,
                   OpcodeAssemblerInterface *opcode_assembler_if);
   SimpleAssembler(const SimpleAssembler &) = delete;
@@ -65,12 +80,14 @@ class SimpleAssembler {
 
   // Parse the input stream as assembly.
   absl::Status Parse(std::istream &is);
-  // Add the symbol to the symbol table for the current section.
+  // Add the symbol to the symbol table for the current section. See ELFIO
+  // documentation for details of the meaning of the parameters.
   absl::Status AddSymbolToCurrentSection(const std::string &name,
                                          ELFIO::Elf64_Addr value,
                                          ELFIO::Elf_Xword size, uint8_t type,
                                          uint8_t binding, uint8_t other);
-  // Add the symbol to the symbol table for the named section.
+  // Add the symbol to the symbol table for the named section. See ELFIO
+  // documentation for details of the meaning of the parameters.
   absl::Status AddSymbol(const std::string &name, ELFIO::Elf64_Addr value,
                          ELFIO::Elf_Xword size, uint8_t type, uint8_t binding,
                          uint8_t other, const std::string &section_name);
