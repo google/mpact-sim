@@ -294,7 +294,7 @@ def _make_isa_tool_invocation_command(num_srcs, prefix, isa_name):
     # Add the sources that are not in includes.
     for i in range(0, num_srcs):
         cmd += "$${ARR[" + str(i) + "]} "
-    cmd += "--prefix " + prefix + " --output_dir $(@D)"
+    cmd += "--prefix " + prefix + " --output_dir $(@D) --include $$(dirname $${ARR[0]})"
     if isa_name != "":
         cmd += " --isa_name " + isa_name
 
@@ -309,7 +309,7 @@ def _make_bin_tool_invocation_command(num_srcs, prefix, decoder_name):
     # Add the sources that are not in includes.
     for i in range(0, num_srcs):
         cmd += "$${ARR[" + str(i) + "]} "
-    cmd += " --prefix " + prefix + " --output_dir $(@D)"
+    cmd += " --prefix " + prefix + " --output_dir $(@D) --include $$(dirname $${ARR[0]})"
     if decoder_name != "":
         cmd += " --decoder_name " + decoder_name
     return cmd
