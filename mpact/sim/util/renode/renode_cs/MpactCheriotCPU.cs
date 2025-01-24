@@ -97,11 +97,8 @@ public class MpactCheriotCPU : MpactBaseCPU, ICluster<MpactCheriotCPU>,
             config_names.Add("dCache");
             config_values.Add(dcache_config);
         }
-        // If the core version is not 100 (v1.0), add it to the config.
-        if (core_version != 100) {
-            config_names.Add("coreVersion");
-            config_values.Add(core_version.ToString("X"));
-        }
+        config_names.Add("coreVersion");
+        config_values.Add(core_version.ToString("X"));
     }
 
     public bool InstProfile {
