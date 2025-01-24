@@ -97,8 +97,8 @@ public class MpactCheriotCPU : MpactBaseCPU, ICluster<MpactCheriotCPU>,
             config_names.Add("dCache");
             config_values.Add(dcache_config);
         }
-        // If the core version is greater than 0.5, add it to the config.
-        if (core_version > 50) {
+        // If the core version is not 100 (v1.0), add it to the config.
+        if (core_version != 100) {
             config_names.Add("coreVersion");
             config_values.Add(core_version.ToString("X"));
         }
@@ -215,7 +215,7 @@ public class MpactCheriotCPU : MpactBaseCPU, ICluster<MpactCheriotCPU>,
     private UInt64 revocationMemBase;
     private UInt64 clint_mmr_base = 0x0;
     private UInt64 clint_period = 0;
-    private uint core_version = 50;  // Default is 50 (v0.5).
+    private uint core_version = 100;  // Default is 100 (v1.0).
     private string icache_config = "";
     private string dcache_config = "";
     private List<GDBFeatureDescriptor>
