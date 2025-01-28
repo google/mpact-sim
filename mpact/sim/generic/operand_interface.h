@@ -64,7 +64,7 @@ class SourceOperandInterface {
   // Return a pointer to the object instance that implements the state in
   // question (or nullptr) if no such object "makes sense". This is used if
   // the object requires additional manipulation - such as a fifo that needs
-  // to be pop'ed. If no such manipulation is required, nullptr should be
+  // to be popped. If no such manipulation is required, nullptr should be
   // returned.
   virtual std::any GetObject() const = 0;
 
