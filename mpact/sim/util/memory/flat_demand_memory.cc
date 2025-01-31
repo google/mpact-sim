@@ -41,11 +41,7 @@ FlatDemandMemory::FlatDemandMemory(uint64_t memory_size_in_units,
 }
 
 // Delete all the allocated blocks.
-FlatDemandMemory::~FlatDemandMemory() {
-  for (auto &[unused, block_ptr] : block_map_) {
-    delete[] block_ptr;
-  }
-}
+FlatDemandMemory::~FlatDemandMemory() { Clear(); }
 
 void FlatDemandMemory::Load(uint64_t address, DataBuffer *db, Instruction *inst,
                             ReferenceCount *context) {
@@ -181,6 +177,13 @@ void FlatDemandMemory::LoadStoreHelper(uint64_t address, uint8_t *data_ptr,
     data_ptr += store_size_in_bytes;
     address += store_size_in_units;
   } while (size_in_units > 0);
+}
+
+void FlatDemandMemory::Clear() {
+  for (auto &[unused, block_ptr] : block_map_) {
+    delete[] block_ptr;
+  }
+  block_map_.clear();
 }
 
 }  // namespace util

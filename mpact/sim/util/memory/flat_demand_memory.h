@@ -87,6 +87,9 @@ class FlatDemandMemory : public MemoryInterface {
   }
   static constexpr int kAllocationSize = 16 * 1024;  // Power of two.
 
+  // Clears the memory and frees all allocated blocks.
+  void Clear();
+
  private:
   void LoadStoreHelper(uint64_t address, uint8_t *data_ptr, int size_in_units,
                        bool is_load);
