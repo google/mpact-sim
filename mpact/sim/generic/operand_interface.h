@@ -98,7 +98,7 @@ class DestinationOperandInterface {
   virtual DataBuffer *CopyDataBuffer() = 0;
   // Returns the latency associated with the destination operand.
   virtual int latency() const = 0;
-  // Return a pointer to the object instance that implmements the state in
+  // Return a pointer to the object instance that implements the state in
   // question (or nullptr if no such object "makes sense").
   virtual std::any GetObject() const = 0;
   // Returns the order of the destination operand (size in each dimension).

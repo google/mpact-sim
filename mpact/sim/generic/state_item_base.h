@@ -20,7 +20,6 @@
 
 #include "absl/strings/string_view.h"
 #include "mpact/sim/generic/data_buffer.h"
-#include "mpact/sim/generic/operand_interface.h"
 
 namespace mpact {
 namespace sim {
