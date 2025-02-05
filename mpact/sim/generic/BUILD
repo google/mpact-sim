@@ -47,6 +47,7 @@ cc_library(
         "simple_resource_operand.h",
         "state_item.h",
         "state_item_base.h",
+        "wrapper_operand.h",
     ],
     copts = ["-O3"],
     deps = [
