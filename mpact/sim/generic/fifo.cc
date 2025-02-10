@@ -18,6 +18,10 @@
 #include <vector>
 
 #include "absl/strings/string_view.h"
+#include "mpact/sim/generic/arch_state.h"
+#include "mpact/sim/generic/component.h"
+#include "mpact/sim/generic/data_buffer.h"
+#include "mpact/sim/generic/state_item_base.h"
 
 namespace mpact {
 namespace sim {
@@ -38,10 +42,9 @@ FifoBase::FifoBase(class ArchState *arch_state, absl::string_view name,
 }
 
 FifoBase::~FifoBase() {
-  for (auto ptr : fifo_) {
-    ptr->DecRef();
+  while (Available() > 0) {
+    Pop();
   }
-  fifo_.clear();
 }
 
 bool FifoBase::IsFull() const { return fifo_.size() + reserved_ >= capacity_; }
