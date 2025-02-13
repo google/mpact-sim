@@ -201,9 +201,9 @@ public class MpactBaseCPU : BaseCPU, ICPUWithRegisters,
             // Instantiate the simulator, passing in callbacks to read and write
             // from/to the system bus.
             read_sysmem_delegate =
-                    new FuncInt32UInt64IntPtrInt32(ReadSysMemory);
+                    new FuncInt32UInt64IntPtrInt32_(ReadSysMemory);
             write_sysmem_delegate =
-                    new FuncInt32UInt64IntPtrInt32(WriteSysMemory);
+                    new FuncInt32UInt64IntPtrInt32_(WriteSysMemory);
             mpact_id = construct_with_sysbus(cpu_type, maxStringLen,
                                              read_sysmem_delegate,
                                              write_sysmem_delegate);
@@ -601,14 +601,38 @@ public class MpactBaseCPU : BaseCPU, ICPUWithRegisters,
 
     // Declare some additional function signatures.
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    public delegate Int32 WriteRegister(Int32 param0, Int32 param1, UInt64 param2);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    public delegate Int32 ReadRegister(Int32 param0, Int32 param1, IntPtr param2);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    public delegate Int32 MemoryAccess(Int32 param0, UInt64 param1, IntPtr param2, Int32 param3);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    public delegate UInt64 Step(Int32 param0, UInt64 param1, IntPtr param2);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    public delegate Int32 LoadImage(Int32 param0, String param1, UInt64 param2);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    public delegate Int32 GetRegInfoSize(Int32 param0);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    public delegate Int32 GetRegInfo(Int32 param0, Int32 param1, IntPtr param2, IntPtr param3);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    public delegate Int32 FuncInt32UInt64IntPtrInt32_(UInt64 param0, IntPtr param1, Int32 param2);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     public delegate Int32 ConnectWithSysbus(string param0, Int32 param1, Int32 param2,
-                                            FuncInt32UInt64IntPtrInt32 param3,
-                                            FuncInt32UInt64IntPtrInt32 param4);
+                                            FuncInt32UInt64IntPtrInt32_ param3,
+                                            FuncInt32UInt64IntPtrInt32_ param4);
 
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     public delegate Int32 ConstructWithSysbus(string param0, Int32 param1,
-                                              FuncInt32UInt64IntPtrInt32 param2,
-                                              FuncInt32UInt64IntPtrInt32 param3);
+                                              FuncInt32UInt64IntPtrInt32_ param2,
+                                              FuncInt32UInt64IntPtrInt32_ param3);
 
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     public delegate Int32 SetConfig(Int32 param0, string[] param1,
@@ -621,10 +645,13 @@ public class MpactBaseCPU : BaseCPU, ICPUWithRegisters,
     public delegate UInt64 LoadElf(Int32 param0, string param1, bool param2,
                                    IntPtr param3);
 
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    public delegate void ActionInt32_(Int32 param0);
+
     // Int32 read_sysmem_delegate(UInt64 address, IntPtr buffer, Int32 size)
-    private FuncInt32UInt64IntPtrInt32 read_sysmem_delegate;
+    private FuncInt32UInt64IntPtrInt32_ read_sysmem_delegate;
     // Int32 write_sysmem_delegate(UInt64 address, IntPtr buffer, Int32 size)
-    private FuncInt32UInt64IntPtrInt32 write_sysmem_delegate;
+    private FuncInt32UInt64IntPtrInt32_ write_sysmem_delegate;
 
     // Functions that are imported from the mpact sim library.
 #pragma warning disable 649
@@ -642,19 +669,19 @@ public class MpactBaseCPU : BaseCPU, ICPUWithRegisters,
 
     [Import(UseExceptionWrapper = false)]
     // void destruct(Int32 id);
-    private ActionInt32 destruct;
+    private ActionInt32_ destruct;
 
     [Import(UseExceptionWrapper = false)]
     // void reset(Int32 id);
-    private ActionInt32 reset;
+    private ActionInt32_ reset;
 
     [Import(UseExceptionWrapper = false)]
     // Int32 get_reg_info_size(Int32 id)
-    private FuncInt32Int32 get_reg_info_size;
+    private GetRegInfoSize get_reg_info_size;
 
     [Import(UseExceptionWrapper = false)]
     // Int32 get_reg_info(Int32 id, IntPtr *name, IntPtr *struct);
-    private FuncInt32Int32Int32IntPtrIntPtr get_reg_info;
+    private GetRegInfo get_reg_info;
 
     [Import(UseExceptionWrapper = false)]
     // UInt64 load_elf(Int32 id, String file_name,
@@ -663,27 +690,27 @@ public class MpactBaseCPU : BaseCPU, ICPUWithRegisters,
 
     [Import(UseExceptionWrapper = false)]
     // Int32 load_image(Int32 id, String file_name, UInt64 address);
-    private FuncInt32Int32StringUInt64 load_image;
+    private LoadImage load_image;
 
     [Import(UseExceptionWrapper = false)]
     // UInt64 step(Int32 id, UInt64 step, IntPtr *error);
-    private FuncUInt64Int32UInt64IntPtr step;
+    private Step step;
 
     [Import(UseExceptionWrapper = false)]
     // Int32 read_register(Int32 id, Int32 reg_id, IntPtr *value);
-    private FuncInt32Int32Int32IntPtr read_register;
+    private ReadRegister read_register;
 
     [Import(UseExceptionWrapper = false)]
     // Int32 write_register(Int32 id, Int32 reg_id, UInt64 value);
-    private FuncInt32Int32Int32UInt64 write_register;
+    private WriteRegister write_register;
 
     [Import(UseExceptionWrapper = false)]
     // Int32 read_memory(Int32 id, UInt64 address, IntPtr buffer, Int32 size);
-    private FuncInt32Int32UInt64IntPtrInt32 read_memory;
+    private MemoryAccess read_memory;
 
     [Import(UseExceptionWrapper = false)]
     // Int32 write_memory(Int32 id, UInt64 address, IntPtr buffer, Int32 size);
-    private FuncInt32Int32UInt64IntPtrInt32 write_memory;
+    private MemoryAccess write_memory;
 
     [Import(UseExceptionWrapper = false)]
     // Int32 set_config(Int32 id, string[] names string[] values, Int32 size);
