@@ -17,6 +17,7 @@
 #include <string>
 #include <vector>
 
+#include "absl/status/status.h"
 #include "absl/strings/string_view.h"
 #include "mpact/sim/generic/arch_state.h"
 #include "mpact/sim/generic/component.h"
