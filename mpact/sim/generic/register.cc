@@ -18,10 +18,10 @@
 #include <cstring>
 #include <vector>
 
-#include "absl/base/macros.h"
 #include "absl/strings/string_view.h"
-#include "mpact/sim/generic/ref_count.h"
+#include "mpact/sim/generic/data_buffer.h"
 #include "mpact/sim/generic/simple_resource.h"
+#include "mpact/sim/generic/state_item_base.h"
 
 namespace mpact {
 namespace sim {
