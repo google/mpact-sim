@@ -117,6 +117,7 @@ mpact_cc_library(
         ":antlr_parser_wrapper",
         ":decoder_error_listener",
         ":format_name",
+        "@com_google_absl//absl/base:no_destructor",
         "@com_google_absl//absl/container:btree",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",

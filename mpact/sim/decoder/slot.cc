@@ -26,7 +26,9 @@
 #include <variant>
 #include <vector>
 
+#include "absl/base/no_destructor.h"
 #include "absl/container/btree_set.h"
+#include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -45,6 +47,15 @@ namespace mpact {
 namespace sim {
 namespace machine_description {
 namespace instruction_set {
+
+absl::NoDestructor<absl::flat_hash_map<std::string, std::string>>
+    Slot::operand_setter_name_map_;
+absl::NoDestructor<absl::flat_hash_map<std::string, std::string>>
+    Slot::disasm_setter_name_map_;
+absl::NoDestructor<absl::flat_hash_map<std::string, std::string>>
+    Slot::resource_setter_name_map_;
+absl::NoDestructor<absl::flat_hash_map<std::string, std::string>>
+    Slot::attribute_setter_name_map_;
 
 // This function translates the location specification into a set of '->'
 // references starting with 'inst->' to get to the operand that is implied.
@@ -274,12 +285,12 @@ std::string Slot::GenerateAttributeSetterFcn(absl::string_view name,
 // instruction. If no such appropriate function exists, create one.
 std::string Slot::GenerateAttributeSetter(const Instruction *inst) {
   auto key = CreateAttributeLookupKey(inst);
-  auto iter = attribute_setter_name_map_.find(key);
-  if (iter == attribute_setter_name_map_.end()) {
-    auto index = attribute_setter_name_map_.size();
+  auto iter = attribute_setter_name_map_->find(key);
+  if (iter == attribute_setter_name_map_->end()) {
+    auto index = attribute_setter_name_map_->size();
     std::string func_name =
         absl::StrCat(pascal_name(), "Slot", "SetAttributes", index);
-    iter = attribute_setter_name_map_.emplace(key, func_name).first;
+    iter = attribute_setter_name_map_->emplace(key, func_name).first;
     absl::StrAppend(&setter_functions_,
                     GenerateAttributeSetterFcn(func_name, inst));
   }
@@ -719,9 +730,9 @@ std::string Slot::GenerateDisassemblySetter(const Instruction *inst) {
   absl::StrAppend(&key, ":", CreateOperandLookupKey(inst->opcode()));
   std::string func_name = absl::StrCat(
       pascal_name(), "Slot", inst->opcode()->pascal_name(), "SetDisasm");
-  auto iter = disasm_setter_name_map_.find(key);
-  if (iter == disasm_setter_name_map_.end()) {
-    iter = disasm_setter_name_map_.emplace(key, func_name).first;
+  auto iter = disasm_setter_name_map_->find(key);
+  if (iter == disasm_setter_name_map_->end()) {
+    iter = disasm_setter_name_map_->emplace(key, func_name).first;
     absl::StrAppend(&setter_functions_,
                     GenerateDisasmSetterFcn(func_name, inst));
   }
@@ -849,12 +860,12 @@ std::string Slot::GenerateResourceSetter(const Instruction *inst,
                                          absl::string_view encoding_type) {
   std::string key = CreateResourceKey(inst->resource_use_vec());
   absl::StrAppend(&key, ":", CreateResourceKey(inst->resource_acquire_vec()));
-  auto iter = resource_setter_name_map_.find(key);
-  if (iter == resource_setter_name_map_.end()) {
-    auto index = resource_setter_name_map_.size();
+  auto iter = resource_setter_name_map_->find(key);
+  if (iter == resource_setter_name_map_->end()) {
+    auto index = resource_setter_name_map_->size();
     std::string func_name =
         absl::StrCat(pascal_name(), "Slot", "SetResources", index);
-    iter = resource_setter_name_map_.emplace(key, func_name).first;
+    iter = resource_setter_name_map_->emplace(key, func_name).first;
     absl::StrAppend(&setter_functions_,
                     GenerateResourceSetterFcn(func_name, inst, encoding_type));
   }
@@ -1246,18 +1257,19 @@ std::string Slot::ListFuncGetterInitializations(
          inst = inst->child()) {
       // Construct operand getter lookup key.
       std::string key = CreateOperandLookupKey(inst->opcode());
-      auto iter = operand_setter_name_map_.find(key);
+      auto iter = operand_setter_name_map_->find(key);
       // If the key is not found, create a new getter function, otherwise
       // reuse the existing one.
-      if (iter == operand_setter_name_map_.end()) {
-        auto index = operand_setter_name_map_.size();
+      if (iter == operand_setter_name_map_->end()) {
+        auto index = operand_setter_name_map_->size();
         std::string setter_name =
             absl::StrCat(class_name, "SetOperands", index);
         absl::StrAppend(&setter_functions_,
                         GenerateOperandSetterFcn(setter_name, encoding_type,
                                                  inst->opcode()));
-        iter = operand_setter_name_map_.insert(std::make_pair(key, setter_name))
-                   .first;
+        iter =
+            operand_setter_name_map_->insert(std::make_pair(key, setter_name))
+                .first;
       }
       absl::StrAppend(&operands_str, sep, iter->second);
       if (inst->semfunc_code_string().empty()) {

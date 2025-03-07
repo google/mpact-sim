@@ -20,6 +20,7 @@
 #include <tuple>
 #include <vector>
 
+#include "absl/base/no_destructor.h"
 #include "absl/container/btree_map.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
@@ -219,11 +220,16 @@ class Slot {
   // Pointer to slot it inherits from.
   std::vector<BaseSlot> base_slots_;
   absl::flat_hash_set<const Slot *> predecessor_set_;
-  // Map from operand getter key to operand getter function name.
-  absl::flat_hash_map<std::string, std::string> operand_setter_name_map_;
-  absl::flat_hash_map<std::string, std::string> disasm_setter_name_map_;
-  absl::flat_hash_map<std::string, std::string> resource_setter_name_map_;
-  absl::flat_hash_map<std::string, std::string> attribute_setter_name_map_;
+  // Map from operand getter key to operand getter function name. These are
+  // static so that they can be shared across different slots.
+  static absl::NoDestructor<absl::flat_hash_map<std::string, std::string>>
+      operand_setter_name_map_;
+  static absl::NoDestructor<absl::flat_hash_map<std::string, std::string>>
+      disasm_setter_name_map_;
+  static absl::NoDestructor<absl::flat_hash_map<std::string, std::string>>
+      resource_setter_name_map_;
+  static absl::NoDestructor<absl::flat_hash_map<std::string, std::string>>
+      attribute_setter_name_map_;
   std::string setter_functions_;
   // Used to list the unique getters for the operands.
   absl::flat_hash_set<std::string> pred_operand_getters_;
