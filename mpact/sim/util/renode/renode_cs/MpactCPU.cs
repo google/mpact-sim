@@ -551,7 +551,8 @@ public class MpactBaseCPU : BaseCPU, ICPUWithRegisters,
         return (ulong) data64[0];
     }
 
-    public byte[] ReadBytes(long offset, int count, ICPU context = null) {
+    public byte[] ReadBytes(long offset, int count,
+                            IPeripheral context = null) {
         var bytes = new byte[count];
         var byte_array_ptr = Marshal.AllocHGlobal(count);
         read_memory(mpact_id, (UInt64) offset, byte_array_ptr, count);
@@ -561,7 +562,7 @@ public class MpactBaseCPU : BaseCPU, ICPUWithRegisters,
     }
 
     public void WriteBytes(long offset, byte[] array, int startingIndex,
-                           int count, ICPU context = null) {
+                           int count, IPeripheral context = null) {
         var byte_array_ptr = Marshal.AllocHGlobal(count);
         Marshal.Copy(array, startingIndex, byte_array_ptr, count);
         write_memory(mpact_id, (UInt64) offset, byte_array_ptr, count);
@@ -785,12 +786,13 @@ public class MpactPeripheral : IKnownSize, IBytePeripheral,
         return mpact_cpu.ReadQuadWord(address + base_address);
     }
 
-    public byte[] ReadBytes(long offset, int count, ICPU context = null) {
+    public byte[] ReadBytes(long offset, int count,
+                            IPeripheral context = null) {
         return mpact_cpu.ReadBytes(offset + base_address, count, context);
     }
 
     public void WriteBytes(long offset, byte[] array, int startingIndex,
-                           int count, ICPU context = null) {
+                           int count, IPeripheral context = null) {
         mpact_cpu.WriteBytes(offset + base_address, array, startingIndex,
                              count, context);
     }
