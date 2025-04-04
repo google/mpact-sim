@@ -335,7 +335,7 @@ class FifoSourceOperand<T, EnableIfIntegral<T>>
   std::string op_name_;
 };
 
-// This is a parial specialization of the Source operand class. This is used
+// This is a partial specialization of the Source operand class. This is used
 // when the element type stored in the data buffer is not an integral type. This
 // is primarily for when the fifo element type really doesn't model a register
 // value per se, but a more complex structure such as a dma descriptor. In this

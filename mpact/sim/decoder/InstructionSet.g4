@@ -142,11 +142,19 @@ include_file
   : INCLUDE STRING_LITERAL
   ;
 
-// A bundle_declaration has a name and specifies the set of bundles and/or
-// slots contained within. At least one slot or bundle has to be specified.
-
+// A bundle_declaration has a name and specifies a semantic function, which is
+// is responsible for dispatching the instructions for the bundles and/or slots
+// It also specifies the bundles and/or slots the set of bundles and/or slots
+// it contains. At least one slot or bundle has to be specified.
 bundle_declaration
-  : BUNDLE bundle_name=IDENT '{' bundle_list? slot_list? '}'
+  : BUNDLE bundle_name=IDENT '{' bundle_parts* '}'
+  ;
+
+bundle_parts
+  : include_file_list
+  | bundle_list
+  | slot_list
+  | semfunc_spec ';'
   ;
 
 // A bundle list is a non-empty list of bundle identifiers

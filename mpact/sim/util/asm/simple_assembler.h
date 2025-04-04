@@ -74,7 +74,8 @@ class SimpleAssembler {
   virtual ~SimpleAssembler();
 
   // Parse the input stream as assembly.
-  absl::Status Parse(std::istream &is);
+  absl::Status Parse(std::istream &is,
+                     ResolverInterface *zero_resolver = nullptr);
   // Add the symbol to the symbol table for the current section. See ELFIO
   // documentation for details of the meaning of the parameters.
   absl::Status AddSymbolToCurrentSection(const std::string &name,
@@ -90,14 +91,25 @@ class SimpleAssembler {
   // The text segment will be laid out starting at base address, followed by
   // the data segment.
   absl::Status CreateExecutable(uint64_t base_address,
-                                const std::string &entry_point);
-  absl::Status CreateExecutable(uint64_t base_address, uint64_t entry_point);
+                                const std::string &entry_point,
+                                ResolverInterface *symbol_resolver = nullptr);
+  absl::Status CreateExecutable(uint64_t base_address, uint64_t entry_point,
+                                ResolverInterface *symbol_resolver = nullptr);
   // Create a relocatable ELF file.
-  absl::Status CreateRelocatable();
+  absl::Status CreateRelocatable(ResolverInterface *symbol_resolver = nullptr);
   // Write the ELF file to the given output stream.
   absl::Status Write(std::ostream &os);
   // Access the ELF writer.
   ELFIO::elfio &writer() { return writer_; }
+
+  // Add a symbol reference to the symbol table if it is not already defined.
+  void SimpleAddSymbol(absl::string_view name);
+
+  // Getters.
+  absl::flat_hash_map<std::string, ELFIO::Elf_Word> &symbol_indices() {
+    return symbol_indices_;
+  }
+  ELFIO::section *symtab() { return symtab_; }
 
  private:
   // Helper function to update the symbol table entries.
@@ -110,7 +122,8 @@ class SimpleAssembler {
   template <typename SymbolType>
   void UpdateSymtabHeaderInfo();
   // Perform second pass of parsing.
-  absl::Status ParsePassTwo(std::vector<RelocationInfo> &relo_vector);
+  absl::Status ParsePassTwo(std::vector<RelocationInfo> &relo_vector,
+                            ResolverInterface *symbol_resolver);
   // Parse and process an assembly directive.
   absl::Status ParseAsmDirective(absl::string_view line, uint64_t address,
                                  ResolverInterface *resolver,
@@ -125,8 +138,6 @@ class SimpleAssembler {
   absl::Status AddSymbol(const std::string &name, ELFIO::Elf64_Addr value,
                          ELFIO::Elf_Xword size, uint8_t type, uint8_t binding,
                          uint8_t other, ELFIO::section *section);
-  // Add a symbol reference to the symbol table if it is not already defined.
-  void SimpleAddSymbol(absl::string_view name);
   // Append the data to the current section.
   absl::Status AppendData(const char *data, size_t size);
 
@@ -157,9 +168,6 @@ class SimpleAssembler {
   // Map that tracks the current address of each section.
   absl::flat_hash_map<ELFIO::section *, uint64_t> section_address_map_;
 
-  // Current symbol resolver (looks up symbols in the symbol table and returns
-  // their values).
-  ResolverInterface *symbol_resolver_ = nullptr;
   std::vector<std::string> lines_;
   // Section pointers.
   ELFIO::section *text_section_ = nullptr;

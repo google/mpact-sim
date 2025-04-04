@@ -32,7 +32,7 @@ namespace mpact {
 namespace sim {
 namespace generic {
 
-// The predicte operand interface is intended primarily as the interface to
+// The predicate operand interface is intended primarily as the interface to
 // read the value of instruction predicates. It is separated from source
 // predicates to avoid mixing it in with the source operands needed for modeling
 // the instruction semantics.

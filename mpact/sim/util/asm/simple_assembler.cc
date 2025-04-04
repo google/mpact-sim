@@ -17,15 +17,14 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <functional>
 #include <istream>
 #include <ostream>
 #include <string>
-#include <utility>
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
-#include "absl/functional/any_invocable.h"
 #include "absl/functional/bind_front.h"
 #include "absl/log/log.h"
 #include "absl/status/status.h"
@@ -34,11 +33,13 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
 #include "elfio/elf_types.hpp"
+#include "elfio/elfio.hpp"  // IWYU pragma: keep
 #include "elfio/elfio_section.hpp"
 #include "elfio/elfio_segment.hpp"
 #include "elfio/elfio_strings.hpp"
 #include "elfio/elfio_symbols.hpp"
 #include "mpact/sim/util/asm/opcode_assembler_interface.h"
+#include "mpact/sim/util/asm/resolver.h"
 #include "mpact/sim/util/asm/resolver_interface.h"
 #include "re2/re2.h"
 
@@ -46,69 +47,6 @@ namespace mpact {
 namespace sim {
 namespace util {
 namespace assembler {
-
-// A symbol resolver that always returns 0 for any symbol name. This is used
-// for the first pass of parsing the assembly code, when we are just creating
-// the symbols and computing the sizes of the sections.
-class ZeroResolver : public ResolverInterface {
- public:
-  // Constructor takes a callback function that will be called for each symbol
-  // name encountered so that it can be added to the symbol table.
-  template <typename T>
-  ZeroResolver(T add_symbol_fcn) : add_symbol_fcn_(add_symbol_fcn) {}
-  absl::StatusOr<uint64_t> Resolve(absl::string_view text) override {
-    // Any symbol name should be added to the symbol table as an undefined
-    // symbol if it is not already there. When the symbol is defined, the
-    // symbol table will be updated. In the case of generating an executable
-    // ELF file, any unresolved symbols will result in an error. When generating
-    // an object file, any unresolved symbols will remain in the symbol table
-    // and must be handled by the linker.
-    add_symbol_fcn_(text);
-    // Return 0 for any symbol name.
-    return 0;
-  }
-
- private:
-  absl::AnyInvocable<void(absl::string_view)> add_symbol_fcn_;
-};
-
-// A symbol resolver that uses the symbol table and the symbol indices to
-// resolve symbol names to values.
-class SymbolResolver : public ResolverInterface {
- public:
-  SymbolResolver(
-      int elf_file_class, ELFIO::section *symtab,
-      const absl::flat_hash_map<std::string, ELFIO::Elf_Word> &symbol_indices)
-      : elf_file_class_(elf_file_class),
-        symtab_(symtab),
-        symbol_indices_(symbol_indices) {}
-  absl::StatusOr<uint64_t> Resolve(absl::string_view text) override {
-    auto iter = symbol_indices_.find(text);
-    if (iter == symbol_indices_.end()) {
-      return absl::InvalidArgumentError(
-          absl::StrCat("SymbolResolver: Symbol '", text, "' not found"));
-    }
-    auto index = iter->second;
-    if (elf_file_class_ == ELFCLASS64) {
-      auto *sym =
-          reinterpret_cast<const ELFIO::Elf64_Sym *>(symtab_->get_data());
-      return sym[index].st_value;
-    } else if (elf_file_class_ == ELFCLASS32) {
-      auto *sym =
-          reinterpret_cast<const ELFIO::Elf32_Sym *>(symtab_->get_data());
-      return sym[index].st_value;
-    }
-    return absl::InternalError("Unsupported ELF file class");
-  }
-
- private:
-  // Elf file class.
-  int elf_file_class_ = 0;
-  // The symbol table ELF section.
-  ELFIO::section *symtab_;
-  // Map from symbol name to symbol index in the symbol table.
-  const absl::flat_hash_map<std::string, ELFIO::Elf_Word> &symbol_indices_;
-};
 
 // Helper functions for parsing the assembly code.
 namespace {
@@ -354,15 +292,23 @@ SimpleAssembler::SimpleAssembler(absl::string_view comment, int elf_file_class,
 }
 
 SimpleAssembler::~SimpleAssembler() {
-  delete symbol_resolver_;
   delete symbol_accessor_;
+  symbol_accessor_ = nullptr;
   delete string_accessor_;
+  string_accessor_ = nullptr;
 }
 
-absl::Status SimpleAssembler::Parse(std::istream &is) {
+absl::Status SimpleAssembler::Parse(std::istream &is,
+                                    ResolverInterface *zero_resolver) {
   // A trivial symbol resolver that always returns 0.
-  ZeroResolver zero_resolver(
-      absl::bind_front(&SimpleAssembler::SimpleAddSymbol, this));
+  bool own_zero_resolver = false;
+  std::function<void()> cleanup = []() {};
+  if (zero_resolver == nullptr) {
+    zero_resolver = new ZeroResolver(
+        absl::bind_front(&SimpleAssembler::SimpleAddSymbol, this));
+    own_zero_resolver = true;
+    cleanup = [zero_resolver]() { delete zero_resolver; };
+  }
   // First pass of parsing the input stream. This will add symbols to the symbol
   // table and compute the sizes of all instructions and the sections. The
   // section_address_map_ will keep track of the current location within each
@@ -409,10 +355,10 @@ absl::Status SimpleAssembler::Parse(std::istream &is) {
         // Pass the full line into the parse functions, they are responsible
         // for handling the labels in pass one.
         if (statement[0] == '.') {
-          status = ParseAsmDirective(line, address, &zero_resolver, byte_vector,
+          status = ParseAsmDirective(line, address, zero_resolver, byte_vector,
                                      relo_vector);
         } else {
-          status = ParseAsmStatement(line, address, &zero_resolver, byte_vector,
+          status = ParseAsmStatement(line, address, zero_resolver, byte_vector,
                                      relo_vector);
         }
         if (!status.ok()) return status;
@@ -428,15 +374,20 @@ absl::Status SimpleAssembler::Parse(std::istream &is) {
       continue;
     }
     // Parse failure.
+    cleanup();
     return absl::AbortedError(absl::StrCat("Parse failure: '", line, "'"));
   }
 
-  if (!is.eof()) return absl::InternalError("Input stream entered bad state");
+  if (!is.eof()) {
+    cleanup();
+    return absl::InternalError("Input stream entered bad state");
+  }
 
   // Add undefined symbols to the symbol table.
   for (auto const &symbol : undefined_symbols_) {
     auto status = AddSymbol(symbol, 0, 0, STT_NOTYPE, 0, 0, nullptr);
     if (!status.ok()) {
+      cleanup();
       return absl::InternalError(absl::StrCat(
           "Failed to add undefined symbol '", symbol, "': ", status.message()));
     }
@@ -446,12 +397,15 @@ absl::Status SimpleAssembler::Parse(std::istream &is) {
   if (bss_section_ != nullptr) {
     bss_section_->set_size(section_address_map_[bss_section_]);
   }
+  cleanup();
   return absl::OkStatus();
 }
 
-absl::Status SimpleAssembler::CreateExecutable(uint64_t base_address,
-                                               uint64_t entry_point) {
-  return CreateExecutable(base_address, absl::StrCat(entry_point));
+absl::Status SimpleAssembler::CreateExecutable(
+    uint64_t base_address, uint64_t entry_point,
+    ResolverInterface *symbol_resolver) {
+  return CreateExecutable(base_address, absl::StrCat(entry_point),
+                          symbol_resolver);
 }
 
 // Helper function to update the symbol table entries for an executable file.
@@ -501,8 +455,10 @@ void SimpleAssembler::UpdateSymbolsForRelocatable() {
   delete[] symbols;
 }
 
-absl::Status SimpleAssembler::CreateExecutable(uint64_t base_address,
-                                               const std::string &entry_point) {
+absl::Status SimpleAssembler::CreateExecutable(
+    uint64_t base_address, const std::string &entry_point,
+    ResolverInterface *symbol_resolver) {
+  LOG(INFO) << "CreateExecutable";
   if (!undefined_symbols_.empty()) {
     std::string message;
     absl::StrAppend(
@@ -513,6 +469,7 @@ absl::Status SimpleAssembler::CreateExecutable(uint64_t base_address,
     }
     return absl::InvalidArgumentError(message);
   }
+  LOG(INFO) << "set type to ET_EXEC";
   writer_.set_type(ET_EXEC);
   // Section sizes are now known. So let's compute the layout and update all
   // the symbol values/addresses before the next pass.
@@ -525,7 +482,10 @@ absl::Status SimpleAssembler::CreateExecutable(uint64_t base_address,
   uint64_t text_segment_start = 0;
   if (text_section_ != nullptr) {
     text_segment_start = base_address & ~4095ULL;
-    ELFIO::segment *text_segment = writer_.segments.add();
+    text_segment = writer_.segments.add();
+    if (text_segment == nullptr) {
+      return absl::InternalError("Failed to create elf segment for text");
+    }
     text_segment->set_type(PT_LOAD);
     text_segment->set_virtual_address(text_segment_start);
     text_segment->set_physical_address(text_segment_start);
@@ -542,6 +502,9 @@ absl::Status SimpleAssembler::CreateExecutable(uint64_t base_address,
         ~4095ULL;
 
     ELFIO::segment *data_segment = writer_.segments.add();
+    if (data_segment == nullptr) {
+      return absl::InternalError("Failed to create elf segment for data");
+    }
     data_segment->set_type(PT_LOAD);
     data_segment->set_virtual_address(data_segment_start);
     data_segment->set_physical_address(data_segment_start);
@@ -575,12 +538,21 @@ absl::Status SimpleAssembler::CreateExecutable(uint64_t base_address,
   section_address_map_[data_section_] = data_segment_start;
   section_address_map_[bss_section_] = bss_segment_start;
 
+  std::function<void()> cleanup = []() {};
+  if (symbol_resolver == nullptr) {
+    symbol_resolver =
+        new SymbolResolver(elf_file_class_, symtab_, symbol_indices_);
+    cleanup = [symbol_resolver]() { delete symbol_resolver; };
+  }
   // Pass in the relocation vector to the second pass of parsing, but ignore
   // the values, since we are creating an executable file, and all the symbols
   // are resolved.
   std::vector<RelocationInfo> relo_vector;
-  auto status = ParsePassTwo(relo_vector);
-  if (!status.ok()) return status;
+  auto status = ParsePassTwo(relo_vector, symbol_resolver);
+  if (!status.ok()) {
+    cleanup();
+    return status;
+  }
 
   // Add sections to the segments. First segment gets the text section. The
   // second segment gets the data and bss sections.
@@ -595,12 +567,16 @@ absl::Status SimpleAssembler::CreateExecutable(uint64_t base_address,
                                     bss_section_->get_addr_align());
   }
 
-  auto res = SimpleTextToInt<uint64_t>(entry_point, symbol_resolver_);
-  if (!res.ok()) return res.status();
+  auto res = SimpleTextToInt<uint64_t>(entry_point, symbol_resolver);
+  if (!res.ok()) {
+    cleanup();
+    return res.status();
+  }
   uint64_t entry_point_value = res.value();
 
   symbol_accessor_->arrange_local_symbols();
   writer_.set_entry(entry_point_value);
+  cleanup();
   return absl::OkStatus();
 }
 
@@ -648,7 +624,8 @@ void SimpleAssembler::UpdateSymtabHeaderInfo() {
   symtab_->set_info(last_local + 1);
 }
 
-absl::Status SimpleAssembler::CreateRelocatable() {
+absl::Status SimpleAssembler::CreateRelocatable(
+    ResolverInterface *symbol_resolver) {
   writer_.set_type(ET_REL);
   // Reset the section address map to zero since we are creating a relocatable
   // file.
@@ -679,10 +656,19 @@ absl::Status SimpleAssembler::CreateRelocatable() {
     UpdateSymtabHeaderInfo<ELFIO::Elf32_Sym>();
   }
 
+  std::function<void()> cleanup = []() {};
+  if (symbol_resolver == nullptr) {
+    symbol_resolver =
+        new SymbolResolver(elf_file_class_, symtab_, symbol_indices_);
+    cleanup = [symbol_resolver]() { delete symbol_resolver; };
+  }
   // Parse the source again, collect relocations.
   std::vector<RelocationInfo> relo_vector;
-  auto status = ParsePassTwo(relo_vector);
-  if (!status.ok()) return status;
+  auto status = ParsePassTwo(relo_vector, symbol_resolver);
+  if (!status.ok()) {
+    cleanup();
+    return status;
+  }
 
   // Handle relocations if there are any.
   if (!relo_vector.empty()) {
@@ -694,10 +680,12 @@ absl::Status SimpleAssembler::CreateRelocatable() {
     }
     for (auto const &[section_index, relo_vec] : relo_map) {
       if (section_index == 0) {
+        cleanup();
         return absl::InternalError(
             "Relocation entry with section index 0 not supported");
       }
       if (!section_index_map_.contains(section_index)) {
+        cleanup();
         return absl::InternalError(
             absl::StrCat("Section index not found: ", section_index));
       }
@@ -722,22 +710,23 @@ absl::Status SimpleAssembler::CreateRelocatable() {
         status = AddRelocationEntries<ELFIO::Elf32_Rela>(
             relo_vec, symbol_indices_, rela_section);
       } else {
+        cleanup();
         return absl::InternalError(
             absl::StrCat("Unsupported ELF file class: ", elf_file_class_));
       }
-      if (!status.ok()) return status;
+      if (!status.ok()) {
+        cleanup();
+        return status;
+      }
     }
   }
+  cleanup();
   return absl::OkStatus();
 }
 
 absl::Status SimpleAssembler::ParsePassTwo(
-    std::vector<RelocationInfo> &relo_vector) {
-  // For the second pass, we need a symbol resolver that uses the symbol
-  // table and the symbol indices.
-  symbol_resolver_ =
-      new SymbolResolver(elf_file_class_, symtab_, symbol_indices_);
-
+    std::vector<RelocationInfo> &relo_vector,
+    ResolverInterface *symbol_resolver) {
   // Now fill in the sections. Parse each of the lines saved in the first
   // pass.
   for (auto const &line : lines_) {
@@ -747,10 +736,10 @@ absl::Status SimpleAssembler::ParsePassTwo(
     auto relo_size = relo_vector.size();
     auto address = section_address_map_[section];
     if (line[0] == '.') {
-      auto status = ParseAsmDirective(line, address, symbol_resolver_,
+      auto status = ParseAsmDirective(line, address, symbol_resolver,
                                       byte_vector, relo_vector);
     } else {
-      auto status = ParseAsmStatement(line, address, symbol_resolver_,
+      auto status = ParseAsmStatement(line, address, symbol_resolver,
                                       byte_vector, relo_vector);
     }
     if (!status.ok()) return status;
@@ -763,6 +752,9 @@ absl::Status SimpleAssembler::ParsePassTwo(
     if (byte_vector.empty()) continue;
     // Add data to the section, but first make sure it's not bss.
     if (section != bss_section_) {
+      if (section == nullptr) {
+        return absl::InternalError("Data is added to a null section");
+      }
       section->append_data(reinterpret_cast<const char *>(byte_vector.data()),
                            byte_vector.size());
     }
@@ -861,7 +853,7 @@ absl::Status SimpleAssembler::ParseAsmDirective(
     auto values = res.value();
     size = values.size() * sizeof(int64_t);
     ConvertToBytes<int64_t>(values, byte_values);
-  } else if (match == "section") {
+  } else if (match == "sect") {
     // .section <name>,<type>
     // TODO(torerik): Implement.
     return absl::UnimplementedError("Section directive not implemented");
@@ -958,12 +950,12 @@ absl::Status SimpleAssembler::ParseAsmStatement(
     std::vector<uint8_t> &byte_values,
     std::vector<RelocationInfo> &relocations) {
   // Call the target specific assembler to encode the statement.
-  auto status = opcode_assembler_if_->Encode(
+  auto result = opcode_assembler_if_->Encode(
       address, line,
       absl::bind_front(&SimpleAssembler::AddSymbolToCurrentSection, this),
       resolver, byte_values, relocations);
-  if (!status.ok()) return status;
-  section_address_map_[current_section_] += byte_values.size();
+  if (!result.ok()) return result.status();
+  section_address_map_[current_section_] += result.value();
   return absl::OkStatus();
 }
 

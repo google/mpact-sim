@@ -66,6 +66,10 @@ class Bundle {
   InstructionSet *instruction_set() const { return instruction_set_; }
   bool is_marked() const { return is_marked_; }
   void set_is_marked(bool value) { is_marked_ = value; }
+  std::string semfunc_code_string() const { return semfunc_code_string_; }
+  void set_semfunc_code_string(std::string code_string) {
+    semfunc_code_string_ = std::move(code_string);
+  }
 
  private:
   BundleDeclCtx *ctx_;
@@ -76,6 +80,8 @@ class Bundle {
   std::string name_;
   // Name in PascalCase.
   std::string pascal_name_;
+  // Semantic function code string.
+  std::string semfunc_code_string_;
   // The slots contained within this bundle, including instance indices.
   std::vector<std::pair<std::string, const std::vector<int>>> slot_uses_;
   // The bundles contained within this bundle.

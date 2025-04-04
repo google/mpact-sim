@@ -159,7 +159,7 @@ void EncodingGroup::AddSubGroups() {
       encoding_group->AddEncoding(enc);
     }
     // Avoid useless groups and infinite recursion by deleting any groups that
-    // are empty and where the all the encodings ended up in the same subgroup.
+    // are empty and where all the encodings ended up in the same subgroup.
     if (encoding_group->encoding_vec().empty()) {
       delete encoding_group;
       continue;
@@ -439,17 +439,20 @@ void EncodingGroup::EmitComplexDecoderBodyIfSequence(
   // For each instruction in the encoding vec, generate the if statement
   // to see if the instruction is matched.
   absl::flat_hash_set<std::string> extracted;
-  // For equal constraints, some can be ignored because those bits are wholly
-  // considered by the parent groups or the discriminator.
+  int count = 0;
+  // For equal constraints, some can be ignored because those bits are
+  // wholly considered by the parent groups or the discriminator.
   for (auto *encoding : encoding_vec_) {
     for (auto *constraint : encoding->equal_constraints()) {
       ProcessConstraint(extracted, constraint, definitions_ptr);
     }
-    EmitEncodingIfStatement(/*indent*/ 0, encoding, opcode_enum, extracted,
-                            definitions_ptr);
+    count += EmitEncodingIfStatement(/*indent*/ 0, encoding, opcode_enum,
+                                     extracted, definitions_ptr);
   }
-  absl::StrAppend(definitions_ptr, "  return std::make_pair(", opcode_enum,
-                  "::kNone, FormatEnum::kNone);\n");
+  if (count > 0) {
+    absl::StrAppend(definitions_ptr, "  return std::make_pair(", opcode_enum,
+                    "::kNone, FormatEnum::kNone);\n");
+  }
 }
 
 void EncodingGroup::ProcessConstraint(

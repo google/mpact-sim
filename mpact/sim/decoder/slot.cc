@@ -488,7 +488,8 @@ std::tuple<std::string, std::string> Slot::GenerateAsmRegexMatcher() const {
       encoder,
       " *encoder_;\n"
       "  std::vector<RE2 *> regex_vec_;\n"
-      "  RE2::Set regex_set_;\n");
+      "  RE2::Set regex_set_;\n"
+      "  absl::flat_hash_map<int, int> index_to_opcode_map_;\n");
   absl::StrAppend(&cc_output, class_name, "::", class_name, "(",
                   instruction_set_->pascal_name(),
                   "EncoderInterfaceBase *encoder) :\n"
@@ -514,12 +515,16 @@ std::tuple<std::string, std::string> Slot::GenerateAsmRegexMatcher() const {
   for (auto const &[name, inst_ptr] : instruction_map_) {
     auto [regex, opnd_locators] = GenerateRegEx(inst_ptr, formats);
     max_args = std::max(max_args, opnd_locators.size());
+    std::string opcode_name =
+        absl::StrCat("OpcodeEnum::k", ToPascalCase(inst_ptr->opcode()->name()));
     absl::StrAppend(&cc_output, "  regex_vec_.push_back(new RE2(", regex,
                     "));\n"
                     "  index = regex_set_.Add(",
                     regex,
                     ", &error);\n"
-                    "  if (index == -1) return absl::InternalError(error);\n");
+                    "  if (index == -1) return absl::InternalError(error);\n"
+                    "  index_to_opcode_map_.insert({index, static_cast<int>(",
+                    opcode_name, ")", "});\n");
   }
   absl::StrAppend(&h_output, "  std::string args[", max_args,
                   "];\n"
@@ -576,12 +581,13 @@ std::tuple<std::string, std::string> Slot::GenerateAsmRegexMatcher() const {
   for (auto index : matches) {
     std::vector<std::string> values;
     if (!Extract(text, index, values)) continue;
+    int opcode_index = index_to_opcode_map_.at(index);
 )",
-      "    auto result = encode_fcns[index](encoder_, SlotEnum::k",
+      "    auto result = encode_fcns[opcode_index](encoder_, SlotEnum::k",
       pascal_name(),
       ", entry, \n"
       "                                     "
-      "static_cast<OpcodeEnum>(index), address, values, resolver, "
+      "static_cast<OpcodeEnum>(opcode_index), address, values, resolver, "
       "relocations);\n",
       R"(
     if (!result.status().ok()) {
@@ -1235,14 +1241,15 @@ std::string Slot::ListFuncGetterInitializations(
                       absl::StrCat(pascal_name(), "SlotSetOperandsNull"),
                       encoding_type, default_instruction_->opcode()));
   absl::StrAppend(
-      &output, "    {OperandSetter{", pascal_name(),
+      &output, "    {static_cast<int>(OpcodeEnum::kNone), {OperandSetter{",
+      pascal_name(),
       "SlotSetOperandsNull},\n"
       "    ",
       GenerateDisassemblySetter(default_instruction_), ",\n", "    ",
       GenerateResourceSetter(default_instruction_, encoding_type), ",\n",
       "    ", GenerateAttributeSetter(default_instruction_), ",\n",
       "    SemFuncSetter{", default_instruction_->semfunc_code_string(), "}, ",
-      default_instruction_->opcode()->instruction_size(), "},\n");
+      default_instruction_->opcode()->instruction_size(), "}},\n");
   for (auto const &[unused, inst_ptr] : instruction_map_) {
     auto *instruction = inst_ptr;
     std::string opcode_name = instruction->opcode()->pascal_name();
@@ -1281,12 +1288,13 @@ std::string Slot::ListFuncGetterInitializations(
       }
       sep = ", ";
     }
-    absl::StrAppend(&output, "    {OperandSetter{", operands_str, "},\n",
-                    "    ", GenerateDisassemblySetter(instruction), ",\n",
-                    "    ", GenerateResourceSetter(instruction, encoding_type),
-                    ",\n", "    ", GenerateAttributeSetter(instruction), ",\n",
+    absl::StrAppend(&output, "    {static_cast<int>(OpcodeEnum::k", opcode_name,
+                    "), {OperandSetter{", operands_str, "},\n", "    ",
+                    GenerateDisassemblySetter(instruction), ",\n", "    ",
+                    GenerateResourceSetter(instruction, encoding_type), ",\n",
+                    "    ", GenerateAttributeSetter(instruction), ",\n",
                     "    SemFuncSetter{", code_str, "}, ",
-                    instruction->opcode()->instruction_size(), "},\n");
+                    instruction->opcode()->instruction_size(), "}},\n");
   }
   return output;
 }
@@ -1305,18 +1313,19 @@ std::string Slot::GenerateClassDeclaration(
                   class_name, "(ArchState *arch_state);\n");
   // Emit Decode function generated that decodes the slot and creates and
   // initializes an instruction object, as well as private data members.
-  absl::StrAppend(&output, "  Instruction *Decode(uint64_t address, ",
-                  encoding_type, "* isa_encoding, SlotEnum, int entry);\n",
-                  "\n"
-                  " private:\n"
-                  "  ArchState *arch_state_;\n"
-                  "  std::array<InstructionInfo, ",
-                  instruction_map_.size() + 1, "> instruction_info_", ";\n",
-                  "  static constexpr SlotEnum slot_ = SlotEnum::k",
-                  pascal_name(),
-                  ";\n"
-                  "};\n"
-                  "\n");
+  absl::StrAppend(
+      &output, "  Instruction *Decode(uint64_t address, ", encoding_type,
+      "* isa_encoding, SlotEnum, int entry);\n",
+      "\n"
+      " private:\n"
+      "  ArchState *arch_state_;\n"
+      "  absl::flat_hash_map<int, InstructionInfo> instruction_info_;\n",
+      //"  std::array<InstructionInfo, ",
+      // instruction_map_.size() + 1, "> instruction_info_", ";\n",
+      "  static constexpr SlotEnum slot_ = SlotEnum::k", pascal_name(),
+      ";\n"
+      "};\n"
+      "\n");
   return output;
 }
 

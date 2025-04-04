@@ -21,17 +21,19 @@ package(
 
 cc_library(
     name = "asm",
+    srcs = ["resolver.cc"],
     hdrs = [
         "opcode_assembler_interface.h",
+        "resolver.h",
         "resolver_interface.h",
     ],
     deps = [
         "@com_github_serge1_elfio//:elfio",
+        "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/functional:any_invocable",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
-        "@com_google_absl//absl/strings:str_format",
     ],
 )
 
@@ -44,7 +46,6 @@ cc_library(
         "@com_github_serge1_elfio//:elfio",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
-        "@com_google_absl//absl/functional:any_invocable",
         "@com_google_absl//absl/functional:bind_front",
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/status",

@@ -191,7 +191,7 @@ absl::Status InstructionSetVisitor::Process(
                                           instruction_set->namespaces());
   dec_dot_h_file.close();
   // Decoder .cc file.
-  dec_dot_cc_file << GenerateCcFileProlog(dec_dot_h_name,
+  dec_dot_cc_file << GenerateCcFileProlog(dec_dot_h_name, /*use_includes=*/true,
                                           instruction_set->namespaces());
   dec_dot_cc_file << instruction_set->GenerateClassDefinitions(
       dec_dot_h_name, encoding_type_name);
@@ -201,7 +201,7 @@ absl::Status InstructionSetVisitor::Process(
   // Enum files.
   enum_h_file << GenerateSimpleHdrProlog(ToHeaderGuard(enum_h_name),
                                          instruction_set->namespaces());
-  enum_cc_file << GenerateCcFileProlog(enum_h_name,
+  enum_cc_file << GenerateCcFileProlog(enum_h_name, /*use_includes=*/false,
                                        instruction_set->namespaces());
   auto [h_output, cc_output] = instruction_set->GenerateEnums(enum_h_name);
   enum_h_file << h_output;
@@ -575,10 +575,70 @@ void InstructionSetVisitor::VisitBundleDeclaration(
   Bundle *bundle =
       new Bundle(ctx->bundle_name->getText(), instruction_set, ctx);
   instruction_set->AddBundle(bundle);
-  context_file_map_[ctx->bundle_list()] = context_file_map_.at(ctx);
-  VisitBundleList(ctx->bundle_list(), bundle);
-  context_file_map_[ctx->slot_list()] = context_file_map_.at(ctx);
-  VisitSlotList(ctx->slot_list(), bundle);
+  int num_slot_lists = 0;
+  int num_bundle_lists = 0;
+  int num_include_file_lists = 0;
+  int num_semfunc_specs = 0;
+  for (auto *part : ctx->bundle_parts()) {
+    if (part->slot_list() != nullptr) {
+      if (num_slot_lists > 0) {
+        error_listener()->semanticError(file_names_[context_file_map_.at(ctx)],
+                                        part->start,
+                                        "Multiple slot lists in bundle");
+        return;
+      }
+      context_file_map_[part->slot_list()] = context_file_map_.at(ctx);
+      VisitSlotList(part->slot_list(), bundle);
+      num_slot_lists++;
+      continue;
+    }
+    if (part->bundle_list() != nullptr) {
+      if (num_bundle_lists > 0) {
+        error_listener()->semanticError(file_names_[context_file_map_.at(ctx)],
+                                        part->start,
+                                        "Multiple bundle lists in bundle");
+        return;
+      }
+      context_file_map_[part->bundle_list()] = context_file_map_.at(ctx);
+      VisitBundleList(part->bundle_list(), bundle);
+      num_bundle_lists++;
+      continue;
+    }
+    if (part->include_file_list() != nullptr) {
+      if (num_include_file_lists > 0) {
+        error_listener()->semanticError(
+            file_names_[context_file_map_.at(ctx)], part->start,
+            "Multiple include file lists in bundle");
+        return;
+      }
+      for (auto *include_file : part->include_file_list()->include_file()) {
+        // Insert the string - the call will always succeed, but the insertion
+        // does not happen if it already exists.
+        include_files_.insert(include_file->STRING_LITERAL()->getText());
+      }
+      num_include_file_lists++;
+      continue;
+    }
+    if (part->semfunc_spec() != nullptr) {
+      if (num_semfunc_specs > 0) {
+        error_listener()->semanticError(file_names_[context_file_map_.at(ctx)],
+                                        part->start,
+                                        "Multiple semfunc specs in bundle");
+        return;
+      }
+      std::string string_literal =
+          part->semfunc_spec()->STRING_LITERAL(0)->getText();
+      // Strip double quotes.
+      std::string code_string =
+          string_literal.substr(1, string_literal.length() - 2);
+      bundle->set_semfunc_code_string(code_string);
+      num_semfunc_specs++;
+      continue;
+    }
+    error_listener()->semanticError(file_names_[context_file_map_.at(ctx)],
+                                    part->start, "Unhandled bundle part type");
+    return;
+  }
 }
 
 void InstructionSetVisitor::VisitSlotDeclaration(
@@ -2235,7 +2295,7 @@ std::string InstructionSetVisitor::GenerateHdrFileProlog(
       "  virtual ResourceOperandInterface * "
       "GetComplexResourceOperand",
       "(SlotEnum slot, int entry, OpcodeEnum opcode, ComplexResourceEnum "
-      "resource_op, int begin, int end) { return {}; }\n");
+      "resource_op, int begin, int end) { return nullptr; }\n");
   absl::StrAppend(
       &output,
       "  virtual std::vector<ResourceOperandInterface *> "
@@ -2319,6 +2379,7 @@ InstructionSetVisitor::GenerateEncFilePrologs(
                   "#include <string>\n"
                   "#include <vector>\n"
                   "\n"
+                  "#include \"absl/container/flat_hash_map.h\"\n"
                   "#include \"absl/status/status.h\"\n"
                   "#include \"absl/status/statusor.h\"\n"
                   "#include \"absl/strings/string_view.h\"\n"
@@ -2370,7 +2431,7 @@ std::string InstructionSetVisitor::GenerateHdrFileEpilog(
 }
 
 std::string InstructionSetVisitor::GenerateCcFileProlog(
-    absl::string_view hdr_file_name,
+    absl::string_view hdr_file_name, bool use_includes,
     const std::vector<std::string> &namespaces) {
   std::string output;
   // Include files.
@@ -2378,9 +2439,10 @@ std::string InstructionSetVisitor::GenerateCcFileProlog(
   absl::StrAppend(&output,
                   "\n#include <array>\n\n"
                   "#include \"absl/strings/str_format.h\"\n\n");
-
-  for (auto &include_file : include_files_) {
-    absl::StrAppend(&output, "#include ", include_file, "\n");
+  if (use_includes) {
+    for (auto &include_file : include_files_) {
+      absl::StrAppend(&output, "#include ", include_file, "\n");
+    }
   }
   absl::StrAppend(&output, "\n");
   // Namespaces.

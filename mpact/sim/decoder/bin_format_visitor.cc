@@ -62,41 +62,63 @@ namespace internal {
 template <typename T>
 static inline T ExtractBits(const uint8_t *data, int data_size, int msb,
                             int width) {
-  if (width == 0) return 0;
-
-  int byte_low = data_size - ((msb - width) >> 3) - 1;
-  int byte_high = data_size - (msb >> 3) - 1;
-  int high_bit = msb & 0x7;
-
-  // If it is only from one byte, extract and return.
-  if (byte_low == byte_high) {
-    uint8_t mask = (1 << (high_bit + 1)) - 1;
-    return (mask & data[byte_high]) >> (high_bit - width + 1);
-  }
-
-  // Extract from the high order byte.
   T val = 0;
-  uint8_t mask = 0xff >> (7 - high_bit);
-  val = (mask & data[byte_high++]);
-  int remainder = width - (1 + high_bit);
 
-  while (remainder >= 8) {
-    val = (val << 8) | data[byte_high++];
-    remainder -= 8;
-  }
+  if (width == 0) return val;
 
-  // Extract any remaining bits from the high end of the last byte.
-  if (remainder > 0) {
-    val <<= remainder;
-    int shift = 8 - remainder;
-    uint8_t mask = 0xff << shift;
-    val |= (data[byte_high] & mask) >> shift;
+  int lsb = msb - width + 1;
+  int byte_low = data_size - (lsb >> 3) - 1;
+
+
+  int blsb = lsb & 0x7;
+  int bits_left = width;
+  int bits_extracted = 0;
+  while (bits_left > 0) {
+    int bwidth = std::min(8 - blsb, bits_left);
+    uint8_t bmask = ((1 << bwidth) - 1) << blsb;
+    val |= ((data[byte_low] & bmask) >> blsb) << bits_extracted;
+    blsb = 0;
+    bits_left -= bwidth;
+    bits_extracted += bwidth;
+    byte_low--;
   }
   return val;
 }
 
 }  // namespace internal
 
+)foo";
+
+constexpr char kTemplatedInsertBits[] = R"foo(
+namespace internal {
+
+// This function inserts a bitfield width bits wide into the byte vector,
+// starting at bit_index bits from the end of data. The lsb has index 0. The
+// byte vector is data_size bytes long. There is no error checking that T
+// can hold width bits.
+template <typename T>
+static inline void InsertBits(uint8_t *data, int data_size, int msb, int width,
+                              T val) {
+  if (width == 0) return;
+
+  int lsb = msb - width + 1;
+  int byte_low = data_size - (lsb >> 3) - 1;
+  int blsb = lsb & 0x7;
+  while (width > 0) {
+    int bwidth = std::min(8 - blsb, width);
+    T bmask = (1 << bwidth) - 1;
+    uint8_t bval = (val & bmask);
+    bmask <<= blsb;
+    bval <<= blsb;
+    val >>= bwidth;
+    data[byte_low] = (data[byte_low] & ~bmask) | (bval & bmask);
+    blsb = 0;
+    width -= bwidth;
+    byte_low--;
+  }
+}
+
+}  // namespace internal
 )foo";
 
 BinFormatVisitor::BinFormatVisitor() {
@@ -237,6 +259,7 @@ BinFormatVisitor::StringPair BinFormatVisitor::EmitDecoderFilePrefix(
                   "#include <cstdint>\n"
                   "\n"
                   "#include \"absl/functional/any_invocable.h\"\n"
+                  "#include \"absl/log/log.h\"\n"
                   "\n\n");
   for (auto const &include_file : encoding_info->include_files()) {
     absl::StrAppend(&h_string, "#include ", include_file, "\n");
@@ -327,14 +350,15 @@ std::tuple<std::string, std::string> BinFormatVisitor::EmitEncoderFilePrefix(
                   "#include <iostream>\n"
                   "#include <cstdint>\n\n"
                   "#include \"absl/base/no_destructor.h\"\n"
-                  "#include \"absl/container/flat_hash_map.h\"\n\n"
+                  "#include \"absl/container/flat_hash_map.h\"\n"
+                  "#include \"absl/log/log.h\"\n\n"
                   "#include \"",
                   enum_h_name, "\"\n");
   absl::StrAppend(&cc_string, "#include \"", dot_h_name,
                   "\"\n\n"
                   "#include <cstdint>\n\n"
                   "#include \"absl/base/no_destructor.h\"\n"
-                  "#include \"absl/container/flat_hash_map.h\"\n\n"
+                  "#include \"absl/container/flat_hash_map.h\"\n"
                   "#include \"",
                   enum_h_name, "\"\n");
   for (auto &name_space : encoding_info->decoder()->namespaces()) {
@@ -342,7 +366,8 @@ std::tuple<std::string, std::string> BinFormatVisitor::EmitEncoderFilePrefix(
     absl::StrAppend(&cc_string, name_space_str);
     absl::StrAppend(&h_string, name_space_str);
   }
-  absl::StrAppend(&h_string, "\n");
+  // Write out the templated extractor function used by the other methods.
+  absl::StrAppend(&h_string, "\n", kTemplatedInsertBits, "\n");
   absl::StrAppend(&cc_string, "\n");
   return std::tie(h_string, cc_string);
 }

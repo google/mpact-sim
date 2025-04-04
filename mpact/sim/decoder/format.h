@@ -15,6 +15,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <map>
 #include <string>
 #include <tuple>
 #include <vector>
@@ -171,9 +172,16 @@ class Format {
   std::string GenerateFormatInserter(std::string_view format_alias,
                                      const Format *format, int high,
                                      int size) const;
+  std::string GenerateReplicatedFormatInserter(std::string_view format_alias,
+                                               const Format *format, int high,
+                                               int size) const;
+  std::string GenerateSingleFormatInserter(std::string_view format_alias,
+                                           const Format *format,
+                                           int high) const;
   std::string GenerateOverlayInserter(Overlay *overlay) const;
   // Return string representation of the int type that contains bitwidth bits.
   std::string GetIntType(int bitwidth) const;
+  std::string GetUIntType(int bitwidth) const;
   int GetIntTypeBitWidth(int bitwidth) const;
 
   std::string name_;

@@ -343,6 +343,9 @@ std::string InstructionSet::GenerateClassDeclarations(
                   Indent(absl::StrCat("  ", pascal_name(), "InstructionSet(")),
                   factory_class_name,
                   " *factory);\n"
+                  "  virtual ~",
+                  pascal_name(),
+                  "InstructionSet();\n"
                   "  Instruction *Decode(uint64_t address, ",
                   encoding_type,
                   " *encoding);\n"
@@ -386,6 +389,10 @@ std::string InstructionSet::GenerateClassDefinitions(
     absl::StrAppend(&output, "  ", slot_name, "_decoder_ = factory->Create",
                     ToPascalCase(slot_name), "Slot(arch_state_);\n");
   }
+  absl::StrAppend(&output, "}\n");
+  // Destructor.
+  absl::StrAppend(&output, class_name, "::~", class_name, "() {\n");
+  absl::StrAppend(&output, "  // empty for now.\n");
   absl::StrAppend(&output, "}\n");
   // Generate the top level decode function body.
   absl::StrAppend(&output, "Instruction *", class_name,
@@ -887,7 +894,9 @@ std::tuple<std::string, std::string> InstructionSet::GenerateEncClasses(
                     position,
                     ") {\n"
                     "    return absl::InvalidArgumentError(\n"
-                    "        absl::StrCat(\"Invalid number of operands (\", "
+                    "        absl::StrCat(\"",
+                    opcode->pascal_name(),
+                    ": Invalid number of operands (\", "
                     "num_args, \") - expected ",
                     position,
                     "\"));\n"

@@ -187,6 +187,7 @@ class InstructionSetVisitor {
   std::string GenerateHdrFileEpilog(absl::string_view guard_name,
                                     const std::vector<std::string> &namespaces);
   std::string GenerateCcFileProlog(absl::string_view hdr_file_name,
+                                   bool use_includes,
                                    const std::vector<std::string> &namespaces);
   std::string GenerateNamespaceEpilog(
       const std::vector<std::string> &namespaces);

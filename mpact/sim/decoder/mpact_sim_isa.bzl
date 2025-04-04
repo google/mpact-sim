@@ -198,6 +198,8 @@ def mpact_bin_fmt_decoder(name, includes, src = "", srcs = [], deps = [], decode
         lib_deps.append("@com_google_absl//absl/container:flat_hash_map")
     if "@com_google_absl//absl/functional:any_invocable" not in deps:
         lib_deps.append("@com_google_absl//absl/functional:any_invocable")
+    if "@com_google_absl//absl/log" not in deps:
+        lib_deps.append("@com_google_absl//absl/log")
     if "@com_google_absl//absl/strings:str_format" not in deps:
         lib_deps.append("@com_google_absl//absl/strings:str_format")
     if "@com_google_mpact-sim//mpact/sim/generic:arch_state" not in deps:

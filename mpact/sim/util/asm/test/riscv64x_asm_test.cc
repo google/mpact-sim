@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <cstddef>
 #include <cstdint>
 #include <sstream>
 #include <string>
@@ -54,10 +55,11 @@ class RiscV64XAssembler : public OpcodeAssemblerInterface {
   RiscV64XAssembler(Riscv64xSlotMatcher* matcher)
       : label_re_("^(\\S+)\\s*:"), matcher_(matcher) {};
   ~RiscV64XAssembler() override = default;
-  absl::Status Encode(uint64_t address, absl::string_view text,
-                      AddSymbolCallback add_symbol_callback,
-                      ResolverInterface* resolver, std::vector<uint8_t>& bytes,
-                      std::vector<RelocationInfo>& relocations) override {
+  absl::StatusOr<size_t> Encode(
+      uint64_t address, absl::string_view text,
+      AddSymbolCallback add_symbol_callback, ResolverInterface* resolver,
+      std::vector<uint8_t>& bytes,
+      std::vector<RelocationInfo>& relocations) override {
     // First check to see if there is a label, if so, add it to the symbol table
     // with the current address.
     std::string label;
@@ -78,7 +80,7 @@ class RiscV64XAssembler : public OpcodeAssemblerInterface {
     for (int i = 0; i < size / 8; ++i) {
       bytes.push_back(u.b[i]);
     }
-    return absl::OkStatus();
+    return bytes.size();
   }
 
  private:

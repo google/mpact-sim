@@ -27,7 +27,7 @@ class Instruction;
 class DecoderInterface {
  public:
   // Return a decoded instruction for the given address. If there are errors
-  // in the instruciton decoding, the decoder should still produce an
+  // in the instruction decoding, the decoder should still produce an
   // instruction that can be executed, but its semantic action function should
   // set an error condition in the simulation when executed.
   virtual Instruction *DecodeInstruction(uint64_t address) = 0;

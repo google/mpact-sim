@@ -176,7 +176,7 @@ class Instruction : public ReferenceCount {
     disasm_string_ = std::move(disasm);
   }
 
-  std::string AsString() const;
+  virtual std::string AsString() const;
 
   // Setter and getter for the integer attributes.
   absl::Span<const int> Attributes() const { return attributes_; }
