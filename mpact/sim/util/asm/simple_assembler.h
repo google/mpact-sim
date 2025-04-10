@@ -105,11 +105,15 @@ class SimpleAssembler {
   // Add a symbol reference to the symbol table if it is not already defined.
   void SimpleAddSymbol(absl::string_view name);
 
-  // Getters.
+  // Getters and setters.
   absl::flat_hash_map<std::string, ELFIO::Elf_Word> &symbol_indices() {
     return symbol_indices_;
   }
   ELFIO::section *symtab() { return symtab_; }
+  unsigned data_address_unit() { return data_address_unit_; }
+  void set_data_address_unit(unsigned data_address_unit) {
+    data_address_unit_ = data_address_unit;
+  }
 
  private:
   // Helper function to update the symbol table entries.
@@ -183,6 +187,8 @@ class SimpleAssembler {
   absl::flat_hash_map<std::string, ELFIO::Elf_Word> symbol_indices_;
   // Set of undefined symbols.
   absl::flat_hash_set<std::string> undefined_symbols_;
+  // Data address unit - by default 1 for byte addressable.
+  unsigned data_address_unit_ = 1;
 };
 
 }  // namespace assembler

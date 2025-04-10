@@ -367,8 +367,13 @@ absl::Status SimpleAssembler::Parse(std::istream &is,
         lines_.push_back(statement);
       } else if (!label.empty()) {
         // This is just a single label definition. Add it to the symbol table.
-        auto status =
-            AddSymbolToCurrentSection(label, address, 0, STT_NOTYPE, 0, 0);
+        uint64_t symbol_address = address;
+        if ((current_section_ == data_section_) ||
+            (current_section_ == bss_section_)) {
+          symbol_address = address / data_address_unit_;
+        }
+        auto status = AddSymbolToCurrentSection(label, symbol_address, 0,
+                                                STT_NOTYPE, 0, 0);
         if (!status.ok()) return status;
       }
       continue;
