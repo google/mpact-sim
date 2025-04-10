@@ -176,7 +176,7 @@ template <typename T>
 absl::StatusOr<std::vector<T>> GetValues(
     absl::string_view remainder, ResolverInterface *resolver = nullptr) {
   std::vector<T> values;
-  static RE2 value_re("(0x[0-9a-fA-F]+|-?[0-9]+)\\s*(?:,|$)");
+  static RE2 value_re("\\s*(0x[0-9a-fA-F]+|-?[0-9]+)\\s*(?:,|$)");
   std::string match;
   while (RE2::Consume(&remainder, value_re, &match)) {
     auto result = SimpleTextToInt<typename AtoIType<T>::type>(match);
@@ -192,7 +192,7 @@ template <>
 absl::StatusOr<std::vector<char>> GetValues<char>(absl::string_view remainder,
                                                   ResolverInterface *resolver) {
   std::vector<char> values;
-  static RE2 value_re("'(.{1,2})'\\s*(?:,|$)");
+  static RE2 value_re("\\s*'(.{1,2})'\\s*(?:,|$)");
   std::string match;
   while (RE2::Consume(&remainder, value_re, &match)) {
     auto expanded = ExpandEscapes(match);
@@ -210,7 +210,7 @@ absl::StatusOr<std::vector<std::string>> GetValues<std::string>(
     absl::string_view remainder, ResolverInterface *resolver) {
   std::vector<std::string> values;
   std::string match;
-  static RE2 value_re("\"([^\"]*)\"\\s*(?:,|$)");
+  static RE2 value_re("\\s*\"([^\"]*)\"\\s*(?:,|$)");
   while (RE2::Consume(&remainder, value_re, &match)) {
     values.push_back(ExpandEscapes(match));
   }
@@ -223,7 +223,7 @@ absl::StatusOr<std::vector<std::string>> GetLabels(
     absl::string_view remainder) {
   std::vector<std::string> values;
   std::string match;
-  static RE2 label_re("([a-zA-Z_][a-zA-Z0-9_]*)\\s*(?:,|$)");
+  static RE2 label_re("\\s*([a-zA-Z_][a-zA-Z0-9_]*)\\s*(?:,|$)");
   while (RE2::Consume(&remainder, label_re, &match)) {
     values.push_back(match);
   }
@@ -240,7 +240,7 @@ inline void ConvertToBytes(const std::vector<T> &values,
   } u;
   for (auto value : values) {
     u.i = value;
-    for (int i = sizeof(T) - 1; i >= 0; i--) {
+    for (int i = 0; i < sizeof(T); i++) {
       bytes.push_back(u.b[i]);
     }
   }
@@ -458,7 +458,6 @@ void SimpleAssembler::UpdateSymbolsForRelocatable() {
 absl::Status SimpleAssembler::CreateExecutable(
     uint64_t base_address, const std::string &entry_point,
     ResolverInterface *symbol_resolver) {
-  LOG(INFO) << "CreateExecutable";
   if (!undefined_symbols_.empty()) {
     std::string message;
     absl::StrAppend(
@@ -469,7 +468,6 @@ absl::Status SimpleAssembler::CreateExecutable(
     }
     return absl::InvalidArgumentError(message);
   }
-  LOG(INFO) << "set type to ET_EXEC";
   writer_.set_type(ET_EXEC);
   // Section sizes are now known. So let's compute the layout and update all
   // the symbol values/addresses before the next pass.
@@ -501,7 +499,7 @@ absl::Status SimpleAssembler::CreateExecutable(
         (text_segment_start + section_address_map_[text_section_] + 4095) &
         ~4095ULL;
 
-    ELFIO::segment *data_segment = writer_.segments.add();
+    data_segment = writer_.segments.add();
     if (data_segment == nullptr) {
       return absl::InternalError("Failed to create elf segment for data");
     }

@@ -856,10 +856,15 @@ std::tuple<std::string, std::string> Format::GenerateExtractors() const {
   }
 
   class_output = absl::StrCat("class ", ToPascalCase(name()), " {\n public:\n",
-                              "  ", ToPascalCase(name()), "() = default;\n");
+                              "  ", ToPascalCase(name()), "() = default;\n\n");
 
   // Use a separate namespace for each format.
   h_output = absl::StrCat("namespace ", ToSnakeCase(name()), " {\n\n");
+
+  std::string get_size = absl::StrCat("constexpr int k", ToPascalCase(name()),
+                                      "Size = ", declared_width(), ";\n\n");
+  absl::StrAppend(&h_output, get_size);
+  absl::StrAppend(&class_output, "static ", get_size);
 
   // First fields and formats.
   for (auto &[unused, field_or_format_ptr] : extractors_) {
