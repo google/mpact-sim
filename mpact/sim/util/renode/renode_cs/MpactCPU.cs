@@ -551,8 +551,7 @@ public class MpactBaseCPU : BaseCPU, ICPUWithRegisters,
         return (ulong) data64[0];
     }
 
-    public byte[] ReadBytes(long offset, int count,
-                            IPeripheral context = null) {
+    public byte[] ReadBytes(long offset, int count, IPeripheral context = null) {
         var bytes = new byte[count];
         var byte_array_ptr = Marshal.AllocHGlobal(count);
         read_memory(mpact_id, (UInt64) offset, byte_array_ptr, count);
@@ -786,8 +785,7 @@ public class MpactPeripheral : IKnownSize, IBytePeripheral,
         return mpact_cpu.ReadQuadWord(address + base_address);
     }
 
-    public byte[] ReadBytes(long offset, int count,
-                            IPeripheral context = null) {
+    public byte[] ReadBytes(long offset, int count, IPeripheral context = null) {
         return mpact_cpu.ReadBytes(offset + base_address, count, context);
     }
 
@@ -806,4 +804,5 @@ public class MpactPeripheral : IKnownSize, IBytePeripheral,
 }  // class MpactPeripheral
 
 }  // namespace Antmicro.Renode.Peripherals.MpactCPU
+
 
