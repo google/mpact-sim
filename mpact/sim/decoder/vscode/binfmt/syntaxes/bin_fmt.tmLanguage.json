@@ -11,7 +11,9 @@
     { "include": "#include_decl" },
     { "include": "#instruction_group"},
     { "include": "#specialization"},
+    { "include": "#format_use"},
     { "include": "#format_decl"},
+    { "include": "#layout_decl"},
     { "include": "#field_decl"},
     { "include": "#overlay_decl"},
     { "include": "#decoder"},
@@ -117,6 +119,19 @@
         { "include": "#constants"}
       ]
     },
+    "format_use": {
+      "begin": "\\b(format)\\s+(\\w+)\\s+(\\w+)\\s*",
+      "end": ";",
+      "beginCaptures": {
+        "1": { "name": "keyword.control.bin_fmt"},
+        "2": { "name": "support.class.bin_fmt"},
+        "3": { "name": "variable.other.bin_fmt"}
+      },
+      "patterns": [
+        { "include": "#line_comments" },
+        { "include": "#block_comments" }
+      ]
+    },
     "format_decl": {
       "begin": "\\b(format)\\s+(\\w+)\\s*\\[(\\d+)\\]\\s*:?",
       "end": "{",
@@ -127,6 +142,18 @@
       },
       "patterns": [
         { "include": "#format_name"}
+      ]
+    },
+    "layout_decl": {
+      "begin": "\\b(layout)\\s*:\\s*(\\w+)\\s*",
+      "end": ";",
+      "beginCaptures": {
+        "1": { "name": "keyword.control.bin_fmt"},
+        "2": { "name": "variable.other.bin_fmt"}
+      },
+      "patterns": [
+        { "include": "#line_comments"},
+        { "include": "#block_comments"}
       ]
     },
     "instruction": {
@@ -188,7 +215,7 @@
       ]
     },
     "reserved_words": {
-      "match": "\\b(format|fields|overlays|includes|instruction|group|decoder|opcode_enum)\\b",
+      "match": "\\b(format|fields|overlays|includes|instruction|group|decoder|opcode_enum|layout)\\b",
       "name": "keyword.control.bin_fmt"
     },
     "reserved_other": {
