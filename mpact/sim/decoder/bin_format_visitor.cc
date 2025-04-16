@@ -203,32 +203,40 @@ absl::Status BinFormatVisitor::Process(
   std::string enc_dot_h_name = absl::StrCat(prefix, "_bin_encoder.h");
   std::string enc_dot_cc_name = absl::StrCat(prefix, "_bin_encoder.cc");
   std::string enum_dot_h_name = absl::StrCat(prefix, "_enums.h");
+  std::string types_dot_h_name = absl::StrCat(prefix, "_bin_types.h");
   std::ofstream dec_dot_h_file(absl::StrCat(directory, "/", dec_dot_h_name));
   std::ofstream dec_dot_cc_file(absl::StrCat(directory, "/", dec_dot_cc_name));
   std::ofstream enc_dot_h_file(absl::StrCat(directory, "/", enc_dot_h_name));
   std::ofstream enc_dot_cc_file(absl::StrCat(directory, "/", enc_dot_cc_name));
+  std::ofstream types_dot_h_file(
+      absl::StrCat(directory, "/", types_dot_h_name));
 
-  auto [dec_h_output, dec_cc_output] =
-      EmitDecoderFilePrefix(dec_dot_h_name, encoding_info.get());
+  auto [dec_h_output, dec_cc_output, types_h_output] = EmitDecoderFilePrefix(
+      dec_dot_h_name, types_dot_h_name, encoding_info.get());
   dec_dot_h_file << dec_h_output;
   dec_dot_cc_file << dec_cc_output;
+  types_dot_h_file << types_h_output;
   auto [enc_h_output, enc_cc_output] = EmitEncoderFilePrefix(
-      enc_dot_h_name, enum_dot_h_name, encoding_info.get());
+      enc_dot_h_name, enum_dot_h_name, types_dot_h_name, encoding_info.get());
   enc_dot_h_file << enc_h_output;
   enc_dot_cc_file << enc_cc_output;
   // Output file prefix is the input file name.
-  auto [dec_h_output2, dec_cc_output2] = EmitDecoderCode(encoding_info.get());
+  auto [dec_h_output2, dec_cc_output2, types_h_output2] =
+      EmitDecoderCode(encoding_info.get());
   dec_dot_h_file << dec_h_output2;
   dec_dot_cc_file << dec_cc_output2;
-  auto [dec_h_output3, dec_cc_output3] =
-      EmitFileSuffix(dec_dot_h_name, encoding_info.get());
+  types_dot_h_file << types_h_output2;
+  auto [dec_h_output3, dec_cc_output3, types_h_output3] =
+      EmitFileSuffix(dec_dot_h_name, types_dot_h_name, encoding_info.get());
   dec_dot_h_file << dec_h_output3;
   dec_dot_cc_file << dec_cc_output3;
+  types_dot_h_file << types_h_output3;
   auto [enc_h_output2, enc_cc_output2] = EmitEncoderCode(encoding_info.get());
   enc_dot_h_file << enc_h_output2;
   enc_dot_cc_file << enc_cc_output2;
-  auto [enc_h_output3, enc_cc_output3] =
-      EmitFileSuffix(enc_dot_h_name, encoding_info.get());
+  std::string empty;
+  auto [enc_h_output3, enc_cc_output3, not_used] =
+      EmitFileSuffix(enc_dot_h_name, empty, encoding_info.get());
   enc_dot_h_file << enc_h_output3;
   enc_dot_cc_file << enc_cc_output3;
 
@@ -243,10 +251,12 @@ void BinFormatVisitor::PerformEncodingChecks(BinEncodingInfo *encoding) {
   encoding->decoder()->CheckEncodings();
 }
 
-BinFormatVisitor::StringPair BinFormatVisitor::EmitDecoderFilePrefix(
-    const std::string &dot_h_name, BinEncodingInfo *encoding_info) const {
+BinFormatVisitor::StringTriple BinFormatVisitor::EmitDecoderFilePrefix(
+    const std::string &dot_h_name, const std::string &types_dot_h_name,
+    BinEncodingInfo *encoding_info) const {
   std::string h_string;
   std::string cc_string;
+  std::string types_string;
 
   std::string guard_name = ToHeaderGuard(dot_h_name);
   absl::StrAppend(&h_string, "#ifndef ", guard_name,
@@ -260,16 +270,33 @@ BinFormatVisitor::StringPair BinFormatVisitor::EmitDecoderFilePrefix(
                   "\n"
                   "#include \"absl/functional/any_invocable.h\"\n"
                   "#include \"absl/log/log.h\"\n"
+                  "#include \"",
+                  types_dot_h_name,
+                  "\"\n"
                   "\n\n");
+  std::string types_guard_name = ToHeaderGuard(types_dot_h_name);
+  absl::StrAppend(&types_string, "#ifndef ", types_guard_name,
+                  "\n"
+                  "#define ",
+                  types_guard_name,
+                  "\n"
+                  "\n"
+                  "#include <iostream>\n"
+                  "#include <cstdint>\n"
+                  "\n");
   for (auto const &include_file : encoding_info->include_files()) {
     absl::StrAppend(&h_string, "#include ", include_file, "\n");
   }
   absl::StrAppend(&h_string, "\n");
-  absl::StrAppend(&cc_string, "#include \"", dot_h_name, "\"\n\n");
+  absl::StrAppend(&cc_string, "#include \"", dot_h_name,
+                  "\"\n"
+                  "#include \"",
+                  types_dot_h_name, "\"\n\n");
   for (auto &name_space : encoding_info->decoder()->namespaces()) {
     auto name_space_str = absl::StrCat("namespace ", name_space, " {\n");
     absl::StrAppend(&h_string, name_space_str);
     absl::StrAppend(&cc_string, name_space_str);
+    absl::StrAppend(&types_string, name_space_str);
   }
   absl::StrAppend(&h_string, "\n");
   absl::StrAppend(&cc_string, "\n");
@@ -285,39 +312,49 @@ BinFormatVisitor::StringPair BinFormatVisitor::EmitDecoderFilePrefix(
     absl::StrAppend(&h_string, "  k", ToPascalCase(name), " = ", i++, ",\n");
   }
   absl::StrAppend(&h_string, "};\n\n");
-  return {h_string, cc_string};
+  return {h_string, cc_string, types_string};
 }
 
-BinFormatVisitor::StringPair BinFormatVisitor::EmitFileSuffix(
-    const std::string &dot_h_name, BinEncodingInfo *encoding_info) {
+BinFormatVisitor::StringTriple BinFormatVisitor::EmitFileSuffix(
+    const std::string &dot_h_name, const std::string &types_dot_h_name,
+    BinEncodingInfo *encoding_info) {
   std::string h_string;
   std::string cc_string;
+  std::string types_string;
 
   absl::StrAppend(&h_string, "\n");
   absl::StrAppend(&cc_string, "\n");
+  if (!types_dot_h_name.empty()) absl::StrAppend(&types_string, "\n");
   auto &namespaces = encoding_info->decoder()->namespaces();
   for (auto rptr = namespaces.rbegin(); rptr != namespaces.rend(); rptr++) {
     std::string name_space = absl::StrCat("}  // namespace ", *rptr, "\n");
     absl::StrAppend(&h_string, name_space);
     absl::StrAppend(&cc_string, name_space);
+    if (!types_dot_h_name.empty()) absl::StrAppend(&types_string, name_space);
   }
   std::string guard_name = ToHeaderGuard(dot_h_name);
   absl::StrAppend(&h_string, "\n#endif // ", guard_name);
-  return {h_string, cc_string};
+  if (!types_dot_h_name.empty()) {
+    std::string types_guard_name = ToHeaderGuard(types_dot_h_name);
+    absl::StrAppend(&types_string, "\n#endif // ", types_guard_name);
+  }
+  return {h_string, cc_string, types_string};
 }
 
-BinFormatVisitor::StringPair BinFormatVisitor::EmitDecoderCode(
+BinFormatVisitor::StringTriple BinFormatVisitor::EmitDecoderCode(
     BinEncodingInfo *encoding) {
   std::string h_string;
   std::string cc_string;
   std::string group_string;
+  std::string extractor_types;
   std::string extractor_class =
       absl::StrCat("class Extractors {\n", "public: \n");
   // Write out the inline functions for bitfield and overlay extractions.
   for (auto &[unused, format_ptr] : encoding->format_map()) {
-    auto [functions, classes] = format_ptr->GenerateExtractors();
-    absl::StrAppend(&h_string, functions);
-    absl::StrAppend(&extractor_class, classes);
+    auto extractors = format_ptr->GenerateExtractors();
+    absl::StrAppend(&h_string, extractors.h_output);
+    absl::StrAppend(&extractor_class, extractors.class_output);
+    absl::StrAppend(&extractor_types, extractors.types_output);
   }
   absl::StrAppend(&h_string, extractor_class, "};\n\n");
   auto *decoder = encoding->decoder();
@@ -331,12 +368,12 @@ BinFormatVisitor::StringPair BinFormatVisitor::EmitDecoderCode(
     absl::StrAppend(&group_string, group->WriteGroup());
   }
   absl::StrAppend(&h_string, group_string);
-  return {h_string, cc_string};
+  return {h_string, cc_string, extractor_types};
 }
 
 std::tuple<std::string, std::string> BinFormatVisitor::EmitEncoderFilePrefix(
     const std::string &dot_h_name, const std::string &enum_h_name,
-    BinEncodingInfo *encoding_info) const {
+    const std::string &types_dot_h_name, BinEncodingInfo *encoding_info) const {
   std::string h_string;
   std::string cc_string;
 
@@ -351,16 +388,22 @@ std::tuple<std::string, std::string> BinFormatVisitor::EmitEncoderFilePrefix(
                   "#include <cstdint>\n\n"
                   "#include \"absl/base/no_destructor.h\"\n"
                   "#include \"absl/container/flat_hash_map.h\"\n"
-                  "#include \"absl/log/log.h\"\n\n"
+                  "#include \"absl/log/log.h\"\n"
                   "#include \"",
-                  enum_h_name, "\"\n");
+                  enum_h_name,
+                  "\"\n"
+                  "#include \"",
+                  types_dot_h_name, "\"\n\n");
   absl::StrAppend(&cc_string, "#include \"", dot_h_name,
                   "\"\n\n"
                   "#include <cstdint>\n\n"
                   "#include \"absl/base/no_destructor.h\"\n"
                   "#include \"absl/container/flat_hash_map.h\"\n"
                   "#include \"",
-                  enum_h_name, "\"\n");
+                  enum_h_name,
+                  "\"\n"
+                  "#include \"",
+                  types_dot_h_name, "\"\n\n");
   for (auto &name_space : encoding_info->decoder()->namespaces()) {
     auto name_space_str = absl::StrCat("namespace ", name_space, " {\n");
     absl::StrAppend(&cc_string, name_space_str);
@@ -689,8 +732,14 @@ void BinFormatVisitor::VisitFormatDef(FormatDefCtx *ctx,
                                    ctx->start, format_res.status().message());
     return;
   }
-  // Parse the fields in the format.
+  // Parse the layout.
   auto format = format_res.value();
+  if (ctx->layout_spec() != nullptr) {
+    if (ctx->layout_spec()->layout_type()->getText() == "packed_struct") {
+      format->set_layout(Format::Layout::kPackedStruct);
+    }
+  }
+  // Parse the fields in the format.
   auto file_index = context_file_map_.at(ctx);
   for (auto field : ctx->format_field_defs()->field_def()) {
     context_file_map_.insert({field, file_index});
@@ -717,6 +766,12 @@ void BinFormatVisitor::VisitFieldDef(FieldDefCtx *ctx, Format *format,
     // If it's a field definition, add the field.
     bool is_signed = ctx->sign_spec()->SIGNED() != nullptr;
     int width = ConvertToInt(ctx->index()->number());
+    if ((format->layout() == Format::Layout::kPackedStruct) && (width > 64)) {
+      error_listener_->semanticError(
+          file_names_[context_file_map_.at(ctx)], ctx->index()->number()->start,
+          "Fields in packed struct layouts can not be > 64 bits");
+      return;
+    }
     auto status = format->AddField(field_name, is_signed, width);
     if (!status.ok()) {
       error_listener_->semanticError(file_names_[context_file_map_.at(ctx)],
@@ -730,6 +785,12 @@ void BinFormatVisitor::VisitFieldDef(FieldDefCtx *ctx, Format *format,
   int size = 1;
   if (ctx->index() != nullptr) {
     size = ConvertToInt(ctx->index()->number());
+    if ((format->layout() == Format::Layout::kPackedStruct) && (size > 1)) {
+      error_listener_->semanticError(
+          file_names_[context_file_map_.at(ctx)], ctx->index()->number()->start,
+          "Formats in packed struct layouts can not be replicated");
+      return;
+    }
   }
   std::string format_ref_name = ctx->format_name->getText();
   // Make sure that the referred to format is fully parsed.
@@ -740,6 +801,13 @@ void BinFormatVisitor::VisitFieldDef(FieldDefCtx *ctx, Format *format,
       VisitFormatDef(iter->second, encoding_info);
     }
     format_ref = encoding_info->GetFormat(format_ref_name);
+  }
+  int width = format_ref->declared_width();
+  if ((format->layout() == Format::Layout::kPackedStruct) && (width > 64)) {
+    error_listener_->semanticError(
+        file_names_[context_file_map_.at(ctx)], ctx->index()->number()->start,
+        "Formats used in packed struct layouts can not be > 64 bits");
+    return;
   }
   format->AddFormatReferenceField(field_name, format_ref_name, size,
                                   ctx->start);

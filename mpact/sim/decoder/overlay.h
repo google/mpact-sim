@@ -107,6 +107,8 @@ class Overlay {
   absl::StatusOr<uint64_t> GetValue(uint64_t input) const;
   std::string WriteSimpleValueExtractor(absl::string_view value,
                                         absl::string_view result) const;
+  std::string WritePackedStructValueExtractor(absl::string_view value,
+                                              absl::string_view result) const;
   absl::StatusOr<uint64_t> GetValue(uint8_t *input);
   std::string WriteComplexValueExtractor(absl::string_view value,
                                          absl::string_view result,

@@ -170,6 +170,7 @@ def mpact_bin_fmt_decoder(name, includes, src = "", srcs = [], deps = [], decode
         "%s_bin_decoder.cc" % base_file_prefix,
         "%s_bin_encoder.h" % base_file_prefix,
         "%s_bin_encoder.cc" % base_file_prefix,
+        "%s_bin_types.h" % base_file_prefix,
     ]
 
     # The command to generate the files.

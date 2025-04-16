@@ -37,11 +37,21 @@ declaration
 // "inheritance" in this context only refers to the width, and helps group
 // formats in a hierarchy.
 format_def
-  : FORMAT name=IDENT width=index? inherits_from? '{' format_field_defs'}' ';'?
+  : FORMAT name=IDENT width=index? inherits_from? 
+    '{' layout_spec? format_field_defs'}' ';'?
   ;
 
 inherits_from
   : ':' IDENT
+  ;
+
+layout_spec
+  : LAYOUT ':' layout_type ';'
+  ;
+
+layout_type
+  : DEFAULT
+  | PACKED_STRUCT
   ;
 
 // Each format consists of a number of entries whose widths sum up to the
@@ -259,6 +269,9 @@ INSTRUCTION : 'instruction';
 GROUP : 'group';
 DECODER : 'decoder';
 SPECIALIZES : 'specializes';
+LAYOUT : 'layout';
+DEFAULT : 'default';
+PACKED_STRUCT : 'packed_struct';
 
 // Other tokens.
 STRING_LITERAL : UNTERMINATED_STRING_LITERAL '"';

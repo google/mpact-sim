@@ -77,6 +77,11 @@ class BinFormatVisitor {
     std::string h_output;
     std::string cc_output;
   };
+  struct StringTriple {
+    std::string h_output;
+    std::string cc_output;
+    std::string types_output;
+  };
 
   BinFormatVisitor();
   ~BinFormatVisitor();
@@ -94,19 +99,22 @@ class BinFormatVisitor {
   void PerformEncodingChecks(BinEncodingInfo *encoding);
   // Called to generate and emit code for the decoder according to the parsed
   // input file.
-  StringPair EmitDecoderCode(BinEncodingInfo *encoding);
-  StringPair EmitDecoderFilePrefix(const std::string &dot_h_name,
-                                   BinEncodingInfo *encoding_info) const;
+  StringTriple EmitDecoderCode(BinEncodingInfo *encoding);
+  StringTriple EmitDecoderFilePrefix(const std::string &dot_h_name,
+                                     const std::string &types_dot_h_name,
+                                     BinEncodingInfo *encoding_info) const;
   // Called to generate and emit code for the decoder according to the parsed
   // input file.
   std::tuple<std::string, std::string> EmitEncoderCode(
       BinEncodingInfo *encoding);
   std::tuple<std::string, std::string> EmitEncoderFilePrefix(
       const std::string &dot_h_name, const std::string &enum_h_name,
+      const std::string &types_dot_h_name,
       BinEncodingInfo *encoding_info) const;
   // Generate the file suffixes (namespace closing etc.)
-  StringPair EmitFileSuffix(const std::string &dot_h_name,
-                            BinEncodingInfo *encoding_info);
+  StringTriple EmitFileSuffix(const std::string &dot_h_name,
+                              const std::string &types_dot_h_name,
+                              BinEncodingInfo *encoding_info);
   // Utility methods to parse certain nodes.
   BinaryNum ParseBinaryNum(TerminalNode *node);
   BitRange GetBitIndexRange(BitIndexRangeCtx *ctx);

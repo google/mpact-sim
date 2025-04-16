@@ -17,7 +17,6 @@
 
 #include <map>
 #include <string>
-#include <tuple>
 #include <vector>
 
 #include "absl/container/btree_map.h"
@@ -106,8 +105,20 @@ class FieldOrFormat {
   Format *format_ = nullptr;
 };
 
+struct Extractors {
+  std::string h_output;
+  std::string class_output;
+  std::string types_output;
+};
+
 class Format {
  public:
+  // Layout type of the format.
+  enum class Layout {
+    kDefault,
+    kPackedStruct,
+  };
+
   Format() = delete;
   Format(std::string name, int width, BinEncodingInfo *encoding_info);
   Format(std::string name, int width, std::string base_format_name,
@@ -140,7 +151,7 @@ class Format {
   void PropagateExtractorsUp();
   void PropagateExtractorsDown();
   // Generates definitions of the field and overlay extractors in the format.
-  std::tuple<std::string, std::string> GenerateExtractors() const;
+  Extractors GenerateExtractors() const;
   // Generates definitions of the field and overlay inserters in the format.
   std::string GenerateInserters() const;
 
@@ -157,11 +168,21 @@ class Format {
   Format *base_format() const { return base_format_; }
   // Return pointer to the parent encoding info class.
   BinEncodingInfo *encoding_info() const { return encoding_info_; }
+  // Field layout.
+  Layout layout() const { return layout_; }
+  void set_layout(Layout layout) { layout_ = layout; }
 
  private:
   bool HasExtract(const std::string &name) const;
   bool HasOverlayExtract(const std::string &name) const;
 
+  // Extractor generators.
+  std::string GeneratePackedStructTypes() const;
+  std::string GeneratePackedStructFieldExtractor(const Field *field) const;
+  std::string GeneratePackedStructFormatExtractor(std::string_view format_alias,
+                                                  const Format *format,
+                                                  int high, int size) const;
+  std::string GeneratePackedStructOverlayExtractor(Overlay *overlay) const;
   std::string GenerateFieldExtractor(const Field *field) const;
   std::string GenerateFormatExtractor(std::string_view format_alias,
                                       const Format *format, int high,
@@ -169,9 +190,13 @@ class Format {
   std::string GenerateOverlayExtractor(Overlay *overlay) const;
   // Inserters.
   std::string GenerateFieldInserter(const Field *field) const;
+  std::string GeneratePackedStructFieldInserter(const Field *field) const;
   std::string GenerateFormatInserter(std::string_view format_alias,
                                      const Format *format, int high,
                                      int size) const;
+  std::string GeneratePackedStructFormatInserter(std::string_view format_alias,
+                                                 const Format *format, int high,
+                                                 int size) const;
   std::string GenerateReplicatedFormatInserter(std::string_view format_alias,
                                                const Format *format, int high,
                                                int size) const;
@@ -190,6 +215,7 @@ class Format {
   std::string int_type_name_;
   int declared_width_;
   int computed_width_ = 0;
+  Layout layout_ = Layout::kDefault;
   Format *base_format_ = nullptr;
   std::vector<Format *> derived_formats_;
   BinEncodingInfo *encoding_info_;

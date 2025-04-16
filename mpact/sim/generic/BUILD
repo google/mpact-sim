@@ -127,6 +127,8 @@ cc_library(
         "core_debug_interface.h",
     ],
     deps = [
+        ":core",
+        ":instruction",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
     ],

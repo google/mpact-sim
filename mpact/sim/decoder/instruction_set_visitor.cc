@@ -1992,6 +1992,12 @@ absl::Status InstructionSetVisitor::ParseDisasmFormat(std::string format,
       pos++;
       if (pos >= format.size()) {
         pos = std::string::npos;
+      } else if (format[pos] == '?') {
+        format_info->is_optional = true;
+        pos++;
+        if (pos >= format.size()) {
+          pos = std::string::npos;
+        }
       }
       format_info->is_formatted = true;
       disasm_fmt->format_info_vec.push_back(format_info);
@@ -2012,6 +2018,13 @@ absl::Status InstructionSetVisitor::ParseDisasmFormat(std::string format,
       auto *format_info = new FormatInfo();
       format_info->op_name = op_name;
       format_info->is_formatted = false;
+      if ((pos != std::string::npos) && (format[pos] == '?')) {
+        format_info->is_optional = true;
+        pos++;
+        if (pos >= format.size()) {
+          pos = std::string::npos;
+        }
+      }
       disasm_fmt->format_info_vec.push_back(format_info);
     }
 

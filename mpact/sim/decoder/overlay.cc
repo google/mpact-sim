@@ -14,21 +14,27 @@
 
 #include "mpact/sim/decoder/overlay.h"
 
+#include <algorithm>
 #include <cstdint>
 #include <string>
 #include <vector>
 
+#include "absl/numeric/bits.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "mpact/sim/decoder/bin_format_visitor.h"
 #include "mpact/sim/decoder/format.h"
+#include "mpact/sim/decoder/format_name.h"
 
 namespace mpact {
 namespace sim {
 namespace decoder {
 namespace bin_format {
+
+using ::mpact::sim::machine_description::instruction_set::ToPascalCase;
+using ::mpact::sim::machine_description::instruction_set::ToSnakeCase;
 
 BitsOrField::BitsOrField(Field *field, int high, int low, int width)
     : field_(field), high_(high), low_(low), width_(width), position_(-1) {}
@@ -244,6 +250,64 @@ std::string Overlay::WriteSimpleValueExtractor(absl::string_view value,
         absl::StrAppend(&output, " >> ", diff);
       }
       absl::StrAppend(&output, ";\n");
+    }
+    assign = " |= ";
+  }
+  return output;
+}
+
+namespace {
+
+// Return the int type byte width (1, 2, 4, 8, 16) or (-1 if it's bigger), of
+// the integer type that would fit this format.
+int GetIntTypeBitWidth(int bitwidth) {
+  auto shift = absl::bit_width(static_cast<unsigned>(bitwidth)) - 1;
+  if (absl::popcount(static_cast<unsigned>(bitwidth)) > 1) shift++;
+  shift = std::max(shift, 3);
+  if (shift > 7) return -1;
+  return 1 << shift;
+}
+
+std::string GetUIntType(int bitwidth) {
+  if (bitwidth > 128) return "uint8_t *";
+  if (bitwidth > 64) return "absl::uint128";
+  return absl::StrCat("uint", GetIntTypeBitWidth(bitwidth), "_t");
+}
+
+}  // namespace
+
+std::string Overlay::WritePackedStructValueExtractor(
+    absl::string_view value, absl::string_view result) const {
+  std::string output;
+  std::string assign = " = ";
+  std::string union_type =
+      absl::StrCat("const ", ToSnakeCase(format_->name()), "::Union",
+                   ToPascalCase(format_->name()));
+  absl::StrAppend(&output, "  ", union_type,
+                  " packed_union;\n"
+                  "  packed_union = reinterpret_cast<",
+                  union_type, "*>(",
+                  format_->declared_width() > 64 ? "value);\n" : "&value);\n");
+  std::string result_type = GetUIntType(declared_width_);
+  for (auto *component : component_vec_) {
+    if (component->high() < 0) {
+      // Binary literals are added.
+      BinaryNum bin_num = component->bin_num();
+      // If the value is 0, no need to 'or' it in.
+      if (bin_num.value == 0) continue;
+
+      int shift = component->position() - bin_num.width + 1;
+      absl::StrAppend(&output, "  ", result, assign, bin_num.value);
+      if (shift > 0) {
+        absl::StrAppend(&output, " << ", shift);
+      }
+      absl::StrAppend(&output, ";\n");
+    } else {
+      // Field or format references are added.
+      absl::StrAppend(
+          &output, "  ", result, assign, "static_cast<", result_type,
+          ">(packed_union->", ToSnakeCase(format_->name()), ".",
+          component->field()->name, ") << ", component->position(), ";\n");
     }
     assign = " |= ";
   }

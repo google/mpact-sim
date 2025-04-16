@@ -308,7 +308,7 @@ std::string EscapeRegexCharacters(const std::string &str) {
   }
   std::string input(str.substr(pos));
   bool in_space = false;
-  char p;
+  char p = '\0';
   for (auto c : str) {
     if (isspace(c)) {
       if (!in_space) {
@@ -399,6 +399,7 @@ std::tuple<std::string, std::vector<OperandLocator>> Slot::GenerateRegEx(
     auto format_end = disasm_fmt->format_info_vec.end();
     char prev = '\0';
     // Iterate over the format fragments.
+    bool optional = false;
     while (fragment_iter != fragment_end) {
       auto fragment = *fragment_iter;
       if (!fragment.empty()) {
@@ -408,6 +409,10 @@ std::tuple<std::string, std::vector<OperandLocator>> Slot::GenerateRegEx(
       } else {
         prev = '\0';
       }
+      if (optional) {
+        absl::StrAppend(&output, ")?");
+      }
+      optional = false;
       fragment_iter++;
       if (format_iter != format_end) {
         // If the trailling part of output is not '\\s*', and prev is
@@ -418,6 +423,10 @@ std::tuple<std::string, std::vector<OperandLocator>> Slot::GenerateRegEx(
               !(isalnum(prev) || (prev == '_') || (prev == '.'))) {
             absl::StrAppend(&output, "\\s*");
           }
+        }
+        if ((*format_iter)->is_optional) {
+          optional = true;
+          absl::StrAppend(&output, "(?:");
         }
         std::string op_name = (*format_iter)->op_name;
         absl::StrAppend(&output, "(\\S*?)");
@@ -432,6 +441,9 @@ std::tuple<std::string, std::vector<OperandLocator>> Slot::GenerateRegEx(
         }
         format_iter++;
       }
+    }
+    if (optional) {
+      absl::StrAppend(&output, ")?");
     }
   }
   absl::StrAppend(&output, "\\s*$)\"");

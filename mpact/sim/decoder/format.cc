@@ -17,7 +17,6 @@
 #include <algorithm>
 #include <cstdint>
 #include <string>
-#include <tuple>
 #include <utility>
 
 #include "absl/numeric/bits.h"
@@ -353,6 +352,32 @@ bool Format::HasOverlayExtract(const std::string &name) const {
   return false;
 }
 
+std::string Format::GeneratePackedStructFieldExtractor(
+    const Field *field) const {
+  std::string h_output;
+  int width = field->width;
+  std::string return_type = GetUIntType(width);
+  std::string signature = absl::StrCat("inline ", return_type, " Extract",
+                                       ToPascalCase(field->name), "(");
+  if (declared_width_ < 64) {
+    absl::StrAppend(&signature, GetUIntType(declared_width_), " value) {\n");
+  } else {
+    absl::StrAppend(&signature, "const uint8_t *value) {\n");
+  }
+  absl::StrAppend(&h_output, signature);
+  // Now start the body.
+  std::string union_type = absl::StrCat("const ", ToSnakeCase(name()),
+                                        "::Union", ToPascalCase(name()));
+  absl::StrAppend(&h_output, "  ", union_type,
+                  " *packed_union;\n"
+                  "  packed_union = reinterpret_cast<",
+                  union_type, "*>(",
+                  declared_width_ > 64 ? "value);\n" : "&value);\n",
+                  "  return packed_union->", ToSnakeCase(name()), ".",
+                  field->name, ";\n}\n\n");
+  return h_output;
+}
+
 // This method generates the C++ code for the field extractors for the current
 // format.
 std::string Format::GenerateFieldExtractor(const Field *field) const {
@@ -426,9 +451,41 @@ std::string Format::GenerateFieldExtractor(const Field *field) const {
   return h_output;
 }
 
+std::string Format::GeneratePackedStructFieldInserter(
+    const Field *field) const {
+  std::string h_output;
+  std::string field_type_name;
+  std::string inst_word_type_name;
+  if (computed_width_ <= 64) {
+    inst_word_type_name = GetUIntType(computed_width_);
+  } else {
+    inst_word_type_name = "uint8_t *";
+  }
+  field_type_name = GetUIntType(field->width);
+  std::string union_type =
+      absl::StrCat(ToSnakeCase(name()), "::Union", ToPascalCase(name()));
+  absl::StrAppend(&h_output, "static inline ", inst_word_type_name, " Insert",
+                  ToPascalCase(field->name), "(", field_type_name, " value, ",
+                  inst_word_type_name,
+                  " inst_word) {\n"
+                  "  ",
+                  union_type,
+                  " *packed_union;\n"
+                  "  packed_union = reinterpret_cast<",
+                  union_type, "*>(",
+                  (computed_width_ <= 64 ? "&inst_word" : "inst_word"),
+                  ");\n"
+                  "  packed_union->",
+                  ToSnakeCase(name()), ".", field->name,
+                  " = value;\n"
+                  "  return inst_word;\n"
+                  "}\n\n");
+  return h_output;
+}
+
 // This method generates the C++ code for field inserters for the current
-// format. That is, the generated code will take the value of a field and insert
-// it into the right place in the instruction word.
+// format. That is, the generated code will take the value of a field and
+// insert it into the right place in the instruction word.
 std::string Format::GenerateFieldInserter(const Field *field) const {
   std::string h_output;
   std::string field_type_name;
@@ -473,11 +530,11 @@ std::string Format::GenerateFieldInserter(const Field *field) const {
                     "  return inst_word;\n"
                     "}\n");
   } else {
-    absl::StrAppend(
-        &h_output,
-        "  LOG(FATAL) << \" Support for fields > 128 bits not implemented - "
-        "yet.\";\n"
-        "  return 0;\n}\n");
+    absl::StrAppend(&h_output,
+                    "  LOG(FATAL) << \" Support for fields > 128 bits not "
+                    "implemented - "
+                    "yet.\";\n"
+                    "  return 0;\n}\n");
   }
   return h_output;
 }
@@ -499,11 +556,11 @@ std::string Format::GenerateOverlayInserter(Overlay *overlay) const {
                   " value, ", result_type_name, " inst_word) {\n");
   // Mark error if either the overlay or the format is > 64 bits.
   if (overlay->declared_width() > 128) {
-    absl::StrAppend(
-        &h_output,
-        "  LOG(FATAL) << \" Support for overlays > 128 bits not implemented - "
-        "yet.\";\n"
-        "  return 0;\n}\n");
+    absl::StrAppend(&h_output,
+                    "  LOG(FATAL) << \" Support for overlays > 128 bits "
+                    "not implemented - "
+                    "yet.\";\n"
+                    "  return 0;\n}\n");
     return h_output;
   }
   bool use_mask_variable = false;
@@ -564,6 +621,38 @@ std::string Format::GenerateOverlayInserter(Overlay *overlay) const {
   return h_output;
 }
 
+std::string Format::GeneratePackedStructFormatInserter(
+    std::string_view format_alias, const Format *format, int high,
+    int size) const {
+  std::string h_output;
+  std::string inst_word_type_name;
+  if (computed_width_ <= 64) {
+    inst_word_type_name = GetUIntType(computed_width_);
+  } else {
+    inst_word_type_name = "uint8_t *";
+  }
+  std::string format_type_name = GetUIntType(format->declared_width());
+  std::string union_type =
+      absl::StrCat(ToSnakeCase(name()), "::Union", ToPascalCase(name()));
+  absl::StrAppend(&h_output, "static inline ", inst_word_type_name, "Insert",
+                  ToPascalCase(format_alias), "(", format_type_name, " value, ",
+                  inst_word_type_name,
+                  " inst_word) {\n"
+                  "  ",
+                  union_type,
+                  " *packed_union;\n"
+                  "  packed_union = reinterpret_cast<",
+                  union_type, "*>(",
+                  (computed_width_ <= 64 ? "&inst_word" : "inst_word"),
+                  ");\n"
+                  "  packed_union->",
+                  ToSnakeCase(name()), ".", format_alias,
+                  " = value;\n"
+                  "  return inst_word;\n"
+                  "}\n\n");
+  return h_output;
+}
+
 // This method generates the C++ code for format inserters for the current
 // format. That is, the generated code will take the value of a format and
 // insert it into the right place in the instruction word.
@@ -593,11 +682,11 @@ std::string Format::GenerateReplicatedFormatInserter(
                   format_type_name, " value, ", target_type_name,
                   " inst_word) {\n");
   if (format->declared_width() > 128) {
-    absl::StrAppend(
-        &h_output,
-        "  LOG(FATAL) << \" Support for formats > 128 bits not implemented - "
-        "yet.\";\n"
-        "  return 0;\n}\n");
+    absl::StrAppend(&h_output,
+                    "  LOG(FATAL) << \" Support for formats > 128 bits not "
+                    "implemented - "
+                    "yet.\";\n"
+                    "  return 0;\n}\n");
     return h_output;
   }
   int width = format->declared_width();
@@ -645,11 +734,11 @@ std::string Format::GenerateSingleFormatInserter(std::string_view format_alias,
                   ToPascalCase(format_alias), "(", format_type_name, " value, ",
                   target_type_name, " inst_word) {\n");
   if (format->declared_width() > 128) {
-    absl::StrAppend(
-        &h_output,
-        "  LOG(FATAL) << \" Support for formats > 128 bits not implemented - "
-        "yet.\";\n"
-        "  return 0;\n}\n");
+    absl::StrAppend(&h_output,
+                    "  LOG(FATAL) << \" Support for formats > 128 bits not "
+                    "implemented - "
+                    "yet.\";\n"
+                    "  return 0;\n}\n");
     return h_output;
   }
   int width = format->declared_width();
@@ -683,14 +772,41 @@ std::string Format::GenerateSingleFormatInserter(std::string_view format_alias,
   return h_output;
 }
 
-// This method generates the format extractors for the current format (for when
-// a format contains other formats).
+std::string Format::GeneratePackedStructFormatExtractor(
+    absl::string_view format_alias, const Format *format, int high,
+    int size) const {
+  std::string h_output;
+  int width = format->declared_width();
+  std::string return_type = GetUIntType(width);
+  std::string signature = absl::StrCat("inline ", return_type, " Extract",
+                                       ToPascalCase(format_alias), "(");
+  if (declared_width_ < 64) {
+    absl::StrAppend(&signature, GetUIntType(declared_width_), " value) {\n");
+  } else {
+    absl::StrAppend(&signature, "const uint8_t *value) {\n");
+  }
+  absl::StrAppend(&h_output, signature);
+  // Now start the body.
+  std::string union_type = absl::StrCat("const ", ToSnakeCase(name()),
+                                        "::Union", ToPascalCase(name()));
+  absl::StrAppend(&h_output, "  ", union_type,
+                  " *packed_union;\n"
+                  "  packed_union = reinterpret_cast<",
+                  union_type, " *>(",
+                  declared_width_ > 64 ? "value);\n" : "&value);\n",
+                  "  return packed_union->", ToSnakeCase(name()), ".",
+                  format_alias, ";\n}\n\n");
+  return h_output;
+}
+
+// This method generates the format extractors for the current format (for
+// when a format contains other formats).
 std::string Format::GenerateFormatExtractor(absl::string_view format_alias,
                                             const Format *format, int high,
                                             int size) const {
-  std::string h_output;  // For each format generate am extractor.
+  std::string h_output;  // For each format generate an extractor.
   int width = format->declared_width();
-  // An extraction can only be for 64 bits or less.
+  // An extraction can only be for 128 bits or less.
   if (width > 128) {
     encoding_info_->error_listener()->semanticError(
         nullptr,
@@ -755,8 +871,8 @@ std::string Format::GenerateFormatExtractor(absl::string_view format_alias,
     absl::StrAppend(&expr, ", ", width, ")");
     absl::StrAppend(&h_output, "  return ", expr, ";\n}\n\n");
   }
-  // If the parent format size is not a power of two, also create an extractor
-  // that takes a uint8_t * parameter.
+  // If the parent format size is not a power of two, also create an
+  // extractor that takes a uint8_t * parameter.
   if ((declared_width_ <= 128) &&
       (absl::popcount(static_cast<unsigned>(declared_width_)) > 1)) {
     absl::StrAppend(&h_output, "inline ", return_type, " Extract",
@@ -770,6 +886,37 @@ std::string Format::GenerateFormatExtractor(absl::string_view format_alias,
     absl::StrAppend(&expr, ", ", width, ")");
     absl::StrAppend(&h_output, "  return ", expr, ";\n}\n\n");
   }
+  return h_output;
+}
+
+std::string Format::GeneratePackedStructOverlayExtractor(
+    Overlay *overlay) const {
+  std::string h_output;
+  std::string arg_type;
+  if (declared_width_ > 128) {
+    arg_type = "const uint8_t *";
+  } else {
+    std::string arg_type = GetUIntType(declared_width_);
+  }
+  std::string return_type = overlay->is_signed()
+                                ? GetIntType(overlay->declared_width())
+                                : GetUIntType(overlay->declared_width());
+  std::string signature =
+      absl::StrCat("inline ", return_type, " Extract",
+                   ToPascalCase(overlay->name()), "(", arg_type, " value)");
+  absl::StrAppend(&h_output, signature, " {\n  ", return_type, " result;\n",
+                  overlay->WritePackedStructValueExtractor("value", "result"));
+  if (overlay->is_signed()) {
+    int shift = GetIntTypeBitWidth(overlay->declared_width()) -
+                overlay->declared_width();
+    absl::StrAppend(&h_output, "  result = result << ", shift,
+                    ";\n"
+                    "  result = result >> ",
+                    shift, ";\n");
+  }
+  absl::StrAppend(&h_output,
+                  "  return result;\n"
+                  "}\n\n");
   return h_output;
 }
 
@@ -827,14 +974,26 @@ std::string Format::GenerateInserters() const {
   }
   absl::StrAppend(&h_output, "struct ", ToPascalCase(name()), " {\n\n");
   // First fields and formats.
+  std::string inserter;
   for (auto &[unused, field_or_format_ptr] : extractors_) {
     if (field_or_format_ptr->is_field()) {
-      auto inserter = GenerateFieldInserter(field_or_format_ptr->field());
+      if (layout() == Layout::kPackedStruct) {
+        inserter =
+            GeneratePackedStructFieldInserter(field_or_format_ptr->field());
+      } else {
+        inserter = GenerateFieldInserter(field_or_format_ptr->field());
+      }
       absl::StrAppend(&h_output, inserter);
     } else {
-      auto inserter = GenerateFormatInserter(
-          field_or_format_ptr->format_alias(), field_or_format_ptr->format(),
-          field_or_format_ptr->high(), field_or_format_ptr->size());
+      if (layout() == Layout::kPackedStruct) {
+        inserter = GeneratePackedStructFormatInserter(
+            field_or_format_ptr->format_alias(), field_or_format_ptr->format(),
+            field_or_format_ptr->high(), field_or_format_ptr->size());
+      } else {
+        inserter = GenerateFormatInserter(
+            field_or_format_ptr->format_alias(), field_or_format_ptr->format(),
+            field_or_format_ptr->high(), field_or_format_ptr->size());
+      }
       absl::StrAppend(&h_output, inserter);
     }
   }
@@ -847,50 +1006,118 @@ std::string Format::GenerateInserters() const {
   return h_output;
 }
 
-// Top level function called to generate all the extractors for this format.
-std::tuple<std::string, std::string> Format::GenerateExtractors() const {
-  std::string class_output;
+std::string Format::GeneratePackedStructTypes() const {
   std::string h_output;
+  // First the struct.
+  absl::StrAppend(&h_output, "struct Packed", ToPascalCase(name()), " {\n");
+  for (auto it = field_vec_.rbegin(); it != field_vec_.rend(); ++it) {
+    auto *component = *it;
+    if (component->is_field()) {
+      int width = component->field()->width;
+      std::string field_type = component->field()->is_signed
+                                   ? GetIntType(width)
+                                   : GetUIntType(width);
+      absl::StrAppend(&h_output, "  ", field_type, " ",
+                      component->field()->name, " : ",
+                      component->field()->width, ";\n");
+    } else {
+      absl::StrAppend(&h_output, "  ",
+                      GetUIntType(component->format()->declared_width()), " ",
+                      component->format_alias(), " : ",
+                      component->format()->declared_width(), ";\n");
+    }
+  }
+  absl::StrAppend(&h_output, "} ABSL_ATTRIBUTE_PACKED;\n\n");
+  // Next the union.
+  int num_bytes = (declared_width_ + 7) / 8;
+  absl::StrAppend(&h_output, "union Union", ToPascalCase(name()),
+                  " {\n"
+                  "  Packed",
+                  ToPascalCase(name()), " ", ToSnakeCase(name()),
+                  ";\n"
+                  "  uint8_t bytes[",
+                  num_bytes, "];\n");
+  // If it is 64 bits or less, add an unsigned integer value type.
+  if (declared_width_ <= 64) {
+    absl::StrAppend(&h_output, "  ", GetUIntType(declared_width_), " value;\n");
+  }
+  absl::StrAppend(&h_output, "};\n\n");
+  return h_output;
+}
+
+// Top level function called to generate all the extractors for this format.
+Extractors Format::GenerateExtractors() const {
+  Extractors extractors;
   if (extractors_.empty() && overlay_extractors_.empty()) {
-    return std::tie(h_output, class_output);
+    return extractors;
   }
 
-  class_output = absl::StrCat("class ", ToPascalCase(name()), " {\n public:\n",
-                              "  ", ToPascalCase(name()), "() = default;\n\n");
+  extractors.class_output =
+      absl::StrCat("class ", ToPascalCase(name()), " {\n public:\n", "  ",
+                   ToPascalCase(name()), "() = default;\n\n");
 
   // Use a separate namespace for each format.
-  h_output = absl::StrCat("namespace ", ToSnakeCase(name()), " {\n\n");
+  extractors.h_output =
+      absl::StrCat("namespace ", ToSnakeCase(name()), " {\n\n");
+  extractors.types_output =
+      absl::StrCat("namespace ", ToSnakeCase(name()), " {\n\n");
 
   std::string get_size = absl::StrCat("constexpr int k", ToPascalCase(name()),
                                       "Size = ", declared_width(), ";\n\n");
-  absl::StrAppend(&h_output, get_size);
-  absl::StrAppend(&class_output, "static ", get_size);
+  absl::StrAppend(&extractors.h_output, get_size);
+  absl::StrAppend(&extractors.class_output, "static ", get_size);
+
+  // If this format has a packed struct layout, generate the types required.
+  if (layout() == Layout::kPackedStruct) {
+    absl::StrAppend(&extractors.types_output, GeneratePackedStructTypes());
+  }
 
   // First fields and formats.
   for (auto &[unused, field_or_format_ptr] : extractors_) {
     if (field_or_format_ptr->is_field()) {
-      auto extractor = GenerateFieldExtractor(field_or_format_ptr->field());
-      absl::StrAppend(&h_output, extractor);
-      absl::StrAppend(&class_output, "static ", extractor);
+      std::string extractor;
+      if (layout() == Layout::kPackedStruct) {
+        extractor =
+            GeneratePackedStructFieldExtractor(field_or_format_ptr->field());
+      } else {
+        extractor = GenerateFieldExtractor(field_or_format_ptr->field());
+      }
+      absl::StrAppend(&extractors.h_output, extractor);
+      absl::StrAppend(&extractors.class_output, "static ", extractor);
     } else {
-      auto extractor = GenerateFormatExtractor(
-          field_or_format_ptr->format_alias(), field_or_format_ptr->format(),
-          field_or_format_ptr->high(), field_or_format_ptr->size());
-      absl::StrAppend(&h_output, extractor);
-      absl::StrAppend(&class_output, "static ", extractor);
+      std::string extractor;
+      if (layout() == Layout::kPackedStruct) {
+        extractor = GeneratePackedStructFormatExtractor(
+            field_or_format_ptr->format_alias(), field_or_format_ptr->format(),
+            field_or_format_ptr->high(), field_or_format_ptr->size());
+      } else {
+        extractor = GenerateFormatExtractor(
+            field_or_format_ptr->format_alias(), field_or_format_ptr->format(),
+            field_or_format_ptr->high(), field_or_format_ptr->size());
+      }
+      absl::StrAppend(&extractors.h_output, extractor);
+      absl::StrAppend(&extractors.class_output, "static ", extractor);
     }
   }
 
   // Then the overlays.
   for (auto &[unused, overlay_ptr] : overlay_extractors_) {
-    auto extractor = GenerateOverlayExtractor(overlay_ptr);
-    absl::StrAppend(&h_output, extractor);
-    absl::StrAppend(&class_output, "static ", extractor);
+    std::string extractor;
+    if (layout() == Layout::kPackedStruct) {
+      extractor = GeneratePackedStructOverlayExtractor(overlay_ptr);
+    } else {
+      extractor = GenerateOverlayExtractor(overlay_ptr);
+    }
+    absl::StrAppend(&extractors.h_output, extractor);
+    absl::StrAppend(&extractors.class_output, "static ", extractor);
   }
 
-  absl::StrAppend(&h_output, "}  // namespace ", ToSnakeCase(name()), "\n\n");
-  absl::StrAppend(&class_output, "};\n\n");
-  return std::tie(h_output, class_output);
+  absl::StrAppend(&extractors.h_output, "}  // namespace ", ToSnakeCase(name()),
+                  "\n\n");
+  absl::StrAppend(&extractors.types_output, "}  // namespace ",
+                  ToSnakeCase(name()), "\n\n");
+  absl::StrAppend(&extractors.class_output, "};\n\n");
+  return extractors;
 }
 
 bool Format::IsDerivedFrom(const Format *format) {

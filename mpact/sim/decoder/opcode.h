@@ -147,6 +147,7 @@ struct FormatInfo {
   FormatInfo(const FormatInfo &) = default;
   std::string op_name;
   bool is_formatted = true;
+  bool is_optional = false;
   std::string number_format;
   bool use_address = false;
   std::string operation;

@@ -22,13 +22,12 @@
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "mpact/sim/generic/data_buffer.h"
+#include "mpact/sim/generic/instruction.h"
 
 namespace mpact {
 namespace sim {
 namespace generic {
-
-class DataBuffer;
-class Instruction;
 
 enum class AccessType {
   kLoad = 1,
