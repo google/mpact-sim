@@ -26,6 +26,7 @@
 #include "mpact/sim/generic/arch_state.h"
 #include "mpact/sim/generic/operand_interface.h"
 #include "mpact/sim/generic/ref_count.h"
+#include "mpact/sim/generic/type_helpers.h"
 
 namespace mpact {
 namespace sim {
@@ -265,6 +266,11 @@ template <>
 inline int16_t GetInstructionSource<int16_t>(const Instruction *inst,
                                              int index) {
   return inst->Source(index)->AsInt16(0);
+}
+template <>
+inline HalfFP GetInstructionSource<HalfFP>(const Instruction *inst, int index) {
+  auto value = inst->Source(index)->AsUint16(0);
+  return HalfFP{.value = value};
 }
 template <>
 inline uint32_t GetInstructionSource<uint32_t>(const Instruction *inst,

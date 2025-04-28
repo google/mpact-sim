@@ -147,6 +147,7 @@ cc_library(
     deps = [
         ":arch_state",
         ":core",
+        ":type_helpers",
         "@com_google_absl//absl/numeric:int128",
         "@com_google_absl//absl/types:span",
     ],
