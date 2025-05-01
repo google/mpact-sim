@@ -175,6 +175,7 @@ struct DisasmFormat {
     format_info_vec.clear();
   }
   int width = 0;
+  int num_optional = 0;
   std::vector<std::string> format_fragment_vec;
   std::vector<FormatInfo *> format_info_vec;
 };

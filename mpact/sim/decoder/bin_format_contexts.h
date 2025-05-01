@@ -40,6 +40,7 @@ using InstructionGroupDefCtx = BinFormatParser::Instruction_group_defContext;
 using InstructionDefCtx = BinFormatParser::Instruction_defContext;
 using NamespaceCtx = BinFormatParser::Namespace_declContext;
 using NumberCtx = BinFormatParser::NumberContext;
+using OnceCtx = BinFormatParser::OnceContext;
 using OverlayDefCtx = BinFormatParser::Overlay_defContext;
 using TopLevelCtx = BinFormatParser::Top_levelContext;
 

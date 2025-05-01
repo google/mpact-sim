@@ -62,7 +62,10 @@ class Slot {
 
   // Constructor and destructor.
   Slot(absl::string_view name, InstructionSet *instruction_set,
-       bool is_templated, SlotDeclCtx *ctx);
+       bool is_templated, SlotDeclCtx *ctx, unsigned generator_version);
+  Slot(absl::string_view name, InstructionSet *instruction_set,
+       bool is_templated, SlotDeclCtx *ctx)
+      : Slot(name, instruction_set, is_templated, ctx, 1) {}
   ~Slot();
 
   // Add declared opcode to the current slot.
@@ -208,6 +211,7 @@ class Slot {
   Instruction *default_instruction_ = nullptr;
   // Number of instances of this slot in the instruction_set instruction word.
   int size_ = 1;
+  unsigned generator_version_;
   // True if the slot is a templated slot.
   bool is_templated_;
   bool is_marked_ = false;

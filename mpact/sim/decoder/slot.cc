@@ -134,9 +134,10 @@ static std::string ExpandExpression(const FormatInfo &format,
 }
 
 Slot::Slot(absl::string_view name, InstructionSet *instruction_set,
-           bool is_templated, SlotDeclCtx *ctx)
+           bool is_templated, SlotDeclCtx *ctx, unsigned generator_version)
     : instruction_set_(instruction_set),
       ctx_(ctx),
+      generator_version_(generator_version),
       is_templated_(is_templated),
       name_(name),
       pascal_name_(ToPascalCase(name)) {}
@@ -904,6 +905,10 @@ std::string Slot::GenerateResourceSetterFcn(
       !inst->resource_acquire_vec().empty()) {
     absl::StrAppend(&output, "  ResourceOperandInterface *res_op;\n");
   }
+  std::string optional_inst;
+  if (generator_version_ == 2) {
+    optional_inst = "inst, ";
+  }
   // Get all the simple resources that need to be free, then all the complex
   // resources that need to be free in order to issue the instruction.
   std::vector<const ResourceReference *> complex_refs;
@@ -934,8 +939,9 @@ std::string Slot::GenerateResourceSetterFcn(
     }
     absl::StrAppend(&output,
                     "};\n"
-                    "  res_op = enc->GetSimpleResourceOperand(slot, entry, ",
-                    opcode_enum, ", hold_vec, -1);\n",
+                    "  res_op = enc->GetSimpleResourceOperand(",
+                    optional_inst, "slot, entry, ", opcode_enum,
+                    ", hold_vec, -1);\n",
                     "  if (res_op != nullptr) {\n"
                     "    inst->AppendResourceHold(res_op);\n"
                     "  }\n");
@@ -960,18 +966,18 @@ std::string Slot::GenerateResourceSetterFcn(
     }
     if (complex->is_array) {
       absl::StrAppend(
-          &output,
-          "  auto res_op_vec = enc->GetComplexResourceOperands(slot, entry, ",
-          opcode_enum, ", ListComplexResourceEnum::k",
-          complex->resource->pascal_name(), *begin, ", ", *end, ");\n");
+          &output, "  auto res_op_vec = enc->GetComplexResourceOperands(",
+          optional_inst, "slot, entry, ", opcode_enum,
+          ", ListComplexResourceEnum::k", complex->resource->pascal_name(),
+          *begin, ", ", *end, ");\n");
       absl::StrAppend(&output,
                       "  for (auto res_op : res_op_vec) {\n"
                       "    inst->AppendResourceHold(res_op);\n"
                       "  }\n");
     } else {
-      absl::StrAppend(&output,
-                      "  res_op = enc->GetComplexResourceOperand(slot, entry, ",
-                      opcode_enum, ", ComplexResourceEnum::k",
+      absl::StrAppend(&output, "  res_op = enc->GetComplexResourceOperand(",
+                      optional_inst, "slot, entry, ", opcode_enum,
+                      ", ComplexResourceEnum::k",
                       complex->resource->pascal_name(), ", ");
       absl::StrAppend(&output, *begin, ", ", *end, ");\n");
       absl::StrAppend(&output,
@@ -1038,8 +1044,9 @@ std::string Slot::GenerateResourceSetterFcn(
       }
       absl::StrAppend(&output,
                       "};\n\n"
-                      "  res_op = enc->GetSimpleResourceOperand(slot, entry, ",
-                      opcode_enum, ", acquire_vec", latency, ", ", latency,
+                      "  res_op = enc->GetSimpleResourceOperand(",
+                      optional_inst, "slot, entry, ", opcode_enum,
+                      ", acquire_vec", latency, ", ", latency,
                       ");\n"
                       "  if (res_op != nullptr) {\n"
                       "    inst->AppendResourceAcquire(res_op);\n"
@@ -1066,8 +1073,9 @@ std::string Slot::GenerateResourceSetterFcn(
       if (complex->is_array) {
         absl::StrAppend(&output,
                         "  auto res_op_vec = "
-                        "enc->GetComplexResourceOperands(slot, entry, ",
-                        opcode_enum, ", ListComplexResourceEnum::k",
+                        "enc->GetComplexResourceOperands(",
+                        optional_inst, "slot, entry, ", opcode_enum,
+                        ", ListComplexResourceEnum::k",
                         complex->resource->pascal_name(), *begin, ", ", *end,
                         ");\n");
         absl::StrAppend(&output,
@@ -1075,11 +1083,10 @@ std::string Slot::GenerateResourceSetterFcn(
                         "    inst->AppendResourceHold(res_op);\n"
                         "  }\n");
       } else {
-        absl::StrAppend(
-            &output,
-            "    res_op = enc->GetComplexResourceOperand(slot, entry, ",
-            opcode_enum, ", ComplexResourceEnum::k",
-            complex->resource->pascal_name(), ", ");
+        absl::StrAppend(&output, "    res_op = enc->GetComplexResourceOperand(",
+                        optional_inst, "slot, entry, ", opcode_enum,
+                        ", ComplexResourceEnum::k",
+                        complex->resource->pascal_name(), ", ");
         absl::StrAppend(&output, *begin, ", ", *end, ");\n");
         absl::StrAppend(&output,
                         "  if (res_op != nullptr) {\n"
@@ -1152,6 +1159,10 @@ std::string Slot::GenerateOperandSetterFcn(absl::string_view getter_name,
                                            absl::string_view encoding_type,
                                            const Opcode *opcode) const {
   std::string output;
+  std::string optional_inst;
+  if (generator_version_ == 2) {
+    optional_inst = "inst, ";
+  }
   absl::StrAppend(&output, "void ", getter_name, "(Instruction *inst, ",
                   encoding_type,
                   " *enc, OpcodeEnum opcode, SlotEnum slot, int entry) {\n");
@@ -1160,8 +1171,9 @@ std::string Slot::GenerateOperandSetterFcn(absl::string_view getter_name,
   if (!op_name.empty()) {
     std::string pred_op_enum =
         absl::StrCat("PredOpEnum::k", ToPascalCase(op_name));
-    absl::StrAppend(&output, "  inst->SetPredicate(enc->GetPredicate",
-                    "(slot, entry, opcode, ", pred_op_enum, "));\n");
+    absl::StrAppend(&output, "  inst->SetPredicate(enc->GetPredicate", "(",
+                    optional_inst, "slot, entry, opcode, ", pred_op_enum,
+                    "));\n");
   }
   // Generate code to set the instruction's source operands.
   int source_no = 0;
@@ -1174,16 +1186,17 @@ std::string Slot::GenerateOperandSetterFcn(absl::string_view getter_name,
       absl::StrAppend(&output,
                       "  {\n"
                       "    auto vec = enc->GetSources",
-                      "(slot, entry, opcode, ", src_op_enum, ", ", source_no,
+                      "(", optional_inst, "slot, entry, opcode, ", src_op_enum,
+                      ", ", source_no,
                       ");\n"
                       "    for (auto *op : vec) inst->AppendSource(op);\n"
                       "  }\n");
     } else {
       std::string src_op_enum =
           absl::StrCat("SourceOpEnum::k", ToPascalCase(src_op.name));
-      absl::StrAppend(&output, "  inst->AppendSource(enc->GetSource",
-                      "(slot, entry, opcode, ", src_op_enum, ", ", source_no++,
-                      "));\n");
+      absl::StrAppend(&output, "  inst->AppendSource(enc->GetSource", "(",
+                      optional_inst, "slot, entry, opcode, ", src_op_enum, ", ",
+                      source_no++, "));\n");
     }
   }
   // Generate code to set the instruction's destination operands.
@@ -1198,8 +1211,9 @@ std::string Slot::GenerateOperandSetterFcn(absl::string_view getter_name,
     }
     std::string latency;
     if (dst_op->expression() == nullptr) {
-      latency = absl::StrCat("enc->GetLatency(slot, entry, opcode, ",
-                             dest_op_enum, ", ", dest_no, ")");
+      latency = absl::StrCat("enc->GetLatency(", optional_inst,
+                             "slot, entry, opcode, ", dest_op_enum, ", ",
+                             dest_no, ")");
     } else {
       auto result = dst_op->GetLatency();
       if (!result.ok()) {
@@ -1218,15 +1232,15 @@ std::string Slot::GenerateOperandSetterFcn(absl::string_view getter_name,
       absl::StrAppend(&output,
                       "  {\n"
                       "    auto vec = enc->GetDestinations",
-                      "(slot, entry, opcode, ", dest_op_enum, ", ", dest_no,
-                      ", ", latency,
+                      "(", optional_inst, "slot, entry, opcode, ", dest_op_enum,
+                      ", ", dest_no, ", ", latency,
                       ");\n"
                       "    for (auto *op : vec) inst->AppendDestination(op);\n"
                       "  }");
     } else {
       absl::StrAppend(&output, "  inst->AppendDestination(enc->GetDestination(",
-                      "slot, entry, opcode, ", dest_op_enum, ", ", dest_no,
-                      ", ", latency, "));\n");
+                      optional_inst, "slot, entry, opcode, ", dest_op_enum,
+                      ", ", dest_no, ", ", latency, "));\n");
       dest_no++;
     }
     dest_no++;

@@ -19,6 +19,7 @@
 #include <cstring>
 #include <vector>
 
+#include "absl/base/macros.h"
 #include "absl/container/btree_map.h"
 #include "absl/types/span.h"
 #include "mpact/sim/generic/delay_line.h"

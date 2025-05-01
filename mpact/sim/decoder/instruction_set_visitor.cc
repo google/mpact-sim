@@ -30,6 +30,7 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
+#include "absl/flags/flag.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
@@ -44,6 +45,11 @@
 #include "mpact/sim/decoder/slot.h"
 #include "mpact/sim/decoder/template_expression.h"
 #include "re2/re2.h"
+
+// This flag is used to set the version of the generated code. Version 1 is
+// the default version. Version 2 adds an instruction pointer to the resource
+// and operator functions in the EncodingInterface.
+ABSL_FLAG(unsigned, generator, 1, "Version of generated code");
 
 namespace mpact {
 namespace sim {
@@ -90,6 +96,7 @@ absl::Status InstructionSetVisitor::Process(
     const std::vector<std::string> &file_names, const std::string &prefix,
     const std::string &isa_name, const std::vector<std::string> &include_roots,
     absl::string_view directory) {
+  generator_version_ = absl::GetFlag(FLAGS_generator);
   // Create and add the error listener.
   set_error_listener(std::make_unique<decoder::DecoderErrorListener>());
   if (isa_name.empty()) {
@@ -644,8 +651,8 @@ void InstructionSetVisitor::VisitBundleDeclaration(
 void InstructionSetVisitor::VisitSlotDeclaration(
     SlotDeclCtx *ctx, InstructionSet *instruction_set) {
   bool is_templated = ctx->template_decl() != nullptr;
-  Slot *slot =
-      new Slot(ctx->slot_name->getText(), instruction_set, is_templated, ctx);
+  Slot *slot = new Slot(ctx->slot_name->getText(), instruction_set,
+                        is_templated, ctx, generator_version_);
   if (is_templated) {
     for (auto const &param : ctx->template_decl()->template_parameter_decl()) {
       auto status = slot->AddTemplateFormal(param->IDENT()->getText());
@@ -2020,6 +2027,7 @@ absl::Status InstructionSetVisitor::ParseDisasmFormat(std::string format,
       format_info->is_formatted = false;
       if ((pos != std::string::npos) && (format[pos] == '?')) {
         format_info->is_optional = true;
+        disasm_fmt->num_optional++;
         pos++;
         if (pos >= format.size()) {
           pos = std::string::npos;
@@ -2298,54 +2306,71 @@ std::string InstructionSetVisitor::GenerateHdrFileProlog(
   absl::StrAppend(
       &output,
       "  virtual OpcodeEnum GetOpcode(SlotEnum slot, int entry) = 0;\n");
+  std::string optional_instruction;
+  if (generator_version_ == 2) {
+    optional_instruction = "Instruction *inst, ";
+  }
   // Get resource methods.
   absl::StrAppend(
       &output, "  virtual ResourceOperandInterface *GetSimpleResourceOperand",
-      "(SlotEnum slot, int entry, OpcodeEnum opcode, SimpleResourceVector "
+      "(", optional_instruction,
+      "SlotEnum slot, int entry, OpcodeEnum opcode, SimpleResourceVector "
       "&resource_vec, int end) { return nullptr;}\n");
   absl::StrAppend(
       &output,
       "  virtual ResourceOperandInterface * "
       "GetComplexResourceOperand",
-      "(SlotEnum slot, int entry, OpcodeEnum opcode, ComplexResourceEnum "
+      "(", optional_instruction,
+      "SlotEnum slot, int entry, OpcodeEnum opcode, ComplexResourceEnum "
       "resource_op, int begin, int end) { return nullptr; }\n");
   absl::StrAppend(
       &output,
       "  virtual std::vector<ResourceOperandInterface *> "
       "GetComplexResourceOperands",
-      "(SlotEnum slot, int entry, OpcodeEnum opcode, ComplexResourceEnum "
+      "(", optional_instruction,
+      "SlotEnum slot, int entry, OpcodeEnum opcode, ComplexResourceEnum "
       "resource_op, int begin, int end) { return {}; }\n");
   // For each operand type, declare the pure virtual method that returns the
   // given operand.
   absl::StrAppend(&output,
                   "  virtual PredicateOperandInterface *GetPredicate"
-                  "(SlotEnum slot, int entry, OpcodeEnum opcode, PredOpEnum "
+                  "(",
+                  optional_instruction,
+                  "SlotEnum slot, int entry, OpcodeEnum opcode, PredOpEnum "
                   "pred_op) { return nullptr; }\n");
   absl::StrAppend(&output,
                   "  virtual SourceOperandInterface *GetSource"
-                  "(SlotEnum slot, int entry, OpcodeEnum opcode, SourceOpEnum "
+                  "(",
+                  optional_instruction,
+                  "SlotEnum slot, int entry, OpcodeEnum opcode, SourceOpEnum "
                   "source_op, int source_no) { return nullptr;}\n");
   absl::StrAppend(
       &output,
       "  virtual std::vector<SourceOperandInterface *> GetSources"
-      "(SlotEnum slot, int entry, OpcodeEnum opcode, ListSourceOpEnum "
+      "(",
+      optional_instruction,
+      "SlotEnum slot, int entry, OpcodeEnum opcode, ListSourceOpEnum "
       "list_source_op, int source_no) { return {};}\n");
   absl::StrAppend(&output,
                   "  virtual DestinationOperandInterface *GetDestination"
-                  "(SlotEnum slot, int entry, OpcodeEnum opcode, "
+                  "(",
+                  optional_instruction,
+                  "SlotEnum slot, int entry, OpcodeEnum opcode, "
                   "DestOpEnum list_dest_op, int dest_no, int latency)"
                   " { return nullptr; }\n");
   absl::StrAppend(
       &output,
       "  virtual std::vector<DestinationOperandInterface *> GetDestinations"
-      "(SlotEnum slot, int entry, OpcodeEnum opcode, "
+      "(",
+      optional_instruction,
+      "SlotEnum slot, int entry, OpcodeEnum opcode, "
       "ListDestOpEnum dest_op, int dest_no, const std::vector<int> &latency)"
       " { return {}; };\n");
   // Destination operand latency getter for destination operands with '*'
   // as latency.
   absl::StrAppend(
-      &output,
-      "  virtual int GetLatency(SlotEnum slot, int entry, OpcodeEnum "
+      &output, "  virtual int GetLatency(", optional_instruction,
+      "SlotEnum slot, int entry, OpcodeEnum "
       "opcode, DestOpEnum dest_op, int dest_no) { return 0; };\n",
       "  virtual std::vector<int> GetLatency(SlotEnum slot, int entry, "
       "OpcodeEnum "

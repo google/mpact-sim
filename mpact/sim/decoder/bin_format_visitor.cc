@@ -628,23 +628,28 @@ void BinFormatVisitor::ParseIncludeFile(antlr4::ParserRuleContext *ctx,
                                         std::vector<std::string> const &dirs) {
   std::fstream include_file;
   // Open include file.
-  include_file.open(file_name, std::fstream::in);
+  // Try each of the include file directories.
+  std::string include_name;
+  for (auto const &dir : dirs) {
+    include_name = absl::StrCat(dir, "/", file_name);
+    include_file.open(include_name, std::fstream::in);
+    if (include_file.is_open()) break;
+  }
   if (!include_file.is_open()) {
-    // Try each of the include file directories.
-    for (auto const &dir : dirs) {
-      std::string include_name = absl::StrCat(dir, "/", file_name);
-      include_file.open(include_name, std::fstream::in);
-      if (include_file.is_open()) break;
-    }
+    // Try a local file.
+    include_name = file_name;
+    include_file.open(include_name, std::fstream::in);
     if (!include_file.is_open()) {
-      // Try a local file.
-      include_file.open(file_name, std::fstream::in);
-      if (!include_file.is_open()) {
-        error_listener()->semanticError(
-            ctx->start, absl::StrCat("Failed to open '", file_name, "'"));
-        return;
-      }
+      error_listener()->semanticError(
+          ctx->start, absl::StrCat("Failed to open '", file_name, "'"));
+      return;
     }
+  }
+  // See if this file has been included before it had a "#once" declaration. If
+  // so, then don't include it again.
+  if (once_include_files_.contains(include_name)) {
+    include_file.close();
+    return;
   }
   std::string previous_file_name = error_listener()->file_name();
   int previous_file_index_ = current_file_index_;
@@ -658,9 +663,9 @@ void BinFormatVisitor::ParseIncludeFile(antlr4::ParserRuleContext *ctx,
   // Add the error listener.
   include_parser->parser()->removeErrorListeners();
   include_parser->parser()->addErrorListener(error_listener());
-  // Start parsing at the declaratition_list_w_eof rule.
-  DeclarationListCtx *declaration_list =
-      include_parser->parser()->top_level()->declaration_list();
+  auto *top_level = include_parser->parser()->top_level();
+  // Start parsing at the declaratition_list rule.
+  DeclarationListCtx *declaration_list = top_level->declaration_list();
   include_file.close();
   if (error_listener()->syntax_error_count() > 0) {
     error_listener()->set_file_name(previous_file_name);
@@ -669,6 +674,11 @@ void BinFormatVisitor::ParseIncludeFile(antlr4::ParserRuleContext *ctx,
   }
   include_file_stack_.push_back(file_name);
   PreProcessDeclarations(declaration_list);
+  // See if there is a once declaration in the file.
+  OnceCtx *once_ctx = top_level->once();
+  if (once_ctx != nullptr) {
+    once_include_files_.insert(include_name);
+  }
   include_file_stack_.pop_back();
   error_listener()->set_file_name(previous_file_name);
   current_file_index_ = previous_file_index_;

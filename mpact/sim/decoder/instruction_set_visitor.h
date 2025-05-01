@@ -217,6 +217,7 @@ class InstructionSetVisitor {
   absl::btree_set<std::string> include_files_;
 
   int current_file_index_ = 0;
+  unsigned generator_version_;
   // Vector of file names.
   std::vector<std::string> file_names_;
   // Map from context pointer to file index.

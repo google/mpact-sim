@@ -181,6 +181,8 @@ class BinFormatVisitor {
   std::vector<BinFmtAntlrParserWrapper *> antlr_parser_wrappers_;
   // Map from comparator string to constraint type.
   absl::flat_hash_map<std::string, ConstraintType> constraint_string_to_type_;
+  // Set of include files marked as once.
+  absl::flat_hash_set<std::string> once_include_files_;
   // Specializations to process after all instructions have been processed.
   std::vector<InstructionDefCtx *> specializations_;
 };

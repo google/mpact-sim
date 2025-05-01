@@ -22,7 +22,11 @@
 grammar BinFormat;
 
 top_level
-  : declaration_list EOF
+  : once? declaration_list EOF
+  ;
+
+once
+  : '#' ONCE
   ;
 
 declaration_list
@@ -272,6 +276,7 @@ SPECIALIZES : 'specializes';
 LAYOUT : 'layout';
 DEFAULT : 'default';
 PACKED_STRUCT : 'packed_struct';
+ONCE : 'once';
 
 // Other tokens.
 STRING_LITERAL : UNTERMINATED_STRING_LITERAL '"';

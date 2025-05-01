@@ -51,7 +51,7 @@ def mpact_cc_test(name, size = "small", srcs = [], deps = [], copts = [], data =
         data = data,
     )
 
-def mpact_isa_decoder(name, includes, src = "", srcs = [], deps = [], isa_name = "", prefix = "", testonly = False):
+def mpact_isa_decoder(name, includes, src = "", srcs = [], deps = [], isa_name = "", prefix = "", generator = 1, testonly = False):
     """Generates the C++ source corresponding to an MPACT Isa decoder definition.
 
     Args:
@@ -62,6 +62,8 @@ def mpact_isa_decoder(name, includes, src = "", srcs = [], deps = [], isa_name =
       includes: Include .isa files.
       isa_name: Name of isa to generate code for.
       prefix: File prefix for the generated files (otherwise uses base name of src file
+      generator: Version of code to generate.
+      testonly: Whether the generated code is only to be used in test.
     """
 
     # if src is not empty, prepend it to the srcs list.
@@ -92,7 +94,7 @@ def mpact_isa_decoder(name, includes, src = "", srcs = [], deps = [], isa_name =
 
     # The command to generate the files.
     command = ";\n".join([
-        _make_isa_tool_invocation_command(len(isa_srcs), base_file_prefix, isa_name),
+        _make_isa_tool_invocation_command(len(isa_srcs), base_file_prefix, isa_name, generator),
     ])
 
     # The rule for the generated sources.
@@ -291,13 +293,13 @@ def _strip_path(text):
 # files, including those that will be included, the command includes creating
 # a bash array from $(SRCS), then instead of using $(SRCS) in the command, it
 # uses only the first element of that array.
-def _make_isa_tool_invocation_command(num_srcs, prefix, isa_name):
+def _make_isa_tool_invocation_command(num_srcs, prefix, isa_name, generator):
     cmd = "ARR=($(SRCS)); $(location @com_google_mpact-sim//mpact/sim/decoder:decoder_gen) "
 
     # Add the sources that are not in includes.
     for i in range(0, num_srcs):
         cmd += "$${ARR[" + str(i) + "]} "
-    cmd += "--prefix " + prefix + " --output_dir $(@D) --include $$(dirname $${ARR[0]})"
+    cmd += "--prefix " + prefix + " --generator " + str(generator) + " --output_dir $(@D) --include $$(dirname $${ARR[0]})"
     if isa_name != "":
         cmd += " --isa_name " + isa_name
 

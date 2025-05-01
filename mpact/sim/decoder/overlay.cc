@@ -284,7 +284,7 @@ std::string Overlay::WritePackedStructValueExtractor(
       absl::StrCat("const ", ToSnakeCase(format_->name()), "::Union",
                    ToPascalCase(format_->name()));
   absl::StrAppend(&output, "  ", union_type,
-                  " packed_union;\n"
+                  " *packed_union;\n"
                   "  packed_union = reinterpret_cast<",
                   union_type, "*>(",
                   format_->declared_width() > 64 ? "value);\n" : "&value);\n");

@@ -896,7 +896,7 @@ std::string Format::GeneratePackedStructOverlayExtractor(
   if (declared_width_ > 128) {
     arg_type = "const uint8_t *";
   } else {
-    std::string arg_type = GetUIntType(declared_width_);
+    arg_type = GetUIntType(declared_width_);
   }
   std::string return_type = overlay->is_signed()
                                 ? GetIntType(overlay->declared_width())
