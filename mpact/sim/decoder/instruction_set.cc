@@ -20,6 +20,7 @@
 #include <utility>
 #include <vector>
 
+#include "absl/container/btree_map.h"
 #include "absl/container/btree_set.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
@@ -472,11 +473,14 @@ InstructionSet::StringPair InstructionSet::GenerateEnums(
   absl::StrAppend(&h_output,
                   "  enum class SlotEnum {\n"
                   "    kNone = 0,\n");
-  absl::btree_set<std::string> name_set;
+  absl::btree_map<std::string, const Slot *> slots_by_name;
   for (auto const *slot : slot_order_) {
-    if (slot->is_referenced()) name_set.insert(slot->pascal_name());
+    if (slot->is_referenced()) {
+      std::string name = slot->pascal_name();
+      slots_by_name.emplace(name, slot);
+    }
   }
-  for (auto const &name : name_set) {
+  for (auto const &[name, unused] : slots_by_name) {
     absl::StrAppend(&h_output, "    k", name, ",\n");
   }
   absl::StrAppend(&h_output, "  };\n\n");
@@ -489,27 +493,38 @@ InstructionSet::StringPair InstructionSet::GenerateEnums(
   absl::btree_set<std::string> list_dest_operands;
   absl::btree_set<std::string> dest_latency;
   // Insert PascalCase operand names into the sets to select unique names.
-  for (auto const *slot : slot_order_) {
-    if (!slot->is_referenced()) continue;
+  for (auto const &[unused, slot] : slots_by_name) {
+    // Slot specific operands.
+    absl::btree_set<std::string> slot_predicate_operands;
+    absl::btree_set<std::string> slot_source_operands;
+    absl::btree_set<std::string> slot_list_source_operands;
+    absl::btree_set<std::string> slot_dest_operands;
+    absl::btree_set<std::string> slot_list_dest_operands;
     for (auto const &[unused, inst_ptr] : slot->instruction_map()) {
       auto *inst = inst_ptr;
       while (inst != nullptr) {
         auto *opcode = inst->opcode();
         if (!opcode->predicate_op_name().empty()) {
           predicate_operands.insert(ToPascalCase(opcode->predicate_op_name()));
+          slot_predicate_operands.insert(
+              ToPascalCase(opcode->predicate_op_name()));
         }
         for (auto const &source_op : opcode->source_op_vec()) {
           if (source_op.is_array) {
             list_source_operands.insert(ToPascalCase(source_op.name));
+            slot_list_source_operands.insert(ToPascalCase(source_op.name));
           } else {
             source_operands.insert(ToPascalCase(source_op.name));
+            slot_source_operands.insert(ToPascalCase(source_op.name));
           }
         }
         for (auto const *dest_op : opcode->dest_op_vec()) {
           if (dest_op->is_array()) {
             list_dest_operands.insert(dest_op->pascal_case_name());
+            slot_list_dest_operands.insert(dest_op->pascal_case_name());
           } else {
             dest_operands.insert(dest_op->pascal_case_name());
+            slot_dest_operands.insert(dest_op->pascal_case_name());
           }
           if (dest_op->expression() == nullptr) {
             dest_latency.insert(dest_op->pascal_case_name());
@@ -518,7 +533,73 @@ InstructionSet::StringPair InstructionSet::GenerateEnums(
         inst = inst->child();
       }
     }
+    auto slot_name = slot->pascal_name();
+    absl::StrAppend(&h_output, "  // Enums for slot: ", slot_name, ".\n");
+    // Create Slot specific enum for predicate operands.
+    absl::StrAppend(&h_output, "  enum class ", slot_name, "PredOpEnum {\n");
+    int pred_count = 0;
+    absl::StrAppend(&h_output, "    kNone = ", pred_count++, ",\n");
+    for (auto const &pred_name : slot_predicate_operands) {
+      pred_op_map_.insert({pred_name, pred_count});
+      absl::StrAppend(&h_output, "    k", pred_name, " = ", pred_count++,
+                      ",\n");
+    }
+    absl::StrAppend(&h_output, "    kPastMaxValue = ", pred_count,
+                    ",\n"
+                    "  };\n\n");
+    // Create Slot specific enum for source operands.
+    absl::StrAppend(&h_output, "  enum class ", slot_name, "SourceOpEnum {\n");
+    int src_count = 0;
+    absl::StrAppend(&h_output, "    kNone = ", src_count++, ",\n");
+    for (auto const &source_name : slot_source_operands) {
+      source_op_map_.insert({source_name, src_count});
+      absl::StrAppend(&h_output, "    k", source_name, " = ", src_count++,
+                      ",\n");
+    }
+    absl::StrAppend(&h_output, "    kPastMaxValue = ", src_count,
+                    ",\n"
+                    "  };\n\n");
+    // Create Slot specific enum for list source operands.
+    absl::StrAppend(&h_output, "  enum class ", slot_name,
+                    "ListSourceOpEnum {\n");
+    int list_src_count = 0;
+    absl::StrAppend(&h_output, "    kNone = ", list_src_count++, ",\n");
+    for (auto const &source_name : slot_list_source_operands) {
+      list_source_op_map_.insert({source_name, list_src_count});
+      absl::StrAppend(&h_output, "    k", source_name, " = ", list_src_count++,
+                      ",\n");
+    }
+    absl::StrAppend(&h_output, "    kPastMaxValue = ", list_src_count,
+                    ",\n"
+                    "  };\n\n");
+    // Create Slot specific enum for destination operands.
+    absl::StrAppend(&h_output, "  enum class ", slot_name, "DestOpEnum {\n");
+    int dst_count = 0;
+    absl::StrAppend(&h_output, "    kNone = ", dst_count++, ",\n");
+    for (auto const &dest_name : slot_dest_operands) {
+      dest_op_map_.insert({dest_name, dst_count});
+      absl::StrAppend(&h_output, "    k", dest_name, " = ", dst_count++, ",\n");
+    }
+    absl::StrAppend(&h_output, "    kPastMaxValue = ", dst_count,
+                    ",\n"
+                    "  };\n\n");
+    // Create Slot specific enum for list destination operands.
+    absl::StrAppend(&h_output, "  enum class ", slot_name,
+                    "ListDestOpEnum {\n");
+    int list_dst_count = 0;
+    absl::StrAppend(&h_output, "    kNone = ", list_dst_count++, ",\n");
+    for (auto const &dest_name : slot_list_dest_operands) {
+      list_dest_op_map_.insert({dest_name, list_dst_count});
+      absl::StrAppend(&h_output, "    k", dest_name, " = ", list_dst_count++,
+                      ",\n");
+    }
+    absl::StrAppend(&h_output, "    kPastMaxValue = ", list_dst_count,
+                    ",\n"
+                    "  };\n\n");
   }
+  // Create enums for the global view.
+
+  absl::StrAppend(&h_output, "  // Enums for the global view.\n");
   // Create enum for predicate operands.
   absl::StrAppend(&h_output, "  enum class PredOpEnum {\n");
   int pred_count = 0;
@@ -580,7 +661,7 @@ InstructionSet::StringPair InstructionSet::GenerateEnums(
   absl::StrAppend(&h_output,
                   "  enum class OpcodeEnum {\n"
                   "    kNone = 0,\n");
-  name_set.clear();
+  absl::btree_set<std::string> name_set;
   for (auto const *opcode : opcode_factory_->opcode_vec()) {
     name_set.insert(opcode->pascal_name());
   }
