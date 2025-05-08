@@ -987,6 +987,19 @@ std::tuple<std::string, std::string> InstructionSet::GenerateEncClasses(
   absl::StrAppend(&array, "};\n\n");
   absl::StrAppend(&cc_output, array, "\n}  // namespace\n\n");
 
+  // Generate the regex matcher base class.
+  absl::StrAppend(
+      &h_output,
+      "// Assembly matcher.\n"
+      "class SlotMatcherInterface {\n"
+      " public:\n"
+      "  virtual ~SlotMatcherInterface() = default;\n"
+      "  virtual absl::StatusOr<std::tuple<uint64_t, int>> Encode(\n"
+      "      uint64_t address, absl::string_view text, int entry,\n"
+      "      ResolverInterface *resolver,\n"
+      "      std::vector<RelocationInfo> &relocations) = 0;\n"
+      "};\n\n");
+
   // Generate the regex matchers for each slot.
   for (auto *slot : slot_order_) {
     if (!slot->is_referenced()) continue;

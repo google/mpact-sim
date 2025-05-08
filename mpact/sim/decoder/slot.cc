@@ -479,7 +479,7 @@ std::tuple<std::string, std::string> Slot::GenerateAsmRegexMatcher() const {
       &h_output,
       "// Assembly matcher.\n"
       "class ",
-      class_name,
+      class_name, " : public SlotMatcherInterface",
       " {\n"
       " public:\n"
       "  ",
@@ -492,7 +492,7 @@ std::tuple<std::string, std::string> Slot::GenerateAsmRegexMatcher() const {
       "absl::StatusOr<std::tuple<uint64_t, int>> "
       "  Encode(uint64_t address, absl::string_view text, int entry, "
       "ResolverInterface *resolver, std::vector<RelocationInfo> "
-      "&relocations);\n\n"
+      "&relocations) override;\n\n"
       " private:\n"
       "  bool Match(absl::string_view text, std::vector<int> &matches);\n"
       "  bool Extract(absl::string_view text, int index, "
