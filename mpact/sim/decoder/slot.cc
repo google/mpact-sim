@@ -1374,7 +1374,7 @@ std::string Slot::GenerateClassDefinition(absl::string_view encoding_type) {
       " *isa_encoding, SlotEnum slot, int entry) {\n"
       "  OpcodeEnum opcode = isa_encoding->GetOpcode(slot, entry);\n"
       "  int indx = static_cast<int>(opcode);\n"
-      "  auto &inst_info = instruction_info_[indx];\n"
+      "  auto &inst_info = instruction_info_.at(indx);\n"
       "  Instruction *inst = new Instruction(address, arch_state_);\n"
       "  inst->set_size(inst_info.instruction_size);\n"
       "  inst->set_opcode(static_cast<int>(opcode));\n"
