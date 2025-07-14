@@ -14,6 +14,8 @@
 
 # This contains the test projects for the decoder.
 
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+load("@rules_cc//cc:cc_test.bzl", "cc_test")
 load("//mpact/sim/decoder:mpact_sim_isa.bzl", "mpact_bin_fmt_decoder", "mpact_cc_library", "mpact_cc_test", "mpact_isa_decoder", "mpact_proto_fmt_decoder")
 
 package(

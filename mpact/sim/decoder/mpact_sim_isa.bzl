@@ -20,8 +20,12 @@
 
 """Build rules to create C++ code from an Isa.g4 decoder grammar."""
 
+load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+load("@rules_cc//cc:cc_test.bzl", "cc_test")
+
 def mpact_cc_library(name, srcs = [], hdrs = [], copts = [], deps = [], features = [], visibility = []):
-    native.cc_library(
+    cc_library(
         name = name,
         srcs = srcs,
         hdrs = hdrs,
@@ -32,7 +36,7 @@ def mpact_cc_library(name, srcs = [], hdrs = [], copts = [], deps = [], features
     )
 
 def mpact_cc_binary(name, srcs = [], copts = [], deps = [], features = [], visibility = []):
-    native.cc_binary(
+    cc_binary(
         name = name,
         srcs = srcs,
         copts = copts,
@@ -42,7 +46,7 @@ def mpact_cc_binary(name, srcs = [], copts = [], deps = [], features = [], visib
     )
 
 def mpact_cc_test(name, size = "small", srcs = [], deps = [], copts = [], data = []):
-    native.cc_test(
+    cc_test(
         name = name,
         size = size,
         copts = copts,
@@ -130,7 +134,7 @@ def mpact_isa_decoder(name, includes, src = "", srcs = [], deps = [], isa_name =
         lib_deps.append("@com_google_absl//absl/status:statusor")
     if "@com_google_absl//absl/strings" not in deps:
         lib_deps.append("@com_google_absl//absl/strings")
-    native.cc_library(
+    cc_library(
         name = name,
         srcs = [f for f in out_files if f.endswith(".cc")],
         hdrs = [f for f in out_files if f.endswith(".h")],
@@ -209,7 +213,7 @@ def mpact_bin_fmt_decoder(name, includes, src = "", srcs = [], deps = [], decode
         lib_deps.append("@com_google_mpact-sim//mpact/sim/generic:arch_state")
     if "@com_google_mpact-sim//mpact/sim/generic:instruction" not in deps:
         lib_deps.append("@com_google_mpact-sim//mpact/sim/generic:instruction")
-    native.cc_library(
+    cc_library(
         name = name,
         srcs = [f for f in out_files if f.endswith(".cc")],
         hdrs = [f for f in out_files if f.endswith(".h")],
@@ -270,7 +274,7 @@ def mpact_proto_fmt_decoder(name, includes, src = "", srcs = [], proto_files = [
     )
 
     # The rule for the lib that is built from the generated sources.
-    native.cc_library(
+    cc_library(
         name = name,
         srcs = [f for f in out_files if f.endswith(".cc")],
         hdrs = [f for f in out_files if f.endswith(".h")],

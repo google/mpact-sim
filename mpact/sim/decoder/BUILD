@@ -359,4 +359,5 @@ bzl_library(
     name = "mpact_sim_isa_bzl",
     srcs = ["mpact_sim_isa.bzl"],
     visibility = ["//visibility:private"],
+    deps = ["@rules_cc//cc:core_rules"],
 )

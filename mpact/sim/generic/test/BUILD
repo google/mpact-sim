@@ -14,6 +14,8 @@
 
 # Contains the test cases for the sim/generic directory.
 
+load("@rules_cc//cc:cc_test.bzl", "cc_test")
+
 package(
     default_applicable_licenses = ["//:license"],
 )

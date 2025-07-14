@@ -14,6 +14,8 @@
 
 # Unit test for program loaders.
 
+load("@rules_cc//cc:cc_test.bzl", "cc_test")
+
 package(
     default_applicable_licenses = ["//:license"],
 )
