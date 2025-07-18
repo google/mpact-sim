@@ -64,6 +64,14 @@ def mpact_sim_repos():
             url = "https://github.com/bazelbuild/rules_license/releases/download/0.0.4/rules_license-0.0.4.tar.gz",
         )
 
+    if not native.existing_rule("cc_library"):
+        http_archive(
+            name = "rules_cc",
+            url = "https://github.com/bazelbuild/rules_cc/releases/download/0.1.3/rules_cc-0.1.3.tar.gz",
+            strip_prefix = "rules_cc-0.1.3",
+            sha256 = "64cb81641305dcf7b3b3d5a73095ee8fe7444b26f7b72a12227d36e15cfbb6cb",
+        )
+
     # ELFIO header based library.
     http_archive(
         name = "com_github_serge1_elfio",
