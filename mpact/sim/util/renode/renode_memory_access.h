@@ -38,7 +38,7 @@ class RenodeMemoryAccess : public MemoryInterface {
  public:
   // Function call signature for the sysbus read/write methods.
   using RenodeMemoryFunction =
-      absl::AnyInvocable<int32_t(uint64_t, char *, int32_t)>;
+      absl::AnyInvocable<int32_t(uint64_t, char*, int32_t)>;
 
   RenodeMemoryAccess(RenodeMemoryFunction read_fcn,
                      RenodeMemoryFunction write_fcn)
@@ -46,17 +46,17 @@ class RenodeMemoryAccess : public MemoryInterface {
 
   // MemoryInterface methods.
   // Single item load.
-  void Load(uint64_t address, DataBuffer *db, Instruction *inst,
-            ReferenceCount *context) override;
+  void Load(uint64_t address, DataBuffer* db, Instruction* inst,
+            ReferenceCount* context) override;
   // Vector load.
-  void Load(DataBuffer *address_db, DataBuffer *mask_db, int el_size,
-            DataBuffer *db, Instruction *inst,
-            ReferenceCount *context) override;
+  void Load(DataBuffer* address_db, DataBuffer* mask_db, int el_size,
+            DataBuffer* db, Instruction* inst,
+            ReferenceCount* context) override;
   // Single item store.
-  void Store(uint64_t address, DataBuffer *db) override;
+  void Store(uint64_t address, DataBuffer* db) override;
   // Vector store.
-  void Store(DataBuffer *address, DataBuffer *mask, int el_size,
-             DataBuffer *db) override;
+  void Store(DataBuffer* address, DataBuffer* mask, int el_size,
+             DataBuffer* db) override;
 
   bool has_read_fcn() const { return read_fcn_ != nullptr; }
   bool has_write_fcn() const { return write_fcn_ != nullptr; }
@@ -70,7 +70,7 @@ class RenodeMemoryAccess : public MemoryInterface {
  private:
   // Method that is responsible to write back the load data to the appropriate
   // destination.
-  void FinishLoad(int latency, Instruction *inst, ReferenceCount *context);
+  void FinishLoad(int latency, Instruction* inst, ReferenceCount* context);
 
   // System bus read/write function pointers (point to C# delegates).
   RenodeMemoryFunction read_fcn_;

@@ -64,7 +64,7 @@ class ActionPointManagerBase {
   using ActionFcn = absl::AnyInvocable<void(uint64_t address, int id)>;
 
   // The constructor takes an instance of the ActionPointMemoryInterface class.
-  ActionPointManagerBase(ActionPointMemoryInterface *ap_mem_interface);
+  ActionPointManagerBase(ActionPointMemoryInterface* ap_mem_interface);
   virtual ~ActionPointManagerBase();
 
   // Returns true if the given address has an action point, regardless of
@@ -90,7 +90,7 @@ class ActionPointManagerBase {
   void PerformActions(uint64_t address);
 
   // Accessor.
-  ActionPointMemoryInterface *ap_memory_interface() const {
+  ActionPointMemoryInterface* ap_memory_interface() const {
     return ap_memory_interface_;
   }
 
@@ -112,14 +112,14 @@ class ActionPointManagerBase {
     // Number of 'actions' that are enabled.
     int num_active = 0;
     // Map from id to action function struct.
-    absl::btree_map<int, ActionInfo *> action_map;
+    absl::btree_map<int, ActionInfo*> action_map;
     ActionPointInfo(uint64_t address) : address(address) {}
   };
 
   // Interface to program memory.
-  ActionPointMemoryInterface *ap_memory_interface_;
+  ActionPointMemoryInterface* ap_memory_interface_;
   // Map from address to action info struct.
-  absl::btree_map<uint64_t, ActionPointInfo *> action_point_map_;
+  absl::btree_map<uint64_t, ActionPointInfo*> action_point_map_;
 };
 
 }  // namespace mpact::sim::generic

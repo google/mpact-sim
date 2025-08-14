@@ -70,12 +70,12 @@ class OverlayTest : public testing::Test {
 
   ~OverlayTest() override { delete format_; }
 
-  Format *format_;
+  Format* format_;
 };
 
 // Test construction and initial state of an overlay.
 TEST_F(OverlayTest, Constructor) {
-  auto *overlay =
+  auto* overlay =
       new Overlay(kOverlayName, /*is_signed=*/false, kOverlayWidth, format_);
   EXPECT_EQ(overlay->name(), kOverlayName);
   EXPECT_FALSE(overlay->is_signed());
@@ -89,7 +89,7 @@ TEST_F(OverlayTest, Constructor) {
 
 // Add a full field reference.
 TEST_F(OverlayTest, AddFieldReference) {
-  auto *overlay =
+  auto* overlay =
       new Overlay(kOverlayName, /*is_signed=*/false, kOverlayWidth, format_);
   // Fail to add a reference to an unknown field.
   EXPECT_EQ(overlay->AddFieldReference("immXYZ").code(),
@@ -105,7 +105,7 @@ TEST_F(OverlayTest, AddFieldReference) {
 
 // Add a field range reference.
 TEST_F(OverlayTest, AddFieldRangeReference) {
-  auto *overlay =
+  auto* overlay =
       new Overlay(kOverlayName, /*is_signed=*/false, kOverlayWidth, format_);
   // Fail to add a reference to an unknown field.
   EXPECT_EQ(
@@ -143,7 +143,7 @@ TEST_F(OverlayTest, AddFieldRangeReference) {
 
 // Add a format range reference.
 TEST_F(OverlayTest, AddFormatReference) {
-  auto *overlay =
+  auto* overlay =
       new Overlay(kOverlayName, /*is_signed=*/false, kOverlayWidth, format_);
   // Fail to add a reference to an unknown field.
   EXPECT_EQ(overlay->AddFormatReference(std::vector<BitRange>{BitRange{18, 16}})
@@ -169,7 +169,7 @@ TEST_F(OverlayTest, AddFormatReference) {
 
 // Add a bit constant.
 TEST_F(OverlayTest, AddBitConstant) {
-  auto *overlay =
+  auto* overlay =
       new Overlay(kOverlayName, /*is_signed=*/false, kOverlayWidth, format_);
   overlay->AddBitConstant(BinaryNum{0b00, 2});
   ASSERT_TRUE(overlay->ComputeHighLow().ok());
@@ -182,7 +182,7 @@ TEST_F(OverlayTest, AddBitConstant) {
 
 // Full overlay test with value extraction.
 TEST_F(OverlayTest, FullOverlay) {
-  auto *overlay =
+  auto* overlay =
       new Overlay(kOverlayName, /*is_signed=*/false, kOverlayWidth, format_);
   ASSERT_TRUE(
       overlay
@@ -210,7 +210,7 @@ TEST_F(OverlayTest, FullOverlay) {
 
 // Extraction code.
 TEST_F(OverlayTest, WriteSimpleExtractor) {
-  auto *overlay =
+  auto* overlay =
       new Overlay(kOverlayName, /*is_signed=*/false, kOverlayWidth, format_);
   ASSERT_TRUE(
       overlay
@@ -236,7 +236,7 @@ TEST_F(OverlayTest, WriteSimpleExtractor) {
 }
 
 TEST_F(OverlayTest, WriteComplexExtractor) {
-  auto *overlay =
+  auto* overlay =
       new Overlay(kOverlayName, /*is_signed=*/false, kOverlayWidth, format_);
   overlay->AddBitConstant(BinaryNum{0b11, 2});
   ASSERT_TRUE(

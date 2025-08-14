@@ -16,13 +16,16 @@
 
 #include <utility>
 
+#include "mpact/sim/generic/data_buffer.h"
+#include "mpact/sim/generic/fifo.h"
+
 namespace mpact {
 namespace sim {
 namespace generic {
 
 // Call base class Push. Only call the on_not_empty callback if the fifo is
 // empty prior to pushing.
-bool FifoWithNotifyBase::Push(DataBuffer *db) {
+bool FifoWithNotifyBase::Push(DataBuffer* db) {
   if (!IsEmpty()) return FifoBase::Push(db);
 
   auto res = FifoBase::Push(db);

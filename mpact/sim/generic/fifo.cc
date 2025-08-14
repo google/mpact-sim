@@ -28,8 +28,8 @@ namespace mpact {
 namespace sim {
 namespace generic {
 
-FifoBase::FifoBase(class ArchState *arch_state, absl::string_view name,
-                   const std::vector<int> &shape, int element_size,
+FifoBase::FifoBase(class ArchState* arch_state, absl::string_view name,
+                   const std::vector<int>& shape, int element_size,
                    int default_capacity)
     : StateItemBase(arch_state, name, shape, element_size),
       Component(std::string(name), arch_state),
@@ -58,7 +58,7 @@ bool FifoBase::IsOverSubscribed() const {
 
 void FifoBase::Reserve(int count) { reserved_ += count; }
 
-bool FifoBase::Push(DataBuffer *db) {
+bool FifoBase::Push(DataBuffer* db) {
   // If any slots are reserved, decrement first before checking for full.
   if (reserved_ > 0) {
     reserved_--;
@@ -86,7 +86,7 @@ void FifoBase::Pop() {
   fifo_.pop_front();
 }
 
-DataBuffer *FifoBase::Front() const {
+DataBuffer* FifoBase::Front() const {
   if (fifo_.empty()) {
     if (nullptr != underflow_program_error_) {
       underflow_program_error_->Raise("Underflow in fifo " + name_);
@@ -99,10 +99,10 @@ DataBuffer *FifoBase::Front() const {
 
 unsigned FifoBase::Available() const { return fifo_.size(); }
 
-void FifoBase::SetDataBuffer(DataBuffer *db) { Push(db); }
+void FifoBase::SetDataBuffer(DataBuffer* db) { Push(db); }
 
 absl::Status FifoBase::ImportSelf(
-    const mpact::sim::proto::ComponentData &component_data) {
+    const mpact::sim::proto::ComponentData& component_data) {
   auto status = Component::ImportSelf(component_data);
   if (!status.ok()) return status;
   capacity_ = depth_.GetValue();

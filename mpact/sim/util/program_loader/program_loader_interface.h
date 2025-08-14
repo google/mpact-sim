@@ -30,10 +30,10 @@ class ProgramLoaderInterface {
   // Load the executable into the program loader, but don't write segments to
   // memory. Return the entry point.
   virtual absl::StatusOr<uint64_t> LoadSymbols(
-      const std::string &file_name) = 0;
+      const std::string& file_name) = 0;
   // Write program segments to memories and return the entry point.
   virtual absl::StatusOr<uint64_t> LoadProgram(
-      const std::string &file_name) = 0;
+      const std::string& file_name) = 0;
 };
 
 }  // namespace util

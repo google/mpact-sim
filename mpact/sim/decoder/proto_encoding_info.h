@@ -45,47 +45,47 @@ struct StringPair {
 
 class ProtoEncodingInfo {
  public:
-  ProtoEncodingInfo(const std::string &opcode_enum,
-                    decoder::DecoderErrorListener *error_listener);
+  ProtoEncodingInfo(const std::string& opcode_enum,
+                    decoder::DecoderErrorListener* error_listener);
   ProtoEncodingInfo() = delete;
   ~ProtoEncodingInfo();
   // Add file to be included in the generated code.
   void AddIncludeFile(std::string include_file);
   // Create and return a proto instruction decoder object with the given name.
-  ProtoInstructionDecoder *SetProtoDecoder(std::string name);
+  ProtoInstructionDecoder* SetProtoDecoder(std::string name);
   // Create and return an instruction group object with the given name.
-  absl::StatusOr<ProtoInstructionGroup *> AddInstructionGroup(
-      const std::string &group_name,
-      const google::protobuf::Descriptor *descriptor);
+  absl::StatusOr<ProtoInstructionGroup*> AddInstructionGroup(
+      const std::string& group_name,
+      const google::protobuf::Descriptor* descriptor);
   // Check that the setter types are consistent.
   absl::Status CheckSetterType(
       absl::string_view name,
-      const google::protobuf::FieldDescriptor *field_desc);
+      const google::protobuf::FieldDescriptor* field_desc);
   // Generate the C++ .h and .cc file contents.
   StringPair GenerateDecoderClass();
 
   // Accessors.
-  DecoderErrorListener *error_listener() { return error_listener_; }
-  absl::flat_hash_map<std::string, ProtoInstructionGroup *> &
+  DecoderErrorListener* error_listener() { return error_listener_; }
+  absl::flat_hash_map<std::string, ProtoInstructionGroup*>&
   instruction_group_map() {
     return instruction_group_map_;
   }
-  const absl::btree_set<std::string> &include_files() const {
+  const absl::btree_set<std::string>& include_files() const {
     return include_files_;
   }
-  ProtoInstructionDecoder *decoder() const { return decoder_; }
+  ProtoInstructionDecoder* decoder() const { return decoder_; }
   absl::string_view opcode_enum() const { return opcode_enum_; }
 
  private:
   std::string opcode_enum_;
-  DecoderErrorListener *error_listener_;
+  DecoderErrorListener* error_listener_;
   // Map of all instruction groups.
-  absl::flat_hash_map<std::string, ProtoInstructionGroup *>
+  absl::flat_hash_map<std::string, ProtoInstructionGroup*>
       instruction_group_map_;
   // The include files are stored in a btree set so they can be iterated over
   // in alphabetic order.
   absl::btree_set<std::string> include_files_;
-  ProtoInstructionDecoder *decoder_ = nullptr;
+  ProtoInstructionDecoder* decoder_ = nullptr;
   // Map of all setter types.
   absl::btree_map<std::string, google::protobuf::FieldDescriptor::CppType>
       setter_types_;

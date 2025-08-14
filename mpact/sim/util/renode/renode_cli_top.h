@@ -45,7 +45,7 @@ using RunStatus = ::mpact::sim::generic::CoreDebugInterface::RunStatus;
 // line interface and forwards them to the top simulator control interface.
 class RenodeCLITop {
  public:
-  RenodeCLITop(CoreDebugInterface *top, bool wait_for_cli);
+  RenodeCLITop(CoreDebugInterface* top, bool wait_for_cli);
   virtual ~RenodeCLITop() = default;
 
   // Set the connected status of the command line interface.
@@ -58,14 +58,14 @@ class RenodeCLITop {
   // Get the reason for the last halt.
   virtual absl::StatusOr<HaltReasonValueType> RenodeGetLastHaltReason();
   // Register access by register name.
-  virtual absl::StatusOr<uint64_t> RenodeReadRegister(const std::string &name);
-  virtual absl::Status RenodeWriteRegister(const std::string &name,
+  virtual absl::StatusOr<uint64_t> RenodeReadRegister(const std::string& name);
+  virtual absl::Status RenodeWriteRegister(const std::string& name,
                                            uint64_t value);
   // Read and Write memory methods bypass any semihosting.
-  virtual absl::StatusOr<size_t> RenodeReadMemory(uint64_t address, void *buf,
+  virtual absl::StatusOr<size_t> RenodeReadMemory(uint64_t address, void* buf,
                                                   size_t length);
   virtual absl::StatusOr<size_t> RenodeWriteMemory(uint64_t address,
-                                                   const void *buf,
+                                                   const void* buf,
                                                    size_t length);
 
   // Methods that handle requests from Command Line Interface.
@@ -79,28 +79,28 @@ class RenodeCLITop {
   // Wait for free run to complete.
   virtual absl::Status CLIWait();
   virtual absl::StatusOr<RunStatus> CLIGetRunStatus();
-  virtual void CLIRequestHalt(HaltReason halt_reason, const Instruction *inst);
+  virtual void CLIRequestHalt(HaltReason halt_reason, const Instruction* inst);
   virtual void CLIRequestHalt(HaltReasonValueType halt_reason,
-                              const Instruction *inst);
+                              const Instruction* inst);
   virtual absl::StatusOr<HaltReasonValueType> CLIGetLastHaltReason();
   // Register access by register name.
-  virtual absl::StatusOr<uint64_t> CLIReadRegister(const std::string &name);
-  virtual absl::Status CLIWriteRegister(const std::string &name,
+  virtual absl::StatusOr<uint64_t> CLIReadRegister(const std::string& name);
+  virtual absl::Status CLIWriteRegister(const std::string& name,
                                         uint64_t value);
-  virtual absl::StatusOr<DataBuffer *> CLIGetRegisterDataBuffer(
-      const std::string &name);
+  virtual absl::StatusOr<DataBuffer*> CLIGetRegisterDataBuffer(
+      const std::string& name);
   // Read and Write memory methods bypass any semihosting.
-  virtual absl::StatusOr<size_t> CLIReadMemory(uint64_t address, void *buf,
+  virtual absl::StatusOr<size_t> CLIReadMemory(uint64_t address, void* buf,
                                                size_t length);
   virtual absl::StatusOr<size_t> CLIWriteMemory(uint64_t address,
-                                                const void *buf, size_t length);
+                                                const void* buf, size_t length);
 
   // Breakpoint and watchpoint management.
   virtual bool CLIHasBreakpoint(uint64_t address);
   virtual absl::Status CLISetSwBreakpoint(uint64_t address);
   virtual absl::Status CLIClearSwBreakpoint(uint64_t address);
   virtual absl::Status CLIClearAllSwBreakpoints();
-  virtual absl::StatusOr<Instruction *> CLIGetInstruction(uint64_t address);
+  virtual absl::StatusOr<Instruction*> CLIGetInstruction(uint64_t address);
   virtual absl::StatusOr<std::string> CLIGetDisassembly(uint64_t address);
 
  protected:
@@ -109,11 +109,11 @@ class RenodeCLITop {
   template <typename T>
   T DoWhenInControl(absl::AnyInvocable<T(void)> action);
   // Accessor.
-  CoreDebugInterface *top() const { return top_; }
+  CoreDebugInterface* top() const { return top_; }
 
  private:
   bool IsCLIInControl() const;
-  CoreDebugInterface *top_ = nullptr;
+  CoreDebugInterface* top_ = nullptr;
   // Mutex that determines which of ReNode and the command line interface has
   // control over the simulator control interface.
   absl::Mutex run_control_mutex_;

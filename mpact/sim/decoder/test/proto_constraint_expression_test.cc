@@ -31,8 +31,8 @@ class MultiFileErrorCollector
     : public google::protobuf::compiler::MultiFileErrorCollector {
  public:
   MultiFileErrorCollector() {}
-  MultiFileErrorCollector(const MultiFileErrorCollector &) = delete;
-  MultiFileErrorCollector &operator=(const MultiFileErrorCollector &) = delete;
+  MultiFileErrorCollector(const MultiFileErrorCollector&) = delete;
+  MultiFileErrorCollector& operator=(const MultiFileErrorCollector&) = delete;
 
   void RecordError(absl::string_view filename, int line, int column,
                    absl::string_view message) override {
@@ -41,7 +41,7 @@ class MultiFileErrorCollector
     absl::StrAppend(&error_, "Line ", line, " Column ", column, ": ", message,
                     "\n");
   }
-  const std::string &GetError() const { return error_; }
+  const std::string& GetError() const { return error_; }
 
  private:
   std::string error_;
@@ -79,12 +79,12 @@ TEST_F(ProtoConstraintExpressionTest, EnumExpression) {
   google::protobuf::compiler::DiskSourceTree source_tree;
   source_tree.MapPath("", "");
   google::protobuf::compiler::Importer importer(&source_tree, &error_collector);
-  auto const *isa_descriptor = importer.Import(kIsaProto);
+  auto const* isa_descriptor = importer.Import(kIsaProto);
   CHECK_NE(isa_descriptor, nullptr);
-  auto const *pool = importer.pool();
+  auto const* pool = importer.pool();
   CHECK_NE(pool, nullptr);
   // Get the enum value descriptor.
-  auto const *enum_value_desc =
+  auto const* enum_value_desc =
       pool->FindEnumValueByName("mpact_sim.decoder.test.OPCODE_ADD");
   CHECK_NE(enum_value_desc, nullptr);
   int enum_value = enum_value_desc->number();
@@ -100,7 +100,7 @@ TEST_F(ProtoConstraintExpressionTest, EnumExpression) {
   // Verify that the type is as expected.
   EXPECT_EQ(expr_value.index(), *ProtoValueIndex::kInt32);
   // Get the typed value.
-  auto const *value = std::get_if<int32_t>(&expr_value);
+  auto const* value = std::get_if<int32_t>(&expr_value);
   CHECK_NE(value, nullptr);
   // Match the value against that obtained from the enum value descriptor.
   EXPECT_EQ(*value, enum_value);
@@ -159,7 +159,7 @@ TEST_F(ProtoConstraintExpressionTest, ValueExpressionString) {
 // Test the negate expression.
 TEST_F(ProtoConstraintExpressionTest, NegateExpression) {
   // int32_t
-  auto *val_expr =
+  auto* val_expr =
       new ProtoConstraintValueExpression(ProtoValue(static_cast<int32_t>(-1)));
   ProtoConstraintNegateExpression neg_expr(val_expr);
   EXPECT_EQ(CppType<int32_t>::value, neg_expr.cpp_type());
@@ -194,7 +194,7 @@ TEST_F(ProtoConstraintExpressionTest, NegateExpression) {
 
 TEST_F(ProtoConstraintExpressionTest, CloneValueExpr) {
   ProtoConstraintValueExpression expr(ProtoValue(static_cast<int32_t>(-1)));
-  auto *clone = expr.Clone();
+  auto* clone = expr.Clone();
   EXPECT_NE(clone, nullptr);
   EXPECT_EQ(clone->cpp_type(), expr.cpp_type());
   EXPECT_EQ(clone->GetValueAs<int32_t>(), -1);
@@ -207,18 +207,18 @@ TEST_F(ProtoConstraintExpressionTest, CloneEnumExpr) {
   google::protobuf::compiler::DiskSourceTree source_tree;
   source_tree.MapPath("", "");
   google::protobuf::compiler::Importer importer(&source_tree, &error_collector);
-  auto const *isa_descriptor = importer.Import(kIsaProto);
+  auto const* isa_descriptor = importer.Import(kIsaProto);
   CHECK_NE(isa_descriptor, nullptr);
-  auto const *pool = importer.pool();
+  auto const* pool = importer.pool();
   CHECK_NE(pool, nullptr);
   // Get the enum value descriptor.
-  auto const *enum_value_desc =
+  auto const* enum_value_desc =
       pool->FindEnumValueByName("mpact_sim.decoder.test.OPCODE_ADD");
   CHECK_NE(enum_value_desc, nullptr);
   int enum_value = enum_value_desc->number();
   // Create a constraint enum expression using the enum value descriptor.
   ProtoConstraintEnumExpression enum_expr(enum_value_desc);
-  auto *clone = enum_expr.Clone();
+  auto* clone = enum_expr.Clone();
   EXPECT_NE(clone, nullptr);
   EXPECT_EQ(clone->cpp_type(), enum_expr.cpp_type());
   EXPECT_EQ(clone->GetValueAs<int32_t>(), enum_value);
@@ -227,10 +227,10 @@ TEST_F(ProtoConstraintExpressionTest, CloneEnumExpr) {
 
 TEST_F(ProtoConstraintExpressionTest, CloneNegateExpr) {
   // int32_t
-  auto *val_expr =
+  auto* val_expr =
       new ProtoConstraintValueExpression(ProtoValue(static_cast<int32_t>(-1)));
   ProtoConstraintNegateExpression neg_expr(val_expr);
-  auto *clone = neg_expr.Clone();
+  auto* clone = neg_expr.Clone();
   EXPECT_NE(clone, nullptr);
   EXPECT_EQ(clone->cpp_type(), neg_expr.cpp_type());
   EXPECT_EQ(clone->GetValueAs<int32_t>(), neg_expr.GetValueAs<int32_t>());

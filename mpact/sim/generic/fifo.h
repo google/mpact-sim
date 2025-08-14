@@ -49,8 +49,8 @@ template <typename T, typename Enable = void>
 class FifoSourceOperand : public SourceOperandInterface {
  public:
   // Constructor. Note, default constructor deleted.
-  explicit FifoSourceOperand(FifoBase *fifo);
-  FifoSourceOperand(FifoBase *fifo, const std::string op_name);
+  explicit FifoSourceOperand(FifoBase* fifo);
+  FifoSourceOperand(FifoBase* fifo, const std::string op_name);
   FifoSourceOperand() = delete;
 
   // These accessor methods are defined to satisfy the interface. However,
@@ -80,7 +80,7 @@ class FifoSourceOperand : public SourceOperandInterface {
   std::string AsString() const override { return op_name_; }
 
  private:
-  FifoBase *fifo_;
+  FifoBase* fifo_;
   std::string op_name_;
 };
 
@@ -91,22 +91,22 @@ template <typename T>
 class FifoDestinationOperand : public DestinationOperandInterface {
  public:
   // Constructors
-  FifoDestinationOperand(FifoBase *fifo, int latency, std::string op_name);
-  FifoDestinationOperand(FifoBase *fifo, int latency);
+  FifoDestinationOperand(FifoBase* fifo, int latency, std::string op_name);
+  FifoDestinationOperand(FifoBase* fifo, int latency);
   FifoDestinationOperand() = delete;
 
   // Initializes the DataBuffer instance so that when Submit is called, it can
   // be entered into the correct delay line, with the correct latency, targeting
   // the correct fifo.
-  void InitializeDataBuffer(DataBuffer *db) override;
+  void InitializeDataBuffer(DataBuffer* db) override;
 
   // Since a fifo stores multiple values, this method will return a nullptr
   // as it does not make sense to copy the value from a fifo into a destination
   // DataBuffer instance that is destined for that fifo.
-  DataBuffer *CopyDataBuffer() override { return nullptr; }
+  DataBuffer* CopyDataBuffer() override { return nullptr; }
 
   // Allocates and returns an initialized DataBuffer instance.
-  DataBuffer *AllocateDataBuffer() override;
+  DataBuffer* AllocateDataBuffer() override;
 
   // Returns the FifoBase object wrapped in absl::any.
   std::any GetObject() const override { return std::any(fifo_); }
@@ -122,10 +122,10 @@ class FifoDestinationOperand : public DestinationOperandInterface {
   std::string AsString() const override { return op_name_; }
 
  private:
-  FifoBase *fifo_;
-  DataBufferFactory *db_factory_;
+  FifoBase* fifo_;
+  DataBufferFactory* db_factory_;
   int latency_;
-  DataBufferDelayLine *delay_line_;
+  DataBufferDelayLine* delay_line_;
   std::string op_name_;
 };
 
@@ -141,18 +141,18 @@ class FifoDestinationOperand : public DestinationOperandInterface {
 class FifoBase : public StateItemBase, public Component {
   // Only constructed from derived classes.
  protected:
-  FifoBase(class ArchState *arch_state, absl::string_view name,
-           const std::vector<int> &shape, int element_size,
+  FifoBase(class ArchState* arch_state, absl::string_view name,
+           const std::vector<int>& shape, int element_size,
            int default_capacity);
   FifoBase() = delete;
-  FifoBase(const FifoBase &) = delete;
+  FifoBase(const FifoBase&) = delete;
 
  public:
   ~FifoBase() override;
 
  public:
   // Pushes the DataBuffer to the fifo provided there is space available.
-  void SetDataBuffer(DataBuffer *db) override;
+  void SetDataBuffer(DataBuffer* db) override;
 
   // Returns true if the count of reserved and full slots equals or exceeds
   // fifo capacity.
@@ -177,12 +177,12 @@ class FifoBase : public StateItemBase, public Component {
   // is greater than zero it will decrement the reserved count. If the push
   // would overflow the fifo it returns false, and raises the overflow program
   // error if set.
-  virtual bool Push(DataBuffer *db);
+  virtual bool Push(DataBuffer* db);
 
   // Returns a pointer to the DataBuffer at the front of the fifo. If the fifo
   // is empty, the nullptr is returned and the underflow program error, if set,
   // is raised.
-  DataBuffer *Front() const;
+  DataBuffer* Front() const;
 
   // Removes the front element of the fifo and decrements its reference count.
   // If the fifo is empty, the underflow program error, if set, is raised.
@@ -198,23 +198,23 @@ class FifoBase : public StateItemBase, public Component {
   unsigned Reserved() const { return reserved_; }
 
   // Setters for ProgramErrors
-  void SetOverflowProgramError(std::unique_ptr<ProgramError> *program_error) {
+  void SetOverflowProgramError(std::unique_ptr<ProgramError>* program_error) {
     overflow_program_error_ = std::move(*program_error);
   }
 
-  void SetUnderflowProgramError(std::unique_ptr<ProgramError> *program_error) {
+  void SetUnderflowProgramError(std::unique_ptr<ProgramError>* program_error) {
     underflow_program_error_ = std::move(*program_error);
   }
 
  protected:
   // Configuration import.
   absl::Status ImportSelf(
-      const mpact::sim::proto::ComponentData &component_data) override;
+      const mpact::sim::proto::ComponentData& component_data) override;
 
-  ProgramError *overflow_program_error() {
+  ProgramError* overflow_program_error() {
     return overflow_program_error_.get();
   }
-  ProgramError *underflow_program_error() {
+  ProgramError* underflow_program_error() {
     return underflow_program_error_.get();
   }
 
@@ -225,7 +225,7 @@ class FifoBase : public StateItemBase, public Component {
   std::string name_;
   unsigned capacity_;
   unsigned reserved_;
-  std::deque<DataBuffer *> fifo_;
+  std::deque<DataBuffer*> fifo_;
 };
 
 // Scalar valued fifo with value type ElementType.
@@ -260,11 +260,10 @@ using EnableIfNotIntegral =
     typename std::enable_if<!std::is_integral<T>::value, void>::type;
 
 // Helper function used in the partial specialization below.
-template <
-    typename F, typename T,
-    typename std::enable_if<std::is_signed<T>::value, T>::type * = nullptr>
-inline T HelperAs(const FifoBase *fifo, int i) {
-  DataBuffer *db = fifo->Front();
+template <typename F, typename T,
+          typename std::enable_if<std::is_signed<T>::value, T>::type* = nullptr>
+inline T HelperAs(const FifoBase* fifo, int i) {
+  DataBuffer* db = fifo->Front();
   if (nullptr == db) {
     return static_cast<T>(0);
   }
@@ -274,9 +273,9 @@ inline T HelperAs(const FifoBase *fifo, int i) {
 
 template <
     typename F, typename T,
-    typename std::enable_if<std::is_unsigned<T>::value, T>::type * = nullptr>
-inline T HelperAs(const FifoBase *fifo, int i) {
-  DataBuffer *db = fifo->Front();
+    typename std::enable_if<std::is_unsigned<T>::value, T>::type* = nullptr>
+inline T HelperAs(const FifoBase* fifo, int i) {
+  DataBuffer* db = fifo->Front();
   if (nullptr == db) {
     return static_cast<T>(0);
   }
@@ -285,12 +284,12 @@ inline T HelperAs(const FifoBase *fifo, int i) {
 }
 
 template <typename T, typename Enable>
-FifoSourceOperand<T, Enable>::FifoSourceOperand(FifoBase *fifo,
+FifoSourceOperand<T, Enable>::FifoSourceOperand(FifoBase* fifo,
                                                 const std::string op_name)
     : fifo_(fifo), op_name_(op_name) {}
 
 template <typename T, typename Enable>
-FifoSourceOperand<T, Enable>::FifoSourceOperand(FifoBase *fifo)
+FifoSourceOperand<T, Enable>::FifoSourceOperand(FifoBase* fifo)
     : FifoSourceOperand(fifo, fifo->name()) {}
 
 template <typename T>
@@ -298,9 +297,9 @@ class FifoSourceOperand<T, EnableIfIntegral<T>>
     : public SourceOperandInterface {
  public:
   // Constructors. Note, default constructor deleted.
-  FifoSourceOperand(FifoBase *fifo, const std::string op_name)
+  FifoSourceOperand(FifoBase* fifo, const std::string op_name)
       : fifo_(fifo), op_name_(op_name) {}
-  explicit FifoSourceOperand(FifoBase *fifo)
+  explicit FifoSourceOperand(FifoBase* fifo)
       : FifoSourceOperand(fifo, fifo->name()) {}
   FifoSourceOperand() = delete;
 
@@ -331,7 +330,7 @@ class FifoSourceOperand<T, EnableIfIntegral<T>>
   std::string AsString() const override { return op_name_; }
 
  private:
-  FifoBase *fifo_;
+  FifoBase* fifo_;
   std::string op_name_;
 };
 
@@ -347,9 +346,9 @@ class FifoSourceOperand<T, EnableIfNotIntegral<T>>
     : public SourceOperandInterface {
  public:
   // Constructors. Note, default constructor deleted.
-  FifoSourceOperand(FifoBase *fifo, const std::string op_name)
+  FifoSourceOperand(FifoBase* fifo, const std::string op_name)
       : fifo_(fifo), op_name_(op_name) {}
-  explicit FifoSourceOperand(FifoBase *fifo)
+  explicit FifoSourceOperand(FifoBase* fifo)
       : FifoSourceOperand(fifo, fifo->name()) {}
   FifoSourceOperand() = delete;
 
@@ -373,12 +372,12 @@ class FifoSourceOperand<T, EnableIfNotIntegral<T>>
   std::vector<int> shape() const override { return fifo_->shape(); }
 
  private:
-  FifoBase *fifo_;
+  FifoBase* fifo_;
   std::string op_name_;
 };
 
 template <typename T>
-FifoDestinationOperand<T>::FifoDestinationOperand(FifoBase *fifo, int latency,
+FifoDestinationOperand<T>::FifoDestinationOperand(FifoBase* fifo, int latency,
                                                   std::string op_name)
     : fifo_(fifo),
       db_factory_(fifo->arch_state()->db_factory()),
@@ -387,19 +386,19 @@ FifoDestinationOperand<T>::FifoDestinationOperand(FifoBase *fifo, int latency,
       op_name_(op_name) {}
 
 template <typename T>
-FifoDestinationOperand<T>::FifoDestinationOperand(FifoBase *fifo, int latency)
+FifoDestinationOperand<T>::FifoDestinationOperand(FifoBase* fifo, int latency)
     : FifoDestinationOperand(fifo, latency, fifo->name()) {}
 
 template <typename T>
-void FifoDestinationOperand<T>::InitializeDataBuffer(DataBuffer *db) {
+void FifoDestinationOperand<T>::InitializeDataBuffer(DataBuffer* db) {
   db->set_destination(fifo_);
   db->set_latency(latency_);
   db->set_delay_line(delay_line_);
 }
 
 template <typename T>
-DataBuffer *FifoDestinationOperand<T>::AllocateDataBuffer() {
-  DataBuffer *db = db_factory_->Allocate(fifo_->size());
+DataBuffer* FifoDestinationOperand<T>::AllocateDataBuffer() {
+  DataBuffer* db = db_factory_->Allocate(fifo_->size());
   InitializeDataBuffer(db);
   return db;
 }

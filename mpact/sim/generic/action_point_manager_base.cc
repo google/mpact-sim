@@ -25,12 +25,12 @@
 namespace mpact::sim::generic {
 
 ActionPointManagerBase::ActionPointManagerBase(
-    ActionPointMemoryInterface *ap_mem_interface)
+    ActionPointMemoryInterface* ap_mem_interface)
     : ap_memory_interface_(ap_mem_interface) {}
 
 ActionPointManagerBase::~ActionPointManagerBase() {
-  for (auto &[unused, ap_ptr] : action_point_map_) {
-    for (auto &[unused, ai_ptr] : ap_ptr->action_map) {
+  for (auto& [unused, ap_ptr] : action_point_map_) {
+    for (auto& [unused, ai_ptr] : ap_ptr->action_map) {
       ai_ptr->action_fcn = nullptr;
       delete ai_ptr;
     }
@@ -47,7 +47,7 @@ bool ActionPointManagerBase::HasActionPoint(uint64_t address) const {
 absl::StatusOr<int> ActionPointManagerBase::SetAction(uint64_t address,
                                                       ActionFcn action_fcn) {
   auto it = action_point_map_.find(address);
-  ActionPointInfo *ap = nullptr;
+  ActionPointInfo* ap = nullptr;
   if (it == action_point_map_.end()) {
     // If the action point doesn't exist, create a new one.
     // First set the breakpoint instruction.
@@ -65,7 +65,7 @@ absl::StatusOr<int> ActionPointManagerBase::SetAction(uint64_t address,
   }
   // Add the function as an enabled action.
   int id = ap->next_id++;
-  auto *action_info =
+  auto* action_info =
       new ActionInfo(std::move(action_fcn), /*is_enabled=*/true);
   ap->action_map.insert(std::make_pair(id, action_info));
   ap->num_active++;
@@ -80,14 +80,14 @@ absl::Status ActionPointManagerBase::ClearAction(uint64_t address, int id) {
         absl::StrCat("No action point found at: ", absl::Hex(address)));
   }
   // Find the action.
-  auto *ap = it->second;
+  auto* ap = it->second;
   auto action_it = ap->action_map.find(id);
   if (action_it == ap->action_map.end()) {
     return absl::NotFoundError(
         absl::StrCat("No action ", id, "found at: ", absl::Hex(address)));
   }
   // Remove the action.
-  auto *action_info = action_it->second;
+  auto* action_info = action_it->second;
   ap->action_map.erase(action_it);
   ap->num_active -= action_info->is_enabled ? 1 : 0;
   delete action_info;
@@ -106,7 +106,7 @@ absl::Status ActionPointManagerBase::EnableAction(uint64_t address, int id) {
     return absl::NotFoundError(
         absl::StrCat("No action point found at: ", absl::Hex(address)));
   }
-  auto *ap = it->second;
+  auto* ap = it->second;
   // Find the action.
   auto action_it = ap->action_map.find(id);
   if (action_it == ap->action_map.end()) {
@@ -133,7 +133,7 @@ absl::Status ActionPointManagerBase::DisableAction(uint64_t address, int id) {
         absl::StrCat("No action point found at: ", absl::Hex(address)));
   }
   // Find the action.
-  auto *ap = it->second;
+  auto* ap = it->second;
   auto action_it = ap->action_map.find(id);
   if (action_it == ap->action_map.end()) {
     return absl::NotFoundError(
@@ -157,7 +157,7 @@ bool ActionPointManagerBase::IsActionPointActive(uint64_t address) const {
   auto it = action_point_map_.find(address);
   if (it == action_point_map_.end()) return false;
 
-  auto *ap = it->second;
+  auto* ap = it->second;
   return ap->num_active > 0;
 }
 
@@ -166,7 +166,7 @@ bool ActionPointManagerBase::IsActionEnabled(uint64_t address, int id) const {
   auto it = action_point_map_.find(address);
   if (it == action_point_map_.end()) return false;
 
-  auto *ap = it->second;
+  auto* ap = it->second;
   // Find the action.
   auto action_it = ap->action_map.find(id);
   if (action_it == ap->action_map.end()) return false;
@@ -174,8 +174,8 @@ bool ActionPointManagerBase::IsActionEnabled(uint64_t address, int id) const {
 }
 
 void ActionPointManagerBase::ClearAllActionPoints() {
-  for (auto &[address, ap_ptr] : action_point_map_) {
-    for (auto &[unused, action_ptr] : ap_ptr->action_map) {
+  for (auto& [address, ap_ptr] : action_point_map_) {
+    for (auto& [unused, action_ptr] : ap_ptr->action_map) {
       delete action_ptr;
     }
     ap_ptr->action_map.clear();
@@ -192,7 +192,7 @@ void ActionPointManagerBase::PerformActions(uint64_t address) {
                                absl::Hex(address));
   }
 
-  for (auto &[id, action_ptr] : it->second->action_map) {
+  for (auto& [id, action_ptr] : it->second->action_map) {
     if (action_ptr->is_enabled) action_ptr->action_fcn(address, id);
   }
 }

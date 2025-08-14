@@ -83,7 +83,7 @@ constexpr char kIsaSuffix[] = R"post(
 
 std::string OutputDir() { return "./"; }
 
-static bool FileExists(const std::string &name) {
+static bool FileExists(const std::string& name) {
   std::ifstream file(name);
   return file.good();
 }
@@ -576,7 +576,7 @@ TEST_F(InstructionSetParserTest, Resource) {
   std::string opcodes;
   RE2 opcodes_re("(?msU:\\s*OpcodeEnum[\\s\\n]*\\{([^\\}]*)\\})");
   EXPECT_TRUE(RE2::PartialMatch(enum_str, opcodes_re, &opcodes));
-  for (auto &name : {"kInst0", "kInst1"}) {
+  for (auto& name : {"kInst0", "kInst1"}) {
     RE2 re(name);
     EXPECT_TRUE(RE2::PartialMatch(opcodes, re)) << name;
     EXPECT_TRUE(RE2::PartialMatch(decoder_str, re)) << name;

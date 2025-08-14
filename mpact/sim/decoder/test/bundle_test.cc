@@ -34,12 +34,12 @@ constexpr char kBundleName[] = "TestBundle";
 constexpr char kSubBundleName0[] = "TestSubBundle0";
 constexpr char kSubBundleName1[] = "TestSubBundle1";
 constexpr char kSubBundleName2[] = "TestSubBundle2";
-const char *kSubBundleNames[3] = {kSubBundleName0, kSubBundleName1,
+const char* kSubBundleNames[3] = {kSubBundleName0, kSubBundleName1,
                                   kSubBundleName2};
 constexpr char kSlotName0[] = "TestSlot0";
 constexpr char kSlotName1[] = "TestSlot1";
 constexpr char kSlotName2[] = "TestSlot2";
-const char *kSlotNames[3] = {kSlotName0, kSlotName1, kSlotName2};
+const char* kSlotNames[3] = {kSlotName0, kSlotName1, kSlotName2};
 
 class BundleTest : public testing::Test {
  protected:

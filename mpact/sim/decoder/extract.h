@@ -41,13 +41,13 @@ using ExtractionRecipe = std::vector<ExtractionStep>;
 
 // Using the extraction recipe given, perform the extraction from the input
 // value and return the result.
-uint64_t ExtractValue(uint64_t value, const ExtractionRecipe &recipe);
+uint64_t ExtractValue(uint64_t value, const ExtractionRecipe& recipe);
 
 // Using the extraction recipe given, return a string that has the C code for
 // performing the extraction assuming the input value is stored in a variable
 // with the name stored in 'value' and the result should be stored in variable
 // named as stored in 'result'. Each line in the code is indented by 'indent'.
-std::string WriteExtraction(const ExtractionRecipe &recipe,
+std::string WriteExtraction(const ExtractionRecipe& recipe,
                             absl::string_view value, absl::string_view result,
                             absl::string_view indent);
 

@@ -40,6 +40,7 @@ cc_test(
     deps = [
         "//mpact/sim/generic:arch_state",
         "//mpact/sim/generic:core",
+        "//mpact/sim/generic:instruction",
         "//mpact/sim/util/memory",
         "@com_google_absl//absl/strings",
         "@com_google_googletest//:gtest",

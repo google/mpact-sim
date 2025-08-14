@@ -42,7 +42,7 @@ struct RelocationInfo {
   uint32_t type;
   uint64_t addend;
   uint16_t section_index;
-  RelocationInfo(uint64_t offset, const std::string &symbol, uint32_t type,
+  RelocationInfo(uint64_t offset, const std::string& symbol, uint32_t type,
                  uint64_t addend, uint16_t section_index)
       : offset(offset),
         symbol(symbol),
@@ -55,7 +55,7 @@ class OpcodeAssemblerInterface {
  public:
   virtual ~OpcodeAssemblerInterface() = default;
   using AddSymbolCallback = absl::AnyInvocable<absl::Status(
-      const std::string &, ELFIO::Elf64_Addr /*value*/,
+      const std::string&, ELFIO::Elf64_Addr /*value*/,
       ELFIO::Elf_Xword /*size*/, uint8_t /*type*/, uint8_t /*binding*/,
       uint8_t /*other*/)>;
   // Takes the current address, the text for the assembly instruction (including
@@ -65,9 +65,9 @@ class OpcodeAssemblerInterface {
   // the increment to the address after the instruction is encoded.
   virtual absl::StatusOr<size_t> Encode(
       uint64_t address, absl::string_view text,
-      AddSymbolCallback add_symbol_callback, ResolverInterface *resolver,
-      std::vector<uint8_t> &bytes,
-      std::vector<RelocationInfo> &relocations) = 0;
+      AddSymbolCallback add_symbol_callback, ResolverInterface* resolver,
+      std::vector<uint8_t>& bytes,
+      std::vector<RelocationInfo>& relocations) = 0;
 };
 
 }  // namespace assembler

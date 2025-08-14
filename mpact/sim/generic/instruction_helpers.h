@@ -34,12 +34,12 @@ namespace generic {
 // destination operand. This version supports different types for the result and
 // each of the two source operands.
 template <typename Result, typename Argument1, typename Argument2>
-inline void BinaryOp(const Instruction *instruction,
+inline void BinaryOp(const Instruction* instruction,
                      std::function<Result(Argument1, Argument2)> operation) {
   Argument1 lhs = generic::GetInstructionSource<Argument1>(instruction, 0);
   Argument2 rhs = generic::GetInstructionSource<Argument2>(instruction, 1);
   Result dest_value = operation(lhs, rhs);
-  auto *db = instruction->Destination(0)->AllocateDataBuffer();
+  auto* db = instruction->Destination(0)->AllocateDataBuffer();
   db->SetSubmit<Result>(0, dest_value);
 }
 
@@ -49,12 +49,12 @@ inline void BinaryOp(const Instruction *instruction,
 // destination operand. This version supports different types for the result
 // and the operands, but the two source operands must have the same type.
 template <typename Result, typename Argument>
-inline void BinaryOp(const Instruction *instruction,
+inline void BinaryOp(const Instruction* instruction,
                      std::function<Result(Argument, Argument)> operation) {
   Argument lhs = generic::GetInstructionSource<Argument>(instruction, 0);
   Argument rhs = generic::GetInstructionSource<Argument>(instruction, 1);
   Result dest_value = operation(lhs, rhs);
-  auto *db = instruction->Destination(0)->AllocateDataBuffer();
+  auto* db = instruction->Destination(0)->AllocateDataBuffer();
   db->SetSubmit<Result>(0, dest_value);
 }
 
@@ -64,12 +64,12 @@ inline void BinaryOp(const Instruction *instruction,
 // destination operand. This version requires both result and source operands
 // to have the same type.
 template <typename Result>
-inline void BinaryOp(const Instruction *instruction,
+inline void BinaryOp(const Instruction* instruction,
                      std::function<Result(Result, Result)> operation) {
   Result lhs = generic::GetInstructionSource<Result>(instruction, 0);
   Result rhs = generic::GetInstructionSource<Result>(instruction, 1);
   Result dest_value = operation(lhs, rhs);
-  auto *db = instruction->Destination(0)->AllocateDataBuffer();
+  auto* db = instruction->Destination(0)->AllocateDataBuffer();
   db->SetSubmit<Result>(0, dest_value);
 }
 
@@ -79,11 +79,11 @@ inline void BinaryOp(const Instruction *instruction,
 // destination operand. This version supports the result and argument having
 // different types.
 template <typename Result, typename Argument>
-inline void UnaryOp(const Instruction *instruction,
+inline void UnaryOp(const Instruction* instruction,
                     std::function<Result(Argument)> operation) {
   Argument lhs = generic::GetInstructionSource<Argument>(instruction, 0);
   Result dest_value = operation(lhs);
-  auto *db = instruction->Destination(0)->AllocateDataBuffer();
+  auto* db = instruction->Destination(0)->AllocateDataBuffer();
   db->SetSubmit<Result>(0, dest_value);
 }
 
@@ -93,11 +93,11 @@ inline void UnaryOp(const Instruction *instruction,
 // destination operand. This version requires that the result and argument have
 // the same type.
 template <typename Result>
-inline void UnaryOp(const Instruction *instruction,
+inline void UnaryOp(const Instruction* instruction,
                     std::function<Result(Result)> operation) {
   Result lhs = generic::GetInstructionSource<Result>(instruction, 0);
   Result dest_value = operation(lhs);
-  auto *db = instruction->Destination(0)->AllocateDataBuffer();
+  auto* db = instruction->Destination(0)->AllocateDataBuffer();
   db->SetSubmit<Result>(0, dest_value);
 }
 
@@ -107,10 +107,10 @@ inline void UnaryOp(const Instruction *instruction,
 template <typename Result, typename Argument1, typename Argument2,
           typename Argument3>
 inline void TernaryVectorOp(
-    const Instruction *instruction,
+    const Instruction* instruction,
     std::function<Result(Argument1, Argument2, Argument3)> operation) {
-  auto *dst = instruction->Destination(0);
-  auto *db = dst->AllocateDataBuffer();
+  auto* dst = instruction->Destination(0);
+  auto* db = dst->AllocateDataBuffer();
   int size = dst->shape()[0];
   for (int i = 0; i < size; i++) {
     Argument1 x_val =
@@ -131,10 +131,10 @@ inline void TernaryVectorOp(
 // the arguments have to all have the same type.
 template <typename Result, typename Argument>
 inline void TernaryVectorOp(
-    const Instruction *instruction,
+    const Instruction* instruction,
     std::function<Result(Argument, Argument, Argument)> operation) {
-  auto *dst = instruction->Destination(0);
-  auto *db = dst->AllocateDataBuffer();
+  auto* dst = instruction->Destination(0);
+  auto* db = dst->AllocateDataBuffer();
   int size = dst->shape()[0];
   for (int i = 0; i < size; i++) {
     Argument x_val = generic::GetInstructionSource<Argument>(instruction, 0, i);
@@ -151,10 +151,10 @@ inline void TernaryVectorOp(
 // requires the result and arguments to have the same type.
 template <typename Result>
 inline void TernaryVectorOp(
-    const Instruction *instruction,
+    const Instruction* instruction,
     std::function<Result(Result, Result, Result)> operation) {
-  auto *dst = instruction->Destination(0);
-  auto *db = dst->AllocateDataBuffer();
+  auto* dst = instruction->Destination(0);
+  auto* db = dst->AllocateDataBuffer();
   int size = dst->shape()[0];
   for (int i = 0; i < size; i++) {
     Result x_val = generic::GetInstructionSource<Result>(instruction, 0, i);
@@ -171,10 +171,10 @@ inline void TernaryVectorOp(
 // allows for different types for the result and each argument.
 template <typename Result, typename Argument1, typename Argument2>
 inline void BinaryVectorOp(
-    const Instruction *instruction,
+    const Instruction* instruction,
     std::function<Result(Argument1, Argument2)> operation) {
-  auto *dst = instruction->Destination(0);
-  auto *db = dst->AllocateDataBuffer();
+  auto* dst = instruction->Destination(0);
+  auto* db = dst->AllocateDataBuffer();
   int size = dst->shape()[0];
   for (int i = 0; i < size; i++) {
     Argument1 lhs = generic::GetInstructionSource<Argument1>(instruction, 0, i);
@@ -191,10 +191,10 @@ inline void BinaryVectorOp(
 // the arguments have to have the same type.
 template <typename Result, typename Argument>
 inline void BinaryVectorOp(
-    const Instruction *instruction,
+    const Instruction* instruction,
     std::function<Result(Argument, Argument)> operation) {
-  auto *dst = instruction->Destination(0);
-  auto *db = dst->AllocateDataBuffer();
+  auto* dst = instruction->Destination(0);
+  auto* db = dst->AllocateDataBuffer();
   int size = dst->shape()[0];
   for (int i = 0; i < size; i++) {
     Argument lhs = generic::GetInstructionSource<Argument>(instruction, 0, i);
@@ -209,10 +209,10 @@ inline void BinaryVectorOp(
 // two operand vector instruction semantic functions. This version
 // requires the result and arguments to have the same type.
 template <typename Result>
-inline void BinaryVectorOp(const Instruction *instruction,
+inline void BinaryVectorOp(const Instruction* instruction,
                            std::function<Result(Result, Result)> operation) {
-  auto *dst = instruction->Destination(0);
-  auto *db = dst->AllocateDataBuffer();
+  auto* dst = instruction->Destination(0);
+  auto* db = dst->AllocateDataBuffer();
   int size = dst->shape()[0];
   for (int i = 0; i < size; i++) {
     Result lhs = generic::GetInstructionSource<Result>(instruction, 0, i);
@@ -227,10 +227,10 @@ inline void BinaryVectorOp(const Instruction *instruction,
 // single operand vector instruction semantic functions. This version
 // allows the result and argument to have different types.
 template <typename Result, typename Argument>
-inline void UnaryVectorOp(const Instruction *instruction,
+inline void UnaryVectorOp(const Instruction* instruction,
                           std::function<Result(Argument)> operation) {
-  auto *dst = instruction->Destination(0);
-  auto *db = dst->AllocateDataBuffer();
+  auto* dst = instruction->Destination(0);
+  auto* db = dst->AllocateDataBuffer();
   int size = dst->shape()[0];
   for (int i = 0; i < size; i++) {
     Argument lhs = generic::GetInstructionSource<Argument>(instruction, 0, i);
@@ -244,10 +244,10 @@ inline void UnaryVectorOp(const Instruction *instruction,
 // single operand vector instruction semantic functions. This version
 // requires the result and argument to have the same type.
 template <typename Result>
-inline void UnaryVectorOp(const Instruction *instruction,
+inline void UnaryVectorOp(const Instruction* instruction,
                           std::function<Result(Result)> operation) {
-  auto *dst = instruction->Destination(0);
-  auto *db = dst->AllocateDataBuffer();
+  auto* dst = instruction->Destination(0);
+  auto* db = dst->AllocateDataBuffer();
   int size = dst->shape()[0];
   for (int i = 0; i < size; i++) {
     Result lhs = generic::GetInstructionSource<Result>(instruction, 0, i);

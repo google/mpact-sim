@@ -50,8 +50,8 @@ class Resource {
   bool is_array() const { return is_array_; }
   void set_is_array(bool value) { is_array_ = value; }
 
-  const std::string &name() const { return name_; }
-  const std::string &pascal_name() const { return pascal_name_; }
+  const std::string& name() const { return name_; }
+  const std::string& pascal_name() const { return pascal_name_; }
 
  private:
   explicit Resource(std::string name);
@@ -66,7 +66,7 @@ class Resource {
 // resources.
 class ResourceFactory {
  public:
-  using ResourceMap = absl::btree_map<std::string, Resource *>;
+  using ResourceMap = absl::btree_map<std::string, Resource*>;
   using ArgumentSet = absl::btree_set<std::string>;
 
   ResourceFactory() = default;
@@ -74,11 +74,11 @@ class ResourceFactory {
 
   // If the resource doesn't yet exist, create a new resource and return the
   // pointer, otherwise return an error code.
-  absl::StatusOr<Resource *> CreateResource(absl::string_view name);
+  absl::StatusOr<Resource*> CreateResource(absl::string_view name);
   // Return the named resource, or if it does not exist, create it, and return
   // a pointer to the newly created resource.
-  Resource *GetOrInsertResource(absl::string_view name);
-  const ResourceMap &resource_map() const { return resource_map_; }
+  Resource* GetOrInsertResource(absl::string_view name);
+  const ResourceMap& resource_map() const { return resource_map_; }
 
  private:
   ResourceMap resource_map_;

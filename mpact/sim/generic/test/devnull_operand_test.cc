@@ -17,8 +17,8 @@
 #include <cstdint>
 #include <memory>
 
-#include "absl/memory/memory.h"
-#include "googlemock/include/gmock/gmock.h"
+#include "absl/strings/string_view.h"
+#include "googlemock/include/gmock/gmock.h"  // IWYU pragma: keep
 #include "googletest/include/gtest/gtest.h"
 #include "mpact/sim/generic/arch_state.h"
 #include "mpact/sim/generic/data_buffer.h"
@@ -32,7 +32,7 @@ using ::mpact::sim::generic::SourceOperandInterface;
 
 class MockArchState : public ArchState {
  public:
-  MockArchState(absl::string_view id, SourceOperandInterface *pc_op)
+  MockArchState(absl::string_view id, SourceOperandInterface* pc_op)
       : ArchState(id, pc_op) {}
   explicit MockArchState(absl::string_view id) : MockArchState(id, nullptr) {}
 };
@@ -42,7 +42,7 @@ class DevNullOperandTest : public testing::Test {
   DevNullOperandTest() { arch_state_ = new MockArchState("MockArchState"); }
   ~DevNullOperandTest() override { delete arch_state_; }
 
-  MockArchState *arch_state_;
+  MockArchState* arch_state_;
 };
 
 // Testing that the operand behaves like a normal destination, that the

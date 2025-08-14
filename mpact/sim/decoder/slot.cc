@@ -60,7 +60,7 @@ absl::NoDestructor<absl::flat_hash_map<std::string, std::string>>
 // This function translates the location specification into a set of '->'
 // references starting with 'inst->' to get to the operand that is implied.
 static absl::StatusOr<std::string> TranslateLocator(
-    const OperandLocator &locator) {
+    const OperandLocator& locator) {
   std::string code;
   absl::StrAppend(&code, "inst->");
   if (locator.op_spec_number > 0) {
@@ -85,7 +85,7 @@ static absl::StatusOr<std::string> TranslateLocator(
 // This is a helper function that generates the code snippet to extract the
 // right sized value based on the length specifier in the print format
 // specification. E.g., %08x, %04d, etc.
-static std::string GetExtractor(const std::string &format) {
+static std::string GetExtractor(const std::string& format) {
   int size = 0;
   int pos = 0;
   int len = 1;
@@ -105,8 +105,8 @@ static std::string GetExtractor(const std::string &format) {
 
 // Small helper function to just expand the expression specified by the
 // FormatInfo from parsing the disassembly specifier.
-static std::string ExpandExpression(const FormatInfo &format,
-                                    const std::string &locator) {
+static std::string ExpandExpression(const FormatInfo& format,
+                                    const std::string& locator) {
   // Handle the case when it's just an '@' - i.e., just the address.
   if (format.use_address && format.operation.empty()) {
     return absl::StrCat("(inst->address())");
@@ -133,8 +133,8 @@ static std::string ExpandExpression(const FormatInfo &format,
                           : "))");
 }
 
-Slot::Slot(absl::string_view name, InstructionSet *instruction_set,
-           bool is_templated, SlotDeclCtx *ctx, unsigned generator_version)
+Slot::Slot(absl::string_view name, InstructionSet* instruction_set,
+           bool is_templated, SlotDeclCtx* ctx, unsigned generator_version)
     : instruction_set_(instruction_set),
       ctx_(ctx),
       generator_version_(generator_version),
@@ -147,37 +147,37 @@ Slot::~Slot() {
   default_latency_ = nullptr;
   delete default_instruction_;
   default_instruction_ = nullptr;
-  for (auto *param : template_parameters_) {
+  for (auto* param : template_parameters_) {
     delete param;
   }
   template_parameters_.clear();
-  for (auto &base : base_slots_) {
+  for (auto& base : base_slots_) {
     if (base.arguments != nullptr) {
-      for (auto *expr : *(base.arguments)) {
+      for (auto* expr : *(base.arguments)) {
         delete expr;
       }
       delete base.arguments;
     }
   }
   base_slots_.clear();
-  for (auto &[unused, inst_ptr] : instruction_map_) {
+  for (auto& [unused, inst_ptr] : instruction_map_) {
     delete inst_ptr;
   }
   instruction_map_.clear();
-  for (auto &[unused, element_ptr] : constant_map_) {
+  for (auto& [unused, element_ptr] : constant_map_) {
     delete element_ptr;
   }
   constant_map_.clear();
   // The ctx objects stored in resource_spec_map_ are owned by the Antlr4
   // parser, so just clear the map (don't delete those objects).
   resource_spec_map_.clear();
-  for (auto &[ignored, expr] : attribute_map_) {
+  for (auto& [ignored, expr] : attribute_map_) {
     delete expr;
   }
   attribute_map_.clear();
 }
 
-absl::Status Slot::AppendInstruction(Instruction *inst) {
+absl::Status Slot::AppendInstruction(Instruction* inst) {
   if (!is_templated()) {
     bool valid = inst->opcode()->ValidateDestLatencies(
         [](int l) -> bool { return l >= 0; });
@@ -195,8 +195,8 @@ absl::Status Slot::AppendInstruction(Instruction *inst) {
       "Opcode '", name, "' already added to slot '", this->name(), "'"));
 }
 
-absl::Status Slot::AppendInheritedInstruction(Instruction *inst,
-                                              TemplateInstantiationArgs *args) {
+absl::Status Slot::AppendInheritedInstruction(Instruction* inst,
+                                              TemplateInstantiationArgs* args) {
   std::string name = inst->opcode()->name();
   if (!instruction_map_.contains(name)) {
     auto derived = inst->CreateDerivedInstruction(args);
@@ -219,7 +219,7 @@ absl::Status Slot::AppendInheritedInstruction(Instruction *inst,
       absl::StrCat("instruction already added: ", inst->opcode()->name()));
 }
 
-bool Slot::HasInstruction(const std::string &opcode_name) const {
+bool Slot::HasInstruction(const std::string& opcode_name) const {
   return instruction_map_.contains(opcode_name);
 }
 
@@ -227,16 +227,16 @@ static std::string indent_string(int n) { return std::string(n, ' '); }
 
 // Generates a string that is a unique key for the attributes to determine which
 // instructions can share attribute setter functions.
-std::string Slot::CreateAttributeLookupKey(const Instruction *inst) const {
+std::string Slot::CreateAttributeLookupKey(const Instruction* inst) const {
   std::string key;
-  for (auto const &[name, expr] : inst->attribute_map()) {
+  for (auto const& [name, expr] : inst->attribute_map()) {
     std::string value;
     auto result = expr->GetValue();
     if (!result.ok()) {
       absl::StrAppend(&key, name, "[e1]:");
       continue;
     }
-    auto *value_ptr = std::get_if<int>(&result.value());
+    auto* value_ptr = std::get_if<int>(&result.value());
     if (value_ptr == nullptr) {
       absl::StrAppend(&key, name, "[e2]:");
       continue;
@@ -249,7 +249,7 @@ std::string Slot::CreateAttributeLookupKey(const Instruction *inst) const {
 // Generate the attribute setter function that matches the "key" of the given
 // instruction.
 std::string Slot::GenerateAttributeSetterFcn(absl::string_view name,
-                                             const Instruction *inst) const {
+                                             const Instruction* inst) const {
   std::string output;
   absl::StrAppend(&output, "void ", name, "(Instruction *inst) {\n");
   if (!attribute_map_.empty()) {
@@ -258,14 +258,14 @@ std::string Slot::GenerateAttributeSetterFcn(absl::string_view name,
                     "];\n"
                     "  attrs = {");
     std::string sep = "";
-    for (auto const &[name, expr] : inst->attribute_map()) {
+    for (auto const& [name, expr] : inst->attribute_map()) {
       auto result = expr->GetValue();
       if (!result.ok()) {
         absl::StrAppend(&output, "    #error Expression for '", name,
                         "' has no constant value\n");
         continue;
       }
-      int *value = std::get_if<int>(&result.value());
+      int* value = std::get_if<int>(&result.value());
       if (value == nullptr) {
         absl::StrAppend(&output, "    #error Expression for '", name,
                         "' does not have type int\n");
@@ -284,7 +284,7 @@ std::string Slot::GenerateAttributeSetterFcn(absl::string_view name,
 
 // Return a function call string that will set the attributes for the given
 // instruction. If no such appropriate function exists, create one.
-std::string Slot::GenerateAttributeSetter(const Instruction *inst) {
+std::string Slot::GenerateAttributeSetter(const Instruction* inst) {
   auto key = CreateAttributeLookupKey(inst);
   auto iter = attribute_setter_name_map_->find(key);
   if (iter == attribute_setter_name_map_->end()) {
@@ -300,7 +300,7 @@ std::string Slot::GenerateAttributeSetter(const Instruction *inst) {
 
 namespace {
 
-std::string EscapeRegexCharacters(const std::string &str) {
+std::string EscapeRegexCharacters(const std::string& str) {
   std::string output;
   if (str.empty()) return output;
   auto pos = str.find_last_not_of(' ');
@@ -381,13 +381,13 @@ std::string EscapeRegexCharacters(const std::string &str) {
 }  // namespace
 
 std::tuple<std::string, std::vector<OperandLocator>> Slot::GenerateRegEx(
-    const Instruction *inst, std::vector<std::string> &formats) const {
+    const Instruction* inst, std::vector<std::string>& formats) const {
   std::string output = "R\"(";
   std::string sep = "^\\s*";
   std::vector<OperandLocator> opnd_locators;
   // Iterate over the vector of disasm formats. These will end up concatenated
   // with \s+ separators.
-  for (auto const *disasm_fmt : inst->disasm_format_vec()) {
+  for (auto const* disasm_fmt : inst->disasm_format_vec()) {
     absl::StrAppend(&output, sep);
     sep = "\\s+";
     // The fragments are the text part (not part of operands), that occur
@@ -451,7 +451,7 @@ std::tuple<std::string, std::vector<OperandLocator>> Slot::GenerateRegEx(
   return {output, opnd_locators};
 }
 
-std::string GenerateEncodingFunctions(const std::string &encoder,
+std::string GenerateEncodingFunctions(const std::string& encoder,
                                       InstructionSet instruction_set) {
   std::string output;
   absl::StrAppend(&output, "namespace {\n\n");
@@ -525,7 +525,7 @@ std::tuple<std::string, std::string> Slot::GenerateAsmRegexMatcher() const {
                   "  if (index == -1) return absl::InternalError(error);\n"
                   "  regex_vec_.push_back(new RE2(\"^$\"));\n");
   std::vector<std::string> formats;
-  for (auto const &[name, inst_ptr] : instruction_map_) {
+  for (auto const& [name, inst_ptr] : instruction_map_) {
     auto [regex, opnd_locators] = GenerateRegEx(inst_ptr, formats);
     max_args = std::max(max_args, opnd_locators.size());
     std::string opcode_name =
@@ -625,7 +625,7 @@ std::tuple<std::string, std::string> Slot::GenerateAsmRegexMatcher() const {
 // Generate a function that will set the disassembly string for the given
 // instruction.
 std::string Slot::GenerateDisasmSetterFcn(absl::string_view name,
-                                          const Instruction *inst) const {
+                                          const Instruction* inst) const {
   std::string output;
   std::string class_name = pascal_name() + "Slot";
   absl::StrAppend(&output, "void ", name, "(Instruction *inst) {\n");
@@ -640,7 +640,7 @@ std::string Slot::GenerateDisasmSetterFcn(absl::string_view name,
   in_strcat.push(true);
   outer_paren = true;
   std::string outer_sep;
-  for (auto const *disasm_fmt : inst->disasm_format_vec()) {
+  for (auto const* disasm_fmt : inst->disasm_format_vec()) {
     int inner_paren = 0;
     size_t index = 0;
     std::string inner_sep;
@@ -667,14 +667,14 @@ std::string Slot::GenerateDisasmSetterFcn(absl::string_view name,
     }
     // Generate the strings from the format fragments and the format info.
     std::string next_sep;
-    for (auto const &frag : disasm_fmt->format_fragment_vec) {
+    for (auto const& frag : disasm_fmt->format_fragment_vec) {
       if (!frag.empty()) {
         absl::StrAppend(&output, inner_sep, indent_string(indent), "\"", frag,
                         "\"");
         next_sep = ", ";
       }
       if (index < disasm_fmt->format_info_vec.size()) {
-        auto *format_info = disasm_fmt->format_info_vec[index];
+        auto* format_info = disasm_fmt->format_info_vec[index];
         if (format_info->op_name.empty()) {
           if (!format_info->is_formatted) {
             absl::StrAppend(&output, "\n#error Missing locator information");
@@ -737,11 +737,11 @@ std::string Slot::GenerateDisasmSetterFcn(absl::string_view name,
 // Generate a signature for the disassembly setter function required for the
 // given instruction. If a matching one does not exist, call to create such a
 // function.
-std::string Slot::GenerateDisassemblySetter(const Instruction *inst) {
+std::string Slot::GenerateDisassemblySetter(const Instruction* inst) {
   std::string key;
   // First combine the disassembly fragments.
-  for (auto const *format : inst->disasm_format_vec()) {
-    for (auto const &frag : format->format_fragment_vec) {
+  for (auto const* format : inst->disasm_format_vec()) {
+    for (auto const& frag : format->format_fragment_vec) {
       absl::StrAppend(&key, frag);
     }
   }
@@ -759,7 +759,7 @@ std::string Slot::GenerateDisassemblySetter(const Instruction *inst) {
 }
 
 // Generate the assembler function for the given instruction.
-std::string Slot::GenerateAssemblerFcn(const Instruction *inst,
+std::string Slot::GenerateAssemblerFcn(const Instruction* inst,
                                        absl::string_view encoder_type) const {
   std::string output;
   int num_values = inst->opcode()->source_op_vec().size() +
@@ -778,7 +778,7 @@ std::string Slot::GenerateAssemblerFcn(const Instruction *inst,
       "auto [inst_word, num_bits] = enc->GetOpEncoding(opcode, slot, "
       "entry);\n",
       "  absl::Status status;\n");
-  auto const &source_op_vec = inst->opcode()->source_op_vec();
+  auto const& source_op_vec = inst->opcode()->source_op_vec();
   for (int i = 0; i < source_op_vec.size(); ++i) {
     std::string op_name = ToPascalCase(source_op_vec[i].name);
     absl::StrAppend(&output, "  status = enc->SetSrcEncoding(values.at(", i,
@@ -788,7 +788,7 @@ std::string Slot::GenerateAssemblerFcn(const Instruction *inst,
                     ", opcode);\n"
                     "  if (!stats.ok()) return status;\n");
   }
-  auto const &dest_op_vec = inst->opcode()->dest_op_vec();
+  auto const& dest_op_vec = inst->opcode()->dest_op_vec();
   for (int i = 0; i < dest_op_vec.size(); ++i) {
     absl::StrAppend(&output, "  status = enc->SetDestEncoding(values.at(", i,
                     "), slot, entry,\n"
@@ -811,13 +811,13 @@ std::string Slot::GenerateAssemblerFcn(const Instruction *inst,
 // Generate a string that is a unique identifier from the resources to
 // determine which instructions can share resource setter functions.
 std::string Slot::CreateResourceKey(
-    const std::vector<const ResourceReference *> &refs) const {
+    const std::vector<const ResourceReference*>& refs) const {
   std::string key;
-  std::vector<const ResourceReference *> complex_refs;
-  std::vector<const ResourceReference *> simple_refs;
+  std::vector<const ResourceReference*> complex_refs;
+  std::vector<const ResourceReference*> simple_refs;
   absl::btree_set<std::string> names;
   // Iterate over use resources.
-  for (auto const *ref : refs) {
+  for (auto const* ref : refs) {
     if (!ref->resource->is_simple()) {
       complex_refs.push_back(ref);
     } else {
@@ -825,7 +825,7 @@ std::string Slot::CreateResourceKey(
     }
   }
   // Simple use resources.
-  for (auto const *ref : simple_refs) {
+  for (auto const* ref : simple_refs) {
     std::string name = "S$";
     if (ref->is_array) {
       absl::StrAppend(&name, "[", ref->resource->pascal_name(), "]");
@@ -835,7 +835,7 @@ std::string Slot::CreateResourceKey(
     names.insert(name);
   }
   std::string sep = "";
-  for (auto const &name : names) {
+  for (auto const& name : names) {
     absl::StrAppend(&key, sep, name);
     sep = "/";
   }
@@ -843,7 +843,7 @@ std::string Slot::CreateResourceKey(
   absl::StrAppend(&key, ":");
 
   // Complex use resources.
-  for (auto const *ref : complex_refs) {
+  for (auto const* ref : complex_refs) {
     std::string name = "C$";
     if (ref->is_array) {
       absl::StrAppend(&name, "[", ref->resource->pascal_name(), "]");
@@ -865,7 +865,7 @@ std::string Slot::CreateResourceKey(
     names.insert(name);
   }
   sep = "";
-  for (auto const &name : names) {
+  for (auto const& name : names) {
     absl::StrAppend(&key, sep, name);
     sep = "/";
   }
@@ -875,7 +875,7 @@ std::string Slot::CreateResourceKey(
 // Generate a resource setter function call for the resource "key" of the
 // given instruction. If a matching one does not exist, call to create such a
 // function.
-std::string Slot::GenerateResourceSetter(const Instruction *inst,
+std::string Slot::GenerateResourceSetter(const Instruction* inst,
                                          absl::string_view encoding_type) {
   std::string key = CreateResourceKey(inst->resource_use_vec());
   absl::StrAppend(&key, ":", CreateResourceKey(inst->resource_acquire_vec()));
@@ -894,7 +894,7 @@ std::string Slot::GenerateResourceSetter(const Instruction *inst,
 // Create a resource setter function for the resource "key" of the given
 // instruction.
 std::string Slot::GenerateResourceSetterFcn(
-    absl::string_view name, const Instruction *inst,
+    absl::string_view name, const Instruction* inst,
     absl::string_view encoding_type) const {
   std::string output;
   absl::StrAppend(&output, "void ", name, "(Instruction *inst, ", encoding_type,
@@ -911,9 +911,9 @@ std::string Slot::GenerateResourceSetterFcn(
   }
   // Get all the simple resources that need to be free, then all the complex
   // resources that need to be free in order to issue the instruction.
-  std::vector<const ResourceReference *> complex_refs;
-  std::vector<const ResourceReference *> simple_refs;
-  for (auto const *ref : inst->resource_use_vec()) {
+  std::vector<const ResourceReference*> complex_refs;
+  std::vector<const ResourceReference*> simple_refs;
+  for (auto const* ref : inst->resource_use_vec()) {
     // Do the complex refs last.
     if (!ref->resource->is_simple()) {
       complex_refs.push_back(ref);
@@ -926,7 +926,7 @@ std::string Slot::GenerateResourceSetterFcn(
     // First gather the resource references into a single vector, then request
     // the resource operands for all the resource references in that vector.
     absl::StrAppend(&output, "  std::vector<SimpleResourceEnum> hold_vec = {");
-    for (auto const *simple : simple_refs) {
+    for (auto const* simple : simple_refs) {
       std::string resource_name;
       if (simple->is_array) {
         resource_name = absl::StrCat("SimpleResourceEnum::k",
@@ -947,7 +947,7 @@ std::string Slot::GenerateResourceSetterFcn(
                     "  }\n");
   }
   // Complex resources.
-  for (auto const *complex : complex_refs) {
+  for (auto const* complex : complex_refs) {
     // Get the expression values for the begin and end expressions.
     auto begin_value = complex->begin_expression->GetValue();
     auto end_value = complex->end_expression->GetValue();
@@ -957,8 +957,8 @@ std::string Slot::GenerateResourceSetterFcn(
       continue;
     }
     // Get the integer values from the begin and end expression values.
-    int *begin = std::get_if<int>(&begin_value.value());
-    int *end = std::get_if<int>(&end_value.value());
+    int* begin = std::get_if<int>(&begin_value.value());
+    int* end = std::get_if<int>(&end_value.value());
     if ((begin == nullptr) || (end == nullptr)) {
       absl::StrAppend(
           &output, "#error Unable to get value of begin or end expression\n");
@@ -991,7 +991,7 @@ std::string Slot::GenerateResourceSetterFcn(
   // complex resources that need to be reserved when issuing this instruction.
   complex_refs.clear();
   simple_refs.clear();
-  for (auto const *ref : inst->resource_acquire_vec()) {
+  for (auto const* ref : inst->resource_acquire_vec()) {
     // Do the complex refs last.
     if (!ref->resource->is_simple()) {
       complex_refs.push_back(ref);
@@ -1003,9 +1003,9 @@ std::string Slot::GenerateResourceSetterFcn(
   if (!simple_refs.empty()) {
     // Compute the set of latencies. Insert each reference into a multi-map
     // keyed by the latency.
-    std::multimap<int, const ResourceReference *> latency_map;
+    std::multimap<int, const ResourceReference*> latency_map;
     absl::flat_hash_set<int> latencies;
-    for (auto const *simple : simple_refs) {
+    for (auto const* simple : simple_refs) {
       if (simple->end_expression == nullptr) {
         continue;
       }
@@ -1014,7 +1014,7 @@ std::string Slot::GenerateResourceSetterFcn(
         absl::StrAppend(&output, "#error Unable to evaluate end expression\n");
         continue;
       }
-      int *end = std::get_if<int>(&end_value.value());
+      int* end = std::get_if<int>(&end_value.value());
       if (end == nullptr) {
         absl::StrAppend(&output,
                         "#error Unable to get value of  end expression\n");
@@ -1031,7 +1031,7 @@ std::string Slot::GenerateResourceSetterFcn(
                       latency, " = {");
       for (auto iter = latency_map.lower_bound(latency);
            iter != latency_map.upper_bound(latency); ++iter) {
-        auto *simple = iter->second;
+        auto* simple = iter->second;
         std::string resource_name;
         if (simple->is_array) {
           resource_name = absl::StrCat("SimpleResourceEnum::k",
@@ -1056,7 +1056,7 @@ std::string Slot::GenerateResourceSetterFcn(
 
   // Complex resources.
   if (!complex_refs.empty()) {
-    for (auto const *complex : complex_refs) {
+    for (auto const* complex : complex_refs) {
       // Get the expression values for the begin and end expressions.
       if (complex->begin_expression == nullptr) continue;
       if (complex->end_expression == nullptr) continue;
@@ -1068,8 +1068,8 @@ std::string Slot::GenerateResourceSetterFcn(
         continue;
       }
       // Get the integer values from the begin and end expression values.
-      int *begin = std::get_if<int>(&begin_value.value());
-      int *end = std::get_if<int>(&end_value.value());
+      int* begin = std::get_if<int>(&begin_value.value());
+      int* end = std::get_if<int>(&end_value.value());
       if (complex->is_array) {
         absl::StrAppend(&output,
                         "  auto res_op_vec = "
@@ -1101,16 +1101,16 @@ std::string Slot::GenerateResourceSetterFcn(
 
 // Generates a string that is a unique identifier from the operands to
 // determine which instructions can share operand getter functions.
-std::string Slot::CreateOperandLookupKey(const Opcode *opcode) const {
+std::string Slot::CreateOperandLookupKey(const Opcode* opcode) const {
   std::string key;
   // Generate identifier for the predicate operand, if the opcode has one.
-  const std::string &op_name = opcode->predicate_op_name();
+  const std::string& op_name = opcode->predicate_op_name();
   if (!op_name.empty()) {
     absl::StrAppend(&key, op_name, ":");
   }
   // Generate key for the source operands.
   std::string sep = "";
-  for (const auto &src_op : opcode->source_op_vec()) {
+  for (const auto& src_op : opcode->source_op_vec()) {
     if (src_op.is_array) {
       absl::StrAppend(&key, sep, "[", src_op.name, "]");
     } else {
@@ -1121,7 +1121,7 @@ std::string Slot::CreateOperandLookupKey(const Opcode *opcode) const {
   absl::StrAppend(&key, ":");
   // Append identifier for destination operands.
   sep.clear();
-  for (auto const *dst_op : opcode->dest_op_vec()) {
+  for (auto const* dst_op : opcode->dest_op_vec()) {
     std::string dest_op_enum;
     if (dst_op->is_array()) {
       absl::StrAppend(&key, sep, "[", dst_op->name(), "]");
@@ -1157,7 +1157,7 @@ std::string Slot::CreateOperandLookupKey(const Opcode *opcode) const {
 // given opcode.
 std::string Slot::GenerateOperandSetterFcn(absl::string_view getter_name,
                                            absl::string_view encoding_type,
-                                           const Opcode *opcode) const {
+                                           const Opcode* opcode) const {
   std::string output;
   std::string optional_inst;
   if (generator_version_ == 2) {
@@ -1167,7 +1167,7 @@ std::string Slot::GenerateOperandSetterFcn(absl::string_view getter_name,
                   encoding_type,
                   " *enc, OpcodeEnum opcode, SlotEnum slot, int entry) {\n");
   // Generate code to set predicate operand, if the opcode has one.
-  const std::string &op_name = opcode->predicate_op_name();
+  const std::string& op_name = opcode->predicate_op_name();
   if (!op_name.empty()) {
     std::string pred_op_enum =
         absl::StrCat("PredOpEnum::k", ToPascalCase(op_name));
@@ -1177,7 +1177,7 @@ std::string Slot::GenerateOperandSetterFcn(absl::string_view getter_name,
   }
   // Generate code to set the instruction's source operands.
   int source_no = 0;
-  for (const auto &src_op : opcode->source_op_vec()) {
+  for (const auto& src_op : opcode->source_op_vec()) {
     // If the source operand is an array, then we need to iterate over the
     // vector of operands that GetSources returns.
     if (src_op.is_array) {
@@ -1201,7 +1201,7 @@ std::string Slot::GenerateOperandSetterFcn(absl::string_view getter_name,
   }
   // Generate code to set the instruction's destination operands.
   int dest_no = 0;
-  for (auto const *dst_op : opcode->dest_op_vec()) {
+  for (auto const* dst_op : opcode->dest_op_vec()) {
     std::string dest_op_enum;
     if (dst_op->is_array()) {
       dest_op_enum =
@@ -1276,8 +1276,8 @@ std::string Slot::ListFuncGetterInitializations(
       "    ", GenerateAttributeSetter(default_instruction_), ",\n",
       "    SemFuncSetter{", default_instruction_->semfunc_code_string(), "}, ",
       default_instruction_->opcode()->instruction_size(), "}},\n");
-  for (auto const &[unused, inst_ptr] : instruction_map_) {
-    auto *instruction = inst_ptr;
+  for (auto const& [unused, inst_ptr] : instruction_map_) {
+    auto* instruction = inst_ptr;
     std::string opcode_name = instruction->opcode()->pascal_name();
     std::string opcode_enum = absl::StrCat("OpcodeEnum::k", opcode_name);
     absl::StrAppend(&output, "\n  // ***   k", opcode_name, "   ***\n");
@@ -1286,7 +1286,7 @@ std::string Slot::ListFuncGetterInitializations(
     std::string code_str;
     std::string sep = "";
     std::string operands_str;
-    for (auto const *inst = instruction; inst != nullptr;
+    for (auto const* inst = instruction; inst != nullptr;
          inst = inst->child()) {
       // Construct operand getter lookup key.
       std::string key = CreateOperandLookupKey(inst->opcode());
@@ -1402,23 +1402,23 @@ std::string Slot::GenerateClassDefinition(absl::string_view encoding_type) {
   return combined_output;
 }
 
-absl::Status Slot::CheckPredecessors(const Slot *base) const {
+absl::Status Slot::CheckPredecessors(const Slot* base) const {
   if (predecessor_set_.contains(base))
     return absl::AlreadyExistsError(
         absl::StrCat("'", base->name(),
                      "' is already in the predecessor set of '", name(), "'"));
-  for (auto const *pred : predecessor_set_) {
+  for (auto const* pred : predecessor_set_) {
     auto status = pred->CheckPredecessors(base);
     if (!status.ok()) return status;
   }
-  for (auto const *base_pred : base->predecessor_set_) {
+  for (auto const* base_pred : base->predecessor_set_) {
     auto status = CheckPredecessors(base_pred);
     if (!status.ok()) return status;
   }
   return absl::OkStatus();
 }
 
-absl::Status Slot::AddBase(const Slot *base) {
+absl::Status Slot::AddBase(const Slot* base) {
   // First need to check if the current slot already inherits from base, or
   // any of base's predecessors. Only tree-like inheritance is supported.
   auto status = CheckPredecessors(base);
@@ -1428,8 +1428,8 @@ absl::Status Slot::AddBase(const Slot *base) {
   return absl::OkStatus();
 }
 
-absl::Status Slot::AddBase(const Slot *base,
-                           TemplateInstantiationArgs *arguments) {
+absl::Status Slot::AddBase(const Slot* base,
+                           TemplateInstantiationArgs* arguments) {
   auto status = CheckPredecessors(base);
   if (!status.ok()) return status;
   predecessor_set_.insert(base);
@@ -1437,9 +1437,9 @@ absl::Status Slot::AddBase(const Slot *base,
   return absl::OkStatus();
 }
 
-absl::Status Slot::AddConstant(const std::string &ident,
-                               const std::string &type,
-                               TemplateExpression *expression) {
+absl::Status Slot::AddConstant(const std::string& ident,
+                               const std::string& type,
+                               TemplateExpression* expression) {
   // Ignore the type for now - there is only int.
   (void)type;
   // Check if the name already exists or matches a template formal parameter.
@@ -1456,13 +1456,13 @@ absl::Status Slot::AddConstant(const std::string &ident,
   return absl::OkStatus();
 }
 
-TemplateExpression *Slot::GetConstExpression(const std::string &ident) const {
+TemplateExpression* Slot::GetConstExpression(const std::string& ident) const {
   auto iter = constant_map_.find(ident);
   if (iter == constant_map_.end()) return nullptr;
   return iter->second;
 }
 
-absl::Status Slot::AddTemplateFormal(const std::string &par_name) {
+absl::Status Slot::AddTemplateFormal(const std::string& par_name) {
   if (template_parameter_map_.contains(par_name)) {
     // Push it into the vector, but not the map. Have the formal name refer to
     // the previous index. Signal error. This allows us to properly match the
@@ -1479,14 +1479,14 @@ absl::Status Slot::AddTemplateFormal(const std::string &par_name) {
   return absl::OkStatus();
 }
 
-TemplateFormal *Slot::GetTemplateFormal(const std::string &name) const {
+TemplateFormal* Slot::GetTemplateFormal(const std::string& name) const {
   auto iter = template_parameter_map_.find(name);
   if (iter == template_parameter_map_.end()) return nullptr;
   return template_parameters_[iter->second];
 }
 
-void Slot::AddInstructionAttribute(const std::string &name,
-                                   TemplateExpression *expr) {
+void Slot::AddInstructionAttribute(const std::string& name,
+                                   TemplateExpression* expr) {
   attribute_map_.emplace(name, expr);
 }
 

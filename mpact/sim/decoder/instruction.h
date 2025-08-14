@@ -41,32 +41,32 @@ class TemplateExpression;
 // globally unique.
 class Instruction {
  public:
-  Instruction(Opcode *opcode, Slot *slot);
-  Instruction(Opcode *opcode, Instruction *child, Slot *slot);
+  Instruction(Opcode* opcode, Slot* slot);
+  Instruction(Opcode* opcode, Instruction* child, Slot* slot);
   virtual ~Instruction();
 
   // Append a child instruction.
-  void AppendChild(Instruction *child);
+  void AppendChild(Instruction* child);
   // Create an instruction object that inherits from another. This may require
   // evaluation of expressions within the instruction/opcode that rely on
   // template instantiation arguments.
-  absl::StatusOr<Instruction *> CreateDerivedInstruction(
-      TemplateInstantiationArgs *args) const;
+  absl::StatusOr<Instruction*> CreateDerivedInstruction(
+      TemplateInstantiationArgs* args) const;
   // Resources used and acquired/released.
-  void AppendResourceUse(const ResourceReference *resource_ref);
-  void AppendResourceAcquire(const ResourceReference *resource_ref);
+  void AppendResourceUse(const ResourceReference* resource_ref);
+  void AppendResourceAcquire(const ResourceReference* resource_ref);
   // Instruction attributes. These methods add the instruction attribute to the
   // opcode if it does not already exist. If it exists, then the new attribute
   // definition overrides the previous (replaces the expression).
   void AddInstructionAttribute(absl::string_view attr_name,
-                               TemplateExpression *expression);
+                               TemplateExpression* expression);
   void AddInstructionAttribute(absl::string_view attr_name);
   // Append disassembly format string and info.
-  void AppendDisasmFormat(DisasmFormat *disasm_format);
+  void AppendDisasmFormat(DisasmFormat* disasm_format);
 
   // Searches opcodes in the instruction (and any child instructions) for the
   // destination op with name op_name.
-  DestinationOperand *GetDestOp(absl::string_view op_name) const;
+  DestinationOperand* GetDestOp(absl::string_view op_name) const;
 
   // Methods to clear parts of the instructions that may be overridden when
   // inherited.
@@ -76,43 +76,43 @@ class Instruction {
   void ClearAttributeSpecs();
 
   // Getters and setters.
-  Opcode *opcode() const { return opcode_; }
-  Instruction *child() const { return child_; }
-  Slot *slot() const { return slot_; }
+  Opcode* opcode() const { return opcode_; }
+  Instruction* child() const { return child_; }
+  Slot* slot() const { return slot_; }
   void set_semfunc_code_string(std::string code_string) {
     semfunc_code_string_ = code_string;
   }
-  const std::string &semfunc_code_string() const {
+  const std::string& semfunc_code_string() const {
     return semfunc_code_string_;
   }
 
-  const std::vector<const ResourceReference *> &resource_use_vec() const {
+  const std::vector<const ResourceReference*>& resource_use_vec() const {
     return resource_use_vec_;
   }
-  const std::vector<const ResourceReference *> &resource_acquire_vec() const {
+  const std::vector<const ResourceReference*>& resource_acquire_vec() const {
     return resource_acquire_vec_;
   }
 
-  const std::vector<DisasmFormat *> &disasm_format_vec() const {
+  const std::vector<DisasmFormat*>& disasm_format_vec() const {
     return disasm_format_vec_;
   }
 
-  const absl::flat_hash_map<std::string, TemplateExpression *> &attribute_map()
+  const absl::flat_hash_map<std::string, TemplateExpression*>& attribute_map()
       const {
     return attribute_map_;
   }
 
  private:
-  absl::StatusOr<ResourceReference *> CreateDerivedResourceRef(
-      const ResourceReference *ref, TemplateInstantiationArgs *args) const;
-  Opcode *opcode_;
-  Instruction *child_;
-  Slot *slot_;
-  std::vector<const ResourceReference *> resource_use_vec_;
-  std::vector<const ResourceReference *> resource_acquire_vec_;
+  absl::StatusOr<ResourceReference*> CreateDerivedResourceRef(
+      const ResourceReference* ref, TemplateInstantiationArgs* args) const;
+  Opcode* opcode_;
+  Instruction* child_;
+  Slot* slot_;
+  std::vector<const ResourceReference*> resource_use_vec_;
+  std::vector<const ResourceReference*> resource_acquire_vec_;
   std::string semfunc_code_string_;
-  std::vector<DisasmFormat *> disasm_format_vec_;
-  absl::flat_hash_map<std::string, TemplateExpression *> attribute_map_;
+  std::vector<DisasmFormat*> disasm_format_vec_;
+  absl::flat_hash_map<std::string, TemplateExpression*> attribute_map_;
 };
 
 }  // namespace instruction_set

@@ -43,7 +43,7 @@ struct AddressRange {
 };
 
 struct AddressRangeComp {
-  bool operator()(const AddressRange &lhs, const AddressRange &rhs) const {
+  bool operator()(const AddressRange& lhs, const AddressRange& rhs) const {
     if (lhs.end <= rhs.start) {
       return true;
     }
@@ -61,19 +61,19 @@ struct AddressRangeComp {
 // memory.
 class ElfProgramLoader : public ProgramLoaderInterface {
  public:
-  ElfProgramLoader(util::MemoryInterface *code_memory,
-                   util::MemoryInterface *data_memory);
-  explicit ElfProgramLoader(util::MemoryInterface *memory);
-  explicit ElfProgramLoader(generic::CoreDebugInterface *dbg_if);
+  ElfProgramLoader(util::MemoryInterface* code_memory,
+                   util::MemoryInterface* data_memory);
+  explicit ElfProgramLoader(util::MemoryInterface* memory);
+  explicit ElfProgramLoader(generic::CoreDebugInterface* dbg_if);
   ElfProgramLoader() = delete;
   ~ElfProgramLoader() override;
 
-  absl::StatusOr<uint64_t> LoadSymbols(const std::string &file_name) override;
-  absl::StatusOr<uint64_t> LoadProgram(const std::string &file_name) override;
+  absl::StatusOr<uint64_t> LoadSymbols(const std::string& file_name) override;
+  absl::StatusOr<uint64_t> LoadProgram(const std::string& file_name) override;
   // Return the value and size of the symbol 'name' if it exists in the symbol
   // table.
   absl::StatusOr<std::pair<uint64_t, uint64_t>> GetSymbol(
-      const std::string &name) const;
+      const std::string& name) const;
   // If there is a function with symbol table value 'address' return its name.
   absl::StatusOr<std::string> GetFcnSymbolName(uint64_t address) const;
   // Looks up to see if the address is in the range of a function symbol, and
@@ -82,15 +82,15 @@ class ElfProgramLoader : public ProgramLoaderInterface {
   // If the GNU stack size program header exists, return the memory size.
   absl::StatusOr<uint64_t> GetStackSize() const;
 
-  const ELFIO::elfio *elf_reader() const { return &elf_reader_; }
+  const ELFIO::elfio* elf_reader() const { return &elf_reader_; }
 
  private:
   bool loaded_ = false;
   ELFIO::elfio elf_reader_;
-  util::MemoryInterface *code_memory_ = nullptr;
-  util::MemoryInterface *data_memory_ = nullptr;
-  generic::CoreDebugInterface *dbg_if_ = nullptr;
-  std::vector<const ELFIO::symbol_section_accessor *> symbol_accessors_;
+  util::MemoryInterface* code_memory_ = nullptr;
+  util::MemoryInterface* data_memory_ = nullptr;
+  generic::CoreDebugInterface* dbg_if_ = nullptr;
+  std::vector<const ELFIO::symbol_section_accessor*> symbol_accessors_;
   absl::flat_hash_map<uint64_t, std::string> fcn_symbol_map_;
   std::map<AddressRange, std::string, AddressRangeComp> function_range_map_;
   uint64_t has_stack_size_ = false;

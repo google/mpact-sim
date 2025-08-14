@@ -19,11 +19,11 @@
 #include <string>
 #include <vector>
 
+#include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
 #include "mpact/sim/generic/delay_line.h"
-#include "mpact/sim/generic/delay_line_interface.h"
 #include "mpact/sim/generic/fifo.h"
 #include "mpact/sim/generic/operand_interface.h"
 #include "mpact/sim/generic/register.h"
@@ -49,11 +49,11 @@ constexpr char kFifoName2[] = "Fifo2";
 
 // Define a new delay line type.
 struct IntDelayRecord {
-  int *destination;
+  int* destination;
   int value;
   void Apply() { *destination = value; }
   IntDelayRecord() = delete;
-  IntDelayRecord(int *dest, int val) : destination(dest), value(val) {}
+  IntDelayRecord(int* dest, int val) : destination(dest), value(val) {}
 };
 
 using IntDelayLine = DelayLine<IntDelayRecord>;
@@ -98,7 +98,7 @@ class MyProgramCounter : public SourceOperandInterface {
 // protected.
 class MyArchState : public ArchState {
  public:
-  MyArchState(absl::string_view id, SourceOperandInterface *pc_op)
+  MyArchState(absl::string_view id, SourceOperandInterface* pc_op)
       : ArchState(id, pc_op) {}
   explicit MyArchState(absl::string_view id) : MyArchState(id, nullptr) {}
 };
@@ -121,7 +121,7 @@ class ArchStateTest : public testing::Test {
   ~ArchStateTest() override { delete arch_state_; }
 
   MyProgramCounter my_pc_;
-  ArchState *arch_state_;
+  ArchState* arch_state_;
 };
 
 // Test that the ArchState instance is properly initialized.
@@ -131,7 +131,7 @@ TEST_F(ArchStateTest, BasicProperties) {
   EXPECT_THAT(arch_state_->program_error_controller()->name(),
               StrEq("TestArchitectureErrors"));
   EXPECT_EQ(arch_state_->pc_operand(),
-            static_cast<SourceOperandInterface *>(&my_pc_));
+            static_cast<SourceOperandInterface*>(&my_pc_));
   for (int reg_no = 0; reg_no < 16; reg_no++) {
     EXPECT_THAT(arch_state_->registers()->find(absl::StrCat("R", reg_no)),
                 Ne(arch_state_->registers()->end()));
@@ -163,7 +163,7 @@ TEST_F(ArchStateTest, FunctionDelayLine) {
 
 // Test creation of a new delay line and that it gets advanced by ArchState.
 TEST_F(ArchStateTest, AddDelayLine) {
-  IntDelayLine *int_delay_line =
+  IntDelayLine* int_delay_line =
       arch_state_->CreateAndAddDelayLine<IntDelayLine>();
   int my_value = 0;
   int_delay_line->Add(1, &my_value, 1);
@@ -185,15 +185,15 @@ TEST_F(ArchStateTest, PcOperand) {
 
 // Test alternate ways to add registers.
 TEST_F(ArchStateTest, AddRegister) {
-  auto *reg = new ScalarRegister(arch_state_, kRegName1);
+  auto* reg = new ScalarRegister(arch_state_, kRegName1);
   arch_state_->AddRegister(reg);
   // Also add the register with an alias.
   arch_state_->AddRegister(kRegName2, reg);
   auto iter = arch_state_->registers()->find(kRegName1);
-  auto *reg1 =
+  auto* reg1 =
       (iter == arch_state_->registers()->end()) ? nullptr : iter->second;
   iter = arch_state_->registers()->find(kRegName2);
-  auto *reg2 =
+  auto* reg2 =
       (iter == arch_state_->registers()->end()) ? nullptr : iter->second;
   EXPECT_EQ(reg1, reg);
   EXPECT_EQ(reg2, reg);
@@ -208,14 +208,14 @@ TEST_F(ArchStateTest, AddRegister) {
 
 // Test alternate ways to add registers.
 TEST_F(ArchStateTest, AddFifo) {
-  auto *fifo = new ScalarFifo(arch_state_, kFifoName1, 8);
+  auto* fifo = new ScalarFifo(arch_state_, kFifoName1, 8);
   arch_state_->AddFifo(fifo);
   // Add fifo with an alias.
   arch_state_->AddFifo(kFifoName2, fifo);
   auto iter = arch_state_->fifos()->find(kFifoName1);
-  auto *fifo1 = (iter == arch_state_->fifos()->end()) ? nullptr : iter->second;
+  auto* fifo1 = (iter == arch_state_->fifos()->end()) ? nullptr : iter->second;
   iter = arch_state_->fifos()->find(kFifoName2);
-  auto *fifo2 = (iter == arch_state_->fifos()->end()) ? nullptr : iter->second;
+  auto* fifo2 = (iter == arch_state_->fifos()->end()) ? nullptr : iter->second;
   EXPECT_EQ(fifo1, fifo);
   EXPECT_EQ(fifo2, fifo);
   arch_state_->RemoveFifo(kFifoName2);

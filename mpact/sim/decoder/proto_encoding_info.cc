@@ -41,8 +41,8 @@ using ::mpact::sim::machine_description::instruction_set::ToPascalCase;
 using ::mpact::sim::machine_description::instruction_set::ToSnakeCase;
 
 ProtoEncodingInfo::ProtoEncodingInfo(
-    const std::string &opcode_enum,
-    decoder::DecoderErrorListener *error_listener)
+    const std::string& opcode_enum,
+    decoder::DecoderErrorListener* error_listener)
     : opcode_enum_(opcode_enum), error_listener_(error_listener) {}
 
 ProtoEncodingInfo::~ProtoEncodingInfo() { delete decoder_; }
@@ -51,20 +51,20 @@ void ProtoEncodingInfo::AddIncludeFile(std::string include_file) {
   include_files_.emplace(include_file);
 }
 
-ProtoInstructionDecoder *ProtoEncodingInfo::SetProtoDecoder(std::string name) {
+ProtoInstructionDecoder* ProtoEncodingInfo::SetProtoDecoder(std::string name) {
   if (decoder_ != nullptr) {
     error_listener_->semanticError(nullptr, "Can only select one decoder");
     return nullptr;
   }
-  auto *proto_decoder =
+  auto* proto_decoder =
       new ProtoInstructionDecoder(name, this, error_listener());
   decoder_ = proto_decoder;
   return proto_decoder;
 }
 
-absl::StatusOr<ProtoInstructionGroup *> ProtoEncodingInfo::AddInstructionGroup(
-    const std::string &group_name,
-    const google::protobuf::Descriptor *descriptor) {
+absl::StatusOr<ProtoInstructionGroup*> ProtoEncodingInfo::AddInstructionGroup(
+    const std::string& group_name,
+    const google::protobuf::Descriptor* descriptor) {
   // Make sure that the instruction group hasn't been added before.
   if (instruction_group_map_.contains(group_name)) {
     return absl::AlreadyExistsError(absl::StrCat(
@@ -78,7 +78,7 @@ absl::StatusOr<ProtoInstructionGroup *> ProtoEncodingInfo::AddInstructionGroup(
 
 absl::Status ProtoEncodingInfo::CheckSetterType(
     absl::string_view name,
-    const google::protobuf::FieldDescriptor *field_desc) {
+    const google::protobuf::FieldDescriptor* field_desc) {
   // Is it a new setter, if so, just insert it.
   auto iter = setter_types_.find(name);
   auto cpp_type = field_desc->cpp_type();
@@ -188,7 +188,7 @@ StringPair ProtoEncodingInfo::GenerateDecoderClass() {
   std::string decoder_def;
   std::string type_aliases;
   // Add type aliases for protobuf messages used in decoders.
-  for (auto *inst_group : decoder_->instruction_groups()) {
+  for (auto* inst_group : decoder_->instruction_groups()) {
     std::string qualified_message_type = absl::StrReplaceAll(
         inst_group->message_type()->full_name(), {{".", "::"}});
     absl::StrAppend(&type_aliases, "using ", ToPascalCase(inst_group->name()),
@@ -208,7 +208,7 @@ StringPair ProtoEncodingInfo::GenerateDecoderClass() {
   }
   // Include files.
   absl::StrAppend(&h_output, "#include <cstdint>\n\n");
-  for (auto &include_file : include_files_) {
+  for (auto& include_file : include_files_) {
     absl::StrAppend(&h_output, "#include ", include_file, "\n");
   }
   absl::StrAppend(&h_output, "\n");
@@ -217,7 +217,7 @@ StringPair ProtoEncodingInfo::GenerateDecoderClass() {
                   "#include \"absl/container/flat_hash_map.h\"\n\n");
   // Open namespaces.
   std::string name_space_ref = absl::StrJoin(decoder_->namespaces(), "::");
-  for (auto &name_space : decoder_->namespaces()) {
+  for (auto& name_space : decoder_->namespaces()) {
     absl::StrAppend(&h_output, "namespace ", name_space, " {\n");
     absl::StrAppend(&cc_output, "namespace ", name_space, " {\n");
   }
@@ -226,7 +226,7 @@ StringPair ProtoEncodingInfo::GenerateDecoderClass() {
                   " public:\n", "  ", class_name, "() = default;\n\n");
   absl::StrAppend(&h_output, "  // Decode method(s).\n");
   std::string decoder_fcns;
-  for (auto *inst_group : decoder_->instruction_groups()) {
+  for (auto* inst_group : decoder_->instruction_groups()) {
     inst_group->ProcessEncodings(error_listener_);
     absl::StrAppend(&h_output, "  ", opcode_enum_, " Decode",
                     ToPascalCase(inst_group->name()), "(",
@@ -243,7 +243,7 @@ StringPair ProtoEncodingInfo::GenerateDecoderClass() {
   if (error_listener_->HasError()) return {"", ""};
   absl::StrAppend(&cc_output, decoder_fcns);
   absl::StrAppend(&h_output, "\n  // Setters and getters.\n");
-  for (auto const &[name, cpp_type] : setter_types_) {
+  for (auto const& [name, cpp_type] : setter_types_) {
     auto cpp_type_name = GetCppTypeName(cpp_type);
     // Generate method declarations.
     absl::StrAppend(&h_output, "  void Set", ToPascalCase(name), "(",

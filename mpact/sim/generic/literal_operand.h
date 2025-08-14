@@ -56,9 +56,9 @@ class BoolLiteralOperand : public SourceOperandInterface {
  public:
   BoolLiteralOperand() : as_string_(absl::StrCat(literal)) {}
   BoolLiteralOperand(absl::string_view as_string) : as_string_(as_string) {}
-  BoolLiteralOperand(const std::vector<int> &shape, absl::string_view as_string)
+  BoolLiteralOperand(const std::vector<int>& shape, absl::string_view as_string)
       : shape_(shape), as_string_(as_string) {}
-  explicit BoolLiteralOperand(const std::vector<int> &shape)
+  explicit BoolLiteralOperand(const std::vector<int>& shape)
       : BoolLiteralOperand(shape, absl::StrCat(literal)) {}
 
   // Methods for accessing the literal value. Always returns the same
@@ -95,9 +95,9 @@ class IntLiteralOperand : public SourceOperandInterface {
  public:
   IntLiteralOperand() : as_string_(absl::StrCat(literal)) {};
   IntLiteralOperand(absl::string_view as_string) : as_string_(as_string) {}
-  IntLiteralOperand(const std::vector<int> &shape, absl::string_view as_string)
+  IntLiteralOperand(const std::vector<int>& shape, absl::string_view as_string)
       : shape_(shape), as_string_(as_string) {}
-  explicit IntLiteralOperand(const std::vector<int> &shape)
+  explicit IntLiteralOperand(const std::vector<int>& shape)
       : IntLiteralOperand(shape, absl::StrCat(literal)) {}
 
   // Methods for accessing the immediate value. Always returns the same

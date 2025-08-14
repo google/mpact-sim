@@ -32,16 +32,16 @@ namespace decoder {
 namespace bin_format {
 
 BinEncodingInfo::BinEncodingInfo(std::string opcode_enum,
-                                 DecoderErrorListener *error_listener)
+                                 DecoderErrorListener* error_listener)
     : opcode_enum_(opcode_enum), error_listener_(error_listener) {}
 
 BinEncodingInfo::~BinEncodingInfo() {
   delete decoder_;
-  for (auto &[unused, format_ptr] : format_map_) {
+  for (auto& [unused, format_ptr] : format_map_) {
     delete format_ptr;
   }
   format_map_.clear();
-  for (auto &[unused, group_ptr] : instruction_group_map_) {
+  for (auto& [unused, group_ptr] : instruction_group_map_) {
     delete group_ptr;
   }
   instruction_group_map_.clear();
@@ -53,8 +53,8 @@ void BinEncodingInfo::AddIncludeFile(std::string include_file) {
 }
 
 // Adding a format that does not have a parent (to inherit from ).
-absl::StatusOr<Format *> BinEncodingInfo::AddFormat(std::string name,
-                                                    int width) {
+absl::StatusOr<Format*> BinEncodingInfo::AddFormat(std::string name,
+                                                   int width) {
   // Verify that the format name hasn't been used.
   if (format_map_.contains(name)) {
     return absl::AlreadyExistsError(
@@ -66,8 +66,8 @@ absl::StatusOr<Format *> BinEncodingInfo::AddFormat(std::string name,
 }
 
 // Adding a format that does have a parent.
-absl::StatusOr<Format *> BinEncodingInfo::AddFormat(std::string name, int width,
-                                                    std::string parent_name) {
+absl::StatusOr<Format*> BinEncodingInfo::AddFormat(std::string name, int width,
+                                                   std::string parent_name) {
   // Verify that the format name hasn't been used.
   if (format_map_.contains(name)) {
     return absl::AlreadyExistsError(
@@ -79,7 +79,7 @@ absl::StatusOr<Format *> BinEncodingInfo::AddFormat(std::string name, int width,
 }
 
 // Lookup a format by name. Return nullptr if it isn't found.
-Format *BinEncodingInfo::GetFormat(absl::string_view name) const {
+Format* BinEncodingInfo::GetFormat(absl::string_view name) const {
   auto iter = format_map_.find(name);
   if (iter == format_map_.end()) return nullptr;
   return iter->second;
@@ -87,7 +87,7 @@ Format *BinEncodingInfo::GetFormat(absl::string_view name) const {
 
 // Add the named instruction group. Instruction encodings are added directly
 // to the group using the returned pointer.
-absl::StatusOr<InstructionGroup *> BinEncodingInfo::AddInstructionGroup(
+absl::StatusOr<InstructionGroup*> BinEncodingInfo::AddInstructionGroup(
     std::string name, int width, std::string format_name) {
   if (instruction_group_map_.contains(name)) {
     return absl::AlreadyExistsError(
@@ -102,26 +102,26 @@ absl::StatusOr<InstructionGroup *> BinEncodingInfo::AddInstructionGroup(
 // Top level method that calls the checking method of each format. This is
 // called after all the formats have been added.
 void BinEncodingInfo::PropagateExtractors() {
-  for (auto &[unused, format] : format_map_) {
+  for (auto& [unused, format] : format_map_) {
     // For the base formats (those who do not inherit from another format).
     if (format->base_format() == nullptr) {
       format->PropagateExtractorsUp();
     }
   }
 
-  for (auto &[unused, format] : format_map_) {
+  for (auto& [unused, format] : format_map_) {
     if (format->base_format() == nullptr) {
       format->PropagateExtractorsDown();
     }
   }
 }
 
-BinDecoder *BinEncodingInfo::AddBinDecoder(std::string name) {
+BinDecoder* BinEncodingInfo::AddBinDecoder(std::string name) {
   if (decoder_ != nullptr) {
     error_listener_->semanticError(nullptr, "Can only select one decoder");
     return nullptr;
   }
-  auto *bin_decoder = new BinDecoder(name, this, error_listener());
+  auto* bin_decoder = new BinDecoder(name, this, error_listener());
   decoder_ = bin_decoder;
   return bin_decoder;
 }

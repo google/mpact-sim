@@ -43,13 +43,13 @@ FlatDemandMemory::FlatDemandMemory(uint64_t memory_size_in_units,
 // Delete all the allocated blocks.
 FlatDemandMemory::~FlatDemandMemory() { Clear(); }
 
-void FlatDemandMemory::Load(uint64_t address, DataBuffer *db, Instruction *inst,
-                            ReferenceCount *context) {
+void FlatDemandMemory::Load(uint64_t address, DataBuffer* db, Instruction* inst,
+                            ReferenceCount* context) {
   int size_in_units = db->size<uint8_t>() >> addressable_unit_shift_;
   uint64_t high = address + size_in_units;
   ABSL_HARDENING_ASSERT((address >= base_address_) && (high <= max_address_));
   ABSL_HARDENING_ASSERT(size_in_units > 0);
-  uint8_t *byte_ptr = static_cast<uint8_t *>(db->raw_ptr());
+  uint8_t* byte_ptr = static_cast<uint8_t*>(db->raw_ptr());
   // Load the data into the data buffer.
   LoadStoreHelper(address, byte_ptr, size_in_units, true);
   // Execute the instruction to process and write back the load data.
@@ -70,12 +70,12 @@ void FlatDemandMemory::Load(uint64_t address, DataBuffer *db, Instruction *inst,
   }
 }
 
-void FlatDemandMemory::Load(DataBuffer *address_db, DataBuffer *mask_db,
-                            int el_size, DataBuffer *db, Instruction *inst,
-                            ReferenceCount *context) {
+void FlatDemandMemory::Load(DataBuffer* address_db, DataBuffer* mask_db,
+                            int el_size, DataBuffer* db, Instruction* inst,
+                            ReferenceCount* context) {
   auto mask_span = mask_db->Get<bool>();
   auto address_span = address_db->Get<uint64_t>();
-  uint8_t *byte_ptr = static_cast<uint8_t *>(db->raw_ptr());
+  uint8_t* byte_ptr = static_cast<uint8_t*>(db->raw_ptr());
   int size_in_units = el_size >> addressable_unit_shift_;
   ABSL_HARDENING_ASSERT(size_in_units > 0);
   // This is either a gather load, or a unit stride load depending on size of
@@ -106,20 +106,20 @@ void FlatDemandMemory::Load(DataBuffer *address_db, DataBuffer *mask_db,
   }
 }
 
-void FlatDemandMemory::Store(uint64_t address, DataBuffer *db) {
+void FlatDemandMemory::Store(uint64_t address, DataBuffer* db) {
   int size_in_units = db->size<uint8_t>() >> addressable_unit_shift_;
   uint64_t high = address + size_in_units;
   ABSL_HARDENING_ASSERT((address >= base_address_) && (high <= max_address_));
   ABSL_HARDENING_ASSERT(size_in_units > 0);
-  uint8_t *byte_ptr = static_cast<uint8_t *>(db->raw_ptr());
+  uint8_t* byte_ptr = static_cast<uint8_t*>(db->raw_ptr());
   LoadStoreHelper(address, byte_ptr, size_in_units, /*is_load*/ false);
 }
 
-void FlatDemandMemory::Store(DataBuffer *address_db, DataBuffer *mask_db,
-                             int el_size, DataBuffer *db) {
+void FlatDemandMemory::Store(DataBuffer* address_db, DataBuffer* mask_db,
+                             int el_size, DataBuffer* db) {
   auto mask_span = mask_db->Get<bool>();
   auto address_span = address_db->Get<uint64_t>();
-  uint8_t *byte_ptr = static_cast<uint8_t *>(db->raw_ptr());
+  uint8_t* byte_ptr = static_cast<uint8_t*>(db->raw_ptr());
   int size_in_units = el_size >> addressable_unit_shift_;
   ABSL_HARDENING_ASSERT(size_in_units > 0);
   // If the address_span.size() > 1, then this is a scatter store, otherwise
@@ -136,7 +136,7 @@ void FlatDemandMemory::Store(DataBuffer *address_db, DataBuffer *mask_db,
   }
 }
 
-void FlatDemandMemory::LoadStoreHelper(uint64_t address, uint8_t *data_ptr,
+void FlatDemandMemory::LoadStoreHelper(uint64_t address, uint8_t* data_ptr,
                                        int size_in_units, bool is_load) {
   // Repeat the following while there is data to copy. If it's a big chunk of
   // data it may span across more than one block.
@@ -145,7 +145,7 @@ void FlatDemandMemory::LoadStoreHelper(uint64_t address, uint8_t *data_ptr,
     uint64_t block_address = address >> kAllocationShift;
     auto iter = block_map_.find(block_address);
 
-    uint8_t *block;
+    uint8_t* block;
     if (iter == block_map_.end()) {
       block = new uint8_t[allocation_byte_size_];
       block_map_.insert(std::make_pair(block_address, block));
@@ -180,7 +180,7 @@ void FlatDemandMemory::LoadStoreHelper(uint64_t address, uint8_t *data_ptr,
 }
 
 void FlatDemandMemory::Clear() {
-  for (auto &[unused, block_ptr] : block_map_) {
+  for (auto& [unused, block_ptr] : block_map_) {
     delete[] block_ptr;
   }
   block_map_.clear();

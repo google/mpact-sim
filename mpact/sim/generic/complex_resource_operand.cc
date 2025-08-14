@@ -14,7 +14,13 @@
 
 #include "mpact/sim/generic/complex_resource_operand.h"
 
+#include <cstddef>
+#include <cstdint>
+#include <cstring>
+
 #include "absl/status/status.h"
+#include "absl/strings/str_cat.h"
+#include "absl/types/span.h"
 
 namespace mpact {
 namespace sim {

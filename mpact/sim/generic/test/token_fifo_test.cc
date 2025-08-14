@@ -14,10 +14,10 @@
 
 #include "mpact/sim/generic/token_fifo.h"
 
+#include <algorithm>
 #include <cstdint>
 #include <memory>
 
-#include "absl/memory/memory.h"
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
 #include "mpact/sim/generic/data_buffer.h"
@@ -73,7 +73,7 @@ TEST_F(TokenFifoTest, ScalarDataBuffer) {
   EXPECT_EQ(scalar_fifo->Front(), nullptr);
 
   // Allocate a data buffer of the right byte size and bind it to the fifo.
-  DataBuffer *db = db_factory_->Allocate(scalar_fifo->size());
+  DataBuffer* db = db_factory_->Allocate(scalar_fifo->size());
   scalar_fifo->SetDataBuffer(db);
   EXPECT_EQ(scalar_fifo->Available(), 1);
   EXPECT_FALSE(scalar_fifo->IsFull());
@@ -90,7 +90,7 @@ TEST_F(TokenFifoTest, EmptyFullEmpty) {
   auto fifo = std::make_unique<ScalarTokenFifo>(nullptr, "S0", kFifoDepth,
                                                 &token_store_);
 
-  DataBuffer *db[kNumTokens + 1];
+  DataBuffer* db[kNumTokens + 1];
   for (int db_num = 0; db_num < kNumTokens + 1; db_num++) {
     db[db_num] = db_factory_->Allocate(fifo->size());
   }
@@ -142,7 +142,7 @@ TEST_F(TokenFifoTest, Reserve) {
   EXPECT_TRUE(fifo->IsFull());
   EXPECT_FALSE(fifo->IsOverSubscribed());
 
-  DataBuffer *db[kNumTokens];
+  DataBuffer* db[kNumTokens];
   for (int db_num = 0; db_num < kNumTokens; db_num++) {
     db[db_num] = db_factory_->Allocate(fifo->size());
     fifo->Push(db[db_num]);
@@ -200,7 +200,7 @@ TEST_F(TokenFifoTest, OverflowProgramError) {
   fifo->SetOverflowProgramError(&overflow);
   EXPECT_FALSE(controller_->HasError());
 
-  DataBuffer *db[kNumTokens + 1];
+  DataBuffer* db[kNumTokens + 1];
   for (int db_num = 0; db_num < kNumTokens + 1; db_num++) {
     db[db_num] = db_factory_->Allocate(fifo->size());
     fifo->Push(db[db_num]);

@@ -50,57 +50,57 @@ class SingleInitiatorRouter : public TaggedMemoryInterface,
   };
   // Comparator for address ranges.
   struct AddressRangeLess {
-    bool operator()(const AddressRange &lhs, const AddressRange &rhs) const {
+    bool operator()(const AddressRange& lhs, const AddressRange& rhs) const {
       return (lhs.top < rhs.base);
     }
   };
   // Map type convenience template.
   template <typename Interface>
   using InterfaceMap =
-      absl::btree_map<SingleInitiatorRouter::AddressRange, Interface *,
+      absl::btree_map<SingleInitiatorRouter::AddressRange, Interface*,
                       SingleInitiatorRouter::AddressRangeLess>;
 
   // Constructor and destructor.
   explicit SingleInitiatorRouter(std::string name);
-  SingleInitiatorRouter(const SingleInitiatorRouter &) = delete;
-  SingleInitiatorRouter &operator=(const SingleInitiatorRouter &) = delete;
+  SingleInitiatorRouter(const SingleInitiatorRouter&) = delete;
+  SingleInitiatorRouter& operator=(const SingleInitiatorRouter&) = delete;
   ~SingleInitiatorRouter();
 
   // Add 'memory' target interface with given range. Only three interface types
   // are supported: MemoryInterface, TaggedMemoryInterface, and
   // AtomicMemoryOpInterface.
   template <typename Interface>
-  absl::Status AddTarget(Interface *memory, uint64_t base, uint64_t top);
+  absl::Status AddTarget(Interface* memory, uint64_t base, uint64_t top);
 
   // Add 'memory' target interface as default target, that is, if no other
   // interface matches, it is the fallback interface. Only three interface types
   // are supported: MemoryInterface, TaggedMemoryInterface, and
   // AtomicMemoryOpInterface.
   template <typename Interface>
-  absl::Status AddDefaultTarget(Interface *memory);
+  absl::Status AddDefaultTarget(Interface* memory);
 
   // Memory interface methods.
   // Plain load.
-  void Load(uint64_t address, DataBuffer *db, Instruction *inst,
-            ReferenceCount *context) override;
+  void Load(uint64_t address, DataBuffer* db, Instruction* inst,
+            ReferenceCount* context) override;
   // Vector load.
-  void Load(DataBuffer *address_db, DataBuffer *mask_db, int el_size,
-            DataBuffer *db, Instruction *inst,
-            ReferenceCount *context) override;
+  void Load(DataBuffer* address_db, DataBuffer* mask_db, int el_size,
+            DataBuffer* db, Instruction* inst,
+            ReferenceCount* context) override;
   // Tagged load.
-  void Load(uint64_t address, DataBuffer *db, DataBuffer *tags,
-            Instruction *inst, ReferenceCount *context) override;
+  void Load(uint64_t address, DataBuffer* db, DataBuffer* tags,
+            Instruction* inst, ReferenceCount* context) override;
   // Plain store.
-  void Store(uint64_t address, DataBuffer *db) override;
+  void Store(uint64_t address, DataBuffer* db) override;
   // Vector store.
-  void Store(DataBuffer *address_db, DataBuffer *mask_db, int el_size,
-             DataBuffer *db) override;
+  void Store(DataBuffer* address_db, DataBuffer* mask_db, int el_size,
+             DataBuffer* db) override;
   // Tagged store.
-  void Store(uint64_t address, DataBuffer *db, DataBuffer *tags) override;
+  void Store(uint64_t address, DataBuffer* db, DataBuffer* tags) override;
   // Atomic memory operation.
-  absl::Status PerformMemoryOp(uint64_t address, Operation op, DataBuffer *db,
-                               Instruction *inst,
-                               ReferenceCount *context) override;
+  absl::Status PerformMemoryOp(uint64_t address, Operation op, DataBuffer* db,
+                               Instruction* inst,
+                               ReferenceCount* context) override;
 
   // Accessors.
   std::string_view name() const { return name_; }
@@ -109,11 +109,11 @@ class SingleInitiatorRouter : public TaggedMemoryInterface,
   std::string name_;
   // These maps are used to look up target interfaces based on addresses.
   InterfaceMap<MemoryInterface> memory_targets_;
-  MemoryInterface *default_memory_target_ = nullptr;
+  MemoryInterface* default_memory_target_ = nullptr;
   InterfaceMap<TaggedMemoryInterface> tagged_targets_;
-  TaggedMemoryInterface *default_tagged_target_ = nullptr;
+  TaggedMemoryInterface* default_tagged_target_ = nullptr;
   InterfaceMap<AtomicMemoryOpInterface> atomic_targets_;
-  AtomicMemoryOpInterface *default_atomic_target_ = nullptr;
+  AtomicMemoryOpInterface* default_atomic_target_ = nullptr;
 };
 
 }  // namespace util

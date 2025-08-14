@@ -30,9 +30,9 @@ class DebugCommandShellInterface {
 
   // Each core must provide the debug interface and the elf loader.
   struct CoreAccess {
-    CoreDebugInterface *debug_interface = nullptr;
-    std::function<util::ElfProgramLoader *()> loader_getter;
-    ArchState *state = nullptr;
+    CoreDebugInterface* debug_interface = nullptr;
+    std::function<util::ElfProgramLoader*()> loader_getter;
+    ArchState* state = nullptr;
     absl::btree_map<int, uint64_t> breakpoint_map;
     int breakpoint_index = 0;
     absl::btree_map<int, WatchpointInfo> watchpoint_map;
@@ -48,11 +48,11 @@ class DebugCommandShellInterface {
   // any error while executing the command, in which case the output string
   // should be set to an appropriate error message.
   using CommandFunction = absl::AnyInvocable<bool(
-      absl::string_view, const CoreAccess &, std::string &)>;
+      absl::string_view, const CoreAccess&, std::string&)>;
 
   // Add core access to the system.
-  virtual void AddCore(const CoreAccess &core_access) = 0;
-  virtual void AddCores(const std::vector<CoreAccess> &core_access) = 0;
+  virtual void AddCore(const CoreAccess& core_access) = 0;
+  virtual void AddCores(const std::vector<CoreAccess>& core_access) = 0;
 
   // This adds a custom command to the command interpreter. Usage will be added
   // to the standard command usage. The callable will be called before the
@@ -62,7 +62,7 @@ class DebugCommandShellInterface {
 
   // The run method is the command interpreter. It parses the command strings,
   // executes the corresponding commands, displays results and error messages.
-  virtual void Run(std::istream &is, std::ostream &os) = 0;
+  virtual void Run(std::istream& is, std::ostream& os) = 0;
 };
 
 }  // namespace mpact::sim::generic

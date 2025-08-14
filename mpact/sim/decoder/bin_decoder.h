@@ -37,35 +37,35 @@ class InstructionGroup;
 class BinDecoder {
  public:
   using InstructionGroupMultiMap =
-      absl::btree_multimap<std::string, InstructionGroup *>;
+      absl::btree_multimap<std::string, InstructionGroup*>;
 
-  BinDecoder(std::string name, BinEncodingInfo *encoding_info,
-             DecoderErrorListener *error_listener);
+  BinDecoder(std::string name, BinEncodingInfo* encoding_info,
+             DecoderErrorListener* error_listener);
   ~BinDecoder();
 
   // Checks for invalid encodings, such as some duplicates.
   void CheckEncodings();
   // Select instruction group for decoder generation.
-  void AddInstructionGroup(InstructionGroup *group);
+  void AddInstructionGroup(InstructionGroup* group);
 
   // Accessors.
-  const std::string &name() const { return name_; }
-  DecoderErrorListener *error_listener() const { return error_listener_; }
-  BinEncodingInfo *encoding_info() const { return encoding_info_; }
-  std::vector<InstructionGroup *> instruction_group_vec() {
+  const std::string& name() const { return name_; }
+  DecoderErrorListener* error_listener() const { return error_listener_; }
+  BinEncodingInfo* encoding_info() const { return encoding_info_; }
+  std::vector<InstructionGroup*> instruction_group_vec() {
     return instruction_group_vec_;
   }
-  std::deque<std::string> &namespaces() { return namespaces_; }
+  std::deque<std::string>& namespaces() { return namespaces_; }
 
  private:
   // Decoder name.
   std::string name_;
   // The global encoding structure.
-  BinEncodingInfo *encoding_info_;
+  BinEncodingInfo* encoding_info_;
   // Error handler.
-  DecoderErrorListener *error_listener_;
+  DecoderErrorListener* error_listener_;
   // The set of instruction groups in this decoder.
-  std::vector<InstructionGroup *> instruction_group_vec_;
+  std::vector<InstructionGroup*> instruction_group_vec_;
   // Namespace container.
   std::deque<std::string> namespaces_;
 };

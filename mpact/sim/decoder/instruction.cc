@@ -28,27 +28,27 @@ namespace sim {
 namespace machine_description {
 namespace instruction_set {
 
-Instruction::Instruction(Opcode *opcode, Slot *slot)
+Instruction::Instruction(Opcode* opcode, Slot* slot)
     : Instruction(opcode, nullptr, slot) {}
-Instruction::Instruction(Opcode *opcode, Instruction *child, Slot *slot)
+Instruction::Instruction(Opcode* opcode, Instruction* child, Slot* slot)
     : opcode_(opcode), child_(child), slot_(slot) {}
 
 Instruction::~Instruction() {
   delete child_;
   delete opcode_;
-  for (auto *ref : resource_use_vec_) {
+  for (auto* ref : resource_use_vec_) {
     delete ref;
   }
   resource_use_vec_.clear();
-  for (auto *ref : resource_acquire_vec_) {
+  for (auto* ref : resource_acquire_vec_) {
     delete ref;
   }
   resource_acquire_vec_.clear();
-  for (auto *disasm_format : disasm_format_vec_) {
+  for (auto* disasm_format : disasm_format_vec_) {
     delete disasm_format;
   }
   disasm_format_vec_.clear();
-  for (auto &[ignored, expr] : attribute_map_) {
+  for (auto& [ignored, expr] : attribute_map_) {
     delete expr;
   }
   attribute_map_.clear();
@@ -57,7 +57,7 @@ Instruction::~Instruction() {
 // Append is implemented recursively. Few instructions have child instances,
 // and when they do it's likely to be a very small number. Not concern for
 // efficiency here.
-void Instruction::AppendChild(Instruction *child) {
+void Instruction::AppendChild(Instruction* child) {
   if (child_ == nullptr) {
     child_ = child;
     return;
@@ -65,16 +65,16 @@ void Instruction::AppendChild(Instruction *child) {
   child_->AppendChild(child);
 }
 
-void Instruction::AppendResourceUse(const ResourceReference *resource_ref) {
+void Instruction::AppendResourceUse(const ResourceReference* resource_ref) {
   resource_use_vec_.push_back(resource_ref);
 }
 
-void Instruction::AppendResourceAcquire(const ResourceReference *resource_ref) {
+void Instruction::AppendResourceAcquire(const ResourceReference* resource_ref) {
   resource_acquire_vec_.push_back(resource_ref);
 }
 
 void Instruction::AddInstructionAttribute(absl::string_view attr_name,
-                                          TemplateExpression *expression) {
+                                          TemplateExpression* expression) {
   // See if the attribute is already defined. If not, create a new attribute
   // in the map, otherwise update the expression.
   auto iter = attribute_map_.find(attr_name);
@@ -91,14 +91,14 @@ void Instruction::AddInstructionAttribute(absl::string_view attr_name) {
   AddInstructionAttribute(attr_name, new TemplateConstant(1));
 }
 
-void Instruction::AppendDisasmFormat(DisasmFormat *disasm_format) {
+void Instruction::AppendDisasmFormat(DisasmFormat* disasm_format) {
   disasm_format_vec_.push_back(disasm_format);
 }
 
 // Creating a derived instruction involves copying attributes and re-evaluating
 // any expressions that depend on any slot template instantiation values.
-absl::StatusOr<Instruction *> Instruction::CreateDerivedInstruction(
-    TemplateInstantiationArgs *args) const {
+absl::StatusOr<Instruction*> Instruction::CreateDerivedInstruction(
+    TemplateInstantiationArgs* args) const {
   // First try to create a derived opcode object. Fail if it fails.
   auto op_result =
       slot_->instruction_set()->opcode_factory()->CreateDerivedOpcode(opcode(),
@@ -106,17 +106,17 @@ absl::StatusOr<Instruction *> Instruction::CreateDerivedInstruction(
   if (!op_result.ok()) return op_result.status();
 
   // Create a new instruction object with the derived opcode object.
-  auto *new_inst = new Instruction(op_result.value(), slot_);
+  auto* new_inst = new Instruction(op_result.value(), slot_);
 
   // Disassembly format.
-  for (auto const *disasm_fmt : disasm_format_vec()) {
+  for (auto const* disasm_fmt : disasm_format_vec()) {
     new_inst->AppendDisasmFormat(new DisasmFormat(*disasm_fmt));
   }
   // Semantic function string.
   new_inst->set_semfunc_code_string(semfunc_code_string());
 
   // Resource uses.
-  for (auto const &resource_use : resource_use_vec()) {
+  for (auto const& resource_use : resource_use_vec()) {
     auto ref_result = CreateDerivedResourceRef(resource_use, args);
     if (!ref_result.status().ok()) {
       delete new_inst;
@@ -126,7 +126,7 @@ absl::StatusOr<Instruction *> Instruction::CreateDerivedInstruction(
   }
 
   // Resource reservations.
-  for (auto const *resource_def : resource_acquire_vec()) {
+  for (auto const* resource_def : resource_acquire_vec()) {
     auto ref_result = CreateDerivedResourceRef(resource_def, args);
     if (!ref_result.status().ok()) {
       delete new_inst;
@@ -136,7 +136,7 @@ absl::StatusOr<Instruction *> Instruction::CreateDerivedInstruction(
   }
 
   // Instruction attributes.
-  for (auto const &[attr_name, expr_ptr] : attribute_map_) {
+  for (auto const& [attr_name, expr_ptr] : attribute_map_) {
     auto result = expr_ptr->Evaluate(args);
     if (result.ok()) {
       new_inst->AddInstructionAttribute(attr_name, result.value());
@@ -159,10 +159,10 @@ absl::StatusOr<Instruction *> Instruction::CreateDerivedInstruction(
   return result.status();
 }
 
-absl::StatusOr<ResourceReference *> Instruction::CreateDerivedResourceRef(
-    const ResourceReference *ref, TemplateInstantiationArgs *args) const {
-  TemplateExpression *begin_expr = nullptr;
-  TemplateExpression *end_expr = nullptr;
+absl::StatusOr<ResourceReference*> Instruction::CreateDerivedResourceRef(
+    const ResourceReference* ref, TemplateInstantiationArgs* args) const {
+  TemplateExpression* begin_expr = nullptr;
+  TemplateExpression* end_expr = nullptr;
   // Evaluate the begin expression in the context of any template instantiation
   // arguments.
   if (ref->begin_expression != nullptr) {
@@ -185,7 +185,7 @@ absl::StatusOr<ResourceReference *> Instruction::CreateDerivedResourceRef(
     }
     end_expr = result.value();
   }
-  auto *new_ref = new ResourceReference(ref->resource, ref->is_array,
+  auto* new_ref = new ResourceReference(ref->resource, ref->is_array,
                                         ref->dest_op, begin_expr, end_expr);
   return new_ref;
 }
@@ -193,7 +193,7 @@ absl::StatusOr<ResourceReference *> Instruction::CreateDerivedResourceRef(
 // The destination op is stored in the opcode object, however, the child pointer
 // is in the instruction object, so traverse the instructions along the child
 // chain to find the destination operand.
-DestinationOperand *Instruction::GetDestOp(absl::string_view op_name) const {
+DestinationOperand* Instruction::GetDestOp(absl::string_view op_name) const {
   auto dest_op = opcode()->GetDestOp(op_name);
   if (dest_op != nullptr) return dest_op;
 
@@ -207,7 +207,7 @@ DestinationOperand *Instruction::GetDestOp(absl::string_view op_name) const {
 // This is called prior to overriding the attribute value to clean up any
 // allocated memory.
 void Instruction::ClearDisasmFormat() {
-  for (auto *disasm_format : disasm_format_vec_) {
+  for (auto* disasm_format : disasm_format_vec_) {
     delete disasm_format;
   }
   disasm_format_vec_.clear();
@@ -216,18 +216,18 @@ void Instruction::ClearDisasmFormat() {
 void Instruction::ClearSemfuncCodeString() { semfunc_code_string_.clear(); }
 
 void Instruction::ClearResourceSpecs() {
-  for (auto *ref : resource_use_vec_) {
+  for (auto* ref : resource_use_vec_) {
     delete ref;
   }
   resource_use_vec_.clear();
-  for (auto *ref : resource_acquire_vec_) {
+  for (auto* ref : resource_acquire_vec_) {
     delete ref;
   }
   resource_acquire_vec_.clear();
 }
 
 void Instruction::ClearAttributeSpecs() {
-  for (auto &[ignored, expr] : attribute_map_) {
+  for (auto& [ignored, expr] : attribute_map_) {
     delete expr;
   }
   attribute_map_.clear();

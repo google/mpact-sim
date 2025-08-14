@@ -57,7 +57,7 @@ namespace machine_description {
 namespace instruction_set {
 
 static absl::StatusOr<TemplateValue> AbsoluteValueTemplateFunc(
-    TemplateInstantiationArgs *args) {
+    TemplateInstantiationArgs* args) {
   if (args->size() != 1) {
     return absl::InternalError(absl::StrCat(
         "Wrong number of arguments, expected 1, was given ", args->size()));
@@ -65,7 +65,7 @@ static absl::StatusOr<TemplateValue> AbsoluteValueTemplateFunc(
   auto result = (*args)[0]->GetValue();
   if (!result.ok()) return result.status();
 
-  auto *value_ptr = std::get_if<int>(&result.value());
+  auto* value_ptr = std::get_if<int>(&result.value());
   if (value_ptr == nullptr) {
     return absl::InternalError("Type mismatch - int expected");
   }
@@ -79,22 +79,22 @@ InstructionSetVisitor::InstructionSetVisitor() {
 }
 
 InstructionSetVisitor::~InstructionSetVisitor() {
-  for (auto &[unused, expr_ptr] : constant_map_) {
+  for (auto& [unused, expr_ptr] : constant_map_) {
     delete expr_ptr;
   }
   constant_map_.clear();
-  for (auto *wrapper : antlr_parser_wrappers_) {
+  for (auto* wrapper : antlr_parser_wrappers_) {
     delete wrapper;
   }
   antlr_parser_wrappers_.clear();
-  for (auto *expr : disasm_field_widths_) delete expr;
+  for (auto* expr : disasm_field_widths_) delete expr;
   disasm_field_widths_.clear();
 }
 
 // Main entry point for processing the file.
 absl::Status InstructionSetVisitor::Process(
-    const std::vector<std::string> &file_names, const std::string &prefix,
-    const std::string &isa_name, const std::vector<std::string> &include_roots,
+    const std::vector<std::string>& file_names, const std::string& prefix,
+    const std::string& isa_name, const std::vector<std::string>& include_roots,
     absl::string_view directory) {
   generator_version_ = absl::GetFlag(FLAGS_generator);
   // Create and add the error listener.
@@ -104,12 +104,12 @@ absl::Status InstructionSetVisitor::Process(
     return absl::InvalidArgumentError("Isa name cannot be empty");
   }
 
-  for (auto &include_root : include_roots) {
+  for (auto& include_root : include_roots) {
     include_dir_vec_.push_back(include_root);
   }
 
   std::string isa_prefix = prefix;
-  std::istream *source_stream = &std::cin;
+  std::istream* source_stream = &std::cin;
 
   if (!file_names.empty()) {
     source_stream = new std::fstream(file_names[0], std::fstream::in);
@@ -122,7 +122,7 @@ absl::Status InstructionSetVisitor::Process(
   parser_wrapper.parser()->addErrorListener(error_listener());
 
   // Parse the file and then create the data structures.
-  TopLevelCtx *top_level = parser_wrapper.parser()->top_level();
+  TopLevelCtx* top_level = parser_wrapper.parser()->top_level();
 
   if (!file_names.empty()) {
     delete source_stream;
@@ -241,20 +241,20 @@ absl::Status InstructionSetVisitor::Process(
 }
 
 void InstructionSetVisitor::PerformBundleReferenceChecks(
-    InstructionSet *instruction_set, Bundle *bundle) {
+    InstructionSet* instruction_set, Bundle* bundle) {
   // Verify that all referenced bundles were declared.
-  for (const auto &bundle_name : bundle->bundle_names()) {
-    Bundle *bundle_ref = instruction_set->GetBundle(bundle_name);
+  for (const auto& bundle_name : bundle->bundle_names()) {
+    Bundle* bundle_ref = instruction_set->GetBundle(bundle_name);
     // Perform the check recursively on the referenced bundles.
     PerformBundleReferenceChecks(instruction_set, bundle_ref);
   }
   // Verify that all the slot uses were declared.
-  for (auto &[slot_name, instance_vec] : bundle->slot_uses()) {
-    Slot *slot = instruction_set->GetSlot(slot_name);
+  for (auto& [slot_name, instance_vec] : bundle->slot_uses()) {
+    Slot* slot = instruction_set->GetSlot(slot_name);
     // Verify that the instance number of the slot falls within valid range.
-    for (auto &instance_number : instance_vec) {
+    for (auto& instance_number : instance_vec) {
       if (instance_number >= slot->size()) {
-        auto *token = bundle->ctx() == nullptr ? nullptr : bundle->ctx()->start;
+        auto* token = bundle->ctx() == nullptr ? nullptr : bundle->ctx()->start;
         error_listener()->semanticError(
             token,
             absl::StrCat("Index ", instance_number, " out of range for slot ",
@@ -276,14 +276,14 @@ void InstructionSetVisitor::PerformBundleReferenceChecks(
   instruction_set->ComputeSlotAndBundleOrders();
 }
 
-void InstructionSetVisitor::VisitTopLevel(TopLevelCtx *ctx) {
+void InstructionSetVisitor::VisitTopLevel(TopLevelCtx* ctx) {
   auto declarations = ctx->declaration();
 
   // Process disasm widths. Only the one in the top level file is used if there
   // are additional ones in included files.
   int count = 0;
-  DisasmWidthsCtx *disasm_ctx = nullptr;
-  for (auto *decl : declarations) {
+  DisasmWidthsCtx* disasm_ctx = nullptr;
+  for (auto* decl : declarations) {
     context_file_map_[decl] = current_file_index_;
     if (decl->disasm_widths() == nullptr) continue;
     if (count > 0) {
@@ -319,14 +319,14 @@ std::unique_ptr<InstructionSet> InstructionSetVisitor::ProcessTopLevel(
 }
 
 void InstructionSetVisitor::PreProcessDeclarations(
-    const std::vector<DeclarationCtx *> &ctx_vec) {
-  std::vector<IncludeFileCtx *> include_files;
+    const std::vector<DeclarationCtx*>& ctx_vec) {
+  std::vector<IncludeFileCtx*> include_files;
   // Get handles to the slot, bundle and isa declarations.
 
   // Create map from slot name to slot ctx.
-  for (auto *decl : ctx_vec) {
+  for (auto* decl : ctx_vec) {
     if (decl->slot_declaration() != nullptr) {
-      auto *slot_ctx = decl->slot_declaration();
+      auto* slot_ctx = decl->slot_declaration();
       context_file_map_.insert({slot_ctx, current_file_index_});
       auto name = slot_ctx->slot_name->getText();
       auto ptr = slot_decl_map_.find(name);
@@ -341,7 +341,7 @@ void InstructionSetVisitor::PreProcessDeclarations(
     }
     // Create map from bundle name to bundle ctx.
     if (decl->bundle_declaration() != nullptr) {
-      auto *bundle_ctx = decl->bundle_declaration();
+      auto* bundle_ctx = decl->bundle_declaration();
       context_file_map_.insert({bundle_ctx, current_file_index_});
       auto name = bundle_ctx->bundle_name->getText();
       auto ptr = bundle_decl_map_.find(name);
@@ -357,7 +357,7 @@ void InstructionSetVisitor::PreProcessDeclarations(
     }
     // Create map from isa name to isa ctx.
     if (decl->isa_declaration() != nullptr) {
-      auto *isa_ctx = decl->isa_declaration();
+      auto* isa_ctx = decl->isa_declaration();
       context_file_map_.insert({isa_ctx, current_file_index_});
       auto name = isa_ctx->instruction_set_name->getText();
       auto ptr = isa_decl_map_.find(name);
@@ -374,7 +374,7 @@ void InstructionSetVisitor::PreProcessDeclarations(
 
     // Process global include file specifications.
     if (decl->include_file_list() != nullptr) {
-      for (auto *include_file : decl->include_file_list()->include_file()) {
+      for (auto* include_file : decl->include_file_list()->include_file()) {
         // Insert the string - the call will always succeed, but the insertion
         // does not happen if it already exists.
         include_files_.insert(include_file->STRING_LITERAL()->getText());
@@ -394,13 +394,13 @@ void InstructionSetVisitor::PreProcessDeclarations(
   }
   // Process all include files - this adds to all isa, slot and bundle
   // context maps, as well as all global variables, etc.
-  for (auto *include_file_ctx : include_files) {
+  for (auto* include_file_ctx : include_files) {
     VisitIncludeFile(include_file_ctx);
   }
 }
 
 std::unique_ptr<InstructionSet> InstructionSetVisitor::VisitIsaDeclaration(
-    IsaDeclCtx *ctx) {
+    IsaDeclCtx* ctx) {
   if (ctx == nullptr) return nullptr;
   auto instruction_set =
       std::make_unique<InstructionSet>(ctx->instruction_set_name->getText());
@@ -418,16 +418,16 @@ std::unique_ptr<InstructionSet> InstructionSetVisitor::VisitIsaDeclaration(
   return instruction_set;
 }
 
-void InstructionSetVisitor::VisitNamespaceDecl(NamespaceDeclCtx *ctx,
-                                               InstructionSet *isa) {
+void InstructionSetVisitor::VisitNamespaceDecl(NamespaceDeclCtx* ctx,
+                                               InstructionSet* isa) {
   if (ctx == nullptr) return;
-  for (auto *namespace_name : ctx->namespace_ident()) {
+  for (auto* namespace_name : ctx->namespace_ident()) {
     isa->namespaces().push_back(namespace_name->getText());
   }
 }
 
-void InstructionSetVisitor::VisitBundleList(BundleListCtx *ctx,
-                                            Bundle *bundle) {
+void InstructionSetVisitor::VisitBundleList(BundleListCtx* ctx,
+                                            Bundle* bundle) {
   if (ctx == nullptr) return;
   // Append the list of named bundles referenced within the containing bundle.
   auto bundle_specs_vec = ctx->bundle_spec();
@@ -449,7 +449,7 @@ void InstructionSetVisitor::VisitBundleList(BundleListCtx *ctx,
   }
 }
 
-void InstructionSetVisitor::VisitSlotList(SlotListCtx *ctx, Bundle *bundle) {
+void InstructionSetVisitor::VisitSlotList(SlotListCtx* ctx, Bundle* bundle) {
   if (ctx == nullptr) return;
   // Append the list of named slots referenced within the containing bundle.
   auto slot_specs_vec = ctx->slot_spec();
@@ -473,7 +473,7 @@ void InstructionSetVisitor::VisitSlotList(SlotListCtx *ctx, Bundle *bundle) {
   }
 }
 
-std::vector<int> InstructionSetVisitor::VisitArraySpec(ArraySpecCtx *ctx) {
+std::vector<int> InstructionSetVisitor::VisitArraySpec(ArraySpecCtx* ctx) {
   std::vector<int> instances;
 
   // If there are not array specifications, return the empty vector.
@@ -496,12 +496,12 @@ std::vector<int> InstructionSetVisitor::VisitArraySpec(ArraySpecCtx *ctx) {
   return instances;
 }
 
-void InstructionSetVisitor::VisitConstantDef(ConstantDefCtx *ctx) {
+void InstructionSetVisitor::VisitConstantDef(ConstantDefCtx* ctx) {
   if (ctx == nullptr) return;
   std::string ident = ctx->ident()->getText();
   std::string type = ctx->template_parameter_type()->getText();
   context_file_map_.insert({ctx->expression(), context_file_map_.at(ctx)});
-  auto *expr = VisitExpression(ctx->expression(), nullptr, nullptr);
+  auto* expr = VisitExpression(ctx->expression(), nullptr, nullptr);
   auto status = AddConstant(ident, type, expr);
   if (!status.ok()) {
     delete expr;
@@ -509,14 +509,14 @@ void InstructionSetVisitor::VisitConstantDef(ConstantDefCtx *ctx) {
   }
 }
 
-void InstructionSetVisitor::VisitIncludeFile(IncludeFileCtx *ctx) {
+void InstructionSetVisitor::VisitIncludeFile(IncludeFileCtx* ctx) {
   // The literal includes the double quotes.
   std::string literal = ctx->STRING_LITERAL()->getText();
   // Remove the double quotes from the literal and construct the full file
   // name.
   std::string file_name = literal.substr(1, literal.length() - 2);
   // Check for recursive include.
-  for (auto const &name : include_file_stack_) {
+  for (auto const& name : include_file_stack_) {
     if (name == file_name) {
       error_listener()->semanticError(
           ctx->start,
@@ -528,14 +528,14 @@ void InstructionSetVisitor::VisitIncludeFile(IncludeFileCtx *ctx) {
 }
 
 void InstructionSetVisitor::ParseIncludeFile(
-    antlr4::ParserRuleContext *ctx, const std::string &file_name,
-    const std::vector<std::string> &dirs) {
+    antlr4::ParserRuleContext* ctx, const std::string& file_name,
+    const std::vector<std::string>& dirs) {
   std::fstream include_file;
   // Open include file.
   include_file.open(file_name, std::fstream::in);
   if (!include_file.is_open()) {
     // Try each of the include file directories.
-    for (auto const &dir : dirs) {
+    for (auto const& dir : dirs) {
       std::string include_name = dir + "/" + file_name;
       include_file.open(include_name, std::fstream::in);
       if (include_file.is_open()) break;
@@ -553,7 +553,7 @@ void InstructionSetVisitor::ParseIncludeFile(
   file_names_.push_back(file_name);
   current_file_index_ = file_names_.size() - 1;
   // Create an antlr4 stream from the input stream.
-  auto *include_parser = new IsaAntlrParserWrapper(&include_file);
+  auto* include_parser = new IsaAntlrParserWrapper(&include_file);
   // We need to save the parser state so it's available for analysis after
   // we are done with building the parse trees.
   antlr_parser_wrappers_.push_back(include_parser);
@@ -577,16 +577,16 @@ void InstructionSetVisitor::ParseIncludeFile(
 }
 
 void InstructionSetVisitor::VisitBundleDeclaration(
-    BundleDeclCtx *ctx, InstructionSet *instruction_set) {
+    BundleDeclCtx* ctx, InstructionSet* instruction_set) {
   if (ctx == nullptr) return;
-  Bundle *bundle =
+  Bundle* bundle =
       new Bundle(ctx->bundle_name->getText(), instruction_set, ctx);
   instruction_set->AddBundle(bundle);
   int num_slot_lists = 0;
   int num_bundle_lists = 0;
   int num_include_file_lists = 0;
   int num_semfunc_specs = 0;
-  for (auto *part : ctx->bundle_parts()) {
+  for (auto* part : ctx->bundle_parts()) {
     if (part->slot_list() != nullptr) {
       if (num_slot_lists > 0) {
         error_listener()->semanticError(file_names_[context_file_map_.at(ctx)],
@@ -618,7 +618,7 @@ void InstructionSetVisitor::VisitBundleDeclaration(
             "Multiple include file lists in bundle");
         return;
       }
-      for (auto *include_file : part->include_file_list()->include_file()) {
+      for (auto* include_file : part->include_file_list()->include_file()) {
         // Insert the string - the call will always succeed, but the insertion
         // does not happen if it already exists.
         include_files_.insert(include_file->STRING_LITERAL()->getText());
@@ -649,12 +649,12 @@ void InstructionSetVisitor::VisitBundleDeclaration(
 }
 
 void InstructionSetVisitor::VisitSlotDeclaration(
-    SlotDeclCtx *ctx, InstructionSet *instruction_set) {
+    SlotDeclCtx* ctx, InstructionSet* instruction_set) {
   bool is_templated = ctx->template_decl() != nullptr;
-  Slot *slot = new Slot(ctx->slot_name->getText(), instruction_set,
+  Slot* slot = new Slot(ctx->slot_name->getText(), instruction_set,
                         is_templated, ctx, generator_version_);
   if (is_templated) {
-    for (auto const &param : ctx->template_decl()->template_parameter_decl()) {
+    for (auto const& param : ctx->template_decl()->template_parameter_decl()) {
       auto status = slot->AddTemplateFormal(param->IDENT()->getText());
       if (!status.ok()) {
         error_listener()->semanticError(
@@ -666,7 +666,7 @@ void InstructionSetVisitor::VisitSlotDeclaration(
   // Set the base slot if it inherits.
   if (ctx->base_item_list() != nullptr) {
     // For each entry in the list of slots to derive from.
-    for (auto *base_item : ctx->base_item_list()->base_item()) {
+    for (auto* base_item : ctx->base_item_list()->base_item()) {
       std::string base_name = base_item->IDENT()->getText();
       // If the base slot does has not been seen - undefined error.
       auto slot_iter = slot_decl_map_.find(base_name);
@@ -677,14 +677,14 @@ void InstructionSetVisitor::VisitSlotDeclaration(
         continue;
       }
       // If the slot hasn't been visited, visit it.
-      auto *base = instruction_set->GetSlot(base_name);
+      auto* base = instruction_set->GetSlot(base_name);
       if (base == nullptr) {
         VisitSlotDeclaration(slot_iter->second, instruction_set);
         base = instruction_set->GetSlot(base_name);
       }
       // Now check if the base slot is templated or not, and if the template
       // arguments are present or not.
-      auto *template_spec = base_item->template_spec();
+      auto* template_spec = base_item->template_spec();
       if ((template_spec != nullptr) && !base->is_templated()) {
         // Template arguments are present but the slot isn't templated.
         error_listener()->semanticError(
@@ -713,10 +713,10 @@ void InstructionSetVisitor::VisitSlotDeclaration(
         }
         bool has_error = false;
         // Build up the argument vector.
-        auto *arguments = new TemplateInstantiationArgs;
-        for (auto *template_arg : template_spec->expression()) {
+        auto* arguments = new TemplateInstantiationArgs;
+        for (auto* template_arg : template_spec->expression()) {
           context_file_map_.insert({template_arg, context_file_map_.at(ctx)});
-          auto *expr = VisitExpression(template_arg, slot, nullptr);
+          auto* expr = VisitExpression(template_arg, slot, nullptr);
           if (expr == nullptr) {
             error_listener()->semanticError(
                 file_names_[context_file_map_.at(ctx)], template_arg->start,
@@ -727,7 +727,7 @@ void InstructionSetVisitor::VisitSlotDeclaration(
           arguments->push_back(expr);
         }
         if (has_error) {
-          for (auto *expr : *arguments) {
+          for (auto* expr : *arguments) {
             delete expr;
           }
           delete arguments;
@@ -757,7 +757,7 @@ void InstructionSetVisitor::VisitSlotDeclaration(
   }
   // Add the slot to the ISA.
   instruction_set->AddSlot(slot);
-  for (auto *decl_ctx : ctx->const_and_default_decl()) {
+  for (auto* decl_ctx : ctx->const_and_default_decl()) {
     context_file_map_[decl_ctx] = context_file_map_.at(ctx);
     VisitConstAndDefaultDecls(decl_ctx, slot);
   }
@@ -765,10 +765,10 @@ void InstructionSetVisitor::VisitSlotDeclaration(
   VisitOpcodeList(ctx->opcode_list(), slot);
 }
 
-void InstructionSetVisitor::VisitDisasmWidthsDecl(DisasmWidthsCtx *ctx) {
-  for (auto *expr : ctx->expression()) {
+void InstructionSetVisitor::VisitDisasmWidthsDecl(DisasmWidthsCtx* ctx) {
+  for (auto* expr : ctx->expression()) {
     context_file_map_.insert({expr, context_file_map_.at(ctx)});
-    auto *width_expr = VisitExpression(expr, nullptr, nullptr);
+    auto* width_expr = VisitExpression(expr, nullptr, nullptr);
     if ((width_expr == nullptr) || (!width_expr->IsConstant())) {
       error_listener()->semanticError(expr->start,
                                       "Expression must be constant");
@@ -778,17 +778,17 @@ void InstructionSetVisitor::VisitDisasmWidthsDecl(DisasmWidthsCtx *ctx) {
   }
 }
 
-void InstructionSetVisitor::VisitConstAndDefaultDecls(ConstAndDefaultCtx *ctx,
-                                                      Slot *slot) {
+void InstructionSetVisitor::VisitConstAndDefaultDecls(ConstAndDefaultCtx* ctx,
+                                                      Slot* slot) {
   if (ctx == nullptr) return;
   // A constant declaration.
-  auto *const_def = ctx->constant_def();
+  auto* const_def = ctx->constant_def();
   if (const_def != nullptr) {  // Constant declaration.
     std::string ident = const_def->ident()->getText();
     std::string type = const_def->template_parameter_type()->getText();
     context_file_map_.insert(
         {const_def->expression(), context_file_map_.at(ctx)});
-    auto *expr = VisitExpression(const_def->expression(), slot, nullptr);
+    auto* expr = VisitExpression(const_def->expression(), slot, nullptr);
     if (expr == nullptr) {
       delete expr;
       error_listener()->semanticError(file_names_[context_file_map_.at(ctx)],
@@ -812,7 +812,7 @@ void InstructionSetVisitor::VisitConstAndDefaultDecls(ConstAndDefaultCtx *ctx,
   }
   if (ctx->LATENCY() != nullptr) {  // Default latency.
     context_file_map_.insert({ctx->expression(), context_file_map_.at(ctx)});
-    auto *expr = VisitExpression(ctx->expression(), slot, nullptr);
+    auto* expr = VisitExpression(ctx->expression(), slot, nullptr);
     if (expr == nullptr) {
       delete expr;
       error_listener()->semanticError(file_names_[context_file_map_.at(ctx)],
@@ -832,7 +832,7 @@ void InstructionSetVisitor::VisitConstAndDefaultDecls(ConstAndDefaultCtx *ctx,
   }
   // Add any include files to our set of includes.
   if (ctx->include_file_list() != nullptr) {
-    for (auto *include_file : ctx->include_file_list()->include_file()) {
+    for (auto* include_file : ctx->include_file_list()->include_file()) {
       // Insert the string - the call will always succeed, but the insertion
       // does not happen if it already exists.
       include_files_.insert(include_file->STRING_LITERAL()->getText());
@@ -847,11 +847,11 @@ void InstructionSetVisitor::VisitConstAndDefaultDecls(ConstAndDefaultCtx *ctx,
           "Multiple definitions of 'default' opcode");
       return;
     }
-    auto *default_instruction = new Instruction(
+    auto* default_instruction = new Instruction(
         slot->instruction_set()->opcode_factory()->CreateDefaultOpcode(), slot);
     bool has_disasm = false;
     bool has_semfunc = false;
-    for (auto *attribute : ctx->opcode_attribute_list()->opcode_attribute()) {
+    for (auto* attribute : ctx->opcode_attribute_list()->opcode_attribute()) {
       // Disasm spec.
       if (attribute->disasm_spec() != nullptr) {
         if (has_disasm) {
@@ -861,7 +861,7 @@ void InstructionSetVisitor::VisitConstAndDefaultDecls(ConstAndDefaultCtx *ctx,
           continue;
         }
         has_disasm = true;
-        for (auto *format_str : attribute->disasm_spec()->STRING_LITERAL()) {
+        for (auto* format_str : attribute->disasm_spec()->STRING_LITERAL()) {
           std::string format = format_str->getText();
           // Trim the double quotes.
           format.erase(format.size() - 1, 1);
@@ -924,13 +924,13 @@ void InstructionSetVisitor::VisitConstAndDefaultDecls(ConstAndDefaultCtx *ctx,
 // Visit the template argument recursively to create an expression tree that
 // can be evaluated later. No need to coalesce constant expression trees, the
 // savings aren't that great.
-TemplateExpression *InstructionSetVisitor::VisitExpression(ExpressionCtx *ctx,
-                                                           Slot *slot,
-                                                           Instruction *inst) {
+TemplateExpression* InstructionSetVisitor::VisitExpression(ExpressionCtx* ctx,
+                                                           Slot* slot,
+                                                           Instruction* inst) {
   if (ctx == nullptr) return nullptr;
   if (ctx->negop() != nullptr) {
     context_file_map_.insert({ctx->expr, context_file_map_.at(ctx)});
-    TemplateExpression *expr = VisitExpression(ctx->expr, slot, inst);
+    TemplateExpression* expr = VisitExpression(ctx->expr, slot, inst);
     if (expr == nullptr) return nullptr;
     return new TemplateNegate(expr);
   }
@@ -938,10 +938,10 @@ TemplateExpression *InstructionSetVisitor::VisitExpression(ExpressionCtx *ctx,
   if (ctx->mulop() != nullptr) {
     std::string op = ctx->mulop()->getText();
     context_file_map_.insert({ctx->lhs, context_file_map_.at(ctx)});
-    TemplateExpression *lhs = VisitExpression(ctx->lhs, slot, inst);
+    TemplateExpression* lhs = VisitExpression(ctx->lhs, slot, inst);
     if (lhs == nullptr) return nullptr;
     context_file_map_.insert({ctx->rhs, context_file_map_.at(ctx)});
-    TemplateExpression *rhs = VisitExpression(ctx->rhs, slot, inst);
+    TemplateExpression* rhs = VisitExpression(ctx->rhs, slot, inst);
     if (rhs == nullptr) {
       delete lhs;
       return nullptr;
@@ -953,10 +953,10 @@ TemplateExpression *InstructionSetVisitor::VisitExpression(ExpressionCtx *ctx,
   if (ctx->addop() != nullptr) {
     std::string op = ctx->addop()->getText();
     context_file_map_.insert({ctx->lhs, context_file_map_.at(ctx)});
-    TemplateExpression *lhs = VisitExpression(ctx->lhs, slot, inst);
+    TemplateExpression* lhs = VisitExpression(ctx->lhs, slot, inst);
     if (lhs == nullptr) return nullptr;
     context_file_map_.insert({ctx->rhs, context_file_map_.at(ctx)});
-    TemplateExpression *rhs = VisitExpression(ctx->rhs, slot, inst);
+    TemplateExpression* rhs = VisitExpression(ctx->rhs, slot, inst);
     if (rhs == nullptr) {
       delete lhs;
       return nullptr;
@@ -982,11 +982,11 @@ TemplateExpression *InstructionSetVisitor::VisitExpression(ExpressionCtx *ctx,
                        " parameters, but ", ctx->expression().size(),
                        " were given"));
     }
-    auto *args = new TemplateInstantiationArgs;
+    auto* args = new TemplateInstantiationArgs;
     bool has_error = false;
-    for (auto *expr_ctx : ctx->expression()) {
+    for (auto* expr_ctx : ctx->expression()) {
       context_file_map_.insert({expr_ctx, context_file_map_.at(ctx)});
-      auto *expr = VisitExpression(expr_ctx, slot, inst);
+      auto* expr = VisitExpression(expr_ctx, slot, inst);
       if (expr == nullptr) {
         has_error = true;
         break;
@@ -994,7 +994,7 @@ TemplateExpression *InstructionSetVisitor::VisitExpression(ExpressionCtx *ctx,
       args->push_back(expr);
     }
     if (has_error) {
-      for (auto *expr : *args) {
+      for (auto* expr : *args) {
         delete expr;
       }
       delete args;
@@ -1009,7 +1009,7 @@ TemplateExpression *InstructionSetVisitor::VisitExpression(ExpressionCtx *ctx,
   }
 
   if (ctx->NUMBER() != nullptr) {
-    auto *expr =
+    auto* expr =
         new TemplateConstant(std::stoi(ctx->NUMBER()->getText(), nullptr, 0));
     return expr;
   }
@@ -1019,11 +1019,11 @@ TemplateExpression *InstructionSetVisitor::VisitExpression(ExpressionCtx *ctx,
     // Four possibilities. A global constant, a slot local constant, a
     // template formal, or a reference to a destination operand.
     if (slot != nullptr) {
-      TemplateFormal *param = slot->GetTemplateFormal(ident);
+      TemplateFormal* param = slot->GetTemplateFormal(ident);
       if (param != nullptr) return new TemplateParam(param);
 
       // Check if it's a slot const expression.
-      auto *expr = slot->GetConstExpression(ident);
+      auto* expr = slot->GetConstExpression(ident);
       if (expr != nullptr) return expr->DeepCopy();
     }
 
@@ -1031,7 +1031,7 @@ TemplateExpression *InstructionSetVisitor::VisitExpression(ExpressionCtx *ctx,
     // destination operand with a latency. That is the value/expression that
     // is needed here.
     if (inst != nullptr) {
-      auto *op = inst->GetDestOp(ident);
+      auto* op = inst->GetDestOp(ident);
       if (op == nullptr) {
         error_listener()->semanticError(
             file_names_[context_file_map_.at(ctx)], ctx->start,
@@ -1041,7 +1041,7 @@ TemplateExpression *InstructionSetVisitor::VisitExpression(ExpressionCtx *ctx,
         return nullptr;
       }
 
-      auto *expr = op->expression();
+      auto* expr = op->expression();
       if (expr != nullptr) return expr->DeepCopy();
 
       // expr is null, this means that the destination operand has a decode
@@ -1054,7 +1054,7 @@ TemplateExpression *InstructionSetVisitor::VisitExpression(ExpressionCtx *ctx,
       return nullptr;
     }
 
-    auto *expr = GetConstExpression(ident);
+    auto* expr = GetConstExpression(ident);
     if (expr != nullptr) return expr->DeepCopy();
 
     error_listener()->semanticError(
@@ -1066,8 +1066,8 @@ TemplateExpression *InstructionSetVisitor::VisitExpression(ExpressionCtx *ctx,
   return nullptr;
 }
 
-DestinationOperand *InstructionSetVisitor::FindDestinationOpInExpression(
-    ExpressionCtx *ctx, const Slot *slot, const Instruction *inst) {
+DestinationOperand* InstructionSetVisitor::FindDestinationOpInExpression(
+    ExpressionCtx* ctx, const Slot* slot, const Instruction* inst) {
   if (ctx == nullptr) return nullptr;
   if (ctx->negop() != nullptr) {
     context_file_map_.insert({ctx->expr, context_file_map_.at(ctx)});
@@ -1076,8 +1076,8 @@ DestinationOperand *InstructionSetVisitor::FindDestinationOpInExpression(
   if ((ctx->mulop() != nullptr) || (ctx->addop() != nullptr)) {
     context_file_map_.insert({ctx->lhs, context_file_map_.at(ctx)});
     context_file_map_.insert({ctx->rhs, context_file_map_.at(ctx)});
-    auto *lhs = FindDestinationOpInExpression(ctx->lhs, slot, inst);
-    auto *rhs = FindDestinationOpInExpression(ctx->rhs, slot, inst);
+    auto* lhs = FindDestinationOpInExpression(ctx->lhs, slot, inst);
+    auto* rhs = FindDestinationOpInExpression(ctx->rhs, slot, inst);
     if (lhs == nullptr) return rhs;
     if (rhs == nullptr) return lhs;
     if (lhs == rhs) return lhs;
@@ -1096,9 +1096,9 @@ DestinationOperand *InstructionSetVisitor::FindDestinationOpInExpression(
     return nullptr;
   }
   if (ctx->func != nullptr) {
-    DestinationOperand *dest_op = nullptr;
-    DestinationOperand *tmp_op;
-    for (auto *expr_ctx : ctx->expression()) {
+    DestinationOperand* dest_op = nullptr;
+    DestinationOperand* tmp_op;
+    for (auto* expr_ctx : ctx->expression()) {
       context_file_map_.insert({expr_ctx, context_file_map_.at(ctx)});
       tmp_op = FindDestinationOpInExpression(expr_ctx, slot, inst);
       if (dest_op == nullptr) {
@@ -1119,19 +1119,19 @@ DestinationOperand *InstructionSetVisitor::FindDestinationOpInExpression(
   std::string ident = ctx->IDENT()->getText();
   // It is either a slot local constant, a template formal, or a reference
   // to a destination operand.
-  TemplateFormal *param = slot->GetTemplateFormal(ident);
+  TemplateFormal* param = slot->GetTemplateFormal(ident);
   if (param != nullptr) return nullptr;
   // Check if it's a slot const expression.
-  auto *expr = slot->GetConstExpression(ident);
+  auto* expr = slot->GetConstExpression(ident);
   if (expr != nullptr) return nullptr;
   // It should be an opcode operand term.
   return inst->GetDestOp(ident);
 }
 
-void InstructionSetVisitor::VisitOpcodeList(OpcodeListCtx *ctx, Slot *slot) {
+void InstructionSetVisitor::VisitOpcodeList(OpcodeListCtx* ctx, Slot* slot) {
   absl::flat_hash_set<std::string> deleted_ops_set;
-  absl::flat_hash_set<OpcodeSpecCtx *> overridden_ops_set;
-  std::vector<Instruction *> instruction_vec;
+  absl::flat_hash_set<OpcodeSpecCtx*> overridden_ops_set;
+  std::vector<Instruction*> instruction_vec;
   if (ctx != nullptr) {
     ProcessOpcodeList(ctx, slot, instruction_vec, deleted_ops_set,
                       overridden_ops_set);
@@ -1140,12 +1140,12 @@ void InstructionSetVisitor::VisitOpcodeList(OpcodeListCtx *ctx, Slot *slot) {
   // to the current slot. When adding the instruction, pass in any template
   // instantiation arguments to the base slot so that any expressions for
   // destination operand latencies can be evaluated.
-  for (auto const &base_slot : slot->base_slots()) {
+  for (auto const& base_slot : slot->base_slots()) {
     if (base_slot.base->min_instruction_size() < slot->min_instruction_size()) {
       slot->set_min_instruction_size(base_slot.base->min_instruction_size());
     }
     // Copy over the instructions that were not deleted.
-    for (auto &[unused, inst_ptr] : base_slot.base->instruction_map()) {
+    for (auto& [unused, inst_ptr] : base_slot.base->instruction_map()) {
       if (!deleted_ops_set.contains(inst_ptr->opcode()->name())) {
         absl::Status status =
             slot->AppendInheritedInstruction(inst_ptr, base_slot.arguments);
@@ -1160,7 +1160,7 @@ void InstructionSetVisitor::VisitOpcodeList(OpcodeListCtx *ctx, Slot *slot) {
     PerformOpcodeOverrides(overridden_ops_set, slot);
   }
   // Add the declared opcodes.
-  for (auto *inst : instruction_vec) {
+  for (auto* inst : instruction_vec) {
     absl::Status status = slot->AppendInstruction(inst);
     if (!status.ok()) {
       error_listener()->semanticError(file_names_[context_file_map_.at(ctx)],
@@ -1170,17 +1170,17 @@ void InstructionSetVisitor::VisitOpcodeList(OpcodeListCtx *ctx, Slot *slot) {
 }
 
 void InstructionSetVisitor::PerformOpcodeOverrides(
-    absl::flat_hash_set<OpcodeSpecCtx *> overridden_ops_set, Slot *slot) {
-  for (auto *override_ctx : overridden_ops_set) {
+    absl::flat_hash_set<OpcodeSpecCtx*> overridden_ops_set, Slot* slot) {
+  for (auto* override_ctx : overridden_ops_set) {
     std::string name = override_ctx->name->getText();
-    auto *inst = slot->instruction_map().at(name);
+    auto* inst = slot->instruction_map().at(name);
     VisitOpcodeAttributes(override_ctx->opcode_attribute_list(), inst, slot);
   }
 }
 
-void InstructionSetVisitor::VisitOpcodeAttributes(OpcodeAttributeListCtx *ctx,
-                                                  Instruction *inst,
-                                                  Slot *slot) {
+void InstructionSetVisitor::VisitOpcodeAttributes(OpcodeAttributeListCtx* ctx,
+                                                  Instruction* inst,
+                                                  Slot* slot) {
   if (ctx == nullptr) return;
   // These flags are used to detect multiple instances of each attribute.
   bool has_disasm = false;
@@ -1188,7 +1188,7 @@ void InstructionSetVisitor::VisitOpcodeAttributes(OpcodeAttributeListCtx *ctx,
   bool has_resources = false;
   bool has_attributes = false;
   // Visit the opcode attributes.
-  for (auto *attribute_ctx : ctx->opcode_attribute()) {
+  for (auto* attribute_ctx : ctx->opcode_attribute()) {
     // Process any disassembly specifications.
     if (attribute_ctx->disasm_spec() != nullptr) {
       // In case of override, need to clear any disasm info in instruction.
@@ -1201,7 +1201,7 @@ void InstructionSetVisitor::VisitOpcodeAttributes(OpcodeAttributeListCtx *ctx,
         continue;
       }
       has_disasm = true;
-      for (auto *disasm_fmt : attribute_ctx->disasm_spec()->STRING_LITERAL()) {
+      for (auto* disasm_fmt : attribute_ctx->disasm_spec()->STRING_LITERAL()) {
         std::string format = disasm_fmt->getText();
         // Trim the double quotes.
         format.erase(format.size() - 1, 1);
@@ -1277,9 +1277,9 @@ void InstructionSetVisitor::VisitOpcodeAttributes(OpcodeAttributeListCtx *ctx,
 }
 
 void InstructionSetVisitor::VisitInstructionAttributeList(
-    InstructionAttributeListCtx *ctx, Slot *slot, Instruction *inst) {
-  absl::flat_hash_map<std::string, TemplateExpression *> attributes;
-  for (auto *attribute : ctx->instruction_attribute()) {
+    InstructionAttributeListCtx* ctx, Slot* slot, Instruction* inst) {
+  absl::flat_hash_map<std::string, TemplateExpression*> attributes;
+  for (auto* attribute : ctx->instruction_attribute()) {
     std::string name = attribute->IDENT()->getText();
     if (attributes.find(name) != attributes.end()) {
       error_listener()->semanticError(
@@ -1291,7 +1291,7 @@ void InstructionSetVisitor::VisitInstructionAttributeList(
     if (attribute->expression() != nullptr) {
       context_file_map_.insert(
           {attribute->expression(), context_file_map_.at(slot->ctx())});
-      auto *expr = VisitExpression(attribute->expression(), slot, inst);
+      auto* expr = VisitExpression(attribute->expression(), slot, inst);
       attributes.emplace(name, expr);
       continue;
     }
@@ -1299,8 +1299,8 @@ void InstructionSetVisitor::VisitInstructionAttributeList(
   }
   // Are we parsing attributes for an instruction?
   if (inst != nullptr) {
-    for (auto *child = inst; child != nullptr; child = child->child()) {
-      for (auto &[name, expr] : attributes) {
+    for (auto* child = inst; child != nullptr; child = child->child()) {
+      for (auto& [name, expr] : attributes) {
         child->AddInstructionAttribute(name, expr);
       }
     }
@@ -1309,18 +1309,18 @@ void InstructionSetVisitor::VisitInstructionAttributeList(
     return;
   }
   // Attributes are default attributes for the current slot.
-  for (auto &[name, expr] : attributes) {
+  for (auto& [name, expr] : attributes) {
     slot->AddInstructionAttribute(name, expr);
   }
   attributes.clear();
 }
 
-void InstructionSetVisitor::VisitSemfuncSpec(SemfuncSpecCtx *semfunc_spec,
-                                             Instruction *inst) {
-  auto *child = inst;
+void InstructionSetVisitor::VisitSemfuncSpec(SemfuncSpecCtx* semfunc_spec,
+                                             Instruction* inst) {
+  auto* child = inst;
   // Parse each string in the list of semantic function specifications. There
   // should be one the opcode and one for each child opcode.
-  for (auto *sem_func : semfunc_spec->STRING_LITERAL()) {
+  for (auto* sem_func : semfunc_spec->STRING_LITERAL()) {
     if (child == nullptr) {
       error_listener()->semanticWarning(
           file_names_[context_file_map_.at(inst->slot()->ctx())],
@@ -1342,9 +1342,9 @@ void InstructionSetVisitor::VisitSemfuncSpec(SemfuncSpecCtx *semfunc_spec,
   }
 }
 
-void InstructionSetVisitor::VisitResourceDetails(ResourceDetailsCtx *ctx,
-                                                 Instruction *inst,
-                                                 Slot *slot) {
+void InstructionSetVisitor::VisitResourceDetails(ResourceDetailsCtx* ctx,
+                                                 Instruction* inst,
+                                                 Slot* slot) {
   if (ctx->ident() != nullptr) {
     // This is a reference to a resource spec defined earlier.
     std::string name = ctx->ident()->getText();
@@ -1361,22 +1361,22 @@ void InstructionSetVisitor::VisitResourceDetails(ResourceDetailsCtx *ctx,
   }
   ResourceSpec spec;
   VisitResourceDetailsLists(ctx, slot, inst, &spec);
-  for (auto *use : spec.use_vec) {
+  for (auto* use : spec.use_vec) {
     inst->AppendResourceUse(use);
   }
-  for (auto *acquire : spec.acquire_vec) {
+  for (auto* acquire : spec.acquire_vec) {
     inst->AppendResourceAcquire(acquire);
   }
 }
 
-std::optional<ResourceReference *>
+std::optional<ResourceReference*>
 InstructionSetVisitor::ProcessResourceReference(
-    Slot *slot, Instruction *inst, ResourceItemCtx *resource_item) {
+    Slot* slot, Instruction* inst, ResourceItemCtx* resource_item) {
   // Empty optional object.
-  std::optional<ResourceReference *> return_value;
+  std::optional<ResourceReference*> return_value;
 
-  auto *factory = slot->instruction_set()->resource_factory();
-  DestinationOperand *dest_op = nullptr;
+  auto* factory = slot->instruction_set()->resource_factory();
+  DestinationOperand* dest_op = nullptr;
   // Extract the text from the resource reference.
   std::string ident_text;
   bool is_array;
@@ -1390,12 +1390,12 @@ InstructionSetVisitor::ProcessResourceReference(
     is_array = true;
   }
   dest_op = inst->GetDestOp(ident_text);
-  auto *resource = factory->GetOrInsertResource(ident_text);
+  auto* resource = factory->GetOrInsertResource(ident_text);
   resource->set_is_array(is_array);
   // Compute begin and end values.
-  TemplateExpression *begin_expr;
-  TemplateExpression *end_expr;
-  DestinationOperand *tmp_op;
+  TemplateExpression* begin_expr;
+  TemplateExpression* end_expr;
+  DestinationOperand* tmp_op;
   if (resource_item->begin_cycle == nullptr) {
     begin_expr = new TemplateConstant(0);
   } else {
@@ -1450,15 +1450,15 @@ InstructionSetVisitor::ProcessResourceReference(
         {resource_item->end_cycle, context_file_map_.at(slot->ctx())});
     end_expr = VisitExpression(resource_item->end_cycle, slot, inst);
   }
-  auto *ref =
+  auto* ref =
       new ResourceReference(resource, is_array, dest_op, begin_expr, end_expr);
-  return std::optional<ResourceReference *>(ref);
+  return std::optional<ResourceReference*>(ref);
 }
 
-void InstructionSetVisitor::VisitResourceDetailsLists(ResourceDetailsCtx *ctx,
-                                                      Slot *slot,
-                                                      Instruction *inst,
-                                                      ResourceSpec *spec) {
+void InstructionSetVisitor::VisitResourceDetailsLists(ResourceDetailsCtx* ctx,
+                                                      Slot* slot,
+                                                      Instruction* inst,
+                                                      ResourceSpec* spec) {
   if (ctx == nullptr) return;
 
   if ((ctx->use_list == nullptr) && (ctx->acquire_list == nullptr) &&
@@ -1474,9 +1474,9 @@ void InstructionSetVisitor::VisitResourceDetailsLists(ResourceDetailsCtx *ctx,
   // set of cycles specified.
 
   // Use list.
-  auto *use_list = ctx->use_list;
+  auto* use_list = ctx->use_list;
   if (use_list != nullptr) {
-    for (auto *resource_item : use_list->resource_item()) {
+    for (auto* resource_item : use_list->resource_item()) {
       auto ref_optional = ProcessResourceReference(slot, inst, resource_item);
       if (!ref_optional) continue;
       spec->use_vec.push_back(ref_optional.value());
@@ -1484,14 +1484,14 @@ void InstructionSetVisitor::VisitResourceDetailsLists(ResourceDetailsCtx *ctx,
   }
 
   // Reserve list.
-  auto *acquire_list = ctx->acquire_list;
+  auto* acquire_list = ctx->acquire_list;
   if (acquire_list != nullptr) {
-    for (auto *resource_item : acquire_list->resource_item()) {
+    for (auto* resource_item : acquire_list->resource_item()) {
       auto ref_optional = ProcessResourceReference(slot, inst, resource_item);
       if (!ref_optional) continue;
       // Only add to use_vec if it isn't already there.
       bool found = false;
-      for (auto *ref : spec->use_vec) {
+      for (auto* ref : spec->use_vec) {
         if (ref->resource->name() == ref_optional.value()->resource->name()) {
           found = true;
           break;
@@ -1505,9 +1505,9 @@ void InstructionSetVisitor::VisitResourceDetailsLists(ResourceDetailsCtx *ctx,
   }
 
   // Hold list.
-  auto *hold_list = ctx->hold_list;
+  auto* hold_list = ctx->hold_list;
   if (hold_list != nullptr) {
-    for (auto *resource_item : hold_list->resource_item()) {
+    for (auto* resource_item : hold_list->resource_item()) {
       auto ref_optional = ProcessResourceReference(slot, inst, resource_item);
       if (!ref_optional) continue;
       spec->acquire_vec.push_back(ref_optional.value());
@@ -1516,23 +1516,23 @@ void InstructionSetVisitor::VisitResourceDetailsLists(ResourceDetailsCtx *ctx,
 }
 
 void InstructionSetVisitor::ProcessOpcodeList(
-    OpcodeListCtx *ctx, Slot *slot, std::vector<Instruction *> &instruction_vec,
-    absl::flat_hash_set<std::string> &deleted_ops_set,
-    absl::flat_hash_set<OpcodeSpecCtx *> &overridden_ops_set) {
+    OpcodeListCtx* ctx, Slot* slot, std::vector<Instruction*>& instruction_vec,
+    absl::flat_hash_set<std::string>& deleted_ops_set,
+    absl::flat_hash_set<OpcodeSpecCtx*>& overridden_ops_set) {
   // Obtain the list of opcodes specifications.
   auto opcode_spec = ctx->opcode_spec();
-  for (auto *opcode_ctx : opcode_spec) {
+  for (auto* opcode_ctx : opcode_spec) {
     ProcessOpcodeSpec(opcode_ctx, slot, instruction_vec, deleted_ops_set,
                       overridden_ops_set);
   }
 }
 
 void InstructionSetVisitor::ProcessOpcodeSpec(
-    OpcodeSpecCtx *opcode_ctx, Slot *slot,
-    std::vector<Instruction *> &instruction_vec,
-    absl::flat_hash_set<std::string> &deleted_ops_set,
-    absl::flat_hash_set<OpcodeSpecCtx *> &overridden_ops_set) {
-  auto *opcode_factory = slot->instruction_set()->opcode_factory();
+    OpcodeSpecCtx* opcode_ctx, Slot* slot,
+    std::vector<Instruction*>& instruction_vec,
+    absl::flat_hash_set<std::string>& deleted_ops_set,
+    absl::flat_hash_set<OpcodeSpecCtx*>& overridden_ops_set) {
+  auto* opcode_factory = slot->instruction_set()->opcode_factory();
   if (opcode_ctx->generate != nullptr) {
     auto status = ProcessOpcodeGenerator(opcode_ctx, slot, instruction_vec,
                                          deleted_ops_set, overridden_ops_set);
@@ -1556,7 +1556,7 @@ void InstructionSetVisitor::ProcessOpcodeSpec(
     }
     bool found = false;
     // Check to see if one of the base slots has this opcode.
-    for (auto const &base_slot : slot->base_slots()) {
+    for (auto const& base_slot : slot->base_slots()) {
       found |= base_slot.base->HasInstruction(opcode_name);
       if (found) break;
     }
@@ -1576,7 +1576,7 @@ void InstructionSetVisitor::ProcessOpcodeSpec(
   // "attributes" (semantic function, disasm, etc.) are changed.
   if (opcode_ctx->overridden != nullptr) {
     int found = 0;
-    for (auto const &base_slot : slot->base_slots()) {
+    for (auto const& base_slot : slot->base_slots()) {
       found += base_slot.base->HasInstruction(opcode_name);
     }
     // Check that the opcode is indeed inherited from one base class only.
@@ -1599,7 +1599,7 @@ void InstructionSetVisitor::ProcessOpcodeSpec(
   }
 
   // This is a new opcode, so let's create it. Signal failure if error.
-  absl::StatusOr<Opcode *> result = opcode_factory->CreateOpcode(opcode_name);
+  absl::StatusOr<Opcode*> result = opcode_factory->CreateOpcode(opcode_name);
   if (!result.ok()) {
     error_listener()->semanticError(
         file_names_[context_file_map_.at(slot->ctx())], opcode_ctx->name,
@@ -1607,7 +1607,7 @@ void InstructionSetVisitor::ProcessOpcodeSpec(
     return;
   }
 
-  Opcode *top = result.value();
+  Opcode* top = result.value();
   auto inst = new Instruction(top, slot);
   slot->instruction_set()->AddInstruction(inst);
 
@@ -1626,7 +1626,7 @@ void InstructionSetVisitor::ProcessOpcodeSpec(
   int op_spec_number = 0;
   auto op_spec = opcode_ctx->operand_spec();
   // Process the top instruction.
-  for (auto &[name, expr] : slot->attribute_map()) {
+  for (auto& [name, expr] : slot->attribute_map()) {
     inst->AddInstructionAttribute(name, expr->DeepCopy());
   }
 
@@ -1642,19 +1642,19 @@ void InstructionSetVisitor::ProcessOpcodeSpec(
 
   // If there are child instructions process them.
   if (opcode_ctx->operand_spec()->opcode_operands_list() != nullptr) {
-    Opcode *parent = top;
+    Opcode* parent = top;
     auto opcode_operands = op_spec->opcode_operands_list()->opcode_operands();
 
-    Instruction *child_inst = nullptr;
+    Instruction* child_inst = nullptr;
     // Process child instructions.
     for (size_t i = 1; i < opcode_operands.size(); ++i) {
       // Create child opcode.
-      auto *op = opcode_factory->CreateChildOpcode(parent);
+      auto* op = opcode_factory->CreateChildOpcode(parent);
       // Create child instruction.
       child_inst = new Instruction(op, slot);
       inst->AppendChild(child_inst);
       // Add default attributes.
-      for (auto &[name, expr] : slot->attribute_map()) {
+      for (auto& [name, expr] : slot->attribute_map()) {
         child_inst->AddInstructionAttribute(name, expr->DeepCopy());
       }
       VisitOpcodeOperands(opcode_operands[i], op_spec_number, inst, child_inst,
@@ -1666,11 +1666,11 @@ void InstructionSetVisitor::ProcessOpcodeSpec(
   VisitOpcodeAttributes(opcode_ctx->opcode_attribute_list(), inst, slot);
 }
 
-void InstructionSetVisitor::VisitOpcodeOperands(OpcodeOperandsCtx *ctx,
+void InstructionSetVisitor::VisitOpcodeOperands(OpcodeOperandsCtx* ctx,
                                                 int op_spec_number,
-                                                Instruction *parent,
-                                                Instruction *child,
-                                                Slot *slot) {
+                                                Instruction* parent,
+                                                Instruction* child,
+                                                Slot* slot) {
   if (ctx == nullptr) return;
   if (ctx->pred != nullptr) {
     std::string name = ctx->pred->getText();
@@ -1681,7 +1681,7 @@ void InstructionSetVisitor::VisitOpcodeOperands(OpcodeOperandsCtx *ctx,
   }
   if (ctx->source != nullptr) {
     int instance = 0;
-    for (auto *source_op : ctx->source->source_operand()) {
+    for (auto* source_op : ctx->source->source_operand()) {
       std::string name;
       bool is_array = false;
       bool is_reloc = false;
@@ -1711,7 +1711,7 @@ void InstructionSetVisitor::VisitOpcodeOperands(OpcodeOperandsCtx *ctx,
   }
   if (ctx->dest_list() != nullptr) {
     int instance = 0;
-    for (auto *dest_op : ctx->dest_list()->dest_operand()) {
+    for (auto* dest_op : ctx->dest_list()->dest_operand()) {
       std::string ident;
       bool is_array = false;
       bool is_reloc = false;
@@ -1759,20 +1759,20 @@ void InstructionSetVisitor::VisitOpcodeOperands(OpcodeOperandsCtx *ctx,
 }
 
 absl::Status InstructionSetVisitor::ProcessOpcodeGenerator(
-    OpcodeSpecCtx *ctx, Slot *slot, std::vector<Instruction *> &instruction_vec,
-    absl::flat_hash_set<std::string> &deleted_ops_set,
-    absl::flat_hash_set<OpcodeSpecCtx *> &overridden_ops_set) {
+    OpcodeSpecCtx* ctx, Slot* slot, std::vector<Instruction*>& instruction_vec,
+    absl::flat_hash_set<std::string>& deleted_ops_set,
+    absl::flat_hash_set<OpcodeSpecCtx*>& overridden_ops_set) {
   if (ctx == nullptr) return absl::InternalError("OpcodeSpecCtx is null");
   absl::flat_hash_set<std::string> range_variable_names;
-  std::vector<RangeAssignmentInfo *> range_info_vec;
+  std::vector<RangeAssignmentInfo*> range_info_vec;
   // Process range assignment lists. The range assignment is either a single
   // value or a structured binding assignment. If it's a binding assignment we
   // need to make sure each tuple has the same number of values as there are
   // idents to assign them to.
-  for (auto *assign_ctx : ctx->range_assignment()) {
-    auto *range_info = new RangeAssignmentInfo();
+  for (auto* assign_ctx : ctx->range_assignment()) {
+    auto* range_info = new RangeAssignmentInfo();
     range_info_vec.push_back(range_info);
-    for (auto *ident_ctx : assign_ctx->IDENT()) {
+    for (auto* ident_ctx : assign_ctx->IDENT()) {
       std::string name = ident_ctx->getText();
       if (range_variable_names.contains(name)) {
         error_listener()->semanticError(
@@ -1795,7 +1795,7 @@ absl::Status InstructionSetVisitor::ProcessOpcodeGenerator(
     }
     // See if it's a list of simple values.
     if (!assign_ctx->gen_value().empty()) {
-      for (auto *gen_value_ctx : assign_ctx->gen_value()) {
+      for (auto* gen_value_ctx : assign_ctx->gen_value()) {
         if (gen_value_ctx->simple != nullptr) {
           range_info->range_values[0].push_back(
               gen_value_ctx->simple->getText());
@@ -1809,9 +1809,9 @@ absl::Status InstructionSetVisitor::ProcessOpcodeGenerator(
       continue;
     }
     // It's a list of tuples with a structured binding assignment.
-    for (auto *tuple_ctx : assign_ctx->tuple()) {
+    for (auto* tuple_ctx : assign_ctx->tuple()) {
       if (tuple_ctx->gen_value().size() != range_info->range_names.size()) {
-        for (auto *info : range_info_vec) delete info;
+        for (auto* info : range_info_vec) delete info;
         return absl::InternalError(
             "Number of values differs from number of identifiers");
       }
@@ -1848,7 +1848,7 @@ absl::Status InstructionSetVisitor::ProcessOpcodeGenerator(
     pos = input_text.find_first_of('$', start_pos);
   }
   if (error_listener()->HasError()) {
-    for (auto *info : range_info_vec) delete info;
+    for (auto* info : range_info_vec) delete info;
     return absl::InternalError("Found undefined binding variable name(s)");
   }
   // Now we need to iterate over the range_info instances and substitution
@@ -1856,25 +1856,25 @@ absl::Status InstructionSetVisitor::ProcessOpcodeGenerator(
   std::string generated_text =
       GenerateOpcodeSpec(range_info_vec, 0, input_text);
   // Parse and process the generated text.
-  auto *parser = new IsaAntlrParserWrapper(generated_text);
+  auto* parser = new IsaAntlrParserWrapper(generated_text);
   antlr_parser_wrappers_.push_back(parser);
   // Parse the text starting at the opcode_spec_list rule.
   auto opcode_spec_vec = parser->parser()->opcode_spec_list()->opcode_spec();
   // Process the opcode spec.
-  for (auto *opcode_spec : opcode_spec_vec) {
+  for (auto* opcode_spec : opcode_spec_vec) {
     ProcessOpcodeSpec(opcode_spec, slot, instruction_vec, deleted_ops_set,
                       overridden_ops_set);
   }
   // Clean up.
-  for (auto *info : range_info_vec) delete info;
+  for (auto* info : range_info_vec) delete info;
   return absl::OkStatus();
 }
 
 // Helper function to recursively generate the text for the GENERATE opcode
 // spec.
 std::string InstructionSetVisitor::GenerateOpcodeSpec(
-    const std::vector<RangeAssignmentInfo *> &range_info_vec, int index,
-    const std::string &template_str_in) const {
+    const std::vector<RangeAssignmentInfo*>& range_info_vec, int index,
+    const std::string& template_str_in) const {
   std::string generated;
   // Iterate for the number of values.
   for (int i = 0; i < range_info_vec[index]->range_values[0].size(); ++i) {
@@ -1884,7 +1884,7 @@ std::string InstructionSetVisitor::GenerateOpcodeSpec(
     // current set of values.
     int var_index = 0;
     int replace_count = 0;
-    for (auto &re : range_info_vec[index]->range_regexes) {
+    for (auto& re : range_info_vec[index]->range_regexes) {
       replace_count += RE2::GlobalReplace(
           &template_str, re,
           range_info_vec[index]->range_values[var_index++][i]);
@@ -1928,18 +1928,18 @@ static absl::StatusOr<std::pair<std::string, std::string::size_type>> get_ident(
 }
 // This method parses the disasm format string.
 absl::Status InstructionSetVisitor::ParseDisasmFormat(std::string format,
-                                                      Instruction *inst) {
+                                                      Instruction* inst) {
   std::string::size_type pos = 0;
   std::string::size_type prev = 0;
   std::string::size_type length = format.size();
-  FormatInfo *format_info = nullptr;
+  FormatInfo* format_info = nullptr;
   // Extract raw text without (between) the '%' specifiers.
-  DisasmFormat *disasm_fmt = new DisasmFormat();
+  DisasmFormat* disasm_fmt = new DisasmFormat();
   while ((pos != std::string::npos) &&
          ((pos = format.find_first_of('%', pos)) != std::string::npos)) {
     std::string text = format.substr(prev, pos - prev);
     std::string new_text;
-    for (auto &c : text) {
+    for (auto& c : text) {
       if (c == '\\') continue;
       new_text.push_back(c);
     }
@@ -2022,7 +2022,7 @@ absl::Status InstructionSetVisitor::ParseDisasmFormat(std::string format,
         return absl::InternalError(absl::StrCat(
             "Invalid operand '", op_name, "' used in format '", format, "'"));
       }
-      auto *format_info = new FormatInfo();
+      auto* format_info = new FormatInfo();
       format_info->op_name = op_name;
       format_info->is_formatted = false;
       if ((pos != std::string::npos) && (format[pos] == '?')) {
@@ -2047,14 +2047,14 @@ absl::Status InstructionSetVisitor::ParseDisasmFormat(std::string format,
   if (prev != std::string::npos) {
     std::string text = format.substr(prev);
     std::string new_text;
-    for (auto &c : text) {
+    for (auto& c : text) {
       if (c == '\\') continue;
       new_text.push_back(c);
     }
     disasm_fmt->format_fragment_vec.push_back(new_text);
   }
   std::string str;
-  for (auto &s : disasm_fmt->format_fragment_vec) {
+  for (auto& s : disasm_fmt->format_fragment_vec) {
     absl::StrAppend(&str, s, ":");
   }
   int width = 0;
@@ -2062,7 +2062,7 @@ absl::Status InstructionSetVisitor::ParseDisasmFormat(std::string format,
   if (count < disasm_field_widths_.size()) {
     auto result = disasm_field_widths_[count]->GetValue();
     if (result.ok()) {
-      auto *value_ptr = std::get_if<int>(&result.value());
+      auto* value_ptr = std::get_if<int>(&result.value());
       width = *value_ptr;
     }
   }
@@ -2071,7 +2071,7 @@ absl::Status InstructionSetVisitor::ParseDisasmFormat(std::string format,
   return absl::OkStatus();
 }
 
-static std::string::size_type skip_space(const std::string &str,
+static std::string::size_type skip_space(const std::string& str,
                                          std::string::size_type pos) {
   if (pos == std::string::npos) return pos;
   if (pos >= str.size()) {
@@ -2084,15 +2084,15 @@ static std::string::size_type skip_space(const std::string &str,
   return pos;
 }
 
-absl::StatusOr<FormatInfo *> InstructionSetVisitor::ParseFormatExpression(
-    std::string expr, Opcode *op) {
+absl::StatusOr<FormatInfo*> InstructionSetVisitor::ParseFormatExpression(
+    std::string expr, Opcode* op) {
   // The format expression is very simple. It is of the form:
   // [@+/-] ident | '(' ident <</>> number ')'
   // where @ signifies the current instruction address.
   // In short, the value of the field can be shifted left or right, then added
   // to, or subtracted from, the instruction address.
 
-  FormatInfo *format_info = new FormatInfo();
+  FormatInfo* format_info = new FormatInfo();
 
   std::string::size_type pos = 0;
   pos = skip_space(expr, pos);
@@ -2262,7 +2262,7 @@ absl::StatusOr<std::string> InstructionSetVisitor::ParseNumberFormat(
 std::string InstructionSetVisitor::GenerateHdrFileProlog(
     absl::string_view file_name, absl::string_view opcode_file_name,
     absl::string_view guard_name, absl::string_view encoding_base_name,
-    const std::vector<std::string> &namespaces) {
+    const std::vector<std::string>& namespaces) {
   std::string output;
   absl::StrAppend(&output, "#ifndef ", guard_name,
                   "\n"
@@ -2282,7 +2282,7 @@ std::string InstructionSetVisitor::GenerateHdrFileProlog(
                   "\"\n"
                   "\n");
 
-  for (const auto &namespace_name : namespaces) {
+  for (const auto& namespace_name : namespaces) {
     absl::StrAppend(&output, "namespace ", namespace_name, " {\n");
   }
   absl::StrAppend(
@@ -2404,7 +2404,7 @@ std::tuple<std::string, std::string>
 InstructionSetVisitor::GenerateEncFilePrologs(
     absl::string_view file_name, absl::string_view guard_name,
     absl::string_view opcode_file_name, absl::string_view encoding_type_name,
-    const std::vector<std::string> &namespaces) {
+    const std::vector<std::string>& namespaces) {
   std::string h_output;
   std::string cc_output;
   absl::StrAppend(&h_output, "#ifndef ", guard_name,
@@ -2451,7 +2451,7 @@ InstructionSetVisitor::GenerateEncFilePrologs(
                   "\"\n"
                   "\n");
 
-  for (const auto &namespace_name : namespaces) {
+  for (const auto& namespace_name : namespaces) {
     absl::StrAppend(&h_output, "namespace ", namespace_name, " {\n");
     absl::StrAppend(&cc_output, "namespace ", namespace_name, " {\n");
   }
@@ -2461,7 +2461,7 @@ InstructionSetVisitor::GenerateEncFilePrologs(
 }
 
 std::string InstructionSetVisitor::GenerateHdrFileEpilog(
-    absl::string_view guard_name, const std::vector<std::string> &namespaces) {
+    absl::string_view guard_name, const std::vector<std::string>& namespaces) {
   std::string output;
   absl::StrAppend(&output, GenerateNamespaceEpilog(namespaces));
   absl::StrAppend(&output, "\n#endif  // ", guard_name, "\n");
@@ -2470,7 +2470,7 @@ std::string InstructionSetVisitor::GenerateHdrFileEpilog(
 
 std::string InstructionSetVisitor::GenerateCcFileProlog(
     absl::string_view hdr_file_name, bool use_includes,
-    const std::vector<std::string> &namespaces) {
+    const std::vector<std::string>& namespaces) {
   std::string output;
   // Include files.
   absl::StrAppend(&output, "#include \"", hdr_file_name, "\"\n");
@@ -2478,13 +2478,13 @@ std::string InstructionSetVisitor::GenerateCcFileProlog(
                   "\n#include <array>\n\n"
                   "#include \"absl/strings/str_format.h\"\n\n");
   if (use_includes) {
-    for (auto &include_file : include_files_) {
+    for (auto& include_file : include_files_) {
       absl::StrAppend(&output, "#include ", include_file, "\n");
     }
   }
   absl::StrAppend(&output, "\n");
   // Namespaces.
-  for (const auto &namespace_name : namespaces) {
+  for (const auto& namespace_name : namespaces) {
     absl::StrAppend(&output, "namespace ", namespace_name, " {\n");
   }
   absl::StrAppend(&output, "\n");
@@ -2492,12 +2492,12 @@ std::string InstructionSetVisitor::GenerateCcFileProlog(
 }
 
 std::string InstructionSetVisitor::GenerateSimpleHdrProlog(
-    absl::string_view guard_name, const std::vector<std::string> &namespaces) {
+    absl::string_view guard_name, const std::vector<std::string>& namespaces) {
   std::string output;
   absl::StrAppend(&output, "#ifndef ", guard_name, "\n#define ", guard_name,
                   "\n\n");
 
-  for (const auto &namespace_name : namespaces) {
+  for (const auto& namespace_name : namespaces) {
     absl::StrAppend(&output, "namespace ", namespace_name, " {\n");
   }
   absl::StrAppend(&output, "\n");
@@ -2505,7 +2505,7 @@ std::string InstructionSetVisitor::GenerateSimpleHdrProlog(
 }
 
 std::string InstructionSetVisitor::GenerateNamespaceEpilog(
-    const std::vector<std::string> &namespaces) {
+    const std::vector<std::string>& namespaces) {
   std::string output;
   // Close up namespaces.
   absl::StrAppend(&output, "\n");
@@ -2518,7 +2518,7 @@ std::string InstructionSetVisitor::GenerateNamespaceEpilog(
 
 absl::Status InstructionSetVisitor::AddConstant(absl::string_view name,
                                                 absl::string_view,
-                                                TemplateExpression *expr) {
+                                                TemplateExpression* expr) {
   if (constant_map_.contains(name)) {
     return absl::AlreadyExistsError(
         absl::StrCat("Constant redefinition of '", name, "'"));
@@ -2527,7 +2527,7 @@ absl::Status InstructionSetVisitor::AddConstant(absl::string_view name,
   return absl::OkStatus();
 }
 
-TemplateExpression *InstructionSetVisitor::GetConstExpression(
+TemplateExpression* InstructionSetVisitor::GetConstExpression(
     absl::string_view name) const {
   auto iter = constant_map_.find(name);
   if (iter == constant_map_.end()) return nullptr;

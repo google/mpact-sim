@@ -51,24 +51,24 @@ class ArchState : public Component {
  protected:
   ArchState() = delete;
   explicit ArchState(absl::string_view id) : ArchState(nullptr, id, nullptr) {}
-  ArchState(absl::string_view id, SourceOperandInterface *pc_operand)
+  ArchState(absl::string_view id, SourceOperandInterface* pc_operand)
       : ArchState(nullptr, id, pc_operand) {}
-  ArchState(Component *parent, absl::string_view id,
-            SourceOperandInterface *pc_operand);
+  ArchState(Component* parent, absl::string_view id,
+            SourceOperandInterface* pc_operand);
 
  public:
   ~ArchState() override;
 
  public:
-  using RegisterMap = absl::flat_hash_map<std::string, RegisterBase *>;
-  using FifoMap = absl::flat_hash_map<std::string, FifoBase *>;
+  using RegisterMap = absl::flat_hash_map<std::string, RegisterBase*>;
+  using FifoMap = absl::flat_hash_map<std::string, FifoBase*>;
 
   // Adds the given register to the register table.
-  void AddRegister(RegisterBase *reg);
+  void AddRegister(RegisterBase* reg);
   // Adds the given register to the register table but using name as key. This
   // is useful when a register object may be accessible using more than one
   // name, or a name that differs from that stored in the register object.
-  void AddRegister(absl::string_view name, RegisterBase *reg);
+  void AddRegister(absl::string_view name, RegisterBase* reg);
   // Remove the named register from the register table. No action occurs if
   // there is no such register. If multiple names map to the same register
   // object, only the single mapping from the given name is removed.
@@ -76,18 +76,18 @@ class ArchState : public Component {
 
   // Creates a register of the given type and adds it to the register table.
   template <typename RegisterType, typename... Ps>
-  RegisterType *AddRegister(absl::string_view name, Ps... pargs) {
+  RegisterType* AddRegister(absl::string_view name, Ps... pargs) {
     auto reg = new RegisterType(this, name, pargs...);
     AddRegister(reg);
     return reg;
   }
 
   // Adds the given fifo to the fifo table.
-  void AddFifo(FifoBase *fifo);
+  void AddFifo(FifoBase* fifo);
   // Adds the given fifo to the fifo table but using name as key. This is useful
   // when a fifo object may be accessed using more than one name, or a name that
   // differs from that stored in the fifo object.
-  void AddFifo(absl::string_view name, FifoBase *fifo);
+  void AddFifo(absl::string_view name, FifoBase* fifo);
   // Remove the named fifo from the fifo table. No action occurs if there is no
   // such fifo. If multiple names map to the same fifo object, only the single
   // mapping from the given name is removed.
@@ -95,7 +95,7 @@ class ArchState : public Component {
 
   // Creates a fifo of the given type and adds it to the fifo table.
   template <typename FifoType, typename... Ps>
-  FifoType *AddFifo(absl::string_view name, Ps... pargs) {
+  FifoType* AddFifo(absl::string_view name, Ps... pargs) {
     auto fifo = new FifoType(this, name, pargs...);
     AddFifo(fifo);
     return fifo;
@@ -116,11 +116,11 @@ class ArchState : public Component {
   // delay lines outside of ArchState instances. Delay lines managed by the
   // ArchState instance will be deleted when the ArchState is deleted.
   template <typename DelayLineType, typename... Ps>
-  DelayLineType *CreateAndAddDelayLine(Ps... pargs) {
+  DelayLineType* CreateAndAddDelayLine(Ps... pargs) {
     static_assert(
-        std::is_convertible<DelayLineType *, DelayLineInterface *>::value);
-    DelayLineType *delay_line = new DelayLineType(pargs...);
-    delay_lines_.push_back(static_cast<DelayLineInterface *>(delay_line));
+        std::is_convertible<DelayLineType*, DelayLineInterface*>::value);
+    DelayLineType* delay_line = new DelayLineType(pargs...);
+    delay_lines_.push_back(static_cast<DelayLineInterface*>(delay_line));
     return delay_line;
   }
   // This function is called after any event that may have caused an interrupt
@@ -130,46 +130,46 @@ class ArchState : public Component {
   virtual void CheckForInterrupt() { /*empty*/ }
 
   // Accessors for data members
-  const std::string &id() const { return component_name(); }
+  const std::string& id() const { return component_name(); }
   // The DataBufferFactory associated with this architecture instance.
-  DataBufferFactory *db_factory() const { return db_factory_; }
+  DataBufferFactory* db_factory() const { return db_factory_; }
   // The table of registers.
-  RegisterMap *registers() { return &registers_; }
+  RegisterMap* registers() { return &registers_; }
   // The table of fifos.
-  FifoMap *fifos() { return &fifos_; }
+  FifoMap* fifos() { return &fifos_; }
   // The DataBuffer instance delay line.
-  DataBufferDelayLine *data_buffer_delay_line() const {
+  DataBufferDelayLine* data_buffer_delay_line() const {
     return data_buffer_delay_line_;
   }
   // The void() function delay line
-  FunctionDelayLine *function_delay_line() const {
+  FunctionDelayLine* function_delay_line() const {
     return function_delay_line_;
   }
   // Returns the PC operand interface (read only)
-  SourceOperandInterface *pc_operand() const { return pc_operand_; }
+  SourceOperandInterface* pc_operand() const { return pc_operand_; }
   // Used to report program error (or even internal simulator errors).
-  ProgramErrorController *program_error_controller() const {
+  ProgramErrorController* program_error_controller() const {
     return program_error_controller_;
   }
 
   uint64_t cycle() const { return cycle_; }
 
  protected:
-  void set_pc_operand(SourceOperandInterface *pc_operand) {
+  void set_pc_operand(SourceOperandInterface* pc_operand) {
     pc_operand_ = pc_operand;
   }
   void set_cycle(uint64_t value) { cycle_ = value; }
 
  private:
   uint64_t cycle_ = 0;
-  SourceOperandInterface *pc_operand_;
-  DataBufferFactory *db_factory_;
+  SourceOperandInterface* pc_operand_;
+  DataBufferFactory* db_factory_;
   RegisterMap registers_;
   FifoMap fifos_;
-  DataBufferDelayLine *data_buffer_delay_line_;
-  FunctionDelayLine *function_delay_line_;
-  std::vector<DelayLineInterface *> delay_lines_;
-  ProgramErrorController *program_error_controller_;
+  DataBufferDelayLine* data_buffer_delay_line_;
+  FunctionDelayLine* function_delay_line_;
+  std::vector<DelayLineInterface*> delay_lines_;
+  ProgramErrorController* program_error_controller_;
 };
 
 }  // namespace generic

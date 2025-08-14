@@ -47,10 +47,10 @@ struct Field;
 // Helper class to store an individual component in an overlay.
 class BitsOrField {
  public:
-  BitsOrField(Field *field, int high, int low, int width);
+  BitsOrField(Field* field, int high, int low, int width);
   BitsOrField(BinaryNum bin_num, int width);
 
-  Field *field() const { return field_; }
+  Field* field() const { return field_; }
   // If != >= 0, this is the high bit position of the format that this component
   // refers to.
   int high() const { return high_; }
@@ -70,7 +70,7 @@ class BitsOrField {
   BinaryNum bin_num() const { return bin_num_; }
 
  private:
-  Field *field_;
+  Field* field_;
   int high_ = -1;
   int low_ = -1;
   int width_ = -1;
@@ -82,7 +82,7 @@ class BitsOrField {
 // format.
 class Overlay {
  public:
-  Overlay(std::string name, bool is_signed, int width, Format *format);
+  Overlay(std::string name, bool is_signed, int width, Format* format);
   ~Overlay();
 
   // The following methods add components to the overlay. Components are added
@@ -95,10 +95,10 @@ class Overlay {
   // Add only the bit ranges from the given field to the overlay (in order of
   // appearance in the vector).
   absl::Status AddFieldReference(std::string field_name,
-                                 const std::vector<BitRange> &ranges);
+                                 const std::vector<BitRange>& ranges);
   // Add the bit ranges from the format to the overlay (in order of appearance
   // in the vector).
-  absl::Status AddFormatReference(const std::vector<BitRange> &ranges);
+  absl::Status AddFormatReference(const std::vector<BitRange>& ranges);
 
   // Adjusts high/low of each field reference.
   absl::Status ComputeHighLow();
@@ -109,26 +109,26 @@ class Overlay {
                                         absl::string_view result) const;
   std::string WritePackedStructValueExtractor(absl::string_view value,
                                               absl::string_view result) const;
-  absl::StatusOr<uint64_t> GetValue(uint8_t *input);
+  absl::StatusOr<uint64_t> GetValue(uint8_t* input);
   std::string WriteComplexValueExtractor(absl::string_view value,
                                          absl::string_view result,
                                          absl::string_view return_type) const;
   absl::StatusOr<uint64_t> GetBitField(uint64_t input);
 
-  bool operator==(const Overlay &rhs) const;
-  bool operator!=(const Overlay &rhs) const;
+  bool operator==(const Overlay& rhs) const;
+  bool operator!=(const Overlay& rhs) const;
 
   // Accessors.
-  const std::string &name() const { return name_; }
+  const std::string& name() const { return name_; }
   bool is_signed() const { return is_signed_; }
   int declared_width() const { return declared_width_; }
   int computed_width() const { return computed_width_; }
   uint64_t mask() const { return mask_; }
-  const std::vector<BitsOrField *> &component_vec() const {
+  const std::vector<BitsOrField*>& component_vec() const {
     return component_vec_;
   }
   bool must_be_extracted() const { return must_be_extracted_; }
-  Format *format() const { return format_; }
+  Format* format() const { return format_; }
 
  private:
   std::string name_;
@@ -138,8 +138,8 @@ class Overlay {
   int computed_width_ = 0;
   uint64_t mask_ = 0;
   bool must_be_extracted_ = false;
-  Format *format_ = nullptr;
-  std::vector<BitsOrField *> component_vec_;
+  Format* format_ = nullptr;
+  std::vector<BitsOrField*> component_vec_;
 };
 
 }  // namespace bin_format

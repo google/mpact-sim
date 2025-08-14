@@ -36,21 +36,21 @@ namespace generic {
 class FifoWithNotifyBase : public FifoBase {
  protected:
   // Constructed from derived class (StateItem).
-  FifoWithNotifyBase(ArchState *arch_state, absl::string_view name,
-                     const std::vector<int> &shape, int element_size,
+  FifoWithNotifyBase(ArchState* arch_state, absl::string_view name,
+                     const std::vector<int>& shape, int element_size,
                      int default_capacity)
       : FifoBase(arch_state, name, shape, element_size, default_capacity) {}
   FifoWithNotifyBase() = delete;
-  FifoWithNotifyBase(const FifoWithNotifyBase &) = delete;
+  FifoWithNotifyBase(const FifoWithNotifyBase&) = delete;
 
  public:
-  using OnEventCallback = absl::AnyInvocable<void(FifoWithNotifyBase *)>;
+  using OnEventCallback = absl::AnyInvocable<void(FifoWithNotifyBase*)>;
 
   // SetDataBuffer and Pop are overridden to detect when the fifo transitions
   // from/to empty. The reason Push is not overrided is that Push moves the
   // data buffer into a delay line with a possible non-zero latency. That means
   // that the write doesn't actually occur into until SetDataBuffer is called.
-  bool Push(DataBuffer *) override;
+  bool Push(DataBuffer*) override;
   void Pop() override;
 
   // Set the transition callbacks functions. Pass in nullptr to clear an already

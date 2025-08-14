@@ -24,19 +24,19 @@ namespace decoder {
 namespace proto_fmt {
 
 ProtoInstructionDecoder::ProtoInstructionDecoder(
-    std::string name, ProtoEncodingInfo *encoding_info,
-    DecoderErrorListener *error_listener)
+    std::string name, ProtoEncodingInfo* encoding_info,
+    DecoderErrorListener* error_listener)
     : name_(name),
       encoding_info_(encoding_info),
       error_listener_(error_listener) {}
 
 ProtoInstructionDecoder::~ProtoInstructionDecoder() {
-  for (auto *group : instruction_groups_) delete group;
+  for (auto* group : instruction_groups_) delete group;
   instruction_groups_.clear();
 }
 
 void ProtoInstructionDecoder::AddInstructionGroup(
-    ProtoInstructionGroup *inst_group) {
+    ProtoInstructionGroup* inst_group) {
   instruction_groups_.push_back(inst_group);
 }
 

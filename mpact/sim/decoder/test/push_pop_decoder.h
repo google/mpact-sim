@@ -40,32 +40,32 @@ using ::mpact::sim::util::MemoryInterface;
 class PushPopIsaFactory : public PushPopInstInstructionSetFactory {
  public:
   std::unique_ptr<PushPopInstSlot> CreatePushPopInstSlot(
-      ArchState *state) override {
+      ArchState* state) override {
     return std::make_unique<PushPopInstSlot>(state);
   }
 };
 
 class PushPopDecoder : public generic::DecoderInterface {
  public:
-  PushPopDecoder(ArchState *state, MemoryInterface *memory);
+  PushPopDecoder(ArchState* state, MemoryInterface* memory);
   PushPopDecoder() = delete;
   ~PushPopDecoder() override;
 
-  generic::Instruction *DecodeInstruction(uint64_t address) override;
+  generic::Instruction* DecodeInstruction(uint64_t address) override;
   int GetNumOpcodes() const override { return *OpcodeEnum::kPastMaxValue; }
-  const char *GetOpcodeName(int index) const override {
+  const char* GetOpcodeName(int index) const override {
     return kOpcodeNames[index];
   }
 
-  PushPopEncoding *push_pop_encoding() const { return push_pop_encoding_; }
+  PushPopEncoding* push_pop_encoding() const { return push_pop_encoding_; }
 
  private:
-  ArchState *state_;
-  MemoryInterface *memory_;
-  PushPopEncoding *push_pop_encoding_;
-  PushPopIsaFactory *push_pop_isa_factory_;
-  PushPopInstInstructionSet *push_pop_isa_;
-  DataBuffer *inst_db_;
+  ArchState* state_;
+  MemoryInterface* memory_;
+  PushPopEncoding* push_pop_encoding_;
+  PushPopIsaFactory* push_pop_isa_factory_;
+  PushPopInstInstructionSet* push_pop_isa_;
+  DataBuffer* inst_db_;
 };
 
 }  // namespace mpact::sim::decoder::test

@@ -87,22 +87,22 @@ class ResourceOperandInterface;
 class Instruction : public ReferenceCount {
  public:
   // Type Alias for the semantic function.
-  using SemanticFunction = std::function<void(Instruction *)>;
+  using SemanticFunction = std::function<void(Instruction*)>;
 
   // Constructors and Destructors.
-  explicit Instruction(ArchState *state);
-  Instruction(uint64_t address, ArchState *state);
+  explicit Instruction(ArchState* state);
+  Instruction(uint64_t address, ArchState* state);
   ~Instruction() override;
 
   // Appends the instruction to the "next" list of instructions.
-  void Append(Instruction *inst);
+  void Append(Instruction* inst);
   // Appends the instruction the "child" list of instructions.
-  void AppendChild(Instruction *inst);
+  void AppendChild(Instruction* inst);
 
   // Methods used for navigating instruction hierarchy.
-  Instruction *child() const { return child_; }
-  Instruction *parent() const { return parent_; }
-  Instruction *next() const { return next_; }
+  Instruction* child() const { return child_; }
+  Instruction* parent() const { return parent_; }
+  Instruction* next() const { return next_; }
 
   // Execute the instruction with the given context
   // Note: The context is stored into the instruction instance instead of
@@ -113,7 +113,7 @@ class Instruction : public ReferenceCount {
   // only a handle to the Instruction instance as that is available during
   // instruction decode, and accessing the context otherwise would require
   // modifying the interface for all operands.
-  void Execute(ReferenceCount *context) {
+  void Execute(ReferenceCount* context) {
     context_ = context;
     semantic_fcn_(this);
     context_ = nullptr;
@@ -122,8 +122,8 @@ class Instruction : public ReferenceCount {
   void Execute() { semantic_fcn_(this); }
 
   // Accessors (getters/setters).
-  ReferenceCount *context() const { return context_; }
-  ArchState *state() const { return state_; }
+  ReferenceCount* context() const { return context_; }
+  ArchState* state() const { return state_; }
   // Returns the pc value for the instruction.
   uint64_t address() const { return address_; }
   // The address should seldom be set outside the constructor.
@@ -144,32 +144,32 @@ class Instruction : public ReferenceCount {
 
   // PredicateOperand interface used for those ISAs that implement
   // instruction predicates.
-  PredicateOperandInterface *Predicate() const { return predicate_; }
-  void SetPredicate(PredicateOperandInterface *predicate);
+  PredicateOperandInterface* Predicate() const { return predicate_; }
+  void SetPredicate(PredicateOperandInterface* predicate);
 
   // SourceOperand interfaces for the instruction.
-  SourceOperandInterface *Source(int i) const { return sources_[i]; }
-  void AppendSource(SourceOperandInterface *op);
+  SourceOperandInterface* Source(int i) const { return sources_[i]; }
+  void AppendSource(SourceOperandInterface* op);
   int SourcesSize() const;
 
   // DestinationOperand interfaces for the instruction.
-  DestinationOperandInterface *Destination(int i) const { return dests_[i]; }
-  void AppendDestination(DestinationOperandInterface *op);
+  DestinationOperandInterface* Destination(int i) const { return dests_[i]; }
+  void AppendDestination(DestinationOperandInterface* op);
   int DestinationsSize() const;
 
   // Hold ResourceOperand interfaces for the instruction.
-  inline std::vector<ResourceOperandInterface *> &ResourceHold() {
+  inline std::vector<ResourceOperandInterface*>& ResourceHold() {
     return resource_hold_;
   }
-  inline void AppendResourceHold(ResourceOperandInterface *op) {
+  inline void AppendResourceHold(ResourceOperandInterface* op) {
     resource_hold_.push_back(op);
   }
 
   // Acquire ResourceOperand interfaces for the instruction.
-  inline std::vector<ResourceOperandInterface *> &ResourceAcquire() {
+  inline std::vector<ResourceOperandInterface*>& ResourceAcquire() {
     return resource_acquire_;
   }
-  inline void AppendResourceAcquire(ResourceOperandInterface *op) {
+  inline void AppendResourceAcquire(ResourceOperandInterface* op) {
     resource_acquire_.push_back(op);
   }
 
@@ -186,19 +186,19 @@ class Instruction : public ReferenceCount {
 
  private:
   // Instruction operands.
-  PredicateOperandInterface *predicate_ = nullptr;
-  std::vector<SourceOperandInterface *> sources_;
-  std::vector<DestinationOperandInterface *> dests_;
+  PredicateOperandInterface* predicate_ = nullptr;
+  std::vector<SourceOperandInterface*> sources_;
+  std::vector<DestinationOperandInterface*> dests_;
 
   // The resources that must be available in order to issue the instruction.
   // This includes any registers that are read.
-  std::vector<ResourceOperandInterface *> resource_hold_;
+  std::vector<ResourceOperandInterface*> resource_hold_;
   // The resources that must be reserved/acquired by the instruction. Each
   // vector element is a set of resources that are acquired when the instruction
   // issues. The method Acquire() should be called on each element of the
   // vector. The operands should contain all registers and other resources that
   // that need to be reserved for writing.
-  std::vector<ResourceOperandInterface *> resource_acquire_;
+  std::vector<ResourceOperandInterface*> resource_acquire_;
   // Simulated instruction size.
   int size_;
   // Simulated instruction address.
@@ -214,24 +214,24 @@ class Instruction : public ReferenceCount {
   // privilege level, or whether the instruction is a branch or not.
   // The attribute array is owned by the Instruction object. The attributes are
   // accessed as a const span, so the attributes are read only.
-  int *attribute_array_ = nullptr;
+  int* attribute_array_ = nullptr;
   absl::Span<const int> attributes_ =
-      absl::MakeConstSpan(static_cast<int *>(nullptr), 0);
+      absl::MakeConstSpan(static_cast<int*>(nullptr), 0);
   // Architecture state object.
-  ArchState *state_;
+  ArchState* state_;
   // Instruction execution context (this is usuall nullptr).
-  ReferenceCount *context_;
+  ReferenceCount* context_;
   // Semantic function that implements the instruction semantics.
   SemanticFunction semantic_fcn_;
   // Pointer to the child (or sub) instruction. Used to break an instruction
   // up into multiple semantic actions, such as a VLIW instruction.
-  Instruction *child_;
+  Instruction* child_;
   // Parent instruction pointer from child instruction.
-  Instruction *parent_;
+  Instruction* parent_;
   // Pointer to the "next" instruction (instructions can be linked into a list
   // of instructions), such as those instances that make up the instructions in
   // a VLIW instruction word.
-  Instruction *next_;
+  Instruction* next_;
 };
 
 // Templated inline helper functions for operand access. These are intended to
@@ -240,75 +240,75 @@ class Instruction : public ReferenceCount {
 
 // The base case shouldn't be matched. No return statement is provided.
 template <typename T>
-inline T GetInstructionSource(const Instruction *inst, int index) { /*empty */ }
+inline T GetInstructionSource(const Instruction* inst, int index) { /*empty */ }
 
 // The following provide specializations for each of the integral types of
 // operand values, both signed and unsigned.
 template <>
-inline bool GetInstructionSource<bool>(const Instruction *inst, int index) {
+inline bool GetInstructionSource<bool>(const Instruction* inst, int index) {
   return inst->Source(index)->AsBool(0);
 }
 template <>
-inline uint8_t GetInstructionSource<uint8_t>(const Instruction *inst,
+inline uint8_t GetInstructionSource<uint8_t>(const Instruction* inst,
                                              int index) {
   return inst->Source(index)->AsUint8(0);
 }
 template <>
-inline int8_t GetInstructionSource<int8_t>(const Instruction *inst, int index) {
+inline int8_t GetInstructionSource<int8_t>(const Instruction* inst, int index) {
   return inst->Source(index)->AsInt8(0);
 }
 template <>
-inline uint16_t GetInstructionSource<uint16_t>(const Instruction *inst,
+inline uint16_t GetInstructionSource<uint16_t>(const Instruction* inst,
                                                int index) {
   return inst->Source(index)->AsUint16(0);
 }
 template <>
-inline int16_t GetInstructionSource<int16_t>(const Instruction *inst,
+inline int16_t GetInstructionSource<int16_t>(const Instruction* inst,
                                              int index) {
   return inst->Source(index)->AsInt16(0);
 }
 template <>
-inline HalfFP GetInstructionSource<HalfFP>(const Instruction *inst, int index) {
+inline HalfFP GetInstructionSource<HalfFP>(const Instruction* inst, int index) {
   auto value = inst->Source(index)->AsUint16(0);
   return HalfFP{.value = value};
 }
 template <>
-inline uint32_t GetInstructionSource<uint32_t>(const Instruction *inst,
+inline uint32_t GetInstructionSource<uint32_t>(const Instruction* inst,
                                                int index) {
   return inst->Source(index)->AsUint32(0);
 }
 template <>
-inline int32_t GetInstructionSource<int32_t>(const Instruction *inst,
+inline int32_t GetInstructionSource<int32_t>(const Instruction* inst,
                                              int index) {
   return inst->Source(index)->AsInt32(0);
 }
 template <>
-inline float GetInstructionSource<float>(const Instruction *inst, int index) {
+inline float GetInstructionSource<float>(const Instruction* inst, int index) {
   auto value = inst->Source(index)->AsUint32(0);
-  return *reinterpret_cast<float *>(&value);
+  return *reinterpret_cast<float*>(&value);
 }
 template <>
-inline uint64_t GetInstructionSource<uint64_t>(const Instruction *inst,
+inline uint64_t GetInstructionSource<uint64_t>(const Instruction* inst,
                                                int index) {
   return inst->Source(index)->AsUint64(0);
 }
 template <>
-inline int64_t GetInstructionSource<int64_t>(const Instruction *inst,
+inline int64_t GetInstructionSource<int64_t>(const Instruction* inst,
                                              int index) {
   return inst->Source(index)->AsInt64(0);
 }
 template <>
-inline double GetInstructionSource<double>(const Instruction *inst, int index) {
+inline double GetInstructionSource<double>(const Instruction* inst, int index) {
   auto value = inst->Source(index)->AsUint64(0);
-  return *reinterpret_cast<double *>(&value);
+  return *reinterpret_cast<double*>(&value);
 }
 template <>
 inline absl::uint128 GetInstructionSource<absl::uint128>(
-    const Instruction *inst, int index) {
+    const Instruction* inst, int index) {
   return static_cast<absl::uint128>(inst->Source(index)->AsUint64(0));
 }
 template <>
-inline absl::int128 GetInstructionSource<absl::int128>(const Instruction *inst,
+inline absl::int128 GetInstructionSource<absl::int128>(const Instruction* inst,
                                                        int index) {
   return static_cast<absl::int128>(inst->Source(index)->AsInt64(0));
 }
@@ -316,66 +316,66 @@ inline absl::int128 GetInstructionSource<absl::int128>(const Instruction *inst,
 // The base case shouldn't be matched. No return statement is provided, so it
 // will generate a compile time error if no other case is matched.
 template <typename T>
-inline T GetInstructionSource(const Instruction *inst, int index,
+inline T GetInstructionSource(const Instruction* inst, int index,
                               int element) { /*empty */ }
 // The following provide specializations for each of the integral types of
 // operand values, both signed and unsigned.
 template <>
-inline bool GetInstructionSource<bool>(const Instruction *inst, int index,
+inline bool GetInstructionSource<bool>(const Instruction* inst, int index,
                                        int element) {
   return inst->Source(index)->AsBool(element);
 }
 template <>
-inline uint8_t GetInstructionSource<uint8_t>(const Instruction *inst, int index,
+inline uint8_t GetInstructionSource<uint8_t>(const Instruction* inst, int index,
                                              int element) {
   return inst->Source(index)->AsUint8(element);
 }
 template <>
-inline int8_t GetInstructionSource<int8_t>(const Instruction *inst, int index,
+inline int8_t GetInstructionSource<int8_t>(const Instruction* inst, int index,
                                            int element) {
   return inst->Source(index)->AsInt8(element);
 }
 template <>
-inline uint16_t GetInstructionSource<uint16_t>(const Instruction *inst,
+inline uint16_t GetInstructionSource<uint16_t>(const Instruction* inst,
                                                int index, int element) {
   return inst->Source(index)->AsUint16(element);
 }
 template <>
-inline int16_t GetInstructionSource<int16_t>(const Instruction *inst, int index,
+inline int16_t GetInstructionSource<int16_t>(const Instruction* inst, int index,
                                              int element) {
   return inst->Source(index)->AsInt16(element);
 }
 template <>
-inline uint32_t GetInstructionSource<uint32_t>(const Instruction *inst,
+inline uint32_t GetInstructionSource<uint32_t>(const Instruction* inst,
                                                int index, int element) {
   return inst->Source(index)->AsUint32(element);
 }
 template <>
-inline int32_t GetInstructionSource<int32_t>(const Instruction *inst, int index,
+inline int32_t GetInstructionSource<int32_t>(const Instruction* inst, int index,
                                              int element) {
   return inst->Source(index)->AsInt32(element);
 }
 template <>
-inline float GetInstructionSource<float>(const Instruction *inst, int index,
+inline float GetInstructionSource<float>(const Instruction* inst, int index,
                                          int element) {
   auto value = inst->Source(index)->AsUint32(element);
-  return *reinterpret_cast<float *>(&value);
+  return *reinterpret_cast<float*>(&value);
 }
 template <>
-inline uint64_t GetInstructionSource<uint64_t>(const Instruction *inst,
+inline uint64_t GetInstructionSource<uint64_t>(const Instruction* inst,
                                                int index, int element) {
   return inst->Source(index)->AsUint64(element);
 }
 template <>
-inline int64_t GetInstructionSource<int64_t>(const Instruction *inst, int index,
+inline int64_t GetInstructionSource<int64_t>(const Instruction* inst, int index,
                                              int element) {
   return inst->Source(index)->AsInt64(element);
 }
 template <>
-inline double GetInstructionSource<double>(const Instruction *inst, int index,
+inline double GetInstructionSource<double>(const Instruction* inst, int index,
                                            int element) {
   auto value = inst->Source(index)->AsUint64(element);
-  return *reinterpret_cast<double *>(&value);
+  return *reinterpret_cast<double*>(&value);
 }
 
 }  // namespace generic

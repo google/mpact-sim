@@ -55,14 +55,14 @@ class StatusRegisterTest : public testing::Test {
     delete src_op_64_;
   }
 
-  StatusRegister<uint8_t> *status_8_;
-  StatusRegister<uint16_t> *status_16_;
-  StatusRegister<uint32_t> *status_32_;
-  StatusRegister<uint64_t> *status_64_;
-  StatusRegisterSourceOperand<uint8_t> *src_op_8_;
-  StatusRegisterSourceOperand<uint16_t> *src_op_16_;
-  StatusRegisterSourceOperand<uint32_t> *src_op_32_;
-  StatusRegisterSourceOperand<uint64_t> *src_op_64_;
+  StatusRegister<uint8_t>* status_8_;
+  StatusRegister<uint16_t>* status_16_;
+  StatusRegister<uint32_t>* status_32_;
+  StatusRegister<uint64_t>* status_64_;
+  StatusRegisterSourceOperand<uint8_t>* src_op_8_;
+  StatusRegisterSourceOperand<uint16_t>* src_op_16_;
+  StatusRegisterSourceOperand<uint32_t>* src_op_32_;
+  StatusRegisterSourceOperand<uint64_t>* src_op_64_;
 };
 
 // Test that initial values are all 0.

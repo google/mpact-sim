@@ -30,38 +30,38 @@ class DummyMemory : public TaggedMemoryInterface,
 
   // Memory interface methods.
   // Plain load.
-  void Load(uint64_t address, DataBuffer *db, Instruction *inst,
-            ReferenceCount *context) override {
+  void Load(uint64_t address, DataBuffer* db, Instruction* inst,
+            ReferenceCount* context) override {
     load_address_ = address;
   }
   // Vector load.
-  void Load(DataBuffer *address_db, DataBuffer *mask_db, int el_size,
-            DataBuffer *db, Instruction *inst,
-            ReferenceCount *context) override {
+  void Load(DataBuffer* address_db, DataBuffer* mask_db, int el_size,
+            DataBuffer* db, Instruction* inst,
+            ReferenceCount* context) override {
     vector_load_address_ = address_db->Get<uint64_t>(0);
   }
   // Tagged load.
-  void Load(uint64_t address, DataBuffer *db, DataBuffer *tags,
-            Instruction *inst, ReferenceCount *context) override {
+  void Load(uint64_t address, DataBuffer* db, DataBuffer* tags,
+            Instruction* inst, ReferenceCount* context) override {
     tagged_load_address_ = address;
   }
   // Plain store.
-  void Store(uint64_t address, DataBuffer *db) override {
+  void Store(uint64_t address, DataBuffer* db) override {
     store_address_ = address;
   }
   // Vector store.
-  void Store(DataBuffer *address_db, DataBuffer *mask_db, int el_size,
-             DataBuffer *db) override {
+  void Store(DataBuffer* address_db, DataBuffer* mask_db, int el_size,
+             DataBuffer* db) override {
     vector_store_address_ = address_db->Get<uint64_t>(0);
   }
   // Tagged store.
-  void Store(uint64_t address, DataBuffer *db, DataBuffer *tags) override {
+  void Store(uint64_t address, DataBuffer* db, DataBuffer* tags) override {
     tagged_store_address_ = address;
   }
   // Atomic memory operation.
-  absl::Status PerformMemoryOp(uint64_t address, Operation op, DataBuffer *db,
-                               Instruction *inst,
-                               ReferenceCount *context) override {
+  absl::Status PerformMemoryOp(uint64_t address, Operation op, DataBuffer* db,
+                               Instruction* inst,
+                               ReferenceCount* context) override {
     memory_op_address_ = address;
     return absl::OkStatus();
   }

@@ -33,41 +33,41 @@ using ::mpact::sim::generic::Instruction;
 using ::mpact::sim::generic::ReferenceCount;
 
 // These methods simply forward the call to the target mem  interface.
-void TaggedToUntaggedMemoryTransactor::Load(uint64_t address, DataBuffer *db,
-                                            Instruction *inst,
-                                            ReferenceCount *context) {
+void TaggedToUntaggedMemoryTransactor::Load(uint64_t address, DataBuffer* db,
+                                            Instruction* inst,
+                                            ReferenceCount* context) {
   target_mem_->Load(address, db, inst, context);
 }
-void TaggedToUntaggedMemoryTransactor::Load(DataBuffer *address_db,
-                                            DataBuffer *mask_db, int el_size,
-                                            DataBuffer *db, Instruction *inst,
-                                            ReferenceCount *context) {
+void TaggedToUntaggedMemoryTransactor::Load(DataBuffer* address_db,
+                                            DataBuffer* mask_db, int el_size,
+                                            DataBuffer* db, Instruction* inst,
+                                            ReferenceCount* context) {
   target_mem_->Load(address_db, mask_db, el_size, db, inst, context);
 }
 
-void TaggedToUntaggedMemoryTransactor::Store(uint64_t address, DataBuffer *db) {
+void TaggedToUntaggedMemoryTransactor::Store(uint64_t address, DataBuffer* db) {
   target_mem_->Store(address, db);
 }
 
-void TaggedToUntaggedMemoryTransactor::Store(DataBuffer *address,
-                                             DataBuffer *mask, int el_size,
-                                             DataBuffer *db) {
+void TaggedToUntaggedMemoryTransactor::Store(DataBuffer* address,
+                                             DataBuffer* mask, int el_size,
+                                             DataBuffer* db) {
   target_mem_->Store(address, mask, el_size, db);
 }
 
 // For tagged loads, zero the tags, and then forward to the target mem
 // interface.
-void TaggedToUntaggedMemoryTransactor::Load(uint64_t address, DataBuffer *db,
-                                            DataBuffer *tags, Instruction *inst,
-                                            ReferenceCount *context) {
+void TaggedToUntaggedMemoryTransactor::Load(uint64_t address, DataBuffer* db,
+                                            DataBuffer* tags, Instruction* inst,
+                                            ReferenceCount* context) {
   std::memset(tags->raw_ptr(), 0, tags->size<uint8_t>());
   if (db == nullptr) return;
   target_mem_->Load(address, db, inst, context);
 }
 
 // For tagged stores, ignore the tags. just forward to the target mem interface.
-void TaggedToUntaggedMemoryTransactor::Store(uint64_t address, DataBuffer *db,
-                                             DataBuffer *tags) {
+void TaggedToUntaggedMemoryTransactor::Store(uint64_t address, DataBuffer* db,
+                                             DataBuffer* tags) {
   if (tags != nullptr) {
     for (auto tag : tags->Get<uint8_t>()) {
       if (tag != 0)

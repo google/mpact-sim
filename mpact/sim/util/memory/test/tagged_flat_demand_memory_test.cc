@@ -50,7 +50,7 @@ class TaggedFlatDemandMemoryTest : public testing::Test {
   }
   ~TaggedFlatDemandMemoryTest() override { delete arch_state_; }
 
-  MyArchState *arch_state_;
+  MyArchState* arch_state_;
 };
 
 // The first set of tests verify that the tagged flat demand memory works just
@@ -58,10 +58,10 @@ class TaggedFlatDemandMemoryTest : public testing::Test {
 
 TEST_F(TaggedFlatDemandMemoryTest, BasicLoadStore) {
   auto mem = std::make_unique<TaggedFlatDemandMemory>(kTagGranule);
-  DataBuffer *st_db1 = arch_state_->db_factory()->Allocate<uint8_t>(1);
-  DataBuffer *st_db2 = arch_state_->db_factory()->Allocate<uint16_t>(1);
-  DataBuffer *st_db4 = arch_state_->db_factory()->Allocate<uint32_t>(1);
-  DataBuffer *st_db8 = arch_state_->db_factory()->Allocate<uint64_t>(1);
+  DataBuffer* st_db1 = arch_state_->db_factory()->Allocate<uint8_t>(1);
+  DataBuffer* st_db2 = arch_state_->db_factory()->Allocate<uint16_t>(1);
+  DataBuffer* st_db4 = arch_state_->db_factory()->Allocate<uint32_t>(1);
+  DataBuffer* st_db8 = arch_state_->db_factory()->Allocate<uint64_t>(1);
 
   st_db1->Set<uint8_t>(0, 0x0F);
   st_db2->Set<uint16_t>(0, 0xA5A5);
@@ -73,10 +73,10 @@ TEST_F(TaggedFlatDemandMemoryTest, BasicLoadStore) {
   mem->Store(0x1004, st_db4);
   mem->Store(0x1008, st_db8);
 
-  DataBuffer *ld_db1 = arch_state_->db_factory()->Allocate<uint8_t>(1);
-  DataBuffer *ld_db2 = arch_state_->db_factory()->Allocate<uint16_t>(1);
-  DataBuffer *ld_db4 = arch_state_->db_factory()->Allocate<uint32_t>(1);
-  DataBuffer *ld_db8 = arch_state_->db_factory()->Allocate<uint64_t>(1);
+  DataBuffer* ld_db1 = arch_state_->db_factory()->Allocate<uint8_t>(1);
+  DataBuffer* ld_db2 = arch_state_->db_factory()->Allocate<uint16_t>(1);
+  DataBuffer* ld_db4 = arch_state_->db_factory()->Allocate<uint32_t>(1);
+  DataBuffer* ld_db8 = arch_state_->db_factory()->Allocate<uint64_t>(1);
   ld_db1->set_latency(0);
   ld_db2->set_latency(0);
   ld_db4->set_latency(0);
@@ -106,15 +106,15 @@ TEST_F(TaggedFlatDemandMemoryTest, BasicLoadStore) {
 TEST_F(TaggedFlatDemandMemoryTest, SpanningLoadStore) {
   auto mem = std::make_unique<TaggedFlatDemandMemory>(kTagGranule);
 
-  DataBuffer *st_db1 = arch_state_->db_factory()->Allocate<uint8_t>(1);
-  DataBuffer *st_db2 = arch_state_->db_factory()->Allocate<uint16_t>(1);
-  DataBuffer *st_db4 = arch_state_->db_factory()->Allocate<uint32_t>(1);
-  DataBuffer *st_db8 = arch_state_->db_factory()->Allocate<uint64_t>(1);
+  DataBuffer* st_db1 = arch_state_->db_factory()->Allocate<uint8_t>(1);
+  DataBuffer* st_db2 = arch_state_->db_factory()->Allocate<uint16_t>(1);
+  DataBuffer* st_db4 = arch_state_->db_factory()->Allocate<uint32_t>(1);
+  DataBuffer* st_db8 = arch_state_->db_factory()->Allocate<uint64_t>(1);
 
-  DataBuffer *ld_db1 = arch_state_->db_factory()->Allocate<uint8_t>(1);
-  DataBuffer *ld_db2 = arch_state_->db_factory()->Allocate<uint16_t>(1);
-  DataBuffer *ld_db4 = arch_state_->db_factory()->Allocate<uint32_t>(1);
-  DataBuffer *ld_db8 = arch_state_->db_factory()->Allocate<uint64_t>(1);
+  DataBuffer* ld_db1 = arch_state_->db_factory()->Allocate<uint8_t>(1);
+  DataBuffer* ld_db2 = arch_state_->db_factory()->Allocate<uint16_t>(1);
+  DataBuffer* ld_db4 = arch_state_->db_factory()->Allocate<uint32_t>(1);
+  DataBuffer* ld_db8 = arch_state_->db_factory()->Allocate<uint64_t>(1);
   ld_db1->set_latency(0);
   ld_db2->set_latency(0);
   ld_db4->set_latency(0);
@@ -158,11 +158,11 @@ TEST_F(TaggedFlatDemandMemoryTest, MultiLoadUnitStride) {
   auto mem =
       std::make_unique<TaggedFlatDemandMemory>(1024, 0x1000, 1, 0, kTagGranule);
 
-  DataBuffer *address_db = arch_state_->db_factory()->Allocate<uint64_t>(1);
-  DataBuffer *mask_db = arch_state_->db_factory()->Allocate<bool>(4);
-  DataBuffer *ld_db = arch_state_->db_factory()->Allocate<uint32_t>(4);
+  DataBuffer* address_db = arch_state_->db_factory()->Allocate<uint64_t>(1);
+  DataBuffer* mask_db = arch_state_->db_factory()->Allocate<bool>(4);
+  DataBuffer* ld_db = arch_state_->db_factory()->Allocate<uint32_t>(4);
   ld_db->set_latency(0);
-  DataBuffer *st_db = arch_state_->db_factory()->Allocate<uint32_t>(4);
+  DataBuffer* st_db = arch_state_->db_factory()->Allocate<uint32_t>(4);
   auto ld_span = ld_db->Get<uint32_t>();
   auto st_span = st_db->Get<uint32_t>();
   auto mask_span = mask_db->Get<bool>();
@@ -183,9 +183,9 @@ TEST_F(TaggedFlatDemandMemoryTest, MultiLoadUnitStride) {
 TEST_F(TaggedFlatDemandMemoryTest, HalfWordAddressable) {
   auto mem = std::make_unique<TaggedFlatDemandMemory>(0x4000, 0x1000, 2, 0,
                                                       kTagGranule);
-  DataBuffer *st_db2 = arch_state_->db_factory()->Allocate<uint16_t>(1);
-  DataBuffer *st_db4 = arch_state_->db_factory()->Allocate<uint32_t>(1);
-  DataBuffer *st_db8 = arch_state_->db_factory()->Allocate<uint64_t>(1);
+  DataBuffer* st_db2 = arch_state_->db_factory()->Allocate<uint16_t>(1);
+  DataBuffer* st_db4 = arch_state_->db_factory()->Allocate<uint32_t>(1);
+  DataBuffer* st_db8 = arch_state_->db_factory()->Allocate<uint64_t>(1);
 
   st_db2->Set<uint16_t>(0, 0xA5A5);
   st_db4->Set<uint32_t>(0, 0xDEADBEEF);
@@ -195,9 +195,9 @@ TEST_F(TaggedFlatDemandMemoryTest, HalfWordAddressable) {
   mem->Store(0x1001, st_db4);
   mem->Store(0x1003, st_db8);
 
-  DataBuffer *ld_db2 = arch_state_->db_factory()->Allocate<uint16_t>(1);
-  DataBuffer *ld_db4 = arch_state_->db_factory()->Allocate<uint32_t>(1);
-  DataBuffer *ld_db8 = arch_state_->db_factory()->Allocate<uint64_t>(1);
+  DataBuffer* ld_db2 = arch_state_->db_factory()->Allocate<uint16_t>(1);
+  DataBuffer* ld_db4 = arch_state_->db_factory()->Allocate<uint32_t>(1);
+  DataBuffer* ld_db8 = arch_state_->db_factory()->Allocate<uint64_t>(1);
   ld_db2->set_latency(0);
   ld_db4->set_latency(0);
   ld_db8->set_latency(0);
@@ -221,9 +221,9 @@ TEST_F(TaggedFlatDemandMemoryTest, HalfWordAddressable) {
 
 TEST_F(TaggedFlatDemandMemoryTest, LargeBlockOfMemory) {
   auto mem = std::make_unique<TaggedFlatDemandMemory>(kTagGranule);
-  DataBuffer *ld_db = arch_state_->db_factory()->Allocate<uint8_t>(
+  DataBuffer* ld_db = arch_state_->db_factory()->Allocate<uint8_t>(
       TaggedFlatDemandMemory::kAllocationSize * 2);
-  DataBuffer *st_db = arch_state_->db_factory()->Allocate<uint8_t>(
+  DataBuffer* st_db = arch_state_->db_factory()->Allocate<uint8_t>(
       TaggedFlatDemandMemory::kAllocationSize * 2);
   // Set the store data to known value.
   std::memset(st_db->raw_ptr(), 0xbe,
@@ -246,9 +246,9 @@ TEST_F(TaggedFlatDemandMemoryTest, UnalignedAddress) {
   LogSink log_sink;
   absl::AddLogSink(&log_sink);
   auto mem = std::make_unique<TaggedFlatDemandMemory>(kTagGranule);
-  DataBuffer *data_db =
+  DataBuffer* data_db =
       arch_state_->db_factory()->Allocate<uint8_t>(kTagGranule * 16);
-  DataBuffer *tag_db = arch_state_->db_factory()->Allocate<uint8_t>(16);
+  DataBuffer* tag_db = arch_state_->db_factory()->Allocate<uint8_t>(16);
   data_db->set_latency(0);
   tag_db->set_latency(0);
   int expected_err_count = 0;
@@ -270,12 +270,12 @@ TEST_F(TaggedFlatDemandMemoryTest, UnalignedSize) {
   LogSink log_sink;
   absl::AddLogSink(&log_sink);
   auto mem = std::make_unique<TaggedFlatDemandMemory>(kTagGranule);
-  DataBuffer *data_db =
+  DataBuffer* data_db =
       arch_state_->db_factory()->Allocate<uint8_t>(kTagGranule * 16);
-  DataBuffer *tag_db = arch_state_->db_factory()->Allocate<uint8_t>(16);
-  DataBuffer *short_data_db =
+  DataBuffer* tag_db = arch_state_->db_factory()->Allocate<uint8_t>(16);
+  DataBuffer* short_data_db =
       arch_state_->db_factory()->Allocate<uint8_t>(kTagGranule * 16 - 1);
-  DataBuffer *long_data_db =
+  DataBuffer* long_data_db =
       arch_state_->db_factory()->Allocate<uint8_t>(kTagGranule * 16 + 1);
   data_db->set_latency(0);
   tag_db->set_latency(0);
@@ -303,11 +303,11 @@ TEST_F(TaggedFlatDemandMemoryTest, WrongTagSize) {
   LogSink log_sink;
   absl::AddLogSink(&log_sink);
   auto mem = std::make_unique<TaggedFlatDemandMemory>(kTagGranule);
-  DataBuffer *data_db =
+  DataBuffer* data_db =
       arch_state_->db_factory()->Allocate<uint8_t>(kTagGranule * 16);
-  DataBuffer *tag_db = arch_state_->db_factory()->Allocate<uint8_t>(16);
-  DataBuffer *short_tag_db = arch_state_->db_factory()->Allocate<uint8_t>(8);
-  DataBuffer *long_tag_db = arch_state_->db_factory()->Allocate<uint8_t>(18);
+  DataBuffer* tag_db = arch_state_->db_factory()->Allocate<uint8_t>(16);
+  DataBuffer* short_tag_db = arch_state_->db_factory()->Allocate<uint8_t>(8);
+  DataBuffer* long_tag_db = arch_state_->db_factory()->Allocate<uint8_t>(18);
   data_db->set_latency(0);
   tag_db->set_latency(0);
   short_tag_db->set_latency(0);
@@ -332,14 +332,14 @@ TEST_F(TaggedFlatDemandMemoryTest, WrongTagSize) {
 
 TEST_F(TaggedFlatDemandMemoryTest, TaggedLoadStore) {
   auto mem = std::make_unique<TaggedFlatDemandMemory>(kTagGranule);
-  DataBuffer *ld_data_db =
+  DataBuffer* ld_data_db =
       arch_state_->db_factory()->Allocate<uint8_t>(kTagGranule * 16);
-  DataBuffer *ld_tag_db = arch_state_->db_factory()->Allocate<uint8_t>(16);
+  DataBuffer* ld_tag_db = arch_state_->db_factory()->Allocate<uint8_t>(16);
   ld_data_db->set_latency(0);
   ld_tag_db->set_latency(0);
-  DataBuffer *st_data_db =
+  DataBuffer* st_data_db =
       arch_state_->db_factory()->Allocate<uint8_t>(kTagGranule * 16);
-  DataBuffer *st_tag_db = arch_state_->db_factory()->Allocate<uint8_t>(16);
+  DataBuffer* st_tag_db = arch_state_->db_factory()->Allocate<uint8_t>(16);
   mem->Load(0x1000, ld_data_db, ld_tag_db, nullptr, nullptr);
   // The loaded data should be all zeros.
   for (int i = 0; i < 16; i++) {
@@ -387,14 +387,14 @@ TEST_F(TaggedFlatDemandMemoryTest, ClearTags) {
   LogSink log_sink;
   absl::AddLogSink(&log_sink);
   auto mem = std::make_unique<TaggedFlatDemandMemory>(kTagGranule);
-  DataBuffer *ld_data_db =
+  DataBuffer* ld_data_db =
       arch_state_->db_factory()->Allocate<uint8_t>(kTagGranule * 16);
-  DataBuffer *ld_tag_db = arch_state_->db_factory()->Allocate<uint8_t>(16);
+  DataBuffer* ld_tag_db = arch_state_->db_factory()->Allocate<uint8_t>(16);
   ld_data_db->set_latency(0);
   ld_tag_db->set_latency(0);
-  DataBuffer *st_data_db =
+  DataBuffer* st_data_db =
       arch_state_->db_factory()->Allocate<uint8_t>(kTagGranule * 16);
-  DataBuffer *st_tag_db = arch_state_->db_factory()->Allocate<uint8_t>(16);
+  DataBuffer* st_tag_db = arch_state_->db_factory()->Allocate<uint8_t>(16);
   // Write tagged data to memory.
   for (int i = 0; i < st_data_db->size<uint8_t>(); i++) {
     st_data_db->Set<uint8_t>(i, i);
@@ -409,7 +409,7 @@ TEST_F(TaggedFlatDemandMemoryTest, ClearTags) {
     EXPECT_EQ(ld_tag_db->Get<uint8_t>(i), 1);
   }
   // Clear tags with non-tagged stores.
-  DataBuffer *st_untagged_db = arch_state_->db_factory()->Allocate<uint8_t>(1);
+  DataBuffer* st_untagged_db = arch_state_->db_factory()->Allocate<uint8_t>(1);
   for (int i = 0; i < st_data_db->size<uint8_t>(); i++) {
     st_untagged_db->Set<uint8_t>(0, st_data_db->size<uint8_t>() - i);
     mem->Store(0x1000 + i, st_untagged_db);

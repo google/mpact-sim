@@ -41,7 +41,7 @@ namespace bin_format {
 using machine_description::instruction_set::ToPascalCase;
 
 // Indexed by the members of the ConstraintType enum in instruction_encoding.h.
-const char *kComparison[] = {
+const char* kComparison[] = {
     /* kEq */ "==",
     /* kNe */ "!=",
     /* kLt */ "<",
@@ -52,22 +52,22 @@ const char *kComparison[] = {
 
 // Helper function to provide a less than comparison of instruction encodings.
 // This is used in call to std::sort.
-static bool EncodingLess(uint64_t mask, InstructionEncoding *lhs,
-                         InstructionEncoding *rhs) {
+static bool EncodingLess(uint64_t mask, InstructionEncoding* lhs,
+                         InstructionEncoding* rhs) {
   uint64_t lhs_val = lhs->GetValue() & mask;
   uint64_t rhs_val = rhs->GetValue() & mask;
   return lhs_val < rhs_val;
 }
 
-EncodingGroup::EncodingGroup(InstructionGroup *inst_group, uint64_t ignore)
+EncodingGroup::EncodingGroup(InstructionGroup* inst_group, uint64_t ignore)
     : EncodingGroup(nullptr, inst_group, ignore) {}
 
-EncodingGroup::EncodingGroup(EncodingGroup *parent,
-                             InstructionGroup *inst_group, uint64_t ignore)
+EncodingGroup::EncodingGroup(EncodingGroup* parent,
+                             InstructionGroup* inst_group, uint64_t ignore)
     : inst_group_(inst_group), parent_(parent), ignore_(ignore) {}
 
 EncodingGroup::~EncodingGroup() {
-  for (auto *group : encoding_group_vec_) {
+  for (auto* group : encoding_group_vec_) {
     delete group;
   }
   encoding_group_vec_.clear();
@@ -87,7 +87,7 @@ void EncodingGroup::AdjustMask() {
 }
 
 // Adds an instruction encoding to the encoding group.
-void EncodingGroup::AddEncoding(InstructionEncoding *enc) {
+void EncodingGroup::AddEncoding(InstructionEncoding* enc) {
   if (encoding_vec_.empty()) {
     last_value_ = enc->GetValue();
     mask_ = enc->GetMask();
@@ -104,7 +104,7 @@ void EncodingGroup::AddEncoding(InstructionEncoding *enc) {
 // Returns true if there is overlap between the encoding and those already
 // in the group. Returns false if it would clear the mask of common "fixed"
 // bits.
-bool EncodingGroup::CanAddEncoding(InstructionEncoding *enc) {
+bool EncodingGroup::CanAddEncoding(InstructionEncoding* enc) {
   if (encoding_vec_.empty()) return true;
   uint64_t new_mask = mask_ & enc->GetMask();
   if (new_mask == 0) return false;
@@ -115,7 +115,7 @@ bool EncodingGroup::CanAddEncoding(InstructionEncoding *enc) {
 // opposed to a function that performs comparisons.
 bool EncodingGroup::IsSimpleDecode() {
   if (!encoding_group_vec().empty()) return false;
-  for (auto *enc : encoding_vec_) {
+  for (auto* enc : encoding_vec_) {
     if (!enc->other_constraints().empty()) return false;
     if (!enc->equal_extracted_constraints().empty()) return false;
     if (!enc->HasSpecialization()) return false;
@@ -150,9 +150,9 @@ void EncodingGroup::AddSubGroups() {
   // Iterate across the possible values of the compressed varying bits.
   for (int i = 0; i < (1 << absl::popcount(discriminator_)); i++) {
     // Create a new group for the current value 'i'.
-    auto *encoding_group = new EncodingGroup(
+    auto* encoding_group = new EncodingGroup(
         this, inst_group_, ignore_ | constant_ | discriminator_);
-    for (auto *enc : encoding_vec_) {
+    for (auto* enc : encoding_vec_) {
       // Add all encodings that have value 'i' for the varying bits.
       if (ExtractValue(enc->GetValue(), recipe) != static_cast<unsigned>(i))
         continue;
@@ -181,11 +181,11 @@ void EncodingGroup::AddSubGroups() {
       // But undo it if the max number of "varying" bits across the groups
       // is less than 2.
       int max = 0;
-      for (auto *group : encoding_group->encoding_group_vec_) {
+      for (auto* group : encoding_group->encoding_group_vec_) {
         max = std::max(max, absl::popcount(group->varying()));
       }
       if (max < 2) {
-        for (auto *group : encoding_group->encoding_group_vec_) {
+        for (auto* group : encoding_group->encoding_group_vec_) {
           delete group;
         }
         encoding_group->encoding_group_vec_.clear();
@@ -222,8 +222,8 @@ void EncodingGroup::CheckEncodings() const {
     // The encodings are in order of discriminator value, so checking for
     // duplicates are easy.
     int prev_value = -1;
-    InstructionEncoding *prev_enc = nullptr;
-    for (auto *enc : encoding_vec_) {
+    InstructionEncoding* prev_enc = nullptr;
+    for (auto* enc : encoding_vec_) {
       int value = ExtractValue(enc->GetValue(), discriminator_recipe_);
       if (value == prev_value) {
         inst_group_->encoding_info()->error_listener()->semanticError(
@@ -235,7 +235,7 @@ void EncodingGroup::CheckEncodings() const {
       prev_value = value;
     }
   }
-  for (auto const *enc_grp : encoding_group_vec_) {
+  for (auto const* enc_grp : encoding_group_vec_) {
     enc_grp->CheckEncodings();
   }
 }
@@ -243,8 +243,8 @@ void EncodingGroup::CheckEncodings() const {
 // Emit the initializers of the decode function tables/opcode tables used
 // by the decoding functions.
 void EncodingGroup::EmitInitializers(absl::string_view name,
-                                     std::string *initializers_ptr,
-                                     const std::string &opcode_enum) const {
+                                     std::string* initializers_ptr,
+                                     const std::string& opcode_enum) const {
   if (discriminator_size_ == 0) return;
   absl::StrAppend(initializers_ptr, "constexpr int kParseGroup", name,
                   "_Size = ", discriminator_size_, ";\n\n");
@@ -283,7 +283,7 @@ void EncodingGroup::EmitInitializers(absl::string_view name,
     }
   }
   absl::StrAppend(initializers_ptr, "};\n\n");
-  for (auto const *enc_grp : encoding_group_vec_) {
+  for (auto const* enc_grp : encoding_group_vec_) {
     // Don't create initializers for leaf encoding groups. They don't need them.
     if (enc_grp->encoding_group_vec_.empty()) continue;
     std::string grp_name = absl::StrCat(
@@ -297,9 +297,9 @@ void EncodingGroup::EmitInitializers(absl::string_view name,
 // Generate the code for the decoders, both the declarations in the .h file as
 // well as the definitions in the .cc file.
 void EncodingGroup::EmitDecoders(absl::string_view name,
-                                 std::string *declarations_ptr,
-                                 std::string *definitions_ptr,
-                                 const std::string &opcode_enum) const {
+                                 std::string* declarations_ptr,
+                                 std::string* definitions_ptr,
+                                 const std::string& opcode_enum) const {
   // Generate the decode function signature.
   std::string signature =
       absl::StrCat("std::pair<", opcode_enum, ", FormatEnum> Decode", name, "(",
@@ -352,7 +352,7 @@ void EncodingGroup::EmitDecoders(absl::string_view name,
                         opcode_enum, ", FormatEnum> opcodes[", count,
                         "] = {\n");
         int entry = 0;
-        for (auto *enc : encoding_vec_) {
+        for (auto* enc : encoding_vec_) {
           int value = ExtractValue(enc->GetValue(), discriminator_recipe_);
           while (entry < value) {
             absl::StrAppend(definitions_ptr, "    {", opcode_enum,
@@ -387,7 +387,7 @@ void EncodingGroup::EmitDecoders(absl::string_view name,
 
   if (encoding_group_vec_.empty()) return;
 
-  for (auto const *enc_grp : encoding_group_vec_) {
+  for (auto const* enc_grp : encoding_group_vec_) {
     uint64_t value = ExtractValue(enc_grp->encoding_vec_[0]->GetValue(),
                                   discriminator_recipe_);
     std::string grp_name = absl::StrCat(name, "_", absl::Hex(value));
@@ -397,7 +397,7 @@ void EncodingGroup::EmitDecoders(absl::string_view name,
 }
 
 void EncodingGroup::EmitComplexDecoderBody(
-    std::string *definitions_ptr, absl::string_view index_extraction,
+    std::string* definitions_ptr, absl::string_view index_extraction,
     absl::string_view opcode_enum) const {
   // If the index_extraction is empty, use a series of if statements.
   if (index_extraction.empty()) {
@@ -405,8 +405,8 @@ void EncodingGroup::EmitComplexDecoderBody(
     return;
   }
   // Group the encodings by index value.
-  absl::btree_map<uint64_t, std::vector<InstructionEncoding *>> encoding_map;
-  for (auto *encoding : encoding_vec_) {
+  absl::btree_map<uint64_t, std::vector<InstructionEncoding*>> encoding_map;
+  for (auto* encoding : encoding_vec_) {
     // Get the discriminator value.
     uint64_t index_value =
         ExtractValue(encoding->GetValue(), discriminator_recipe_);
@@ -414,13 +414,13 @@ void EncodingGroup::EmitComplexDecoderBody(
   }
   absl::StrAppend(definitions_ptr, "  switch (index) {\n");
   // For each index value, generate the 'case' statement.
-  for (auto &[index_value, encodings] : encoding_map) {
+  for (auto& [index_value, encodings] : encoding_map) {
     absl::flat_hash_set<std::string> extracted;
     absl::StrAppend(definitions_ptr, "    case 0x", absl::Hex(index_value),
                     ": {\n");
     int if_count = 0;
-    for (auto *encoding : encodings) {
-      for (auto *constraint : encoding->equal_constraints()) {
+    for (auto* encoding : encodings) {
+      for (auto* constraint : encoding->equal_constraints()) {
         ProcessConstraint(extracted, constraint, definitions_ptr);
       }
       if_count += EmitEncodingIfStatement(/*indent*/ 4, encoding, opcode_enum,
@@ -435,15 +435,15 @@ void EncodingGroup::EmitComplexDecoderBody(
 }
 
 void EncodingGroup::EmitComplexDecoderBodyIfSequence(
-    std::string *definitions_ptr, absl::string_view opcode_enum) const {
+    std::string* definitions_ptr, absl::string_view opcode_enum) const {
   // For each instruction in the encoding vec, generate the if statement
   // to see if the instruction is matched.
   absl::flat_hash_set<std::string> extracted;
   int count = 0;
   // For equal constraints, some can be ignored because those bits are
   // wholly considered by the parent groups or the discriminator.
-  for (auto *encoding : encoding_vec_) {
-    for (auto *constraint : encoding->equal_constraints()) {
+  for (auto* encoding : encoding_vec_) {
+    for (auto* constraint : encoding->equal_constraints()) {
       ProcessConstraint(extracted, constraint, definitions_ptr);
     }
     count += EmitEncodingIfStatement(/*indent*/ 0, encoding, opcode_enum,
@@ -456,11 +456,11 @@ void EncodingGroup::EmitComplexDecoderBodyIfSequence(
 }
 
 void EncodingGroup::ProcessConstraint(
-    const absl::flat_hash_set<std::string> &extracted, Constraint *constraint,
-    std::string *definitions_ptr) const {
+    const absl::flat_hash_set<std::string>& extracted, Constraint* constraint,
+    std::string* definitions_ptr) const {
   if (constraint->field != nullptr) {
     // Field constraint.
-    Field *field = constraint->field;
+    Field* field = constraint->field;
     std::string name = absl::StrCat(field->name, "_value");
     if (extracted.contains(name)) return;
     uint64_t mask = ((1ULL << field->width) - 1);
@@ -474,7 +474,7 @@ void EncodingGroup::ProcessConstraint(
   }
 
   // It's an overlay constraint.
-  Overlay *overlay = constraint->overlay;
+  Overlay* overlay = constraint->overlay;
   std::string name = absl::StrCat(overlay->name(), "_value");
   uint64_t mask = 0;
   // Get the bits that correspond to the overlay.
@@ -496,9 +496,9 @@ void EncodingGroup::ProcessConstraint(
 }
 
 int EncodingGroup::EmitEncodingIfStatement(
-    int indent, const InstructionEncoding *encoding,
-    absl::string_view opcode_enum, absl::flat_hash_set<std::string> &extracted,
-    std::string *definitions_ptr) const {
+    int indent, const InstructionEncoding* encoding,
+    absl::string_view opcode_enum, absl::flat_hash_set<std::string>& extracted,
+    std::string* definitions_ptr) const {
   std::string indent_str(indent + 2, ' ');
   // Write any field/overlay extractions needed for the encoding (that
   // haven't already been extracted).
@@ -510,7 +510,7 @@ int EncodingGroup::EmitEncodingIfStatement(
                   definitions_ptr);
   // Write any field/overlay extractions needed for the specializations (that
   // haven't already been extracted).
-  for (auto const &[unused, encoding] : encoding->specializations()) {
+  for (auto const& [unused, encoding] : encoding->specializations()) {
     EmitExtractions(indent, encoding->equal_constraints(), extracted,
                     definitions_ptr);
     EmitExtractions(indent, encoding->equal_extracted_constraints(), extracted,
@@ -546,7 +546,7 @@ int EncodingGroup::EmitEncodingIfStatement(
   // specialization.
   std::string if_str = "if ";
   if (specialization) {
-    for (auto const &[name, encoding] : encoding->specializations()) {
+    for (auto const& [name, encoding] : encoding->specializations()) {
       int spec_count = 0;
       std::string spec_condition;
       std::string spec_connector;
@@ -590,9 +590,9 @@ int EncodingGroup::EmitEncodingIfStatement(
 }
 
 void EncodingGroup::EmitFieldExtraction(
-    const Field *field, const std::string &indent_str,
-    absl::flat_hash_set<std::string> &extracted,
-    std::string *definitions_ptr) const {
+    const Field* field, const std::string& indent_str,
+    absl::flat_hash_set<std::string>& extracted,
+    std::string* definitions_ptr) const {
   std::string name = absl::StrCat(field->name, "_value");
   if (!extracted.contains(name)) {
     std::string data_type;
@@ -620,9 +620,9 @@ void EncodingGroup::EmitFieldExtraction(
 }
 
 void EncodingGroup::EmitOverlayExtraction(
-    const Overlay *overlay, const std::string &indent_str,
-    absl::flat_hash_set<std::string> &extracted,
-    std::string *definitions_ptr) const {
+    const Overlay* overlay, const std::string& indent_str,
+    absl::flat_hash_set<std::string>& extracted,
+    std::string* definitions_ptr) const {
   std::string name = absl::StrCat(overlay->name(), "_value");
   if (!extracted.contains(name)) {
     auto ovl_width = overlay->declared_width();
@@ -649,16 +649,16 @@ void EncodingGroup::EmitOverlayExtraction(
   }
 }
 
-void EncodingGroup::EmitExtractions(
-    int indent, const std::vector<Constraint *> &constraints,
-    absl::flat_hash_set<std::string> &extracted,
-    std::string *definitions_ptr) const {
+void EncodingGroup::EmitExtractions(int indent,
+                                    const std::vector<Constraint*>& constraints,
+                                    absl::flat_hash_set<std::string>& extracted,
+                                    std::string* definitions_ptr) const {
   std::string indent_str(indent + 2, ' ');
   // Write any field/overlay extractions needed for the constraints.
   // Note, the extractions may be wider than the instruction word width, due
   // to constant bits being added, so make sure to use appropriate type for
   // each extraction.
-  for (auto const *constraint : constraints) {
+  for (auto const* constraint : constraints) {
     if (constraint->can_ignore) continue;
     if (constraint->field != nullptr) {
       EmitFieldExtraction(constraint->field, indent_str, extracted,
@@ -678,10 +678,10 @@ void EncodingGroup::EmitExtractions(
 }
 
 int EncodingGroup::EmitOtherConstraintConditions(
-    const std::vector<Constraint *> &constraints, std::string &connector,
-    std::string *condition) const {
+    const std::vector<Constraint*>& constraints, std::string& connector,
+    std::string* condition) const {
   int count = 0;
-  for (auto const *constraint : constraints) {
+  for (auto const* constraint : constraints) {
     if (constraint->can_ignore) continue;
 
     std::string comparison(kComparison[static_cast<int>(constraint->type)]);
@@ -709,10 +709,10 @@ int EncodingGroup::EmitOtherConstraintConditions(
 }
 
 int EncodingGroup::EmitConstraintConditions(
-    const std::vector<Constraint *> &constraints, absl::string_view comparison,
-    std::string &connector, std::string *condition) const {
+    const std::vector<Constraint*>& constraints, absl::string_view comparison,
+    std::string& connector, std::string* condition) const {
   int count = 0;
-  for (auto const *constraint : constraints) {
+  for (auto const* constraint : constraints) {
     std::string comparison(kComparison[static_cast<int>(constraint->type)]);
     if (constraint->can_ignore) continue;
     std::string name = absl::StrCat((constraint->field != nullptr)
@@ -757,7 +757,7 @@ std::string EncodingGroup::DumpGroup(std::string prefix, std::string indent) {
       "  encodings:     ", encoding_vec_.size(), "\n");
   if (encoding_group_vec_.empty()) {
     auto recipe = GetExtractionRecipe(varying_ & mask_ & ~ignore_);
-    for (auto *enc : encoding_vec_) {
+    for (auto* enc : encoding_vec_) {
       uint64_t value = ExtractValue(enc->GetValue(), recipe);
       absl::StrAppend(&output, "//", indent, "  ", enc->name(), ": ",
                       absl::Hex(enc->GetValue() & varying_ & mask_, pad), " : ",
@@ -770,7 +770,7 @@ std::string EncodingGroup::DumpGroup(std::string prefix, std::string indent) {
         mask &= ~ignore_;
         absl::StrAppend(&output, absl::Hex(mask, pad), ": ");
       }
-      for (auto *constraint : enc->equal_extracted_constraints()) {
+      for (auto* constraint : enc->equal_extracted_constraints()) {
         std::string name = constraint->field == nullptr
                                ? constraint->overlay->name()
                                : constraint->field->name;
@@ -778,7 +778,7 @@ std::string EncodingGroup::DumpGroup(std::string prefix, std::string indent) {
                         absl::Hex(constraint->value, absl::PadSpec::kZeroPad8),
                         " ");
       }
-      for (auto *constraint : enc->other_constraints()) {
+      for (auto* constraint : enc->other_constraints()) {
         std::string name = constraint->field == nullptr
                                ? constraint->overlay->name()
                                : constraint->field->name;
@@ -797,7 +797,7 @@ std::string EncodingGroup::DumpGroup(std::string prefix, std::string indent) {
       absl::StrAppend(&output, "\n");
     }
   } else {
-    for (auto *group : encoding_group_vec_) {
+    for (auto* group : encoding_group_vec_) {
       absl::StrAppend(&output, group->DumpGroup("SUB" + prefix, indent + "  "));
     }
   }

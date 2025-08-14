@@ -131,7 +131,7 @@ BinFormatVisitor::BinFormatVisitor() {
 }
 
 BinFormatVisitor::~BinFormatVisitor() {
-  for (auto *wrapper : antlr_parser_wrappers_) {
+  for (auto* wrapper : antlr_parser_wrappers_) {
     delete wrapper;
   }
   antlr_parser_wrappers_.clear();
@@ -140,17 +140,17 @@ BinFormatVisitor::~BinFormatVisitor() {
 using ::mpact::sim::machine_description::instruction_set::ToHeaderGuard;
 
 absl::Status BinFormatVisitor::Process(
-    const std::vector<std::string> &file_names, const std::string &decoder_name,
-    absl::string_view prefix, const std::vector<std::string> &include_roots,
+    const std::vector<std::string>& file_names, const std::string& decoder_name,
+    absl::string_view prefix, const std::vector<std::string>& include_roots,
     absl::string_view directory) {
   decoder_name_ = decoder_name;
 
   include_dir_vec_.push_back(".");
-  for (const auto &root : include_roots) {
+  for (const auto& root : include_roots) {
     include_dir_vec_.push_back(root);
   }
 
-  std::istream *source_stream = &std::cin;
+  std::istream* source_stream = &std::cin;
 
   if (!file_names.empty()) {
     source_stream = new std::fstream(file_names[0], std::fstream::in);
@@ -166,7 +166,7 @@ absl::Status BinFormatVisitor::Process(
   parser_wrapper.parser()->addErrorListener(error_listener());
 
   // Parse the file and then create the data structures.
-  TopLevelCtx *top_level = parser_wrapper.parser()->top_level();
+  TopLevelCtx* top_level = parser_wrapper.parser()->top_level();
   (void)top_level;
   if (!file_names.empty()) {
     delete source_stream;
@@ -247,13 +247,13 @@ absl::Status BinFormatVisitor::Process(
   return absl::OkStatus();
 }
 
-void BinFormatVisitor::PerformEncodingChecks(BinEncodingInfo *encoding) {
+void BinFormatVisitor::PerformEncodingChecks(BinEncodingInfo* encoding) {
   encoding->decoder()->CheckEncodings();
 }
 
 BinFormatVisitor::StringTriple BinFormatVisitor::EmitDecoderFilePrefix(
-    const std::string &dot_h_name, const std::string &types_dot_h_name,
-    BinEncodingInfo *encoding_info) const {
+    const std::string& dot_h_name, const std::string& types_dot_h_name,
+    BinEncodingInfo* encoding_info) const {
   std::string h_string;
   std::string cc_string;
   std::string types_string;
@@ -284,7 +284,7 @@ BinFormatVisitor::StringTriple BinFormatVisitor::EmitDecoderFilePrefix(
                   "#include <iostream>\n"
                   "#include <cstdint>\n"
                   "\n");
-  for (auto const &include_file : encoding_info->include_files()) {
+  for (auto const& include_file : encoding_info->include_files()) {
     absl::StrAppend(&h_string, "#include ", include_file, "\n");
   }
   absl::StrAppend(&h_string, "\n");
@@ -292,7 +292,7 @@ BinFormatVisitor::StringTriple BinFormatVisitor::EmitDecoderFilePrefix(
                   "\"\n"
                   "#include \"",
                   types_dot_h_name, "\"\n\n");
-  for (auto &name_space : encoding_info->decoder()->namespaces()) {
+  for (auto& name_space : encoding_info->decoder()->namespaces()) {
     auto name_space_str = absl::StrCat("namespace ", name_space, " {\n");
     absl::StrAppend(&h_string, name_space_str);
     absl::StrAppend(&cc_string, name_space_str);
@@ -308,7 +308,7 @@ BinFormatVisitor::StringTriple BinFormatVisitor::EmitDecoderFilePrefix(
                   "enum class FormatEnum {\n"
                   "  kNone = 0,\n");
   int i = 1;
-  for (auto &[name, unused] : encoding_info->format_map()) {
+  for (auto& [name, unused] : encoding_info->format_map()) {
     absl::StrAppend(&h_string, "  k", ToPascalCase(name), " = ", i++, ",\n");
   }
   absl::StrAppend(&h_string, "};\n\n");
@@ -316,8 +316,8 @@ BinFormatVisitor::StringTriple BinFormatVisitor::EmitDecoderFilePrefix(
 }
 
 BinFormatVisitor::StringTriple BinFormatVisitor::EmitFileSuffix(
-    const std::string &dot_h_name, const std::string &types_dot_h_name,
-    BinEncodingInfo *encoding_info) {
+    const std::string& dot_h_name, const std::string& types_dot_h_name,
+    BinEncodingInfo* encoding_info) {
   std::string h_string;
   std::string cc_string;
   std::string types_string;
@@ -325,7 +325,7 @@ BinFormatVisitor::StringTriple BinFormatVisitor::EmitFileSuffix(
   absl::StrAppend(&h_string, "\n");
   absl::StrAppend(&cc_string, "\n");
   if (!types_dot_h_name.empty()) absl::StrAppend(&types_string, "\n");
-  auto &namespaces = encoding_info->decoder()->namespaces();
+  auto& namespaces = encoding_info->decoder()->namespaces();
   for (auto rptr = namespaces.rbegin(); rptr != namespaces.rend(); rptr++) {
     std::string name_space = absl::StrCat("}  // namespace ", *rptr, "\n");
     absl::StrAppend(&h_string, name_space);
@@ -342,7 +342,7 @@ BinFormatVisitor::StringTriple BinFormatVisitor::EmitFileSuffix(
 }
 
 BinFormatVisitor::StringTriple BinFormatVisitor::EmitDecoderCode(
-    BinEncodingInfo *encoding) {
+    BinEncodingInfo* encoding) {
   std::string h_string;
   std::string cc_string;
   std::string group_string;
@@ -350,16 +350,16 @@ BinFormatVisitor::StringTriple BinFormatVisitor::EmitDecoderCode(
   std::string extractor_class =
       absl::StrCat("class Extractors {\n", "public: \n");
   // Write out the inline functions for bitfield and overlay extractions.
-  for (auto &[unused, format_ptr] : encoding->format_map()) {
+  for (auto& [unused, format_ptr] : encoding->format_map()) {
     auto extractors = format_ptr->GenerateExtractors();
     absl::StrAppend(&h_string, extractors.h_output);
     absl::StrAppend(&extractor_class, extractors.class_output);
     absl::StrAppend(&extractor_types, extractors.types_output);
   }
   absl::StrAppend(&h_string, extractor_class, "};\n\n");
-  auto *decoder = encoding->decoder();
+  auto* decoder = encoding->decoder();
   // Generate the code for decoders.
-  for (auto *group : decoder->instruction_group_vec()) {
+  for (auto* group : decoder->instruction_group_vec()) {
     auto [h_decoder, cc_decoder] = group->EmitDecoderCode();
     absl::StrAppend(&h_string, h_decoder);
     absl::StrAppend(&cc_string, cc_decoder);
@@ -372,8 +372,8 @@ BinFormatVisitor::StringTriple BinFormatVisitor::EmitDecoderCode(
 }
 
 std::tuple<std::string, std::string> BinFormatVisitor::EmitEncoderFilePrefix(
-    const std::string &dot_h_name, const std::string &enum_h_name,
-    const std::string &types_dot_h_name, BinEncodingInfo *encoding_info) const {
+    const std::string& dot_h_name, const std::string& enum_h_name,
+    const std::string& types_dot_h_name, BinEncodingInfo* encoding_info) const {
   std::string h_string;
   std::string cc_string;
 
@@ -404,7 +404,7 @@ std::tuple<std::string, std::string> BinFormatVisitor::EmitEncoderFilePrefix(
                   "\"\n"
                   "#include \"",
                   types_dot_h_name, "\"\n\n");
-  for (auto &name_space : encoding_info->decoder()->namespaces()) {
+  for (auto& name_space : encoding_info->decoder()->namespaces()) {
     auto name_space_str = absl::StrCat("namespace ", name_space, " {\n");
     absl::StrAppend(&cc_string, name_space_str);
     absl::StrAppend(&h_string, name_space_str);
@@ -416,21 +416,21 @@ std::tuple<std::string, std::string> BinFormatVisitor::EmitEncoderFilePrefix(
 }
 
 std::tuple<std::string, std::string> BinFormatVisitor::EmitEncoderCode(
-    BinEncodingInfo *encoding) {
+    BinEncodingInfo* encoding) {
   std::string h_string;
   std::string cc_string;
   // Write out the inline functions for bitfield and overlay encoding.
   absl::StrAppend(&h_string, "struct Encoder {\n\n");
-  for (auto &[unused, format_ptr] : encoding->format_map()) {
+  for (auto& [unused, format_ptr] : encoding->format_map()) {
     auto functions = format_ptr->GenerateInserters();
     absl::StrAppend(&h_string, functions);
   }
   absl::StrAppend(&h_string, "};  // struct Encoder\n\n");
   absl::flat_hash_set<std::string> groups;
-  auto *decoder = encoding->decoder();
+  auto* decoder = encoding->decoder();
   // Generate the code for decoders.
   absl::btree_map<std::string, std::tuple<uint64_t, int>> encodings;
-  for (auto *group : decoder->instruction_group_vec()) {
+  for (auto* group : decoder->instruction_group_vec()) {
     group->GetInstructionEncodings(encodings);
   }
   std::string opcode_enum = encoding->opcode_enum();
@@ -441,7 +441,7 @@ std::tuple<std::string, std::string> BinFormatVisitor::EmitEncoderCode(
                   opcode_enum,
                   ", std::tuple<uint64_t, int>>> kOpcodeEncodings({\n");
   absl::StrAppend(&cc_string, "  {", opcode_enum, "::kNone, {0x0ULL, 0}},\n");
-  for (auto &[name, pair] : encodings) {
+  for (auto& [name, pair] : encodings) {
     auto [value, width] = pair;
     std::string enum_name =
         absl::StrCat(opcode_enum, "::k", ToPascalCase(name));
@@ -453,7 +453,7 @@ std::tuple<std::string, std::string> BinFormatVisitor::EmitEncoderCode(
 }
 
 // Parse the range and convert to a BitRange.
-BitRange BinFormatVisitor::GetBitIndexRange(BitIndexRangeCtx *ctx) {
+BitRange BinFormatVisitor::GetBitIndexRange(BitIndexRangeCtx* ctx) {
   int start = ConvertToInt(ctx->number(0));
   int stop = start;
   if (ctx->number().size() == 2) {
@@ -464,7 +464,7 @@ BitRange BinFormatVisitor::GetBitIndexRange(BitIndexRangeCtx *ctx) {
 
 // Parse a binary number string such as 0b1010'0111 and return a BinaryNum
 // to encode the value and width.
-BinaryNum BinFormatVisitor::ParseBinaryNum(TerminalNode *node) {
+BinaryNum BinFormatVisitor::ParseBinaryNum(TerminalNode* node) {
   std::string bin_str = node->getText();
   if (bin_str.substr(0, 2) != "0b") {
     error_listener_->semanticError(node->getSymbol(),
@@ -489,7 +489,7 @@ BinaryNum BinFormatVisitor::ParseBinaryNum(TerminalNode *node) {
 }
 
 // Parse a number string and return the value.
-int BinFormatVisitor::ConvertToInt(NumberCtx *ctx) {
+int BinFormatVisitor::ConvertToInt(NumberCtx* ctx) {
   // Binary has to be handled separately.
   auto bin_number = ctx->BIN_NUMBER();
   if (bin_number != nullptr) {
@@ -501,7 +501,7 @@ int BinFormatVisitor::ConvertToInt(NumberCtx *ctx) {
 }
 
 std::unique_ptr<BinEncodingInfo> BinFormatVisitor::ProcessTopLevel(
-    const std::string &decoder_name) {
+    const std::string& decoder_name) {
   // At this point we have the contexts for all slots, bundles and isas.
   // First make sure the named isa (decoder) has been defined.
   auto decoder_iter = decoder_decl_map_.find(decoder_name);
@@ -517,10 +517,10 @@ std::unique_ptr<BinEncodingInfo> BinFormatVisitor::ProcessTopLevel(
   // will have been visited. Build a multi-map from referenced format to parent
   // format.
   absl::btree_multimap<std::string, std::string> reference_map;
-  for (auto &[format_name, ctx_ptr] : format_decl_map_) {
+  for (auto& [format_name, ctx_ptr] : format_decl_map_) {
     // Skip those that have already been visited.
     if (bin_encoding_info->GetFormat(format_name) != nullptr) continue;
-    for (auto *field_ctx : ctx_ptr->format_field_defs()->field_def()) {
+    for (auto* field_ctx : ctx_ptr->format_field_defs()->field_def()) {
       if (field_ctx->format_name != nullptr) {
         reference_map.emplace(field_ctx->format_name->getText(), format_name);
       }
@@ -528,12 +528,12 @@ std::unique_ptr<BinEncodingInfo> BinFormatVisitor::ProcessTopLevel(
   }
   // Now, starting at each visited format, traverse links in the reference_map
   // to transitively visit any "parent" formats.
-  std::list<Format *> format_list;
-  for (auto &[unused, fmt_ptr] : bin_encoding_info->format_map()) {
+  std::list<Format*> format_list;
+  for (auto& [unused, fmt_ptr] : bin_encoding_info->format_map()) {
     format_list.push_back(fmt_ptr);
   }
   while (!format_list.empty()) {
-    auto *format = format_list.front();
+    auto* format = format_list.front();
     format_list.pop_front();
     for (auto iter = reference_map.lower_bound(format->name());
          iter != reference_map.upper_bound(format->name()); iter++) {
@@ -547,10 +547,10 @@ std::unique_ptr<BinEncodingInfo> BinFormatVisitor::ProcessTopLevel(
   return bin_encoding_info;
 }
 
-void BinFormatVisitor::PreProcessDeclarations(DeclarationListCtx *ctx) {
-  std::vector<IncludeFileCtx *> include_files;
+void BinFormatVisitor::PreProcessDeclarations(DeclarationListCtx* ctx) {
+  std::vector<IncludeFileCtx*> include_files;
 
-  for (auto *declaration : ctx->declaration()) {
+  for (auto* declaration : ctx->declaration()) {
     context_file_map_.insert({declaration, current_file_index_});
     // Create map from format name to format ctx.
     if (declaration->format_def() != nullptr) {
@@ -589,7 +589,7 @@ void BinFormatVisitor::PreProcessDeclarations(DeclarationListCtx *ctx) {
     include_files.push_back(declaration->include_file());
   }
   // Create map from decoder name to decoder ctx.
-  for (auto *decoder_def : ctx->decoder_def()) {
+  for (auto* decoder_def : ctx->decoder_def()) {
     context_file_map_.insert({decoder_def, current_file_index_});
     auto name = decoder_def->name->getText();
     auto iter = decoder_decl_map_.find(name);
@@ -602,18 +602,18 @@ void BinFormatVisitor::PreProcessDeclarations(DeclarationListCtx *ctx) {
     }
     decoder_decl_map_.emplace(name, decoder_def);
   }
-  for (auto *include_file_ctx : include_files) {
+  for (auto* include_file_ctx : include_files) {
     VisitIncludeFile(include_file_ctx);
   }
 }
 
-void BinFormatVisitor::VisitIncludeFile(IncludeFileCtx *ctx) {
+void BinFormatVisitor::VisitIncludeFile(IncludeFileCtx* ctx) {
   // The literal includes the double quotes.
   std::string literal = ctx->STRING_LITERAL()->getText();
   // Remove the double quotes from the literal and construct the full file name.
   std::string file_name = literal.substr(1, literal.length() - 2);
   // Check for recursive include.
-  for (auto const &name : include_file_stack_) {
+  for (auto const& name : include_file_stack_) {
     if (name == file_name) {
       error_listener()->semanticError(
           ctx->start, absl::StrCat("Recursive include of '", file_name, "'"));
@@ -623,14 +623,14 @@ void BinFormatVisitor::VisitIncludeFile(IncludeFileCtx *ctx) {
   ParseIncludeFile(ctx, file_name, include_dir_vec_);
 }
 
-void BinFormatVisitor::ParseIncludeFile(antlr4::ParserRuleContext *ctx,
-                                        const std::string &file_name,
-                                        std::vector<std::string> const &dirs) {
+void BinFormatVisitor::ParseIncludeFile(antlr4::ParserRuleContext* ctx,
+                                        const std::string& file_name,
+                                        std::vector<std::string> const& dirs) {
   std::fstream include_file;
   // Open include file.
   // Try each of the include file directories.
   std::string include_name;
-  for (auto const &dir : dirs) {
+  for (auto const& dir : dirs) {
     include_name = absl::StrCat(dir, "/", file_name);
     include_file.open(include_name, std::fstream::in);
     if (include_file.is_open()) break;
@@ -656,16 +656,16 @@ void BinFormatVisitor::ParseIncludeFile(antlr4::ParserRuleContext *ctx,
   error_listener()->set_file_name(file_name);
   file_names_.push_back(file_name);
   current_file_index_ = file_names_.size() - 1;
-  auto *include_parser = new BinFmtAntlrParserWrapper(&include_file);
+  auto* include_parser = new BinFmtAntlrParserWrapper(&include_file);
   // We need to save the parser state so it's available for analysis after
   // we are done with building the parse trees.
   antlr_parser_wrappers_.push_back(include_parser);
   // Add the error listener.
   include_parser->parser()->removeErrorListeners();
   include_parser->parser()->addErrorListener(error_listener());
-  auto *top_level = include_parser->parser()->top_level();
+  auto* top_level = include_parser->parser()->top_level();
   // Start parsing at the declaratition_list rule.
-  DeclarationListCtx *declaration_list = top_level->declaration_list();
+  DeclarationListCtx* declaration_list = top_level->declaration_list();
   include_file.close();
   if (error_listener()->syntax_error_count() > 0) {
     error_listener()->set_file_name(previous_file_name);
@@ -675,7 +675,7 @@ void BinFormatVisitor::ParseIncludeFile(antlr4::ParserRuleContext *ctx,
   include_file_stack_.push_back(file_name);
   PreProcessDeclarations(declaration_list);
   // See if there is a once declaration in the file.
-  OnceCtx *once_ctx = top_level->once();
+  OnceCtx* once_ctx = top_level->once();
   if (once_ctx != nullptr) {
     once_include_files_.insert(include_name);
   }
@@ -684,8 +684,8 @@ void BinFormatVisitor::ParseIncludeFile(antlr4::ParserRuleContext *ctx,
   current_file_index_ = previous_file_index_;
 }
 
-void BinFormatVisitor::VisitFormatDef(FormatDefCtx *ctx,
-                                      BinEncodingInfo *encoding_info) {
+void BinFormatVisitor::VisitFormatDef(FormatDefCtx* ctx,
+                                      BinEncodingInfo* encoding_info) {
   if (ctx == nullptr) return;
   // Get the format name and width.
   std::string format_name = ctx->IDENT()->getText();
@@ -703,10 +703,10 @@ void BinFormatVisitor::VisitFormatDef(FormatDefCtx *ctx,
                      "': must specify a width or inherited format"));
     return;
   }
-  absl::StatusOr<Format *> format_res;
+  absl::StatusOr<Format*> format_res;
   if (ctx->inherits_from() != nullptr) {
     std::string parent_name = ctx->inherits_from()->IDENT()->getText();
-    auto *parent_format = encoding_info->GetFormat(parent_name);
+    auto* parent_format = encoding_info->GetFormat(parent_name);
     if (parent_format == nullptr) {
       auto iter = format_decl_map_.find(parent_name);
       if (iter != format_decl_map_.end()) {
@@ -767,8 +767,8 @@ void BinFormatVisitor::VisitFormatDef(FormatDefCtx *ctx,
   }
 }
 
-void BinFormatVisitor::VisitFieldDef(FieldDefCtx *ctx, Format *format,
-                                     BinEncodingInfo *encoding_info) {
+void BinFormatVisitor::VisitFieldDef(FieldDefCtx* ctx, Format* format,
+                                     BinEncodingInfo* encoding_info) {
   if (ctx == nullptr) return;
 
   std::string field_name(ctx->field_name->getText());
@@ -804,7 +804,7 @@ void BinFormatVisitor::VisitFieldDef(FieldDefCtx *ctx, Format *format,
   }
   std::string format_ref_name = ctx->format_name->getText();
   // Make sure that the referred to format is fully parsed.
-  auto *format_ref = encoding_info->GetFormat(format_ref_name);
+  auto* format_ref = encoding_info->GetFormat(format_ref_name);
   if (format_ref == nullptr) {
     auto iter = format_decl_map_.find(format_ref_name);
     if (iter != format_decl_map_.end()) {
@@ -823,7 +823,7 @@ void BinFormatVisitor::VisitFieldDef(FieldDefCtx *ctx, Format *format,
                                   ctx->start);
 }
 
-void BinFormatVisitor::VisitOverlayDef(OverlayDefCtx *ctx, Format *format) {
+void BinFormatVisitor::VisitOverlayDef(OverlayDefCtx* ctx, Format* format) {
   if (ctx == nullptr) return;
 
   std::string name(ctx->IDENT()->getText());
@@ -843,9 +843,9 @@ void BinFormatVisitor::VisitOverlayDef(OverlayDefCtx *ctx, Format *format) {
                                    ctx->start, overlay_res.status().message());
     return;
   }
-  auto *overlay = overlay_res.value();
+  auto* overlay = overlay_res.value();
   int file_index = context_file_map_.at(ctx);
-  for (auto *bit_field : ctx->bit_field_list()->bit_field_spec()) {
+  for (auto* bit_field : ctx->bit_field_list()->bit_field_spec()) {
     context_file_map_.insert({bit_field, file_index});
     VisitOverlayBitField(bit_field, overlay);
   }
@@ -858,15 +858,15 @@ void BinFormatVisitor::VisitOverlayDef(OverlayDefCtx *ctx, Format *format) {
   }
 }
 
-void BinFormatVisitor::VisitOverlayBitField(BitFieldCtx *ctx,
-                                            Overlay *overlay) {
+void BinFormatVisitor::VisitOverlayBitField(BitFieldCtx* ctx,
+                                            Overlay* overlay) {
   if (ctx == nullptr) return;
 
   if (ctx->IDENT() != nullptr) {
     // This is a reference to a bit field in the format.
     if (ctx->bit_range_list() != nullptr) {
       std::vector<BitRange> bit_ranges_;
-      for (auto *range : ctx->bit_range_list()->bit_index_range()) {
+      for (auto* range : ctx->bit_range_list()->bit_index_range()) {
         bit_ranges_.push_back(GetBitIndexRange(range));
       }
       auto status = overlay->AddFieldReference(ctx->IDENT()->getText(),
@@ -887,7 +887,7 @@ void BinFormatVisitor::VisitOverlayBitField(BitFieldCtx *ctx,
   // Is this a reference to the format itself?
   if (ctx->bit_range_list() != nullptr) {
     std::vector<BitRange> bit_ranges_;
-    for (auto *range : ctx->bit_range_list()->bit_index_range()) {
+    for (auto* range : ctx->bit_range_list()->bit_index_range()) {
       bit_ranges_.push_back(GetBitIndexRange(range));
     }
     auto status = overlay->AddFormatReference(std::move(bit_ranges_));
@@ -903,8 +903,8 @@ void BinFormatVisitor::VisitOverlayBitField(BitFieldCtx *ctx,
   overlay->AddBitConstant(bin_num);
 }
 
-InstructionGroup *BinFormatVisitor::VisitInstructionGroupDef(
-    InstructionGroupDefCtx *ctx, BinEncodingInfo *encoding_info) {
+InstructionGroup* BinFormatVisitor::VisitInstructionGroupDef(
+    InstructionGroupDefCtx* ctx, BinEncodingInfo* encoding_info) {
   if (ctx == nullptr) return nullptr;
 
   // Create the named instruction group.
@@ -929,7 +929,7 @@ InstructionGroup *BinFormatVisitor::VisitInstructionGroupDef(
       return nullptr;
     } else {
       VisitFormatDef(iter->second, encoding_info);
-      auto *format = encoding_info->GetFormat(format_name);
+      auto* format = encoding_info->GetFormat(format_name);
       // Verify that the format width = declared width and also <= 64 bits wide.
       if (format->declared_width() != width) {
         error_listener_->semanticError(
@@ -958,9 +958,9 @@ InstructionGroup *BinFormatVisitor::VisitInstructionGroupDef(
       return nullptr;
     }
     // Parse the instruction encoding definitions in the instruction group.
-    auto *inst_group = inst_group_res.value();
+    auto* inst_group = inst_group_res.value();
     int file_index = context_file_map_.at(ctx);
-    for (auto *inst_def : ctx->instruction_def_list()->instruction_def()) {
+    for (auto* inst_def : ctx->instruction_def_list()->instruction_def()) {
       context_file_map_.insert({inst_def, file_index});
       VisitInstructionDef(inst_def, inst_group);
     }
@@ -974,8 +974,8 @@ InstructionGroup *BinFormatVisitor::VisitInstructionGroupDef(
                                        group_name_set, encoding_info);
 }
 
-void BinFormatVisitor::VisitInstructionDef(InstructionDefCtx *ctx,
-                                           InstructionGroup *inst_group) {
+void BinFormatVisitor::VisitInstructionDef(InstructionDefCtx* ctx,
+                                           InstructionGroup* inst_group) {
   if (ctx == nullptr) return;
   // If it is a generator, process it.
   if (ctx->generate != nullptr) {
@@ -1015,30 +1015,30 @@ void BinFormatVisitor::VisitInstructionDef(InstructionDefCtx *ctx,
             ") differs from the declared width of the instruction group (",
             inst_group->width(), ")"));
   }
-  auto *inst_encoding =
+  auto* inst_encoding =
       inst_group->AddInstructionEncoding(ctx->format_name, name, format);
   if (format == nullptr) return;
   // Add constraints to the instruction encoding.
-  for (auto *constraint : ctx->field_constraint_list()->field_constraint()) {
+  for (auto* constraint : ctx->field_constraint_list()->field_constraint()) {
     context_file_map_.insert({constraint, file_index});
     VisitConstraint(format, constraint, inst_encoding);
   }
 }
 
 void BinFormatVisitor::ProcessInstructionDefGenerator(
-    InstructionDefCtx *ctx, InstructionGroup *inst_group) {
+    InstructionDefCtx* ctx, InstructionGroup* inst_group) {
   if (ctx == nullptr) return;
   absl::flat_hash_set<std::string> range_variable_names;
-  std::vector<RangeAssignmentInfo *> range_info_vec;
+  std::vector<RangeAssignmentInfo*> range_info_vec;
   // Process range assignment lists. The range assignment is either a single
   // value or a structured binding assignment. If it's a binding assignment we
   // need to make sure each tuple has the same number of values as there are
   // idents to assign them to.
   int file_index = context_file_map_.at(ctx);
-  for (auto *assign_ctx : ctx->range_assignment()) {
-    auto *range_info = new RangeAssignmentInfo();
+  for (auto* assign_ctx : ctx->range_assignment()) {
+    auto* range_info = new RangeAssignmentInfo();
     range_info_vec.push_back(range_info);
-    for (auto *ident_ctx : assign_ctx->IDENT()) {
+    for (auto* ident_ctx : assign_ctx->IDENT()) {
       std::string name = ident_ctx->getText();
       if (range_variable_names.contains(name)) {
         error_listener()->semanticError(
@@ -1061,7 +1061,7 @@ void BinFormatVisitor::ProcessInstructionDefGenerator(
     }
     // See if it's a list of simple values.
     if (!assign_ctx->gen_value().empty()) {
-      for (auto *gen_value_ctx : assign_ctx->gen_value()) {
+      for (auto* gen_value_ctx : assign_ctx->gen_value()) {
         if (gen_value_ctx->IDENT() != nullptr) {
           range_info->range_values[0].push_back(
               gen_value_ctx->IDENT()->getText());
@@ -1078,10 +1078,10 @@ void BinFormatVisitor::ProcessInstructionDefGenerator(
       continue;
     }
     // It's a list of tuples with a structured binding assignment.
-    for (auto *tuple_ctx : assign_ctx->tuple()) {
+    for (auto* tuple_ctx : assign_ctx->tuple()) {
       if (tuple_ctx->gen_value().size() != range_info->range_names.size()) {
         // Clean up.
-        for (auto *info : range_info_vec) delete info;
+        for (auto* info : range_info_vec) delete info;
         error_listener_->semanticError(
             file_names_[file_index], assign_ctx->start,
             "Number of values differs from number of identifiers");
@@ -1123,7 +1123,7 @@ void BinFormatVisitor::ProcessInstructionDefGenerator(
   }
   if (error_listener()->HasError()) {
     // Clean up.
-    for (auto *info : range_info_vec) delete info;
+    for (auto* info : range_info_vec) delete info;
     return;
   }
 
@@ -1132,23 +1132,23 @@ void BinFormatVisitor::ProcessInstructionDefGenerator(
   std::string generated_text =
       GenerateInstructionDefList(range_info_vec, 0, input_text);
   // Parse and process the generated text.
-  auto *parser = new BinFmtAntlrParserWrapper(generated_text);
+  auto* parser = new BinFmtAntlrParserWrapper(generated_text);
   antlr_parser_wrappers_.push_back(parser);
   // Parse the text starting at the opcode_spec_list rule.
   auto instruction_defs =
       parser->parser()->instruction_def_list()->instruction_def();
   // Process the opcode spec.
-  for (auto *inst_def : instruction_defs) {
+  for (auto* inst_def : instruction_defs) {
     context_file_map_.insert({inst_def, file_index});
     VisitInstructionDef(inst_def, inst_group);
   }
   // Clean up.
-  for (auto *info : range_info_vec) delete info;
+  for (auto* info : range_info_vec) delete info;
 }
 
 std::string BinFormatVisitor::GenerateInstructionDefList(
-    const std::vector<RangeAssignmentInfo *> &range_info_vec, int index,
-    const std::string &template_str_in) const {
+    const std::vector<RangeAssignmentInfo*>& range_info_vec, int index,
+    const std::string& template_str_in) const {
   std::string generated;
   // Iterate for the number of values.
   for (int i = 0; i < range_info_vec[index]->range_values[0].size(); ++i) {
@@ -1158,7 +1158,7 @@ std::string BinFormatVisitor::GenerateInstructionDefList(
     // current set of values.
     int var_index = 0;
     int replace_count = 0;
-    for (auto &re : range_info_vec[index]->range_regexes) {
+    for (auto& re : range_info_vec[index]->range_regexes) {
       replace_count += RE2::GlobalReplace(
           &template_str, re,
           range_info_vec[index]->range_values[var_index++][i]);
@@ -1181,8 +1181,8 @@ std::string BinFormatVisitor::GenerateInstructionDefList(
   return generated;
 }
 
-void BinFormatVisitor::VisitConstraint(Format *format, FieldConstraintCtx *ctx,
-                                       InstructionEncoding *inst_encoding) {
+void BinFormatVisitor::VisitConstraint(Format* format, FieldConstraintCtx* ctx,
+                                       InstructionEncoding* inst_encoding) {
   if (ctx == nullptr) return;
   if (inst_encoding == nullptr) return;
 
@@ -1200,8 +1200,8 @@ void BinFormatVisitor::VisitConstraint(Format *format, FieldConstraintCtx *ctx,
     // field width.
     if (ctx->number()->BIN_NUMBER() != nullptr) {
       int length = ParseBinaryNum(ctx->number()->BIN_NUMBER()).width;
-      auto *field = format->GetField(field_name);
-      auto *overlay = format->GetOverlay(field_name);
+      auto* field = format->GetField(field_name);
+      auto* overlay = format->GetOverlay(field_name);
       if (field != nullptr) {
         if (field->width != length) {
           error_listener_->semanticWarning(
@@ -1234,14 +1234,14 @@ void BinFormatVisitor::VisitConstraint(Format *format, FieldConstraintCtx *ctx,
 }
 
 std::unique_ptr<BinEncodingInfo> BinFormatVisitor::VisitDecoderDef(
-    DecoderDefCtx *ctx) {
+    DecoderDefCtx* ctx) {
   if (ctx == nullptr) return nullptr;
   std::string name = ctx->name->getText();
 
   // First get the opcode enum.
   int opcode_count = 0;
   std::string opcode_enum;
-  for (auto *attr_ctx : ctx->decoder_attribute()) {
+  for (auto* attr_ctx : ctx->decoder_attribute()) {
     if (attr_ctx->opcode_enum_decl() != nullptr) {
       auto opcode_enum_literal =
           attr_ctx->opcode_enum_decl()->STRING_LITERAL()->getText();
@@ -1262,14 +1262,14 @@ std::unique_ptr<BinEncodingInfo> BinFormatVisitor::VisitDecoderDef(
   }
   auto encoding_info =
       std::make_unique<BinEncodingInfo>(opcode_enum, error_listener_.get());
-  auto *decoder = encoding_info->AddBinDecoder(name);
+  auto* decoder = encoding_info->AddBinDecoder(name);
   if (decoder == nullptr) return nullptr;
   absl::flat_hash_set<std::string> group_name_set;
   int namespace_count = 0;
-  for (auto *attr_ctx : ctx->decoder_attribute()) {
+  for (auto* attr_ctx : ctx->decoder_attribute()) {
     // Include files.
     if (attr_ctx->include_files() != nullptr) {
-      for (auto *include_file : attr_ctx->include_files()->include_file()) {
+      for (auto* include_file : attr_ctx->include_files()->include_file()) {
         auto include_text = include_file->STRING_LITERAL()->getText();
         encoding_info->AddIncludeFile(include_text);
       }
@@ -1278,7 +1278,7 @@ std::unique_ptr<BinEncodingInfo> BinFormatVisitor::VisitDecoderDef(
     // Namespace declaration.
     if (attr_ctx->namespace_decl() != nullptr) {
       auto decl = attr_ctx->namespace_decl();
-      for (auto *namespace_name : decl->namespace_ident()) {
+      for (auto* namespace_name : decl->namespace_ident()) {
         decoder->namespaces().push_back(namespace_name->getText());
       }
       if (namespace_count > 0) {
@@ -1304,7 +1304,7 @@ std::unique_ptr<BinEncodingInfo> BinFormatVisitor::VisitDecoderDef(
       }
 
       auto map_iter = encoding_info->instruction_group_map().find(group_name);
-      InstructionGroup *inst_group = nullptr;
+      InstructionGroup* inst_group = nullptr;
       if (map_iter != encoding_info->instruction_group_map().end()) {
         inst_group = map_iter->second;
       } else {
@@ -1338,7 +1338,7 @@ std::unique_ptr<BinEncodingInfo> BinFormatVisitor::VisitDecoderDef(
       auto file_index = context_file_map_.at(ctx);
       context_file_map_.insert(
           {attr_ctx->group_name()->group_name_list(), file_index});
-      auto *parent_group = VisitInstructionGroupNameList(
+      auto* parent_group = VisitInstructionGroupNameList(
           group_name, attr_ctx->group_name()->group_name_list(), group_name_set,
           encoding_info.get());
       if (parent_group == nullptr) {
@@ -1356,14 +1356,14 @@ std::unique_ptr<BinEncodingInfo> BinFormatVisitor::VisitDecoderDef(
   return encoding_info;
 }
 
-InstructionGroup *BinFormatVisitor::VisitInstructionGroupNameList(
-    const std::string &group_name, GroupNameListCtx *ctx,
-    absl::flat_hash_set<std::string> &group_name_set,
-    BinEncodingInfo *encoding_info) {
-  std::vector<InstructionGroup *> child_groups;
+InstructionGroup* BinFormatVisitor::VisitInstructionGroupNameList(
+    const std::string& group_name, GroupNameListCtx* ctx,
+    absl::flat_hash_set<std::string>& group_name_set,
+    BinEncodingInfo* encoding_info) {
+  std::vector<InstructionGroup*> child_groups;
   std::string group_format_name;
   // Iterate through the list of named "child" groups to combine.
-  for (auto *ident : ctx->IDENT()) {
+  for (auto* ident : ctx->IDENT()) {
     auto child_name = ident->getText();
     if (group_name_set.contains(child_name)) {
       error_listener_->semanticError(
@@ -1372,7 +1372,7 @@ InstructionGroup *BinFormatVisitor::VisitInstructionGroupNameList(
                        "' - ignored"));
       continue;
     }
-    InstructionGroup *child_group = nullptr;
+    InstructionGroup* child_group = nullptr;
     auto map_iter = encoding_info->instruction_group_map().find(child_name);
     if (map_iter != encoding_info->instruction_group_map().end()) {
       child_group = map_iter->second;
@@ -1420,26 +1420,26 @@ InstructionGroup *BinFormatVisitor::VisitInstructionGroupNameList(
     return nullptr;
   }
   auto parent_group = res.value();
-  for (auto *child_group : child_groups) {
-    for (auto *encoding : child_group->encoding_vec()) {
+  for (auto* child_group : child_groups) {
+    for (auto* encoding : child_group->encoding_vec()) {
       parent_group->AddInstructionEncoding(new InstructionEncoding(*encoding));
     }
   }
   return parent_group;
 }
 
-void BinFormatVisitor::ProcessSpecializations(BinEncodingInfo *encoding_info) {
-  for (auto *ctx : specializations_) {
+void BinFormatVisitor::ProcessSpecializations(BinEncodingInfo* encoding_info) {
+  for (auto* ctx : specializations_) {
     auto file_index = context_file_map_.at(ctx);
     std::string name = ctx->name->getText();
     std::string parent_name = ctx->parent->getText();
-    for (auto &[unused, grp_ptr] : encoding_info->instruction_group_map()) {
+    for (auto& [unused, grp_ptr] : encoding_info->instruction_group_map()) {
       auto iter = grp_ptr->encoding_name_map().find(parent_name);
       if (iter != grp_ptr->encoding_name_map().end()) {
-        auto *parent_encoding = iter->second;
-        auto *format = parent_encoding->format();
-        auto *inst_encoding = new InstructionEncoding(name, format);
-        for (auto *constraint :
+        auto* parent_encoding = iter->second;
+        auto* format = parent_encoding->format();
+        auto* inst_encoding = new InstructionEncoding(name, format);
+        for (auto* constraint :
              ctx->field_constraint_list()->field_constraint()) {
           context_file_map_.insert({constraint, file_index});
           VisitConstraint(format, constraint, inst_encoding);

@@ -29,13 +29,13 @@ namespace sim {
 namespace generic {
 
 BreakpointManager::BreakpointManager(
-    ActionPointManagerBase *action_point_manager,
+    ActionPointManagerBase* action_point_manager,
     RequestHaltFunction req_halt_function)
     : req_halt_function_(std::move(req_halt_function)),
       action_point_manager_(action_point_manager) {}
 
 BreakpointManager::~BreakpointManager() {
-  for (auto const &[unused, bp_ptr] : breakpoint_map_) {
+  for (auto const& [unused, bp_ptr] : breakpoint_map_) {
     delete bp_ptr;
   }
   req_halt_function_ = nullptr;
@@ -57,7 +57,7 @@ absl::Status BreakpointManager::SetBreakpoint(uint64_t address) {
   if (!result.ok()) return result.status();
   auto id = result.value();
 
-  auto *bp = new BreakpointInfo{address, id, /*is_active=*/true};
+  auto* bp = new BreakpointInfo{address, id, /*is_active=*/true};
   breakpoint_map_.insert(std::make_pair(address, bp));
 
   return absl::OkStatus();
@@ -75,7 +75,7 @@ absl::Status BreakpointManager::ClearBreakpoint(uint64_t address) {
   auto status = action_point_manager_->ClearAction(address, iter->second->id);
   if (!status.ok()) return status;
 
-  auto *bp = iter->second;
+  auto* bp = iter->second;
   breakpoint_map_.erase(iter);
   delete bp;
   return absl::OkStatus();
@@ -106,7 +106,7 @@ absl::Status BreakpointManager::EnableBreakpoint(uint64_t address) {
 }
 
 void BreakpointManager::ClearAllBreakpoints() {
-  for (auto const &[unused, bp_ptr] : breakpoint_map_) {
+  for (auto const& [unused, bp_ptr] : breakpoint_map_) {
     (void)action_point_manager_->ClearAction(bp_ptr->address, bp_ptr->id);
     delete bp_ptr;
   }

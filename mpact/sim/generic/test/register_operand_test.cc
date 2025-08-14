@@ -17,11 +17,10 @@
 
 #include "absl/strings/string_view.h"
 #include "absl/types/any.h"
-#include "googlemock/include/gmock/gmock.h"
+#include "googlemock/include/gmock/gmock.h"  // IWYU pragma: keep
 #include "googletest/include/gtest/gtest.h"
 #include "mpact/sim/generic/arch_state.h"
 #include "mpact/sim/generic/data_buffer.h"
-#include "mpact/sim/generic/delay_line.h"
 #include "mpact/sim/generic/operand_interface.h"
 #include "mpact/sim/generic/register.h"
 #include "mpact/sim/generic/simple_resource.h"
@@ -42,7 +41,7 @@ static constexpr int kTestPoolSize = 35;
 // protected.
 class MockArchState : public ArchState {
  public:
-  MockArchState(absl::string_view id, SourceOperandInterface *pc_op)
+  MockArchState(absl::string_view id, SourceOperandInterface* pc_op)
       : ArchState(id, pc_op) {}
   explicit MockArchState(absl::string_view id) : MockArchState(id, nullptr) {}
 };
@@ -70,30 +69,30 @@ class RegisterOperandTest : public testing::Test {
     delete arch_state_;
   }
 
-  MockArchState *arch_state_;
-  ScalarRegister *sreg_;
-  Vector8Register *vreg_;
-  ScalarReservedRegister *rreg_ = nullptr;
-  SimpleResourcePool *pool_;
+  MockArchState* arch_state_;
+  ScalarRegister* sreg_;
+  Vector8Register* vreg_;
+  ScalarReservedRegister* rreg_ = nullptr;
+  SimpleResourcePool* pool_;
 };
 
 // Tests that the register source operands are initialized correctly.
 TEST_F(RegisterOperandTest, SourceOperandInitialization) {
   auto s_src_op = sreg_->CreateSourceOperand();
-  EXPECT_EQ(std::any_cast<RegisterBase *>(s_src_op->GetObject()),
-            static_cast<RegisterBase *>(sreg_));
+  EXPECT_EQ(std::any_cast<RegisterBase*>(s_src_op->GetObject()),
+            static_cast<RegisterBase*>(sreg_));
   EXPECT_EQ(s_src_op->shape(), sreg_->shape());
   delete s_src_op;
 
   auto v_src_op = vreg_->CreateSourceOperand();
-  EXPECT_EQ(std::any_cast<RegisterBase *>(v_src_op->GetObject()),
-            static_cast<RegisterBase *>(vreg_));
+  EXPECT_EQ(std::any_cast<RegisterBase*>(v_src_op->GetObject()),
+            static_cast<RegisterBase*>(vreg_));
   EXPECT_EQ(v_src_op->shape(), vreg_->shape());
   delete v_src_op;
 
   auto r_src_op = rreg_->CreateSourceOperand();
-  EXPECT_EQ(std::any_cast<RegisterBase *>(r_src_op->GetObject()),
-            static_cast<RegisterBase *>(rreg_));
+  EXPECT_EQ(std::any_cast<RegisterBase*>(r_src_op->GetObject()),
+            static_cast<RegisterBase*>(rreg_));
   EXPECT_EQ(r_src_op->shape(), rreg_->shape());
   delete r_src_op;
 }
@@ -103,22 +102,22 @@ TEST_F(RegisterOperandTest, DestinationOperandInitialization) {
   auto s_dst_op = sreg_->CreateDestinationOperand(1);
   EXPECT_EQ(s_dst_op->latency(), 1);
   EXPECT_EQ(s_dst_op->shape(), sreg_->shape());
-  EXPECT_EQ(std::any_cast<RegisterBase *>(s_dst_op->GetObject()),
-            static_cast<RegisterBase *>(sreg_));
+  EXPECT_EQ(std::any_cast<RegisterBase*>(s_dst_op->GetObject()),
+            static_cast<RegisterBase*>(sreg_));
   delete s_dst_op;
 
   auto v_dst_op = vreg_->CreateDestinationOperand(4);
   EXPECT_EQ(v_dst_op->latency(), 4);
   EXPECT_EQ(v_dst_op->shape(), vreg_->shape());
-  EXPECT_EQ(std::any_cast<RegisterBase *>(v_dst_op->GetObject()),
-            static_cast<RegisterBase *>(vreg_));
+  EXPECT_EQ(std::any_cast<RegisterBase*>(v_dst_op->GetObject()),
+            static_cast<RegisterBase*>(vreg_));
   delete v_dst_op;
 
   auto r_dst_op = rreg_->CreateDestinationOperand(3);
   EXPECT_EQ(r_dst_op->latency(), 3);
   EXPECT_EQ(r_dst_op->shape(), rreg_->shape());
-  EXPECT_EQ(std::any_cast<RegisterBase *>(r_dst_op->GetObject()),
-            static_cast<RegisterBase *>(rreg_));
+  EXPECT_EQ(std::any_cast<RegisterBase*>(r_dst_op->GetObject()),
+            static_cast<RegisterBase*>(rreg_));
   delete r_dst_op;
 }
 
@@ -129,7 +128,7 @@ TEST_F(RegisterOperandTest, ScalarRegisterValueWriteAndRead) {
   auto src_op = sreg_->CreateSourceOperand();
 
   // Get DataBuffer from destination operand and initialize the value.
-  DataBuffer *db = dst_op->AllocateDataBuffer();
+  DataBuffer* db = dst_op->AllocateDataBuffer();
   db->Set<uint32_t>(0, 0xDEADBEEF);
   // Submit data buffer and advance the delay line by the 1 cycle latency.
   db->Submit();
@@ -140,7 +139,7 @@ TEST_F(RegisterOperandTest, ScalarRegisterValueWriteAndRead) {
 
   // Get a new data buffer with copy of the current value and verify value is
   // correct.
-  DataBuffer *db2 = dst_op->CopyDataBuffer();
+  DataBuffer* db2 = dst_op->CopyDataBuffer();
   EXPECT_EQ(db2->Get<uint32_t>(0), 0xDEADBEEF);
 
   // Change value, submit the data buffer and advance the delay line 1 cycle.
@@ -162,7 +161,7 @@ TEST_F(RegisterOperandTest, VectorRegisterValueWriteAndRead) {
   auto src_op = vreg_->CreateSourceOperand();
 
   // Get DataBuffer from destination operand and initialize the value.
-  DataBuffer *db = dst_op->AllocateDataBuffer();
+  DataBuffer* db = dst_op->AllocateDataBuffer();
   for (int index = 0; index < vreg_->shape()[0]; index++) {
     db->Set<uint32_t>(index, 0xDEAD0000 | index);
   }
@@ -178,7 +177,7 @@ TEST_F(RegisterOperandTest, VectorRegisterValueWriteAndRead) {
   }
 
   // Get DataBuffer from destination operand with copy of the current value.
-  DataBuffer *db2 = dst_op->CopyDataBuffer();
+  DataBuffer* db2 = dst_op->CopyDataBuffer();
 
   // Verify that the value is the same as before.
   for (int index = 0; index < vreg_->shape()[0]; index++) {
@@ -210,7 +209,7 @@ TEST_F(RegisterOperandTest, ReservedRegisterValueWriteAndRead) {
   rreg_->resource()->Acquire();
 
   // Get DataBuffer from destination operand and initialize the value.
-  DataBuffer *db = dst_op->AllocateDataBuffer();
+  DataBuffer* db = dst_op->AllocateDataBuffer();
 
   db->Set<uint32_t>(0, 0xDEAD0000);
 
@@ -225,7 +224,7 @@ TEST_F(RegisterOperandTest, ReservedRegisterValueWriteAndRead) {
   EXPECT_EQ(src_op->AsUint32(0), 0xDEAD0000);
 
   // Get DataBuffer from destination operand with copy of the current value.
-  DataBuffer *db2 = dst_op->CopyDataBuffer();
+  DataBuffer* db2 = dst_op->CopyDataBuffer();
 
   EXPECT_TRUE(rreg_->resource()->IsFree());
   rreg_->resource()->Acquire();

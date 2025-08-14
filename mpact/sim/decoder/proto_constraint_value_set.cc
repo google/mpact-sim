@@ -32,8 +32,8 @@ namespace proto_fmt {
 
 // Local helper function used to get the minimum value for a given constraint
 // expression based on its type.
-static ProtoConstraintExpression *MinValueExpr(
-    const ProtoConstraintExpression *expr) {
+static ProtoConstraintExpression* MinValueExpr(
+    const ProtoConstraintExpression* expr) {
   auto res = expr->GetValue();
   if (!res.ok()) return nullptr;
   auto value = res.value();
@@ -65,8 +65,8 @@ static ProtoConstraintExpression *MinValueExpr(
 
 // Local helper function used to get the minimum value for a given constraint
 // expression based on its type.
-static ProtoConstraintExpression *MaxValueExpr(
-    const ProtoConstraintExpression *expr) {
+static ProtoConstraintExpression* MaxValueExpr(
+    const ProtoConstraintExpression* expr) {
   auto res = expr->GetValue();
   if (!res.ok()) return nullptr;
   auto value = res.value();
@@ -98,8 +98,8 @@ static ProtoConstraintExpression *MaxValueExpr(
 
 // Basic constructor taking explicit arguments for the data members.
 ProtoConstraintValueSet::ProtoConstraintValueSet(
-    const ProtoConstraintExpression *min, bool min_included,
-    const ProtoConstraintExpression *max, bool max_included) {
+    const ProtoConstraintExpression* min, bool min_included,
+    const ProtoConstraintExpression* max, bool max_included) {
   // If either expression is nullptr, the range is malformed and treated as
   // empty.
   if ((min == nullptr || max == nullptr)) return;
@@ -113,9 +113,9 @@ ProtoConstraintValueSet::ProtoConstraintValueSet(
 // Constructor that initializes the value set based on the expression that is
 // part of the constraint.
 ProtoConstraintValueSet::ProtoConstraintValueSet(
-    const ProtoConstraint *constraint) {
+    const ProtoConstraint* constraint) {
   field_descriptor_ = constraint->field_descriptor;
-  auto *expr = constraint->expr;
+  auto* expr = constraint->expr;
   switch (constraint->op) {
     case ConstraintType::kEq:
       subranges_.emplace_back(expr->Clone(), true, expr->Clone(), true);
@@ -138,15 +138,15 @@ ProtoConstraintValueSet::ProtoConstraintValueSet(
       break;
     case ConstraintType::kHas: {
       int32_t value = -1;
-      auto *field = constraint->field_descriptor;
-      auto *one_of = constraint->field_descriptor->containing_oneof();
+      auto* field = constraint->field_descriptor;
+      auto* one_of = constraint->field_descriptor->containing_oneof();
       for (int32_t i = 0; i < one_of->field_count(); ++i) {
         if (one_of->field(i)->name() == field->name()) {
           value = i;
           break;
         }
       }
-      ProtoConstraintExpression *expr =
+      ProtoConstraintExpression* expr =
           new ProtoConstraintValueExpression(value);
       subranges_.emplace_back(expr, true, expr->Clone(), true);
       break;
@@ -158,9 +158,9 @@ ProtoConstraintValueSet::ProtoConstraintValueSet(
 
 // Copy constructor.
 ProtoConstraintValueSet::ProtoConstraintValueSet(
-    const ProtoConstraintValueSet &other) {
+    const ProtoConstraintValueSet& other) {
   field_descriptor_ = other.field_descriptor_;
-  for (auto const &subrange : other.subranges_) {
+  for (auto const& subrange : other.subranges_) {
     subranges_.emplace_back(
         subrange.min == nullptr ? nullptr : subrange.min->Clone(),
         subrange.min_included,
@@ -170,7 +170,7 @@ ProtoConstraintValueSet::ProtoConstraintValueSet(
 }
 
 ProtoConstraintValueSet::~ProtoConstraintValueSet() {
-  for (auto &subrange : subranges_) {
+  for (auto& subrange : subranges_) {
     delete subrange.min;
     delete subrange.max;
   }
@@ -181,7 +181,7 @@ ProtoConstraintValueSet::~ProtoConstraintValueSet() {
 // sets.
 template <typename T>
 ProtoConstraintValueSet::SubRange ProtoConstraintValueSet::IntersectSubrange(
-    const SubRange &lhs_subrange, const SubRange &rhs_subrange) const {
+    const SubRange& lhs_subrange, const SubRange& rhs_subrange) const {
   // If both min and max are nullptr, then lhs is already a null set.
   if ((lhs_subrange.min == nullptr) && (rhs_subrange.min == nullptr)) {
     return {nullptr, false, nullptr, false};
@@ -260,11 +260,11 @@ ProtoConstraintValueSet::SubRange ProtoConstraintValueSet::IntersectSubrange(
 // Iterate over the subranges to perform subrange by subrange intersection.
 template <typename T>
 void ProtoConstraintValueSet::IntersectSubranges(
-    const std::vector<SubRange> &lhs_subranges,
-    const std::vector<SubRange> &rhs_subranges,
-    std::vector<SubRange> &new_subranges) const {
-  for (auto const &lhs_subrange : lhs_subranges) {
-    for (auto const &rhs_subrange : rhs_subranges) {
+    const std::vector<SubRange>& lhs_subranges,
+    const std::vector<SubRange>& rhs_subranges,
+    std::vector<SubRange>& new_subranges) const {
+  for (auto const& lhs_subrange : lhs_subranges) {
+    for (auto const& rhs_subrange : rhs_subranges) {
       auto subrange = IntersectSubrange<T>(lhs_subrange, rhs_subrange);
       // Ignore empty sets.
       if ((subrange.min != nullptr) && (subrange.max != nullptr)) {
@@ -275,11 +275,11 @@ void ProtoConstraintValueSet::IntersectSubranges(
 }
 
 absl::Status ProtoConstraintValueSet::IntersectWith(
-    const ProtoConstraintValueSet &rhs) {
+    const ProtoConstraintValueSet& rhs) {
   std::vector<SubRange> new_subranges;
   // If either set is empty, the result is empty.
   if (IsEmpty() || rhs.IsEmpty()) {
-    for (auto &subrange : subranges_) {
+    for (auto& subrange : subranges_) {
       delete subrange.min;
       delete subrange.max;
     }
@@ -288,9 +288,9 @@ absl::Status ProtoConstraintValueSet::IntersectWith(
   }
   // Get expressions to check on type compatibility. Signal error if types
   // don't match.
-  auto const *lhs_expr =
+  auto const* lhs_expr =
       subranges_[0].min != nullptr ? subranges_[0].min : subranges_[0].max;
-  auto const *rhs_expr = rhs.subranges_[0].min != nullptr
+  auto const* rhs_expr = rhs.subranges_[0].min != nullptr
                              ? rhs.subranges_[0].min
                              : rhs.subranges_[0].max;
   if ((lhs_expr != nullptr) && (rhs_expr != nullptr) &&
@@ -326,7 +326,7 @@ absl::Status ProtoConstraintValueSet::IntersectWith(
           absl::StrCat("Unsupported type in range"));
   }
   // Clean up the old subranges and replace with the new subranges.
-  for (auto &subrange : subranges_) {
+  for (auto& subrange : subranges_) {
     delete subrange.min;
     delete subrange.max;
   }
@@ -336,10 +336,10 @@ absl::Status ProtoConstraintValueSet::IntersectWith(
 }
 
 absl::Status ProtoConstraintValueSet::UnionWith(
-    const ProtoConstraintValueSet &rhs) {
+    const ProtoConstraintValueSet& rhs) {
   if (rhs.IsEmpty()) return absl::OkStatus();
   // Copy the rhs subranges.
-  for (auto &subrange : rhs.subranges_) {
+  for (auto& subrange : rhs.subranges_) {
     SubRange new_subrange;
     new_subrange.min =
         subrange.min != nullptr ? subrange.min->Clone() : nullptr;

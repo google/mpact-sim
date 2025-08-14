@@ -24,10 +24,9 @@
 
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
-#include "absl/types/optional.h"
-#include "absl/types/variant.h"
-#include "googlemock/include/gmock/gmock.h"
+#include "googlemock/include/gmock/gmock.h"  // IWYU pragma: keep
 #include "googletest/include/gtest/gtest.h"
+#include "mpact/sim/generic/counters_base.h"
 #include "mpact/sim/proto/component_data.pb.h"
 #include "src/google/protobuf/text_format.h"
 
@@ -65,7 +64,7 @@ constexpr char kProtoValue[] = R"pb(
 template <typename T>
 class Max {
  public:
-  bool operator()(const T &in, T *out) {
+  bool operator()(const T& in, T* out) {
     if (value_.has_value() && (in <= *value_)) return false;
     value_ = in;
     *out = in;
@@ -83,7 +82,7 @@ class Max {
 class Count {
  public:
   template <typename T>
-  bool operator()(const T &in, int64_t *out) {
+  bool operator()(const T& in, int64_t* out) {
     *out = ++value_;
     return true;
   }
@@ -157,7 +156,7 @@ TEST(CountersTest, SimpleCounterInitialValue) {
   CounterValue cv = int64_counter.GetCounterValue();
   EXPECT_EQ(std::get<int64_t>(cv), kMinusFive);
   EXPECT_EQ(int64_counter.ToString(), absl::StrCat(kMinusFive));
-  EXPECT_EQ(static_cast<mpact::sim::generic::CounterValueOutputBase<int64_t> *>(
+  EXPECT_EQ(static_cast<mpact::sim::generic::CounterValueOutputBase<int64_t>*>(
                 &int64_counter)
                 ->ToString(),
             absl::StrCat(kMinusFive));
@@ -210,7 +209,7 @@ TEST(CountersTest, FunctionMaxTest) {
   std::vector<double> values = {1.1, 5.2, 3.3, 9.4, 2.5, 0.6};
   // Pass in default constructed instance of Max<double>.
   FunctionCounter<double> max("max", Max<double>());
-  for (auto const &val : values) {
+  for (auto const& val : values) {
     max.SetValue(val);
   }
   // Verify that the computed max is the same as that computed by max_element.
@@ -222,7 +221,7 @@ TEST(CountersTest, FunctionCountTest) {
   std::vector<double> values = {1.1, 5.2, 3.3, 9.4, 2.5, 0.6};
   // Pass in default constructed instance of Count<double>.
   FunctionCounter<double, int64_t> count("count", Count());
-  for (auto const &val : values) {
+  for (auto const& val : values) {
     count.SetValue(val);
   }
   // Verify that the element count is the same as the vector size.
@@ -241,14 +240,14 @@ TEST(CountersTest, ExportTest) {
   // is an intended use case for reading out the values of the counters and
   // exporting it to a proto in order to save the simulation results at the end
   // of a run.
-  std::vector<CounterBaseInterface *> counter_vector;
+  std::vector<CounterBaseInterface*> counter_vector;
   counter_vector.push_back(&int64_counter);
   counter_vector.push_back(&uint64_counter);
   counter_vector.push_back(&double_counter);
 
   auto exported_proto = std::make_unique<ComponentData>();
-  ComponentValueEntry *entry;
-  for (auto const &counter : counter_vector) {
+  ComponentValueEntry* entry;
+  for (auto const& counter : counter_vector) {
     entry = exported_proto->add_statistics();
     EXPECT_TRUE(counter->Export(entry).ok());
   }

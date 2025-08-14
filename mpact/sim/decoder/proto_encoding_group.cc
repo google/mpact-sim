@@ -45,10 +45,10 @@ using ::mpact::sim::machine_description::instruction_set::ToPascalCase;
 using ::mpact::sim::machine_description::instruction_set::ToSnakeCase;
 
 struct FieldInfo {
-  const google::protobuf::FieldDescriptor *field;
-  const google::protobuf::OneofDescriptor *oneof;
-  QualifiedIdentCtx *ctx;
-  absl::btree_multimap<int64_t, const ProtoInstructionEncoding *> value_map;
+  const google::protobuf::FieldDescriptor* field;
+  const google::protobuf::OneofDescriptor* oneof;
+  QualifiedIdentCtx* ctx;
+  absl::btree_multimap<int64_t, const ProtoInstructionEncoding*> value_map;
   int64_t min_value = 0;
   int64_t max_value = 0;
   size_t unique_values = 0;
@@ -57,48 +57,48 @@ struct FieldInfo {
 
 using ConstraintValueRange = ProtoConstraintValueSet::SubRange;
 
-ProtoEncodingGroup::ProtoEncodingGroup(ProtoInstructionGroup *inst_group,
+ProtoEncodingGroup::ProtoEncodingGroup(ProtoInstructionGroup* inst_group,
                                        int level,
-                                       DecoderErrorListener *error_listener)
+                                       DecoderErrorListener* error_listener)
     : ProtoEncodingGroup(nullptr, inst_group, level, error_listener) {}
 
-ProtoEncodingGroup::ProtoEncodingGroup(ProtoEncodingGroup *parent,
-                                       ProtoInstructionGroup *inst_group,
+ProtoEncodingGroup::ProtoEncodingGroup(ProtoEncodingGroup* parent,
+                                       ProtoInstructionGroup* inst_group,
                                        int level,
-                                       DecoderErrorListener *error_listener)
+                                       DecoderErrorListener* error_listener)
     : inst_group_(inst_group),
       parent_(parent),
       error_listener_(error_listener),
       level_(level) {}
 
 ProtoEncodingGroup::~ProtoEncodingGroup() {
-  for (auto const &[unused, field_info] : field_map_) {
+  for (auto const& [unused, field_info] : field_map_) {
     delete field_info;
   }
   field_map_.clear();
-  for (auto const *enc : encoding_vec_) {
+  for (auto const* enc : encoding_vec_) {
     delete enc;
   }
   encoding_vec_.clear();
   inst_group_ = nullptr;
-  for (auto const *enc_group : encoding_group_vec_) {
+  for (auto const* enc_group : encoding_group_vec_) {
     delete enc_group;
   }
   encoding_group_vec_.clear();
 }
 
-void ProtoEncodingGroup::AddEncoding(ProtoInstructionEncoding *enc) {
+void ProtoEncodingGroup::AddEncoding(ProtoInstructionEncoding* enc) {
   // All constraints in equal_constraints are kEq constraints on integer
   // fields, or are kHas constraints which are kEq constraints on the
   // '_value()' function of the one_of field (which is an int value).
   // The first step is to determine which constraints differentiate the most
   // instructions in the encoding group.
-  for (auto *eq_constraint : enc->equal_constraints()) {
-    auto const *field = eq_constraint->field_descriptor;
-    auto const *oneof = field->containing_oneof();
-    auto const *expr = eq_constraint->expr;
+  for (auto* eq_constraint : enc->equal_constraints()) {
+    auto const* field = eq_constraint->field_descriptor;
+    auto const* oneof = field->containing_oneof();
+    auto const* expr = eq_constraint->expr;
     auto op = eq_constraint->op;
-    auto *qualifed_ident_ctx = eq_constraint->ctx->qualified_ident();
+    auto* qualifed_ident_ctx = eq_constraint->ctx->qualified_ident();
     int64_t value;  // Store the value in an int64_t.
     if (op == ConstraintType::kEq) {
       switch (expr->variant_type()) {
@@ -149,7 +149,7 @@ void ProtoEncodingGroup::AddEncoding(ProtoInstructionEncoding *enc) {
     // If the field_info doesn't exist, add a new field_info.
     auto name = field != nullptr ? field->name() : oneof->name();
     auto iter = field_map_.find(name);
-    FieldInfo *field_info = nullptr;
+    FieldInfo* field_info = nullptr;
     if (iter == field_map_.end()) {
       field_info = new FieldInfo{field, oneof};
       field_info->min_value = std::numeric_limits<int64_t>::max();
@@ -168,9 +168,9 @@ void ProtoEncodingGroup::AddEncoding(ProtoInstructionEncoding *enc) {
   encoding_vec_.push_back(enc);
   // Populate the other_* sets. These are used later to ensure that sub groups
   // aren't added with differentiators that are also used in other constraints.
-  for (auto *constraint : enc->other_constraints()) {
-    auto const *field = constraint->field_descriptor;
-    auto const *oneof = field->containing_oneof();
+  for (auto* constraint : enc->other_constraints()) {
+    auto const* field = constraint->field_descriptor;
+    auto const* oneof = field->containing_oneof();
     if (oneof != nullptr) {
       other_oneof_set_.insert(oneof);
       continue;
@@ -187,12 +187,12 @@ void ProtoEncodingGroup::AddSubGroups() {
   // the number of total values in its interval.
   // To start with just pick the one with the largest number of unique values,
   // as that should create a shallower decoding tree.
-  FieldInfo *best_field = nullptr;
-  absl::flat_hash_set<ProtoInstructionEncoding *> encodings;
+  FieldInfo* best_field = nullptr;
+  absl::flat_hash_set<ProtoInstructionEncoding*> encodings;
   for (auto enc : encoding_vec_) {
     encodings.insert(enc);
   }
-  for (auto &[unused, field_info] : field_map_) {
+  for (auto& [unused, field_info] : field_map_) {
     // First check if the field is used in any other constraints, e.g., '>' or
     // '!='. If so, it is not a candidate for a direct lookup of the value.
     if (other_field_set_.contains(field_info->field)) continue;
@@ -221,7 +221,7 @@ void ProtoEncodingGroup::AddSubGroups() {
   for (auto iter = best_field->value_map.begin();
        iter != best_field->value_map.end();
        /*empty*/) {
-    auto *enc_group =
+    auto* enc_group =
         new ProtoEncodingGroup(this, inst_group_, level_ + 1, error_listener_);
     int64_t value = iter->first;
     enc_group->set_value(value);
@@ -229,11 +229,11 @@ void ProtoEncodingGroup::AddSubGroups() {
       // First create a copy of the encoding and remove the constraint
       // that corresponds with the field info, so it will not be considered
       // below.
-      ProtoInstructionEncoding *enc =
+      ProtoInstructionEncoding* enc =
           new ProtoInstructionEncoding(*(iter->second));
       // Remove the best_field constraint from the new encoding object.
       auto v_iter = enc->equal_constraints().begin();
-      ProtoConstraint *constraint = nullptr;
+      ProtoConstraint* constraint = nullptr;
       while (v_iter != enc->equal_constraints().end()) {
         constraint = *v_iter;
         if (constraint->op == ConstraintType::kEq) {
@@ -265,14 +265,14 @@ void ProtoEncodingGroup::AddSubGroups() {
   // Any encodings remaining in the map have to be added to each of the sub
   // groups, as they weren't selected by value.
   for (auto enc : encodings) {
-    for (auto *enc_group : encoding_group_vec_) {
+    for (auto* enc_group : encoding_group_vec_) {
       auto enc_copy = new ProtoInstructionEncoding(*enc);
       enc_group->AddEncoding(enc_copy);
     }
   }
   encodings.clear();
   // Recursively try to split the child encoding groups.
-  for (auto *enc_group : encoding_group_vec_) {
+  for (auto* enc_group : encoding_group_vec_) {
     enc_group->AddSubGroups();
   }
 }
@@ -284,11 +284,11 @@ void ProtoEncodingGroup::CheckEncodings() {
   // Encodings have to have additional constraints to differentiate between each
   // other, so check to see if any of them have none, and if so, signal an
   // error.
-  for (auto *enc : encoding_vec_) {
+  for (auto* enc : encoding_vec_) {
     if (enc->equal_constraints().empty() && enc->other_constraints().empty()) {
       std::string msg =
           absl::StrCat("Decoding ambiguity between '", enc->name(), "' and :");
-      for (auto *other_enc : encoding_vec_) {
+      for (auto* other_enc : encoding_vec_) {
         if (enc == other_enc) continue;
         absl::StrAppend(&msg, " '", other_enc->name(), "'");
       }
@@ -300,36 +300,36 @@ void ProtoEncodingGroup::CheckEncodings() {
   // Check for identical or overlapping constraints.
 
   // First sort the constraints in each vector.
-  std::vector<std::vector<ProtoConstraint *>> constraints;
+  std::vector<std::vector<ProtoConstraint*>> constraints;
   constraints.reserve(encoding_vec_.size());
-  for (auto *enc : encoding_vec_) {
+  for (auto* enc : encoding_vec_) {
     constraints.push_back({});
-    for (auto *constraint : enc->equal_constraints()) {
+    for (auto* constraint : enc->equal_constraints()) {
       constraints.back().push_back(constraint);
     }
-    for (auto *constraint : enc->other_constraints()) {
+    for (auto* constraint : enc->other_constraints()) {
       constraints.back().push_back(constraint);
     }
   }
   for (int i = 0; i < constraints.size(); ++i) {
     std::sort(
         constraints[i].begin(), constraints[i].end(),
-        [](const ProtoConstraint *lhs, const ProtoConstraint *rhs) -> bool {
+        [](const ProtoConstraint* lhs, const ProtoConstraint* rhs) -> bool {
           return lhs->field_descriptor->full_name() <
                  rhs->field_descriptor->full_name();
         });
   }
   // Now create value value sets for each field descriptor, combining multiple
   // constraints on the same field descriptor into a single set of values.
-  std::vector<std::vector<ProtoConstraintValueSet *>> value_sets;
+  std::vector<std::vector<ProtoConstraintValueSet*>> value_sets;
   value_sets.reserve(encoding_vec_.size());
-  for (auto const &constraint_vec : constraints) {
-    const google::protobuf::FieldDescriptor *previous = nullptr;
+  for (auto const& constraint_vec : constraints) {
+    const google::protobuf::FieldDescriptor* previous = nullptr;
     value_sets.push_back({});
-    for (auto const *constraint : constraint_vec) {
+    for (auto const* constraint : constraint_vec) {
       // If it's the first occurance of a field descriptor, create a new
       // range on this constraint.
-      ProtoConstraintValueSet *value_set = nullptr;
+      ProtoConstraintValueSet* value_set = nullptr;
       if (previous != constraint->field_descriptor) {
         previous = constraint->field_descriptor;
         value_set = new ProtoConstraintValueSet(constraint);
@@ -343,8 +343,8 @@ void ProtoEncodingGroup::CheckEncodings() {
       // Check for error.
       if (!status.ok()) {
         // Clean up.
-        for (auto &value_set_list : value_sets) {
-          for (auto *value_set : value_set_list) delete value_set;
+        for (auto& value_set_list : value_sets) {
+          for (auto* value_set : value_set_list) delete value_set;
         }
         value_sets.clear();
         // Signal error.
@@ -365,16 +365,16 @@ void ProtoEncodingGroup::CheckEncodings() {
     }
   }
   // Clean up.
-  for (auto &value_set_list : value_sets) {
-    for (auto *value_set : value_set_list) delete value_set;
+  for (auto& value_set_list : value_sets) {
+    for (auto* value_set : value_set_list) delete value_set;
   }
 }
 
 // Determine if the constraints overlap for two encodings lhs and rhs based on
 // the value sets.
 bool ProtoEncodingGroup::DoConstraintsOverlap(
-    const std::vector<ProtoConstraintValueSet *> &lhs,
-    const std::vector<ProtoConstraintValueSet *> &rhs) {
+    const std::vector<ProtoConstraintValueSet*>& lhs,
+    const std::vector<ProtoConstraintValueSet*>& rhs) {
   auto iter_lhs = lhs.begin();
   auto iter_rhs = rhs.begin();
   while ((iter_lhs != lhs.end()) && (iter_rhs != rhs.end())) {
@@ -433,7 +433,7 @@ std::string ProtoEncodingGroup::EmitLeafDecoder(
 
   // Helper lambda.
   auto generate_condition =
-      [](const ProtoConstraint *constraint) -> std::string {
+      [](const ProtoConstraint* constraint) -> std::string {
     std::string output;
     if (constraint->op == ConstraintType::kHas) {
       std::string ident = constraint->ctx->qualified_ident()->getText();
@@ -466,15 +466,15 @@ std::string ProtoEncodingGroup::EmitLeafDecoder(
   // Generate a chained if-else if-else-statement for the encodings in the
   // encoding vector.
   std::string indent_body(indent_width + 2, ' ');
-  for (auto *enc : encoding_vec_) {
+  for (auto* enc : encoding_vec_) {
     // Generate the if statement conditions.
     absl::StrAppend(&output, indent, if_sep, "if (");
     std::string cond_sep;
-    for (auto const *constraint : enc->equal_constraints()) {
+    for (auto const* constraint : enc->equal_constraints()) {
       absl::StrAppend(&output, cond_sep, generate_condition(constraint));
       cond_sep = " && ";
     }
-    for (auto const *constraint : enc->other_constraints()) {
+    for (auto const* constraint : enc->other_constraints()) {
       absl::StrAppend(&output, cond_sep, generate_condition(constraint));
       cond_sep = " && ";
     }
@@ -498,7 +498,7 @@ std::string ProtoEncodingGroup::EmitLeafDecoder(
 
 namespace {
 
-bool LessThan(ProtoEncodingGroup *lhs, ProtoEncodingGroup *rhs) {
+bool LessThan(ProtoEncodingGroup* lhs, ProtoEncodingGroup* rhs) {
   return lhs->value() < rhs->value();
 }
 
@@ -527,7 +527,7 @@ std::string ProtoEncodingGroup::EmitComplexDecoder(
         "absl::NoDestructor<absl::flat_hash_map<int32_t, std::function<",
         opcode_enum, "(", message_type_name, ", ", decoder_class, "*)>>> ",
         map_name, "({\n");
-    for (auto *enc_group : encoding_group_vec_) {
+    for (auto* enc_group : encoding_group_vec_) {
       auto enc_value = enc_group->value();
       absl::StrAppend(&output, "  {", enc_value, ", ", fcn_name, "_", enc_value,
                       "},\n");
@@ -582,7 +582,7 @@ std::string ProtoEncodingGroup::EmitDecoders(
     absl::string_view message_type_name) {
   std::string output;
   // Emit decoders for subordinate groups (lower in the hierarchy).
-  for (auto *enc_group : encoding_group_vec_) {
+  for (auto* enc_group : encoding_group_vec_) {
     absl::StrAppend(
         &output,
         enc_group->EmitDecoders(absl::StrCat(fcn_name, "_", enc_group->value()),

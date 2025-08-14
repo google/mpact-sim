@@ -15,6 +15,7 @@
 #ifndef MPACT_SIM_GENERIC_DELAY_LINE_H_
 #define MPACT_SIM_GENERIC_DELAY_LINE_H_
 
+#include <cstdint>
 #include <vector>
 
 /* Commented out for now. Not currently using threads.
@@ -101,7 +102,7 @@ class DelayLine : public DelayLineInterface {
   int Advance() override /*ABSL_LOCKS_EXCLUDED(delay_line_lock_)*/ {
     // absl::MutexLock dl(&delay_line_lock_);
     current_ = (current_ + 1) & mask_;
-    for (auto &rec : delay_line_[current_]) {
+    for (auto& rec : delay_line_[current_]) {
       rec.Apply();
       num_entries_--;
     }

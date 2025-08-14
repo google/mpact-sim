@@ -54,13 +54,13 @@ class MemoryUseTracker {
   // Size of each 'use' bit store.
   static constexpr int kBitsSize = kSegmentSize / (kGranularity * 8);
   void MarkUsed(uint64_t address, int size);
-  void WriteUseProfile(std::ostream &os) const;
+  void WriteUseProfile(std::ostream& os) const;
 
  private:
   uint64_t last_start_ = 0;
   uint64_t last_end_ = 0;
-  uint8_t *last_used_ = nullptr;
-  absl::btree_map<MemoryWatcher::AddressRange, uint8_t *,
+  uint8_t* last_used_ = nullptr;
+  absl::btree_map<MemoryWatcher::AddressRange, uint8_t*,
                   MemoryWatcher::AddressRangeLess>
       memory_use_map_;
 };
@@ -72,20 +72,20 @@ class MemoryUseProfiler : public MemoryInterface {
  public:
   // The default constructor does not set up memory forwarding.
   MemoryUseProfiler();
-  explicit MemoryUseProfiler(MemoryInterface *memory);
+  explicit MemoryUseProfiler(MemoryInterface* memory);
   ~MemoryUseProfiler() override = default;
 
   // Inherited from memory interfaces.
-  void Load(uint64_t address, DataBuffer *db, Instruction *inst,
-            ReferenceCount *context) override;
-  void Load(DataBuffer *address_db, DataBuffer *mask_db, int el_size,
-            DataBuffer *db, Instruction *inst,
-            ReferenceCount *context) override;
-  void Store(uint64_t address, DataBuffer *db) override;
-  void Store(DataBuffer *address_db, DataBuffer *mask_db, int el_size,
-             DataBuffer *db) override;
+  void Load(uint64_t address, DataBuffer* db, Instruction* inst,
+            ReferenceCount* context) override;
+  void Load(DataBuffer* address_db, DataBuffer* mask_db, int el_size,
+            DataBuffer* db, Instruction* inst,
+            ReferenceCount* context) override;
+  void Store(uint64_t address, DataBuffer* db) override;
+  void Store(DataBuffer* address_db, DataBuffer* mask_db, int el_size,
+             DataBuffer* db) override;
 
-  void WriteProfile(std::ostream &os) const { tracker_.WriteUseProfile(os); }
+  void WriteProfile(std::ostream& os) const { tracker_.WriteUseProfile(os); }
 
   // Accessor.
   void set_is_enabled(bool is_enabled) { is_enabled_ = is_enabled; }
@@ -93,7 +93,7 @@ class MemoryUseProfiler : public MemoryInterface {
 
  private:
   bool is_enabled_ = false;
-  MemoryInterface *memory_;
+  MemoryInterface* memory_;
   internal::MemoryUseTracker tracker_;
 };
 
@@ -102,30 +102,30 @@ class TaggedMemoryUseProfiler : public TaggedMemoryInterface {
  public:
   // The default constructor does not set up memory forwarding.
   TaggedMemoryUseProfiler();
-  explicit TaggedMemoryUseProfiler(TaggedMemoryInterface *tagged_memory);
+  explicit TaggedMemoryUseProfiler(TaggedMemoryInterface* tagged_memory);
   ~TaggedMemoryUseProfiler() override = default;
 
   // Inherited from memory interfaces.
-  void Load(uint64_t address, DataBuffer *db, Instruction *inst,
-            ReferenceCount *context) override;
-  void Load(DataBuffer *address_db, DataBuffer *mask_db, int el_size,
-            DataBuffer *db, Instruction *inst,
-            ReferenceCount *context) override;
-  void Load(uint64_t address, DataBuffer *db, DataBuffer *tags,
-            Instruction *inst, ReferenceCount *context) override;
-  void Store(uint64_t address, DataBuffer *db) override;
-  void Store(DataBuffer *address_db, DataBuffer *mask_db, int el_size,
-             DataBuffer *db) override;
-  void Store(uint64_t address, DataBuffer *db, DataBuffer *tags) override;
+  void Load(uint64_t address, DataBuffer* db, Instruction* inst,
+            ReferenceCount* context) override;
+  void Load(DataBuffer* address_db, DataBuffer* mask_db, int el_size,
+            DataBuffer* db, Instruction* inst,
+            ReferenceCount* context) override;
+  void Load(uint64_t address, DataBuffer* db, DataBuffer* tags,
+            Instruction* inst, ReferenceCount* context) override;
+  void Store(uint64_t address, DataBuffer* db) override;
+  void Store(DataBuffer* address_db, DataBuffer* mask_db, int el_size,
+             DataBuffer* db) override;
+  void Store(uint64_t address, DataBuffer* db, DataBuffer* tags) override;
 
-  void WriteProfile(std::ostream &os) const { tracker_.WriteUseProfile(os); }
+  void WriteProfile(std::ostream& os) const { tracker_.WriteUseProfile(os); }
 
   // Accessor.
   void set_is_enabled(bool is_enabled) { is_enabled_ = is_enabled; }
 
  private:
   bool is_enabled_ = false;
-  TaggedMemoryInterface *tagged_memory_;
+  TaggedMemoryInterface* tagged_memory_;
   internal::MemoryUseTracker tracker_;
 };
 

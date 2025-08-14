@@ -17,13 +17,15 @@
 #include <cstdint>
 
 #include "absl/numeric/bits.h"
+#include "mpact/sim/generic/decoder_interface.h"
+#include "mpact/sim/generic/instruction.h"
 
 namespace mpact {
 namespace sim {
 namespace generic {
 
-DecodeCache::DecodeCache(const DecodeCacheProperties &props,
-                         DecoderInterface *decoder)
+DecodeCache::DecodeCache(const DecodeCacheProperties& props,
+                         DecoderInterface* decoder)
     : decoder_(decoder), instruction_cache_(nullptr) {
   num_entries_ = absl::bit_ceil(props.num_entries);
   address_shift_ =
@@ -36,7 +38,7 @@ DecodeCache::DecodeCache(const DecodeCacheProperties &props,
   }
   address_mask_ = (num_entries_ - 1) << address_shift_;
 
-  instruction_cache_ = new Instruction *[num_entries_];
+  instruction_cache_ = new Instruction*[num_entries_];
   if (nullptr == instruction_cache_) {
     // memory allocation failed
     return;
@@ -53,9 +55,9 @@ DecodeCache::~DecodeCache() {
   instruction_cache_ = nullptr;
 }
 
-DecodeCache *DecodeCache::Create(const DecodeCacheProperties &props,
-                                 DecoderInterface *decoder) {
-  DecodeCache *dc = new DecodeCache(props, decoder);
+DecodeCache* DecodeCache::Create(const DecodeCacheProperties& props,
+                                 DecoderInterface* decoder) {
+  DecodeCache* dc = new DecodeCache(props, decoder);
   if (nullptr == dc->instruction_cache_) {
     delete dc;
     return nullptr;
@@ -63,20 +65,20 @@ DecodeCache *DecodeCache::Create(const DecodeCacheProperties &props,
   return dc;
 }
 
-Instruction *DecodeCache::GetDecodedInstruction(uint64_t address) {
+Instruction* DecodeCache::GetDecodedInstruction(uint64_t address) {
   // Verify that the instruction_cache_ was allocated
   if (nullptr == instruction_cache_) {
     return nullptr;
   }
 
   uint64_t indx = (address & address_mask_) >> address_shift_;
-  Instruction *inst = instruction_cache_[indx];
+  Instruction* inst = instruction_cache_[indx];
 
   if ((nullptr != inst) && (inst->address() == address)) {
     return inst;
   }
 
-  Instruction *new_inst = decoder_->DecodeInstruction(address);
+  Instruction* new_inst = decoder_->DecodeInstruction(address);
 
   if (nullptr == new_inst) {
     return nullptr;
@@ -93,7 +95,7 @@ Instruction *DecodeCache::GetDecodedInstruction(uint64_t address) {
 
 void DecodeCache::Invalidate(uint64_t address) {
   uint64_t entry = (address & address_mask_) >> address_shift_;
-  Instruction *inst = instruction_cache_[entry];
+  Instruction* inst = instruction_cache_[entry];
   if ((nullptr != inst) && (inst->address() == address)) {
     instruction_cache_[entry]->DecRef();
     instruction_cache_[entry] = nullptr;

@@ -91,8 +91,8 @@ class CoreDebugInterface {
   virtual absl::StatusOr<HaltReasonValueType> GetLastHaltReason() = 0;
 
   // Read/write the named registers.
-  virtual absl::StatusOr<uint64_t> ReadRegister(const std::string &name) = 0;
-  virtual absl::Status WriteRegister(const std::string &name,
+  virtual absl::StatusOr<uint64_t> ReadRegister(const std::string& name) = 0;
+  virtual absl::Status WriteRegister(const std::string& name,
                                      uint64_t value) = 0;
 
   // Some registers, including vector registers, have values that exceed the
@@ -105,13 +105,13 @@ class CoreDebugInterface {
   // Note (2): In some cases, a register write may replace the DataBuffer
   // instance within a register so that any stored references to it become
   // stale.
-  virtual absl::StatusOr<DataBuffer *> GetRegisterDataBuffer(
-      const std::string &name) = 0;
+  virtual absl::StatusOr<DataBuffer*> GetRegisterDataBuffer(
+      const std::string& name) = 0;
 
   // Read/write the buffers to memory.
-  virtual absl::StatusOr<size_t> ReadMemory(uint64_t address, void *buf,
+  virtual absl::StatusOr<size_t> ReadMemory(uint64_t address, void* buf,
                                             size_t length) = 0;
-  virtual absl::StatusOr<size_t> WriteMemory(uint64_t address, const void *buf,
+  virtual absl::StatusOr<size_t> WriteMemory(uint64_t address, const void* buf,
                                              size_t length) = 0;
 
   // Test to see if there's a breakpoint at the given address.
@@ -123,7 +123,7 @@ class CoreDebugInterface {
   virtual absl::Status ClearAllSwBreakpoints() = 0;
 
   // Return the instruction object for the instruction at the given address.
-  virtual absl::StatusOr<Instruction *> GetInstruction(uint64_t address) = 0;
+  virtual absl::StatusOr<Instruction*> GetInstruction(uint64_t address) = 0;
   // Return the string representation for the instruction at the given address.
   virtual absl::StatusOr<std::string> GetDisassembly(uint64_t address) = 0;
 };

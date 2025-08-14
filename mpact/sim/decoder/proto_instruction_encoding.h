@@ -60,36 +60,36 @@ inline std::string GetOpText(ConstraintType op) {
 // Struct to store information about an encoding constraint for an instruction.
 struct ProtoConstraint {
   // Parsing context.
-  FieldConstraintCtx *ctx;
+  FieldConstraintCtx* ctx;
   // The proto field descriptor for which the constraint applies.
-  const google::protobuf::FieldDescriptor *field_descriptor;
+  const google::protobuf::FieldDescriptor* field_descriptor;
   // The constraint type.
   ConstraintType op;
   // If non-null, the expression that applies to the constraint.
-  const ProtoConstraintExpression *expr;
+  const ProtoConstraintExpression* expr;
   // If the value is compatible with int64_t, the value of the expression. This
   // is filled in later when the expression is evaluated for decoding purposes.
   int64_t value;
   // If non-null, points to a constraint that has to be true before one can
   // evaluate this constraint.
-  ProtoConstraint *depends_on;
+  ProtoConstraint* depends_on;
   // Constructors.
-  ProtoConstraint(FieldConstraintCtx *ctx,
-                  const google::protobuf::FieldDescriptor *field_descriptor,
-                  ConstraintType op, const ProtoConstraintExpression *expr,
-                  int64_t value, ProtoConstraint *depends_on)
+  ProtoConstraint(FieldConstraintCtx* ctx,
+                  const google::protobuf::FieldDescriptor* field_descriptor,
+                  ConstraintType op, const ProtoConstraintExpression* expr,
+                  int64_t value, ProtoConstraint* depends_on)
       : ctx(ctx),
         field_descriptor(field_descriptor),
         op(op),
         expr(expr),
         value(value),
         depends_on(depends_on) {}
-  ProtoConstraint(FieldConstraintCtx *ctx,
-                  const google::protobuf::FieldDescriptor *field_descriptor,
+  ProtoConstraint(FieldConstraintCtx* ctx,
+                  const google::protobuf::FieldDescriptor* field_descriptor,
                   ConstraintType op)
       : ProtoConstraint(ctx, field_descriptor, op, nullptr, 0, nullptr) {}
   // Copy constructor.
-  ProtoConstraint(const ProtoConstraint &rhs) {
+  ProtoConstraint(const ProtoConstraint& rhs) {
     this->ctx = rhs.ctx;
     this->field_descriptor = rhs.field_descriptor;
     this->op = rhs.op;
@@ -102,16 +102,16 @@ struct ProtoConstraint {
 // Struct to store information about a setter for an instruction encoding.
 struct ProtoSetter {
   // Proto setter context.
-  SetterDefCtx *ctx;
+  SetterDefCtx* ctx;
   // The name of the object that is set.
   std::string name;
   // The field that will provide the type and value of the object.
-  const google::protobuf::FieldDescriptor *field_descriptor;
+  const google::protobuf::FieldDescriptor* field_descriptor;
   // Default value of the object if the field descriptor is not valid.
-  IfNotCtx *if_not;
+  IfNotCtx* if_not;
   // If non-null, points to constraint that has to be true in order to access
   // the value of the field described by field_descriptor.
-  ProtoConstraint *depends_on;
+  ProtoConstraint* depends_on;
 };
 
 class ProtoInstructionGroup;
@@ -120,11 +120,11 @@ class ProtoInstructionGroup;
 // instruction in an instruction group.
 class ProtoInstructionEncoding {
  public:
-  ProtoInstructionEncoding(std::string name, ProtoInstructionGroup *parent);
-  ProtoInstructionEncoding(const ProtoInstructionEncoding &rhs);
+  ProtoInstructionEncoding(std::string name, ProtoInstructionGroup* parent);
+  ProtoInstructionEncoding(const ProtoInstructionEncoding& rhs);
   ProtoInstructionEncoding() = delete;
-  ProtoInstructionEncoding &operator=(
-      const ProtoInstructionEncoding &encoding) = delete;
+  ProtoInstructionEncoding& operator=(
+      const ProtoInstructionEncoding& encoding) = delete;
   ~ProtoInstructionEncoding();
 
   // Adds a value setter that is executed when the instruction is successfully
@@ -132,20 +132,20 @@ class ProtoInstructionEncoding {
   // values, etc., that could be stored in a nested one_of submessage, available
   // at known names.
   absl::Status AddSetter(
-      SetterDefCtx *ctx, const std::string &name,
-      const google::protobuf::FieldDescriptor *field_descriptor,
-      const std::vector<const google::protobuf::FieldDescriptor *>
-          &one_of_fields,
-      IfNotCtx *if_not);
+      SetterDefCtx* ctx, const std::string& name,
+      const google::protobuf::FieldDescriptor* field_descriptor,
+      const std::vector<const google::protobuf::FieldDescriptor*>&
+          one_of_fields,
+      IfNotCtx* if_not);
   // Adds an encoding constraint for the current instruction. Encoding
   // constraints provide constraints on values of proto message fields that
   // have to be satisfied in order for the instruction to match.
   absl::Status AddConstraint(
-      FieldConstraintCtx *ctx, ConstraintType op,
-      const google::protobuf::FieldDescriptor *field_descriptor,
-      const std::vector<const google::protobuf::FieldDescriptor *>
-          &one_of_fields,
-      const ProtoConstraintExpression *expr);
+      FieldConstraintCtx* ctx, ConstraintType op,
+      const google::protobuf::FieldDescriptor* field_descriptor,
+      const std::vector<const google::protobuf::FieldDescriptor*>&
+          one_of_fields,
+      const ProtoConstraintExpression* expr);
 
   // Call when the setters and constraints have been added in order to generate
   // the setter code into the setter_code_ variable.
@@ -153,17 +153,17 @@ class ProtoInstructionEncoding {
   // Get setter code, substituting 'message_name' for '$' in the text.
   std::string GetSetterCode(absl::string_view message_name, int indent) const;
   // Getters.
-  const std::string &name() const { return name_; }
-  ProtoInstructionGroup *instruction_group() const {
+  const std::string& name() const { return name_; }
+  ProtoInstructionGroup* instruction_group() const {
     return instruction_group_;
   }
-  std::vector<ProtoConstraint *> &equal_constraints() {
+  std::vector<ProtoConstraint*>& equal_constraints() {
     return equal_constraints_;
   }
-  std::vector<ProtoConstraint *> &other_constraints() {
+  std::vector<ProtoConstraint*>& other_constraints() {
     return other_constraints_;
   }
-  absl::flat_hash_map<std::string, ProtoConstraint *> &has_constraints() {
+  absl::flat_hash_map<std::string, ProtoConstraint*>& has_constraints() {
     return has_constraints_;
   }
 
@@ -176,29 +176,29 @@ class ProtoInstructionEncoding {
   // then it is required that the depends_on constraint exists in the
   // has_constraints_ map. This is checked by searching for the full_name of
   // the field_descriptor in the depends_on constraint.
-  ProtoConstraint *AddHasConstraint(
-      const google::protobuf::FieldDescriptor *field_descriptor,
-      ProtoConstraint *depends_on);
+  ProtoConstraint* AddHasConstraint(
+      const google::protobuf::FieldDescriptor* field_descriptor,
+      ProtoConstraint* depends_on);
 
   // Instruction name.
   std::string name_;
   // Parent instruction group.
-  ProtoInstructionGroup *instruction_group_ = nullptr;
+  ProtoInstructionGroup* instruction_group_ = nullptr;
   // Setter code for this encoding.
   std::string setter_code_;
   // Map from setter names to the setter structs.
-  absl::btree_map<std::string, ProtoSetter *> setter_map_;
+  absl::btree_map<std::string, ProtoSetter*> setter_map_;
   // Map from one_of descriptor to field.
-  absl::flat_hash_map<const google::protobuf::OneofDescriptor *,
-                      const google::protobuf::FieldDescriptor *>
+  absl::flat_hash_map<const google::protobuf::OneofDescriptor*,
+                      const google::protobuf::FieldDescriptor*>
       oneof_field_map_;
   // "equal-to" field constraints.
-  std::vector<ProtoConstraint *> equal_constraints_;
+  std::vector<ProtoConstraint*> equal_constraints_;
   // All other constraints.
-  std::vector<ProtoConstraint *> other_constraints_;
+  std::vector<ProtoConstraint*> other_constraints_;
   // Has Constraints, these are required one_of members that other constraints
   // may depend on.
-  absl::flat_hash_map<std::string, ProtoConstraint *> has_constraints_;
+  absl::flat_hash_map<std::string, ProtoConstraint*> has_constraints_;
 };
 
 }  // namespace proto_fmt

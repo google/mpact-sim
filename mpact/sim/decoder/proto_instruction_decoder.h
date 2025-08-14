@@ -36,33 +36,33 @@ class ProtoInstructionGroup;
 
 class ProtoInstructionDecoder {
  public:
-  ProtoInstructionDecoder(std::string name, ProtoEncodingInfo *encoding_info,
-                          DecoderErrorListener *error_listener);
+  ProtoInstructionDecoder(std::string name, ProtoEncodingInfo* encoding_info,
+                          DecoderErrorListener* error_listener);
   ~ProtoInstructionDecoder();
 
   // Add an instruction group that will be part of this decoder.
-  void AddInstructionGroup(ProtoInstructionGroup *inst_group);
+  void AddInstructionGroup(ProtoInstructionGroup* inst_group);
 
   // Getters/Setters.
-  const std::string &name() const { return name_; }
-  DecoderErrorListener *error_listener() const { return error_listener_; }
-  ProtoEncodingInfo *encoding_info() const { return encoding_info_; }
-  std::vector<ProtoInstructionGroup *> instruction_groups() const {
+  const std::string& name() const { return name_; }
+  DecoderErrorListener* error_listener() const { return error_listener_; }
+  ProtoEncodingInfo* encoding_info() const { return encoding_info_; }
+  std::vector<ProtoInstructionGroup*> instruction_groups() const {
     return instruction_groups_;
   }
-  std::deque<std::string> &namespaces() { return namespaces_; }
+  std::deque<std::string>& namespaces() { return namespaces_; }
 
  private:
   // Decoder name.
   std::string name_;
   // The global encoding structure.
-  ProtoEncodingInfo *encoding_info_;
+  ProtoEncodingInfo* encoding_info_;
   // Error handler.
-  DecoderErrorListener *error_listener_;
+  DecoderErrorListener* error_listener_;
   // Namespace container.
   std::deque<std::string> namespaces_;
   // Instruction groups.
-  std::vector<ProtoInstructionGroup *> instruction_groups_;
+  std::vector<ProtoInstructionGroup*> instruction_groups_;
 };
 
 }  // namespace proto_fmt

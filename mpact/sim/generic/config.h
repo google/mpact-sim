@@ -72,20 +72,20 @@ class ConfigBase {
  public:
   explicit ConfigBase(absl::string_view name) : name_(name) {}
   ConfigBase() = delete;
-  ConfigBase(const ConfigBase &) = delete;
-  ConfigBase &operator=(const ConfigBase &) = delete;
+  ConfigBase(const ConfigBase&) = delete;
+  ConfigBase& operator=(const ConfigBase&) = delete;
   virtual ~ConfigBase() = default;
 
   // Return true if the config value has been set since construction.
   virtual bool HasConfigValue() const = 0;
   // Variant value accessors provide type agnostic access to config value.
   virtual ConfigValue GetConfigValue() const = 0;
-  virtual absl::Status SetConfigValue(const ConfigValue &) = 0;
+  virtual absl::Status SetConfigValue(const ConfigValue&) = 0;
   // Exports the Config (name and value) to the proto message.
-  virtual absl::Status Export(proto::ComponentValueEntry *entry) const = 0;
-  virtual absl::Status Import(const proto::ComponentValueEntry *entry) = 0;
+  virtual absl::Status Export(proto::ComponentValueEntry* entry) const = 0;
+  virtual absl::Status Import(const proto::ComponentValueEntry* entry) = 0;
 
-  const std::string &name() const { return name_; }
+  const std::string& name() const { return name_; }
 
  private:
   std::string name_;
@@ -118,7 +118,7 @@ class Config : public ConfigBase {
   ConfigValue GetConfigValue() const override {
     return ConfigValue(GetValue());
   }
-  absl::Status SetConfigValue(const ConfigValue &config_value) override {
+  absl::Status SetConfigValue(const ConfigValue& config_value) override {
     if (!std::holds_alternative<T>(config_value)) {
       return absl::InvalidArgumentError("Invalid type in ConfigValue argument");
     }
@@ -135,7 +135,7 @@ class Config : public ConfigBase {
   void SetValue(T value) {
     has_value_ = true;
     value_ = value;
-    for (auto const &callback : value_written_callback_vector_) {
+    for (auto const& callback : value_written_callback_vector_) {
       callback();
     }
   }
@@ -149,7 +149,7 @@ class Config : public ConfigBase {
     value_written_callback_vector_.push_back(ValueWrittenCallback(callback));
   }
   // Exports the configuration entry name and value to the proto message.
-  absl::Status Export(proto::ComponentValueEntry *entry) const override {
+  absl::Status Export(proto::ComponentValueEntry* entry) const override {
     if (entry == nullptr) return absl::InvalidArgumentError("Entry is null");
     entry->set_name(name());
     ExportValue(entry);
@@ -157,7 +157,7 @@ class Config : public ConfigBase {
   }
   // Imports the configuration entry value in the proto. Returns an error if the
   // name doesn't match or the entry is nullptr.
-  absl::Status Import(const proto::ComponentValueEntry *entry) override {
+  absl::Status Import(const proto::ComponentValueEntry* entry) override {
     if (entry == nullptr) return absl::InvalidArgumentError("Entry is null");
     if (!entry->has_name() || (entry->name() != name()))
       return absl::InternalError(
@@ -173,9 +173,9 @@ class Config : public ConfigBase {
   // in specializations outside the class, as each specialization requires
   // writing to a different field in the proto message.
   // Exports the value to the proto message.
-  void ExportValue(proto::ComponentValueEntry *entry) const;
+  void ExportValue(proto::ComponentValueEntry* entry) const;
   // Imports the value from the proto message.
-  absl::Status ImportValue(const proto::ComponentValueEntry *entry);
+  absl::Status ImportValue(const proto::ComponentValueEntry* entry);
   bool has_value_ = false;
   T value_;
   std::vector<ValueWrittenCallback> value_written_callback_vector_;
@@ -187,34 +187,34 @@ class Config : public ConfigBase {
 // ExportValue() specializations for the types in the ConfigValue variant.
 // NOTE: add a specialization for every new type added to the variant.
 template <>
-inline void Config<bool>::ExportValue(proto::ComponentValueEntry *entry) const {
+inline void Config<bool>::ExportValue(proto::ComponentValueEntry* entry) const {
   entry->set_bool_value(GetValue());
 }
 template <>
 inline void Config<int64_t>::ExportValue(
-    proto::ComponentValueEntry *entry) const {
+    proto::ComponentValueEntry* entry) const {
   entry->set_sint64_value(GetValue());
 }
 template <>
 inline void Config<uint64_t>::ExportValue(
-    proto::ComponentValueEntry *entry) const {
+    proto::ComponentValueEntry* entry) const {
   entry->set_uint64_value(GetValue());
 }
 template <>
 inline void Config<double>::ExportValue(
-    proto::ComponentValueEntry *entry) const {
+    proto::ComponentValueEntry* entry) const {
   entry->set_double_value(GetValue());
 }
 template <>
 inline void Config<std::string>::ExportValue(
-    proto::ComponentValueEntry *entry) const {
+    proto::ComponentValueEntry* entry) const {
   entry->set_string_value(GetValue());
 }
 template <>
 inline void Config<PhysicalValue>::ExportValue(
-    proto::ComponentValueEntry *entry) const {
-  auto *pvalue = entry->mutable_physical_value();
-  const PhysicalValue &value = GetValue();
+    proto::ComponentValueEntry* entry) const {
+  auto* pvalue = entry->mutable_physical_value();
+  const PhysicalValue& value = GetValue();
   pvalue->set_value(value.value);
   pvalue->set_si_prefix(value.si_prefix);
   pvalue->set_si_unit(value.si_unit);
@@ -223,35 +223,35 @@ inline void Config<PhysicalValue>::ExportValue(
 // NOTE: add a specialization for every new type added to the variant.
 template <>
 inline absl::Status Config<bool>::ImportValue(
-    const proto::ComponentValueEntry *entry) {
+    const proto::ComponentValueEntry* entry) {
   if (!entry->has_bool_value()) return absl::InternalError("No valid value");
   SetValue(entry->bool_value());
   return absl::OkStatus();
 }
 template <>
 inline absl::Status Config<int64_t>::ImportValue(
-    const proto::ComponentValueEntry *entry) {
+    const proto::ComponentValueEntry* entry) {
   if (!entry->has_sint64_value()) return absl::InternalError("No valid value");
   SetValue(entry->sint64_value());
   return absl::OkStatus();
 }
 template <>
 inline absl::Status Config<uint64_t>::ImportValue(
-    const proto::ComponentValueEntry *entry) {
+    const proto::ComponentValueEntry* entry) {
   if (!entry->has_uint64_value()) return absl::InternalError("No valid value");
   SetValue(entry->uint64_value());
   return absl::OkStatus();
 }
 template <>
 inline absl::Status Config<double>::ImportValue(
-    const proto::ComponentValueEntry *entry) {
+    const proto::ComponentValueEntry* entry) {
   if (!entry->has_double_value()) return absl::InternalError("No valid value");
   SetValue(entry->double_value());
   return absl::OkStatus();
 }
 template <>
 inline absl::Status Config<std::string>::ImportValue(
-    const proto::ComponentValueEntry *entry) {
+    const proto::ComponentValueEntry* entry) {
   if (!entry->has_string_value()) return absl::InternalError("No valid value");
   SetValue(entry->string_value());
   return absl::OkStatus();
@@ -259,7 +259,7 @@ inline absl::Status Config<std::string>::ImportValue(
 
 template <>
 inline absl::Status Config<PhysicalValue>::ImportValue(
-    const proto::ComponentValueEntry *entry) {
+    const proto::ComponentValueEntry* entry) {
   if (!entry->has_physical_value())
     return absl::InternalError("No valid value");
   SetValue(PhysicalValue(entry->physical_value().value(),

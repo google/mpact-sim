@@ -14,13 +14,13 @@
 
 #include "mpact/sim/generic/immediate_operand.h"
 
+#include <cstddef>
 #include <cstdint>
 #include <limits>
 #include <memory>
 #include <vector>
 
-#include "absl/memory/memory.h"
-#include "googlemock/include/gmock/gmock.h"
+#include "googlemock/include/gmock/gmock.h"  // IWYU pragma: keep
 #include "googletest/include/gtest/gtest.h"
 
 namespace mpact {

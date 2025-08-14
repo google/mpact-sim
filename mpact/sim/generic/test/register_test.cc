@@ -17,9 +17,9 @@
 #include <cstdint>
 #include <memory>
 
-#include "absl/memory/memory.h"
-#include "googlemock/include/gmock/gmock.h"
+#include "googlemock/include/gmock/gmock.h"  // IWYU pragma: keep
 #include "googletest/include/gtest/gtest.h"
+#include "mpact/sim/generic/data_buffer.h"
 #include "mpact/sim/generic/simple_resource.h"
 
 namespace mpact {
@@ -54,8 +54,8 @@ class RegisterTest : public testing::Test {
     delete pool_;
   }
 
-  DataBufferFactory *db_factory_;
-  SimpleResourcePool *pool_;
+  DataBufferFactory* db_factory_;
+  SimpleResourcePool* pool_;
 };
 
 // Create scalar register and verify attributes.
@@ -91,7 +91,7 @@ TEST_F(RegisterTest, ScalarReservedCreate) {
       nullptr, "S0", pool_->GetResource("S0"));
   pool_->GetResource("S0")->Acquire();
   EXPECT_FALSE(pool_->GetResource("S0")->IsFree());
-  auto *db = db_factory_->Allocate(scalar_reserved_reg->size());
+  auto* db = db_factory_->Allocate(scalar_reserved_reg->size());
   scalar_reserved_reg->SetDataBuffer(db);
   EXPECT_TRUE(pool_->GetResource("S0")->IsFree());
   db->DecRef();
@@ -104,7 +104,7 @@ TEST_F(RegisterTest, ScalarDataBuffer) {
   EXPECT_EQ(scalar_reg->data_buffer(), nullptr);
 
   // Allocate a data buffer of the right byte size and bind it to the register.
-  DataBuffer *db = db_factory_->Allocate(scalar_reg->size());
+  DataBuffer* db = db_factory_->Allocate(scalar_reg->size());
   scalar_reg->SetDataBuffer(db);
 
   // Verify reference count is 2, then DecRef.
@@ -120,7 +120,7 @@ TEST_F(RegisterTest, VectorDataBuffer) {
   EXPECT_EQ(vector_reg->data_buffer(), nullptr);
 
   // Allocate a data buffer of the right byte size and bind it to the register.
-  DataBuffer *db = db_factory_->Allocate(vector_reg->size());
+  DataBuffer* db = db_factory_->Allocate(vector_reg->size());
   vector_reg->SetDataBuffer(db);
 
   // Verify reference count is 2, then DecRef.
@@ -136,7 +136,7 @@ TEST_F(RegisterTest, MatrixDataBuffer) {
   EXPECT_EQ(matrix_reg->data_buffer(), nullptr);
 
   // Allocate a data buffer of the right byte size and bind it to the register.
-  DataBuffer *db = db_factory_->Allocate(matrix_reg->size());
+  DataBuffer* db = db_factory_->Allocate(matrix_reg->size());
   matrix_reg->SetDataBuffer(db);
 
   // Verify reference count is 2, then DecRef.

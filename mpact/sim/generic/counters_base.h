@@ -20,8 +20,6 @@
 #include <variant>
 
 #include "absl/status/status.h"
-#include "absl/strings/string_view.h"
-#include "absl/types/variant.h"
 #include "mpact/sim/proto/component_data.pb.h"
 
 namespace mpact {
@@ -55,7 +53,7 @@ class CounterBaseInterface {
 
   // Exports the counter values to the proto message.
   virtual absl::Status Export(
-      mpact::sim::proto::ComponentValueEntry *entry) const = 0;
+      mpact::sim::proto::ComponentValueEntry* entry) const = 0;
 
   // Access name and set/get about string.
   virtual std::string GetName() const = 0;
@@ -72,7 +70,7 @@ template <typename T>
 class CounterValueSetInterface {
  public:
   virtual ~CounterValueSetInterface() = default;
-  virtual void SetValue(const T &val) = 0;
+  virtual void SetValue(const T& val) = 0;
 };
 
 // Extended input interface of a counter. Adds methods to increment and
@@ -81,8 +79,8 @@ template <typename T>
 class CounterValueIncrementInterface : public CounterValueSetInterface<T> {
  public:
   ~CounterValueIncrementInterface() override = default;
-  virtual void Increment(const T &val) = 0;
-  virtual void Decrement(const T &val) = 0;
+  virtual void Increment(const T& val) = 0;
+  virtual void Decrement(const T& val) = 0;
 };
 
 }  // namespace generic

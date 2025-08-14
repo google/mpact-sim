@@ -42,7 +42,7 @@ constexpr char kRiscV32IsaName[] = "RiscV32IProto";
 // The depot path to the test directory.
 constexpr char kDepotPath[] = "mpact/sim/decoder/test";
 
-static bool FileExists(const std::string &name) {
+static bool FileExists(const std::string& name) {
   std::ifstream file(name);
   return file.good();
 }

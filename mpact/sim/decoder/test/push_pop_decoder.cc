@@ -29,7 +29,7 @@ namespace mpact::sim::decoder::test {
 using ::mpact::sim::generic::Instruction;
 using ::mpact::sim::util::MemoryInterface;
 
-PushPopDecoder::PushPopDecoder(ArchState *state, MemoryInterface *memory)
+PushPopDecoder::PushPopDecoder(ArchState* state, MemoryInterface* memory)
     : state_(state), memory_(memory) {
   push_pop_isa_factory_ = new PushPopIsaFactory();
   push_pop_isa_ = new PushPopInstInstructionSet(state, push_pop_isa_factory_);
@@ -44,11 +44,11 @@ PushPopDecoder::~PushPopDecoder() {
   delete push_pop_isa_factory_;
 }
 
-Instruction *PushPopDecoder::DecodeInstruction(uint64_t address) {
+Instruction* PushPopDecoder::DecodeInstruction(uint64_t address) {
   memory_->Load(address, inst_db_, nullptr, nullptr);
   uint16_t iword = inst_db_->Get<uint16_t>(0);
   push_pop_encoding_->ParseInstruction(iword);
-  auto *instruction = push_pop_isa_->Decode(address, push_pop_encoding_);
+  auto* instruction = push_pop_isa_->Decode(address, push_pop_encoding_);
   instruction->set_opcode(
       *push_pop_encoding_->GetOpcode(SlotEnum::kPushPopInst, 0));
   return instruction;

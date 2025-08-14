@@ -18,11 +18,10 @@
 
 #include "absl/strings/string_view.h"
 #include "absl/types/any.h"
-#include "googlemock/include/gmock/gmock.h"
+#include "googlemock/include/gmock/gmock.h"  // IWYU pragma: keep
 #include "googletest/include/gtest/gtest.h"
 #include "mpact/sim/generic/arch_state.h"
 #include "mpact/sim/generic/data_buffer.h"
-#include "mpact/sim/generic/delay_line.h"
 #include "mpact/sim/generic/fifo.h"
 #include "mpact/sim/generic/operand_interface.h"
 
@@ -42,7 +41,7 @@ constexpr char kVectorFifoName[] = "S0";
 // protected.
 class MockArchState : public ArchState {
  public:
-  MockArchState(absl::string_view id, SourceOperandInterface *pc_op)
+  MockArchState(absl::string_view id, SourceOperandInterface* pc_op)
       : ArchState(id, pc_op) {}
   explicit MockArchState(absl::string_view id) : MockArchState(id, nullptr) {}
 };
@@ -63,16 +62,16 @@ class FifoOperandTest : public testing::Test {
     delete arch_state_;
   }
 
-  MockArchState *arch_state_;
-  ScalarFifo *sfifo_;
-  Vector8Fifo *vfifo_;
+  MockArchState* arch_state_;
+  ScalarFifo* sfifo_;
+  Vector8Fifo* vfifo_;
 };
 
 // Tests that the fifo source operands are initialized correctly.
 TEST_F(FifoOperandTest, SourceOperandInitialization) {
   auto s_src_op = std::make_unique<FifoSourceOperand<uint32_t>>(sfifo_);
-  EXPECT_EQ(std::any_cast<FifoBase *>(s_src_op->GetObject()),
-            static_cast<FifoBase *>(sfifo_));
+  EXPECT_EQ(std::any_cast<FifoBase*>(s_src_op->GetObject()),
+            static_cast<FifoBase*>(sfifo_));
   EXPECT_EQ(s_src_op->shape(), sfifo_->shape());
   EXPECT_EQ(s_src_op->AsString(), kScalarFifoName);
 
@@ -80,8 +79,8 @@ TEST_F(FifoOperandTest, SourceOperandInitialization) {
   EXPECT_EQ(s_src_op->AsString(), "Fifo");
 
   auto v_src_op = std::make_unique<FifoSourceOperand<uint32_t>>(vfifo_);
-  EXPECT_EQ(std::any_cast<FifoBase *>(v_src_op->GetObject()),
-            static_cast<FifoBase *>(vfifo_));
+  EXPECT_EQ(std::any_cast<FifoBase*>(v_src_op->GetObject()),
+            static_cast<FifoBase*>(vfifo_));
   EXPECT_EQ(v_src_op->shape(), vfifo_->shape());
   EXPECT_EQ(v_src_op->AsString(), kVectorFifoName);
 
@@ -95,8 +94,8 @@ TEST_F(FifoOperandTest, DestinationOperandInitialization) {
   EXPECT_EQ(s_dst_op->latency(), 1);
   EXPECT_EQ(s_dst_op->shape(), sfifo_->shape());
   EXPECT_EQ(s_dst_op->CopyDataBuffer(), nullptr);
-  EXPECT_EQ(std::any_cast<FifoBase *>(s_dst_op->GetObject()),
-            static_cast<FifoBase *>(sfifo_));
+  EXPECT_EQ(std::any_cast<FifoBase*>(s_dst_op->GetObject()),
+            static_cast<FifoBase*>(sfifo_));
   EXPECT_EQ(s_dst_op->AsString(), kScalarFifoName);
 
   s_dst_op =
@@ -107,8 +106,8 @@ TEST_F(FifoOperandTest, DestinationOperandInitialization) {
   EXPECT_EQ(v_dst_op->latency(), 4);
   EXPECT_EQ(v_dst_op->shape(), vfifo_->shape());
   EXPECT_EQ(v_dst_op->CopyDataBuffer(), nullptr);
-  EXPECT_EQ(std::any_cast<FifoBase *>(v_dst_op->GetObject()),
-            static_cast<FifoBase *>(vfifo_));
+  EXPECT_EQ(std::any_cast<FifoBase*>(v_dst_op->GetObject()),
+            static_cast<FifoBase*>(vfifo_));
   EXPECT_EQ(v_dst_op->AsString(), kVectorFifoName);
 
   v_dst_op =
@@ -123,7 +122,7 @@ TEST_F(FifoOperandTest, ScalarFifoValueWriteAndRead) {
   auto src_op = sfifo_->CreateSourceOperand();
 
   // Get DataBuffer from destination operand and initialize the value.
-  DataBuffer *db = dst_op->AllocateDataBuffer();
+  DataBuffer* db = dst_op->AllocateDataBuffer();
   db->Set<uint32_t>(0, 0xDEADBEEF);
 
   // Submit data buffer and advance the delay line by the 1 cycle latency.
@@ -142,7 +141,7 @@ TEST_F(FifoOperandTest, ScalarFifoValueWriteAndRead) {
   EXPECT_EQ(src_op->AsUint64(0), 0xDEADBEEF);
 
   // Get a new data buffer and initialize it to a new value.
-  DataBuffer *db2 = dst_op->AllocateDataBuffer();
+  DataBuffer* db2 = dst_op->AllocateDataBuffer();
   db2->Set<uint32_t>(0, 0xA5A55A5A);
 
   // Submit the data buffer and advance the delay line 1 cycle.
@@ -153,11 +152,11 @@ TEST_F(FifoOperandTest, ScalarFifoValueWriteAndRead) {
   EXPECT_EQ(src_op->AsUint32(0), 0xDEADBEEF);
 
   // Pop the fifo and verify the new value is there.
-  std::any_cast<FifoBase *>(src_op->GetObject())->Pop();
+  std::any_cast<FifoBase*>(src_op->GetObject())->Pop();
   EXPECT_EQ(src_op->AsUint32(0), 0xA5A55A5A);
 
   // Pop the fifo. It is now empty, so attempting to get a value will return 0.
-  std::any_cast<FifoBase *>(src_op->GetObject())->Pop();
+  std::any_cast<FifoBase*>(src_op->GetObject())->Pop();
   EXPECT_EQ(src_op->AsUint32(0), 0);
   EXPECT_EQ(src_op->AsInt32(0), 0);
 
@@ -172,7 +171,7 @@ TEST_F(FifoOperandTest, VectorFifoValueWriteAndRead) {
   auto src_op = vfifo_->CreateSourceOperand();
 
   // Get DataBuffer from destination operand and initialize the value.
-  DataBuffer *db = dst_op->AllocateDataBuffer();
+  DataBuffer* db = dst_op->AllocateDataBuffer();
   for (int index = 0; index < vfifo_->shape()[0]; index++) {
     db->Set<uint32_t>(index, 0xDEAD0000 | index);
   }
@@ -188,7 +187,7 @@ TEST_F(FifoOperandTest, VectorFifoValueWriteAndRead) {
   }
 
   // Get another DataBuffer from destination operand and initialize to zeros.
-  DataBuffer *db2 = dst_op->AllocateDataBuffer();
+  DataBuffer* db2 = dst_op->AllocateDataBuffer();
   for (int index = 0; index < vfifo_->shape()[0]; index++) {
     db2->Set<uint32_t>(index, 0);
   }
@@ -204,7 +203,7 @@ TEST_F(FifoOperandTest, VectorFifoValueWriteAndRead) {
   }
 
   // Pop the fifo and verify that the value has been updated.
-  std::any_cast<FifoBase *>(src_op->GetObject())->Pop();
+  std::any_cast<FifoBase*>(src_op->GetObject())->Pop();
   for (int index = 0; index < vfifo_->shape()[0]; index++) {
     EXPECT_EQ(src_op->AsUint32(index), 0);
   }

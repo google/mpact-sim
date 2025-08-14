@@ -16,6 +16,7 @@
 
 #include <memory>
 
+#include "absl/types/span.h"
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
 #include "mpact/sim/generic/ref_count.h"
@@ -27,7 +28,7 @@ namespace {
 
 struct InstructionContext : public ReferenceCount {
  public:
-  int *value;
+  int* value;
 };
 
 // Tests values of the instruction properties.
@@ -54,10 +55,10 @@ TEST(InstructionTest, SemanticFunction) {
   auto my_context = std::make_unique<InstructionContext>();
   my_context->value = &context_value;
 
-  inst->set_semantic_function([&](Instruction *inst) {
-    EXPECT_EQ(inst->context(), static_cast<ReferenceCount *>(my_context.get()));
+  inst->set_semantic_function([&](Instruction* inst) {
+    EXPECT_EQ(inst->context(), static_cast<ReferenceCount*>(my_context.get()));
     my_value = 1;
-    auto context = static_cast<InstructionContext *>(inst->context());
+    auto context = static_cast<InstructionContext*>(inst->context());
     ++(*context->value);
   });
 
@@ -70,8 +71,8 @@ TEST(InstructionTest, SemanticFunction) {
 TEST(InstructionTest, ChildBundle) {
   auto inst = std::make_unique<Instruction>(0x1000, nullptr);
 
-  Instruction *child0 = new Instruction(nullptr);
-  Instruction *child1 = new Instruction(nullptr);
+  Instruction* child0 = new Instruction(nullptr);
+  Instruction* child1 = new Instruction(nullptr);
 
   inst->AppendChild(nullptr);
   EXPECT_EQ(inst->child(), nullptr);
@@ -93,8 +94,8 @@ TEST(InstructionTest, ChildBundle) {
 TEST(InstructionTest, InstructionList) {
   auto inst = std::make_unique<Instruction>(0x1000, nullptr);
 
-  Instruction *next0 = new Instruction(nullptr);
-  Instruction *next1 = new Instruction(nullptr);
+  Instruction* next0 = new Instruction(nullptr);
+  Instruction* next1 = new Instruction(nullptr);
 
   inst->Append(nullptr);
   EXPECT_EQ(inst->next(), nullptr);

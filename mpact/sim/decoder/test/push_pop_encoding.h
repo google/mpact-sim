@@ -34,7 +34,7 @@ using ::mpact::sim::generic::SourceOperandInterface;
 
 class PushPopEncoding : public PushPopInstEncodingBase {
  public:
-  explicit PushPopEncoding(ArchState *state);
+  explicit PushPopEncoding(ArchState* state);
   ~PushPopEncoding() override = default;
 
   void ParseInstruction(uint16_t inst_word);
@@ -42,34 +42,34 @@ class PushPopEncoding : public PushPopInstEncodingBase {
   OpcodeEnum opcode() const { return opcode_; }
   // Return a single source operand for the given slot, entry, opcode, and
   // source operand enum.
-  SourceOperandInterface *GetSource(SlotEnum, int, OpcodeEnum, SourceOpEnum op,
+  SourceOperandInterface* GetSource(SlotEnum, int, OpcodeEnum, SourceOpEnum op,
                                     int source_no) override;
   // Expand the ListSourceOpEnum into a vector of source operands.
-  std::vector<SourceOperandInterface *> GetSources(SlotEnum, int, OpcodeEnum,
-                                                   ListSourceOpEnum op,
-                                                   int source_no) override;
+  std::vector<SourceOperandInterface*> GetSources(SlotEnum, int, OpcodeEnum,
+                                                  ListSourceOpEnum op,
+                                                  int source_no) override;
   // Return a single destination operand for the given slot, entry, opcode,
   // destination operand enum, and latency.
-  DestinationOperandInterface *GetDestination(SlotEnum, int, OpcodeEnum,
+  DestinationOperandInterface* GetDestination(SlotEnum, int, OpcodeEnum,
                                               DestOpEnum op, int dest_no,
                                               int latency) override;
   // Expand the ListDestOpEnum into a vector of destination operands.
-  std::vector<DestinationOperandInterface *> GetDestinations(
+  std::vector<DestinationOperandInterface*> GetDestinations(
       SlotEnum, int, OpcodeEnum, ListDestOpEnum op, int dest_no,
-      const std::vector<int> &latency) override;
+      const std::vector<int>& latency) override;
 
  private:
   using SourceOpGetterMap =
-      absl::flat_hash_map<int, absl::AnyInvocable<SourceOperandInterface *()>>;
+      absl::flat_hash_map<int, absl::AnyInvocable<SourceOperandInterface*()>>;
   using DestOpGetterMap = absl::flat_hash_map<
-      int, absl::AnyInvocable<DestinationOperandInterface *(int)>>;
+      int, absl::AnyInvocable<DestinationOperandInterface*(int)>>;
   using ListSourceOpGetterMap = absl::flat_hash_map<
-      int, absl::AnyInvocable<std::vector<SourceOperandInterface *>()>>;
+      int, absl::AnyInvocable<std::vector<SourceOperandInterface*>()>>;
   using ListDestOpGetterMap = absl::flat_hash_map<
-      int, absl::AnyInvocable<std::vector<DestinationOperandInterface *>(
-               const std::vector<int> &)>>;
+      int, absl::AnyInvocable<std::vector<DestinationOperandInterface*>(
+               const std::vector<int>&)>>;
 
-  ArchState *state_;
+  ArchState* state_;
   OpcodeEnum opcode_;
   uint16_t inst_word_;
 

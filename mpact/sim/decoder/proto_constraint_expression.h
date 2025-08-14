@@ -138,7 +138,7 @@ class ProtoConstraintExpression {
     if (!res.ok() || !std::holds_alternative<T>(res.value())) return T();
     return std::get<T>(res.value());
   }
-  virtual ProtoConstraintExpression *Clone() const = 0;
+  virtual ProtoConstraintExpression* Clone() const = 0;
   virtual google::protobuf::FieldDescriptor::CppType cpp_type() const = 0;
   virtual int variant_type() const = 0;
 };
@@ -146,11 +146,11 @@ class ProtoConstraintExpression {
 // Unary negate expression.
 class ProtoConstraintNegateExpression : public ProtoConstraintExpression {
  public:
-  explicit ProtoConstraintNegateExpression(ProtoConstraintExpression *expr)
+  explicit ProtoConstraintNegateExpression(ProtoConstraintExpression* expr)
       : expr_(expr) {}
   ~ProtoConstraintNegateExpression() override;
   absl::StatusOr<ProtoValue> GetValue() const override;
-  ProtoConstraintExpression *Clone() const override {
+  ProtoConstraintExpression* Clone() const override {
     return new ProtoConstraintNegateExpression(expr_->Clone());
   }
   google::protobuf::FieldDescriptor::CppType cpp_type() const override {
@@ -159,18 +159,18 @@ class ProtoConstraintNegateExpression : public ProtoConstraintExpression {
   int variant_type() const override { return expr_->variant_type(); }
 
  private:
-  ProtoConstraintExpression *expr_;
+  ProtoConstraintExpression* expr_;
 };
 
 // Enumeration value expression.
 class ProtoConstraintEnumExpression : public ProtoConstraintExpression {
  public:
   explicit ProtoConstraintEnumExpression(
-      const google::protobuf::EnumValueDescriptor *enum_value)
+      const google::protobuf::EnumValueDescriptor* enum_value)
       : enum_value_(enum_value) {}
   ~ProtoConstraintEnumExpression() override = default;
   absl::StatusOr<ProtoValue> GetValue() const override;
-  ProtoConstraintExpression *Clone() const override {
+  ProtoConstraintExpression* Clone() const override {
     return new ProtoConstraintEnumExpression(enum_value_);
   }
   google::protobuf::FieldDescriptor::CppType cpp_type() const override {
@@ -179,20 +179,20 @@ class ProtoConstraintEnumExpression : public ProtoConstraintExpression {
   int variant_type() const override { return *ProtoValueIndex::kInt32; }
 
  private:
-  const google::protobuf::EnumValueDescriptor *enum_value_ = nullptr;
+  const google::protobuf::EnumValueDescriptor* enum_value_ = nullptr;
 };
 
 // Constant value expression.
 class ProtoConstraintValueExpression : public ProtoConstraintExpression {
  public:
-  explicit ProtoConstraintValueExpression(const ProtoValue &value)
+  explicit ProtoConstraintValueExpression(const ProtoValue& value)
       : value_(value) {}
   template <typename T>
-  explicit ProtoConstraintValueExpression(const T &value) : value_(value) {}
+  explicit ProtoConstraintValueExpression(const T& value) : value_(value) {}
 
   ~ProtoConstraintValueExpression() override = default;
   absl::StatusOr<ProtoValue> GetValue() const override { return value_; }
-  ProtoConstraintExpression *Clone() const override {
+  ProtoConstraintExpression* Clone() const override {
     return new ProtoConstraintValueExpression(value_);
   }
   google::protobuf::FieldDescriptor::CppType cpp_type() const override {

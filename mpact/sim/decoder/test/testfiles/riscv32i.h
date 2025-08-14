@@ -24,8 +24,8 @@ namespace rv32 {
 
 using ::mpact::sim::generic::Instruction;
 
-void SomeFunction(Instruction *inst);
-void SomeOtherFunction(Instruction *inst);
+void SomeFunction(Instruction* inst);
+void SomeOtherFunction(Instruction* inst);
 
 }  // namespace rv32
 }  // namespace riscv

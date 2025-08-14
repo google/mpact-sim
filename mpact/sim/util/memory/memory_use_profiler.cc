@@ -33,14 +33,14 @@ namespace mpact::sim::util {
 namespace internal {
 
 MemoryUseTracker::~MemoryUseTracker() {
-  for (auto &[unused, bits] : memory_use_map_) {
+  for (auto& [unused, bits] : memory_use_map_) {
     delete[] bits;
   }
   memory_use_map_.clear();
 }
 
 // Static helper function.
-static inline void MarkUsedBits(uint64_t byte_offset, int mask, uint8_t *bits) {
+static inline void MarkUsedBits(uint64_t byte_offset, int mask, uint8_t* bits) {
   // Shift right by two, so that every byte offset becomes a word offset.
   uint64_t word_offset = byte_offset >> 2;
   // Byte offs
@@ -68,7 +68,7 @@ void MemoryUseTracker::MarkUsed(uint64_t address, int size) {
     // Compute new base and top addresses.
     uint64_t start = address & ~kBaseMask;
     uint64_t end = start + kSegmentSize - 1;
-    auto *bits = new uint8_t[kBitsSize];
+    auto* bits = new uint8_t[kBitsSize];
     std::memset(bits, 0, kBitsSize);
 
     it = memory_use_map_
@@ -83,12 +83,12 @@ void MemoryUseTracker::MarkUsed(uint64_t address, int size) {
 }
 
 // Write out ranges of words that have been used.
-void MemoryUseTracker::WriteUseProfile(std::ostream &os) const {
+void MemoryUseTracker::WriteUseProfile(std::ostream& os) const {
   // Current range info.
   uint64_t range_start = 0;
   uint64_t range_end = 0;
   bool range_started = false;
-  for (auto const &[range, bits] : memory_use_map_) {
+  for (auto const& [range, bits] : memory_use_map_) {
     auto base = range.start;
     int byte_index = 0;
     uint8_t byte = bits[byte_index];
@@ -134,18 +134,18 @@ void MemoryUseTracker::WriteUseProfile(std::ostream &os) const {
 
 MemoryUseProfiler::MemoryUseProfiler() : MemoryUseProfiler(nullptr) {}
 
-MemoryUseProfiler::MemoryUseProfiler(MemoryInterface *memory)
+MemoryUseProfiler::MemoryUseProfiler(MemoryInterface* memory)
     : memory_(memory) {}
 
-void MemoryUseProfiler::Load(uint64_t address, DataBuffer *db,
-                             Instruction *inst, ReferenceCount *context) {
+void MemoryUseProfiler::Load(uint64_t address, DataBuffer* db,
+                             Instruction* inst, ReferenceCount* context) {
   if (is_enabled_) tracker_.MarkUsed(address, db->size<uint8_t>());
   if (memory_) memory_->Load(address, db, inst, context);
 }
 
-void MemoryUseProfiler::Load(DataBuffer *address_db, DataBuffer *mask_db,
-                             int el_size, DataBuffer *db, Instruction *inst,
-                             ReferenceCount *context) {
+void MemoryUseProfiler::Load(DataBuffer* address_db, DataBuffer* mask_db,
+                             int el_size, DataBuffer* db, Instruction* inst,
+                             ReferenceCount* context) {
   if (is_enabled_) {
     for (int i = 0; i < address_db->size<uint64_t>(); ++i) {
       if (mask_db->Get<uint8_t>(i)) {
@@ -156,13 +156,13 @@ void MemoryUseProfiler::Load(DataBuffer *address_db, DataBuffer *mask_db,
   if (memory_) memory_->Load(address_db, mask_db, el_size, db, inst, context);
 }
 
-void MemoryUseProfiler::Store(uint64_t address, DataBuffer *db) {
+void MemoryUseProfiler::Store(uint64_t address, DataBuffer* db) {
   if (is_enabled_) tracker_.MarkUsed(address, db->size<uint8_t>());
   if (memory_) memory_->Store(address, db);
 }
 
-void MemoryUseProfiler::Store(DataBuffer *address_db, DataBuffer *mask_db,
-                              int el_size, DataBuffer *db) {
+void MemoryUseProfiler::Store(DataBuffer* address_db, DataBuffer* mask_db,
+                              int el_size, DataBuffer* db) {
   if (is_enabled_) {
     for (int i = 0; i < address_db->size<uint64_t>(); ++i) {
       if (mask_db->Get<uint8_t>(i)) {
@@ -177,18 +177,18 @@ TaggedMemoryUseProfiler::TaggedMemoryUseProfiler()
     : TaggedMemoryUseProfiler(nullptr) {}
 
 TaggedMemoryUseProfiler::TaggedMemoryUseProfiler(
-    TaggedMemoryInterface *tagged_memory)
+    TaggedMemoryInterface* tagged_memory)
     : tagged_memory_(tagged_memory) {}
 
-void TaggedMemoryUseProfiler::Load(uint64_t address, DataBuffer *db,
-                                   Instruction *inst, ReferenceCount *context) {
+void TaggedMemoryUseProfiler::Load(uint64_t address, DataBuffer* db,
+                                   Instruction* inst, ReferenceCount* context) {
   if (is_enabled_) tracker_.MarkUsed(address, db->size<uint8_t>());
   if (tagged_memory_) tagged_memory_->Load(address, db, inst, context);
 }
 
-void TaggedMemoryUseProfiler::Load(DataBuffer *address_db, DataBuffer *mask_db,
-                                   int el_size, DataBuffer *db,
-                                   Instruction *inst, ReferenceCount *context) {
+void TaggedMemoryUseProfiler::Load(DataBuffer* address_db, DataBuffer* mask_db,
+                                   int el_size, DataBuffer* db,
+                                   Instruction* inst, ReferenceCount* context) {
   if (is_enabled_) {
     for (int i = 0; i < address_db->size<uint64_t>(); ++i) {
       if (mask_db->Get<uint8_t>(i)) {
@@ -200,21 +200,21 @@ void TaggedMemoryUseProfiler::Load(DataBuffer *address_db, DataBuffer *mask_db,
     tagged_memory_->Load(address_db, mask_db, el_size, db, inst, context);
 }
 
-void TaggedMemoryUseProfiler::Load(uint64_t address, DataBuffer *db,
-                                   DataBuffer *tags, Instruction *inst,
-                                   ReferenceCount *context) {
+void TaggedMemoryUseProfiler::Load(uint64_t address, DataBuffer* db,
+                                   DataBuffer* tags, Instruction* inst,
+                                   ReferenceCount* context) {
   if ((db != nullptr) && is_enabled_)
     tracker_.MarkUsed(address, db->size<uint8_t>());
   if (tagged_memory_) tagged_memory_->Load(address, db, tags, inst, context);
 }
 
-void TaggedMemoryUseProfiler::Store(uint64_t address, DataBuffer *db) {
+void TaggedMemoryUseProfiler::Store(uint64_t address, DataBuffer* db) {
   if (is_enabled_) tracker_.MarkUsed(address, db->size<uint8_t>());
   if (tagged_memory_) tagged_memory_->Store(address, db);
 }
 
-void TaggedMemoryUseProfiler::Store(DataBuffer *address_db, DataBuffer *mask_db,
-                                    int el_size, DataBuffer *db) {
+void TaggedMemoryUseProfiler::Store(DataBuffer* address_db, DataBuffer* mask_db,
+                                    int el_size, DataBuffer* db) {
   if (is_enabled_) {
     for (int i = 0; i < address_db->size<uint64_t>(); ++i) {
       if (mask_db->Get<uint8_t>(i)) {
@@ -225,8 +225,8 @@ void TaggedMemoryUseProfiler::Store(DataBuffer *address_db, DataBuffer *mask_db,
   if (tagged_memory_) tagged_memory_->Store(address_db, mask_db, el_size, db);
 }
 
-void TaggedMemoryUseProfiler::Store(uint64_t address, DataBuffer *db,
-                                    DataBuffer *tags) {
+void TaggedMemoryUseProfiler::Store(uint64_t address, DataBuffer* db,
+                                    DataBuffer* tags) {
   if ((db != nullptr) && is_enabled_)
     tracker_.MarkUsed(address, db->size<uint8_t>());
   if (tagged_memory_) tagged_memory_->Store(address, db, tags);

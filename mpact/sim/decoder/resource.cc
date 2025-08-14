@@ -17,6 +17,10 @@
 #include <string>
 #include <utility>
 
+#include "absl/status/status.h"
+#include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
 #include "mpact/sim/decoder/format_name.h"
 
 namespace mpact {
@@ -29,24 +33,24 @@ Resource::Resource(std::string name) : name_(name) {
 }
 
 ResourceFactory::~ResourceFactory() {
-  for (auto &[unused, resource_ptr] : resource_map_) {
+  for (auto& [unused, resource_ptr] : resource_map_) {
     delete resource_ptr;
   }
   resource_map_.clear();
 }
 
-absl::StatusOr<Resource *> ResourceFactory::CreateResource(
+absl::StatusOr<Resource*> ResourceFactory::CreateResource(
     absl::string_view name) {
   if (resource_map_.contains(name)) {
     return absl::AlreadyExistsError(
         absl::StrCat("Resource '", name, "' already exists"));
   }
-  auto *resource = new Resource(std::string(name));
+  auto* resource = new Resource(std::string(name));
   resource_map_.insert(std::make_pair(resource->name(), resource));
   return resource;
 }
 
-Resource *ResourceFactory::GetOrInsertResource(absl::string_view name) {
+Resource* ResourceFactory::GetOrInsertResource(absl::string_view name) {
   auto iter = resource_map_.find(name);
   if (iter != resource_map_.end()) return iter->second;
   auto result = CreateResource(name);

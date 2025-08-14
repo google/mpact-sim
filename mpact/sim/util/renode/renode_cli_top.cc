@@ -36,7 +36,7 @@ namespace renode {
 using ::mpact::sim::generic::CoreDebugInterface;
 using ::mpact::sim::generic::operator*;  // NOLINT: used below (clang error).
 
-RenodeCLITop::RenodeCLITop(CoreDebugInterface *top, bool wait_for_cli)
+RenodeCLITop::RenodeCLITop(CoreDebugInterface* top, bool wait_for_cli)
     : top_(top), wait_for_cli_(wait_for_cli) {
   absl::MutexLock lock(&run_control_mutex_);
   cli_status_ = wait_for_cli_ ? RunStatus::kHalted : RunStatus::kRunning;
@@ -117,23 +117,23 @@ absl::StatusOr<HaltReasonValueType> RenodeCLITop::RenodeGetLastHaltReason() {
 }
 
 absl::StatusOr<uint64_t> RenodeCLITop::RenodeReadRegister(
-    const std::string &name) {
+    const std::string& name) {
   return top_->ReadRegister(name);
 }
 
-absl::Status RenodeCLITop::RenodeWriteRegister(const std::string &name,
+absl::Status RenodeCLITop::RenodeWriteRegister(const std::string& name,
                                                uint64_t value) {
   return top_->WriteRegister(name, value);
 }
 
 absl::StatusOr<size_t> RenodeCLITop::RenodeReadMemory(uint64_t address,
-                                                      void *buf,
+                                                      void* buf,
                                                       size_t length) {
   return top_->ReadMemory(address, buf, length);
 }
 
 absl::StatusOr<size_t> RenodeCLITop::RenodeWriteMemory(uint64_t address,
-                                                       const void *buf,
+                                                       const void* buf,
                                                        size_t length) {
   return top_->WriteMemory(address, buf, length);
 }
@@ -243,24 +243,24 @@ absl::StatusOr<HaltReasonValueType> RenodeCLITop::CLIGetLastHaltReason() {
 }
 
 absl::StatusOr<uint64_t> RenodeCLITop::CLIReadRegister(
-    const std::string &name) {
+    const std::string& name) {
   return DoWhenInControl<absl::StatusOr<uint64_t>>(
       [this, &name]() { return top_->ReadRegister(name); });
 }
 
-absl::Status RenodeCLITop::CLIWriteRegister(const std::string &name,
+absl::Status RenodeCLITop::CLIWriteRegister(const std::string& name,
                                             uint64_t value) {
   return DoWhenInControl<absl::Status>(
       [this, &name, &value]() { return top_->WriteRegister(name, value); });
 }
 
-absl::StatusOr<generic::DataBuffer *> RenodeCLITop::CLIGetRegisterDataBuffer(
-    const std::string &name) {
-  return DoWhenInControl<absl::StatusOr<generic::DataBuffer *>>(
+absl::StatusOr<generic::DataBuffer*> RenodeCLITop::CLIGetRegisterDataBuffer(
+    const std::string& name) {
+  return DoWhenInControl<absl::StatusOr<generic::DataBuffer*>>(
       [this, &name]() { return top_->GetRegisterDataBuffer(name); });
 }
 
-absl::StatusOr<size_t> RenodeCLITop::CLIReadMemory(uint64_t address, void *buf,
+absl::StatusOr<size_t> RenodeCLITop::CLIReadMemory(uint64_t address, void* buf,
                                                    size_t length) {
   return DoWhenInControl<absl::StatusOr<size_t>>(
       [this, &address, &buf, &length]() {
@@ -269,7 +269,7 @@ absl::StatusOr<size_t> RenodeCLITop::CLIReadMemory(uint64_t address, void *buf,
 }
 
 absl::StatusOr<size_t> RenodeCLITop::CLIWriteMemory(uint64_t address,
-                                                    const void *buf,
+                                                    const void* buf,
                                                     size_t length) {
   return DoWhenInControl<absl::StatusOr<size_t>>(
       [this, &address, &buf, &length]() {
@@ -297,9 +297,8 @@ absl::Status RenodeCLITop::CLIClearAllSwBreakpoints() {
       [this]() { return top_->ClearAllSwBreakpoints(); });
 }
 
-absl::StatusOr<Instruction *> RenodeCLITop::CLIGetInstruction(
-    uint64_t address) {
-  return DoWhenInControl<absl::StatusOr<Instruction *>>(
+absl::StatusOr<Instruction*> RenodeCLITop::CLIGetInstruction(uint64_t address) {
+  return DoWhenInControl<absl::StatusOr<Instruction*>>(
       [this, &address]() { return top_->GetInstruction(address); });
 }
 
@@ -309,12 +308,12 @@ absl::StatusOr<std::string> RenodeCLITop::CLIGetDisassembly(uint64_t address) {
 }
 
 void RenodeCLITop::CLIRequestHalt(HaltReason halt_reason,
-                                  const Instruction *inst) {
+                                  const Instruction* inst) {
   (void)top_->Halt(halt_reason);
 }
 
 void RenodeCLITop::CLIRequestHalt(HaltReasonValueType halt_reason,
-                                  const Instruction *inst) {
+                                  const Instruction* inst) {
   (void)top_->Halt(halt_reason);
 }
 

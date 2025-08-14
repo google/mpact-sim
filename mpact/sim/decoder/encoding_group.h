@@ -42,17 +42,17 @@ class Overlay;
 // can be used to differentiate the encodings.
 class EncodingGroup {
  public:
-  EncodingGroup(InstructionGroup *inst_group, uint64_t ignore);
-  EncodingGroup(EncodingGroup *parent, InstructionGroup *inst_group,
+  EncodingGroup(InstructionGroup* inst_group, uint64_t ignore);
+  EncodingGroup(EncodingGroup* parent, InstructionGroup* inst_group,
                 uint64_t ignore);
   ~EncodingGroup();
   // Remove bits from a mask that are already handled by parent encoding group.
   void AdjustMask();
 
-  void AddEncoding(InstructionEncoding *enc);
+  void AddEncoding(InstructionEncoding* enc);
   // True if the encoding can be added to the group (i.e., there are
   // sufficiently many "overlapping" bits.
-  bool CanAddEncoding(InstructionEncoding *enc);
+  bool CanAddEncoding(InstructionEncoding* enc);
   // True if the encodings can be decoded using a simple lookup table without
   // any further comparisons.
   bool IsSimpleDecode();
@@ -61,11 +61,11 @@ class EncodingGroup {
   // Verify that there are no collisions of opcodes in the simple decoders.
   void CheckEncodings() const;
   // Emit code for the initializers (decode tables) and the decoder functions.
-  void EmitInitializers(absl::string_view name, std::string *initializers_ptr,
-                        const std::string &opcode_enum) const;
-  void EmitDecoders(absl::string_view name, std::string *declarations_ptr,
-                    std::string *definitions_ptr,
-                    const std::string &opcode_enum) const;
+  void EmitInitializers(absl::string_view name, std::string* initializers_ptr,
+                        const std::string& opcode_enum) const;
+  void EmitDecoders(absl::string_view name, std::string* declarations_ptr,
+                    std::string* definitions_ptr,
+                    const std::string& opcode_enum) const;
   // Return a string containing information about the current group. This will
   // be removed at a later stage.
   // TODO(torerik): remove when no longer needed.
@@ -73,7 +73,7 @@ class EncodingGroup {
 
   // Accessors.
   // Return the parent encoding group if it exists.
-  EncodingGroup *parent() const { return parent_; }
+  EncodingGroup* parent() const { return parent_; }
   // The mask is the intersection of the bits that are significant to the
   // instruction encodings in this group. The bits that are used to select this
   // group from the parent are removed from the mask.
@@ -97,49 +97,49 @@ class EncodingGroup {
   // be non-zero).
   bool simple_decoding() const { return simple_decoding_; }
   // The vector of encodings in this group.
-  const std::vector<InstructionEncoding *> &encoding_vec() const {
+  const std::vector<InstructionEncoding*>& encoding_vec() const {
     return encoding_vec_;
   }
   // The vector of subgroups in this group.
-  std::vector<EncodingGroup *> &encoding_group_vec() {
+  std::vector<EncodingGroup*>& encoding_group_vec() {
     return encoding_group_vec_;
   }
 
  private:
   // Methods that factors out some of the complexities of the public code
   // emitting methods.
-  void EmitComplexDecoderBody(std::string *definitions_ptr,
+  void EmitComplexDecoderBody(std::string* definitions_ptr,
                               absl::string_view index_extraction,
                               absl::string_view opcode_enum) const;
-  void EmitComplexDecoderBodyIfSequence(std::string *definitions_ptr,
+  void EmitComplexDecoderBodyIfSequence(std::string* definitions_ptr,
                                         absl::string_view opcode_enum) const;
-  int EmitEncodingIfStatement(int indent, const InstructionEncoding *encoding,
+  int EmitEncodingIfStatement(int indent, const InstructionEncoding* encoding,
                               absl::string_view opcode_enum,
-                              absl::flat_hash_set<std::string> &extracted,
-                              std::string *definitions_ptr) const;
-  void ProcessConstraint(const absl::flat_hash_set<std::string> &extracted,
-                         Constraint *constraint,
-                         std::string *definitions_ptr) const;
-  void EmitFieldExtraction(const Field *field, const std::string &indent_str,
-                           absl::flat_hash_set<std::string> &extracted,
-                           std::string *definitions_ptr) const;
-  void EmitOverlayExtraction(const Overlay *overlay,
-                             const std::string &indent_str,
-                             absl::flat_hash_set<std::string> &extracted,
-                             std::string *definitions_ptr) const;
-  void EmitExtractions(int indent, const std::vector<Constraint *> &constraints,
-                       absl::flat_hash_set<std::string> &extracted,
-                       std::string *definitions_ptr) const;
-  int EmitConstraintConditions(const std::vector<Constraint *> &constraints,
+                              absl::flat_hash_set<std::string>& extracted,
+                              std::string* definitions_ptr) const;
+  void ProcessConstraint(const absl::flat_hash_set<std::string>& extracted,
+                         Constraint* constraint,
+                         std::string* definitions_ptr) const;
+  void EmitFieldExtraction(const Field* field, const std::string& indent_str,
+                           absl::flat_hash_set<std::string>& extracted,
+                           std::string* definitions_ptr) const;
+  void EmitOverlayExtraction(const Overlay* overlay,
+                             const std::string& indent_str,
+                             absl::flat_hash_set<std::string>& extracted,
+                             std::string* definitions_ptr) const;
+  void EmitExtractions(int indent, const std::vector<Constraint*>& constraints,
+                       absl::flat_hash_set<std::string>& extracted,
+                       std::string* definitions_ptr) const;
+  int EmitConstraintConditions(const std::vector<Constraint*>& constraints,
                                absl::string_view comparison,
-                               std::string &connector,
-                               std::string *condition) const;
-  int EmitOtherConstraintConditions(
-      const std::vector<Constraint *> &constraints, std::string &connector,
-      std::string *condition) const;
+                               std::string& connector,
+                               std::string* condition) const;
+  int EmitOtherConstraintConditions(const std::vector<Constraint*>& constraints,
+                                    std::string& connector,
+                                    std::string* condition) const;
 
-  InstructionGroup *inst_group_ = nullptr;
-  EncodingGroup *parent_ = nullptr;
+  InstructionGroup* inst_group_ = nullptr;
+  EncodingGroup* parent_ = nullptr;
   uint64_t varying_ = 0;
   uint64_t discriminator_ = 0;
   size_t discriminator_size_ = 0;
@@ -151,8 +151,8 @@ class EncodingGroup {
   uint64_t ignore_ = 0;
   bool simple_decoding_ = false;
   std::string inst_word_type_;
-  std::vector<InstructionEncoding *> encoding_vec_;
-  std::vector<EncodingGroup *> encoding_group_vec_;
+  std::vector<InstructionEncoding*> encoding_vec_;
+  std::vector<EncodingGroup*> encoding_group_vec_;
 };
 
 }  // namespace bin_format

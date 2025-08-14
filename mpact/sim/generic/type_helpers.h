@@ -151,23 +151,23 @@ struct FPTypeInfo<HalfFP> {
   static constexpr UIntType kPosInf = kExpMask;
   static constexpr UIntType kNegInf = kExpMask | (1ULL << (kBitSize - 1));
   static inline bool IsInf(T value) {
-    UIntType uint_val = *reinterpret_cast<UIntType *>(&value);
+    UIntType uint_val = *reinterpret_cast<UIntType*>(&value);
     return (uint_val & kInfMask) == kPosInf;
   }
   static inline bool IsNaN(T value) {
-    UIntType uint_val = *reinterpret_cast<UIntType *>(&value);
+    UIntType uint_val = *reinterpret_cast<UIntType*>(&value);
     return ((uint_val & kExpMask) == kExpMask) && ((uint_val & kSigMask) != 0);
   }
   static inline bool IsSNaN(T value) {
-    UIntType uint_val = *reinterpret_cast<UIntType *>(&value);
+    UIntType uint_val = *reinterpret_cast<UIntType*>(&value);
     return IsNaN(value) && (((1 << (kSigSize - 1)) & uint_val) == 0);
   }
   static inline bool IsQNaN(T value) {
-    UIntType uint_val = *reinterpret_cast<UIntType *>(&value);
+    UIntType uint_val = *reinterpret_cast<UIntType*>(&value);
     return IsNaN(value) && (((1 << (kSigSize - 1)) & uint_val) != 0);
   }
   static inline bool SignBit(T value) {
-    UIntType uint_val = *reinterpret_cast<UIntType *>(&value);
+    UIntType uint_val = *reinterpret_cast<UIntType*>(&value);
     return 1 == (uint_val >> (kBitSize - 1));
   }
 };
@@ -189,23 +189,23 @@ struct FPTypeInfo<float> {
   static constexpr UIntType kPosInf = kExpMask;
   static constexpr UIntType kNegInf = kExpMask | (1ULL << (kBitSize - 1));
   static inline bool IsInf(T value) {
-    UIntType uint_val = *reinterpret_cast<UIntType *>(&value);
+    UIntType uint_val = *reinterpret_cast<UIntType*>(&value);
     return (uint_val & kInfMask) == kPosInf;
   }
   static inline bool IsNaN(T value) {
-    UIntType uint_val = *reinterpret_cast<UIntType *>(&value);
+    UIntType uint_val = *reinterpret_cast<UIntType*>(&value);
     return ((uint_val & kExpMask) == kExpMask) && ((uint_val & kSigMask) != 0);
   }
   static inline bool IsSNaN(T value) {
-    UIntType uint_val = *reinterpret_cast<UIntType *>(&value);
+    UIntType uint_val = *reinterpret_cast<UIntType*>(&value);
     return IsNaN(value) && (((1 << (kSigSize - 1)) & uint_val) == 0);
   }
   static inline bool IsQNaN(T value) {
-    UIntType uint_val = *reinterpret_cast<UIntType *>(&value);
+    UIntType uint_val = *reinterpret_cast<UIntType*>(&value);
     return IsNaN(value) && (((1 << (kSigSize - 1)) & uint_val) != 0);
   }
   static inline bool SignBit(T value) {
-    UIntType uint_val = *reinterpret_cast<UIntType *>(&value);
+    UIntType uint_val = *reinterpret_cast<UIntType*>(&value);
     return 1 == (uint_val >> (kBitSize - 1));
   }
 };
@@ -227,23 +227,23 @@ struct FPTypeInfo<double> {
   static constexpr UIntType kPosInf = kExpMask;
   static constexpr UIntType kNegInf = kExpMask | (1ULL << (kBitSize - 1));
   static inline bool IsInf(T value) {
-    UIntType uint_val = *reinterpret_cast<UIntType *>(&value);
+    UIntType uint_val = *reinterpret_cast<UIntType*>(&value);
     return (uint_val & kInfMask) == kPosInf;
   }
   static inline bool IsNaN(T value) {
-    UIntType uint_val = *reinterpret_cast<UIntType *>(&value);
+    UIntType uint_val = *reinterpret_cast<UIntType*>(&value);
     return ((uint_val & kExpMask) == kExpMask) && ((uint_val & kSigMask) != 0);
   }
   static inline bool IsSNaN(T value) {
-    UIntType uint_val = *reinterpret_cast<UIntType *>(&value);
+    UIntType uint_val = *reinterpret_cast<UIntType*>(&value);
     return IsNaN(value) && (((1ULL << (kSigSize - 1)) & uint_val) == 0);
   }
   static inline bool IsQNaN(T value) {
-    UIntType uint_val = *reinterpret_cast<UIntType *>(&value);
+    UIntType uint_val = *reinterpret_cast<UIntType*>(&value);
     return IsNaN(value) && (((1ULL << (kSigSize - 1)) & uint_val) != 0);
   }
   static inline bool SignBit(T value) {
-    UIntType uint_val = *reinterpret_cast<UIntType *>(&value);
+    UIntType uint_val = *reinterpret_cast<UIntType*>(&value);
     return 1 == (uint_val >> (kBitSize - 1));
   }
 };
@@ -426,28 +426,28 @@ inline float ConvertHalfToSingle(HalfFP half) {
 
   if (half.value == FPTypeInfo<HalfFP>::kPosInf) {
     float_uint = FPTypeInfo<float>::kPosInf;
-    return *reinterpret_cast<float *>(&float_uint);
+    return *reinterpret_cast<float*>(&float_uint);
   }
 
   if (half.value == FPTypeInfo<HalfFP>::kNegInf) {
     float_uint = FPTypeInfo<float>::kNegInf;
-    return *reinterpret_cast<float *>(&float_uint);
+    return *reinterpret_cast<float*>(&float_uint);
   }
 
   if (FPTypeInfo<HalfFP>::IsNaN(half)) {
     float_uint = FPTypeInfo<float>::kCanonicalNaN;
     float_uint |= sign << (FPTypeInfo<float>::kBitSize - 1);
-    return *reinterpret_cast<float *>(&float_uint);
+    return *reinterpret_cast<float*>(&float_uint);
   }
 
   if (half.value == 0) {
     float_uint = 0;
-    return *reinterpret_cast<float *>(&float_uint);
+    return *reinterpret_cast<float*>(&float_uint);
   }
 
   if (half.value == 1 << (FPTypeInfo<HalfFP>::kBitSize - 1)) {
     float_uint = 1 << (FPTypeInfo<float>::kBitSize - 1);
-    return *reinterpret_cast<float *>(&float_uint);
+    return *reinterpret_cast<float*>(&float_uint);
   }
 
   uint32_t exp = (half.value & FPTypeInfo<HalfFP>::kExpMask) >>
@@ -467,7 +467,7 @@ inline float ConvertHalfToSingle(HalfFP half) {
   sig <<= FPTypeInfo<float>::kSigSize - FPTypeInfo<HalfFP>::kSigSize;
   float_uint = (exp << FPTypeInfo<float>::kSigSize) | sig;
   float_uint |= sign << (FPTypeInfo<float>::kBitSize - 1);
-  return *reinterpret_cast<float *>(&float_uint);
+  return *reinterpret_cast<float*>(&float_uint);
 }
 
 // A replacement for std::is_floating_point that works for half precision.

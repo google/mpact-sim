@@ -22,9 +22,9 @@ namespace mpact {
 namespace sim {
 namespace generic {
 
-StateItemBase::StateItemBase(class ArchState *arch_state,
+StateItemBase::StateItemBase(class ArchState* arch_state,
                              absl::string_view name,
-                             const std::vector<int> &shape, int element_size)
+                             const std::vector<int>& shape, int element_size)
     : arch_state_(arch_state),
       name_(name),
       shape_(shape),

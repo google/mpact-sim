@@ -51,8 +51,8 @@ class MemoryWatcher : public MemoryInterface {
   // if they do (a) not overlap and (b) the addresses of the first are less than
   // the other.
   struct AddressRangeLess {
-    constexpr bool operator()(const AddressRange &lhs,
-                              const AddressRange &rhs) const {
+    constexpr bool operator()(const AddressRange& lhs,
+                              const AddressRange& rhs) const {
       return lhs.end < rhs.start;
     }
   };
@@ -63,10 +63,10 @@ class MemoryWatcher : public MemoryInterface {
   using Callback = absl::AnyInvocable<void(uint64_t, int)>;
 
   // Constructor - default constructor is disabled. Use default destructor.
-  explicit MemoryWatcher(MemoryInterface *memory);
+  explicit MemoryWatcher(MemoryInterface* memory);
   MemoryWatcher() = delete;
-  MemoryWatcher(const MemoryWatcher &) = delete;  // no copy constructor.
-  MemoryWatcher &operator=(const MemoryWatcher &) = delete;  // no assignment.
+  MemoryWatcher(const MemoryWatcher&) = delete;  // no copy constructor.
+  MemoryWatcher& operator=(const MemoryWatcher&) = delete;  // no assignment.
   ~MemoryWatcher() override = default;
 
   // Methods to set/clear watch ranges. No new store (load) range can overlap an
@@ -74,26 +74,26 @@ class MemoryWatcher : public MemoryInterface {
   // Since there cannot be any overlapping ranges, it is only necessary to
   // specify a single address for the clear call, as it will map to the range
   // that contains it.
-  absl::Status SetStoreWatchCallback(const AddressRange &range,
+  absl::Status SetStoreWatchCallback(const AddressRange& range,
                                      Callback callback);
   absl::Status ClearStoreWatchCallback(uint64_t address);
-  absl::Status SetLoadWatchCallback(const AddressRange &range,
+  absl::Status SetLoadWatchCallback(const AddressRange& range,
                                     Callback callback);
   absl::Status ClearLoadWatchCallback(uint64_t address);
 
   // The memory interface methods.
-  void Load(uint64_t address, DataBuffer *db, Instruction *inst,
-            ReferenceCount *context) override;
-  void Load(DataBuffer *address_db, DataBuffer *mask_db, int el_size,
-            DataBuffer *db, Instruction *inst,
-            ReferenceCount *context) override;
-  void Store(uint64_t address, DataBuffer *db) override;
-  void Store(DataBuffer *address_db, DataBuffer *mask_db, int el_size,
-             DataBuffer *db) override;
+  void Load(uint64_t address, DataBuffer* db, Instruction* inst,
+            ReferenceCount* context) override;
+  void Load(DataBuffer* address_db, DataBuffer* mask_db, int el_size,
+            DataBuffer* db, Instruction* inst,
+            ReferenceCount* context) override;
+  void Store(uint64_t address, DataBuffer* db) override;
+  void Store(DataBuffer* address_db, DataBuffer* mask_db, int el_size,
+             DataBuffer* db) override;
 
  private:
   // The memory interface to forward the loads/stores to.
-  MemoryInterface *memory_;
+  MemoryInterface* memory_;
   absl::btree_multimap<AddressRange, Callback, AddressRangeLess>
       ld_watch_actions_;
   absl::btree_multimap<AddressRange, Callback, AddressRangeLess>

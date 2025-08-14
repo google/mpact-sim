@@ -88,72 +88,72 @@ class BinFormatVisitor {
 
   // Entry point for processing a source_stream input, generating any output
   // files in the given directory. Returns OK if no errors were encountered.
-  absl::Status Process(const std::vector<std::string> &file_names,
-                       const std::string &decoder_name,
+  absl::Status Process(const std::vector<std::string>& file_names,
+                       const std::string& decoder_name,
                        absl::string_view prefix,
-                       const std::vector<std::string> &include_roots,
+                       const std::vector<std::string>& include_roots,
                        absl::string_view directory);
 
  private:
   // Check the encodings to make sure there aren't any obvious errors.
-  void PerformEncodingChecks(BinEncodingInfo *encoding);
+  void PerformEncodingChecks(BinEncodingInfo* encoding);
   // Called to generate and emit code for the decoder according to the parsed
   // input file.
-  StringTriple EmitDecoderCode(BinEncodingInfo *encoding);
-  StringTriple EmitDecoderFilePrefix(const std::string &dot_h_name,
-                                     const std::string &types_dot_h_name,
-                                     BinEncodingInfo *encoding_info) const;
+  StringTriple EmitDecoderCode(BinEncodingInfo* encoding);
+  StringTriple EmitDecoderFilePrefix(const std::string& dot_h_name,
+                                     const std::string& types_dot_h_name,
+                                     BinEncodingInfo* encoding_info) const;
   // Called to generate and emit code for the decoder according to the parsed
   // input file.
   std::tuple<std::string, std::string> EmitEncoderCode(
-      BinEncodingInfo *encoding);
+      BinEncodingInfo* encoding);
   std::tuple<std::string, std::string> EmitEncoderFilePrefix(
-      const std::string &dot_h_name, const std::string &enum_h_name,
-      const std::string &types_dot_h_name,
-      BinEncodingInfo *encoding_info) const;
+      const std::string& dot_h_name, const std::string& enum_h_name,
+      const std::string& types_dot_h_name,
+      BinEncodingInfo* encoding_info) const;
   // Generate the file suffixes (namespace closing etc.)
-  StringTriple EmitFileSuffix(const std::string &dot_h_name,
-                              const std::string &types_dot_h_name,
-                              BinEncodingInfo *encoding_info);
+  StringTriple EmitFileSuffix(const std::string& dot_h_name,
+                              const std::string& types_dot_h_name,
+                              BinEncodingInfo* encoding_info);
   // Utility methods to parse certain nodes.
-  BinaryNum ParseBinaryNum(TerminalNode *node);
-  BitRange GetBitIndexRange(BitIndexRangeCtx *ctx);
-  int ConvertToInt(NumberCtx *ctx);
+  BinaryNum ParseBinaryNum(TerminalNode* node);
+  BitRange GetBitIndexRange(BitIndexRangeCtx* ctx);
+  int ConvertToInt(NumberCtx* ctx);
   // Methods that visit the nodes of the parse tree.
   std::unique_ptr<BinEncodingInfo> ProcessTopLevel(
-      const std::string &decoder_name);
-  void PreProcessDeclarations(DeclarationListCtx *ctx);
-  void VisitDeclarations(DeclarationListCtx *ctx,
-                         BinEncodingInfo *encoding_info);
-  void VisitFormatDef(FormatDefCtx *ctx, BinEncodingInfo *encoding_info);
-  void VisitFieldDef(FieldDefCtx *ctx, Format *format,
-                     BinEncodingInfo *encoding_info);
-  void VisitIncludeFile(IncludeFileCtx *ctx);
-  void ParseIncludeFile(antlr4::ParserRuleContext *ctx,
-                        const std::string &file_name,
-                        const std::vector<std::string> &dirs);
-  void VisitOverlayDef(OverlayDefCtx *ctx, Format *format);
-  void VisitOverlayBitField(BitFieldCtx *ctx, Overlay *overlay);
-  InstructionGroup *VisitInstructionGroupDef(InstructionGroupDefCtx *ctx,
-                                             BinEncodingInfo *encoding_info);
-  std::unique_ptr<BinEncodingInfo> VisitDecoderDef(DecoderDefCtx *ctx);
-  void VisitInstructionDef(InstructionDefCtx *ctx,
-                           InstructionGroup *inst_group);
-  void ProcessInstructionDefGenerator(InstructionDefCtx *ctx,
-                                      InstructionGroup *inst_group);
+      const std::string& decoder_name);
+  void PreProcessDeclarations(DeclarationListCtx* ctx);
+  void VisitDeclarations(DeclarationListCtx* ctx,
+                         BinEncodingInfo* encoding_info);
+  void VisitFormatDef(FormatDefCtx* ctx, BinEncodingInfo* encoding_info);
+  void VisitFieldDef(FieldDefCtx* ctx, Format* format,
+                     BinEncodingInfo* encoding_info);
+  void VisitIncludeFile(IncludeFileCtx* ctx);
+  void ParseIncludeFile(antlr4::ParserRuleContext* ctx,
+                        const std::string& file_name,
+                        const std::vector<std::string>& dirs);
+  void VisitOverlayDef(OverlayDefCtx* ctx, Format* format);
+  void VisitOverlayBitField(BitFieldCtx* ctx, Overlay* overlay);
+  InstructionGroup* VisitInstructionGroupDef(InstructionGroupDefCtx* ctx,
+                                             BinEncodingInfo* encoding_info);
+  std::unique_ptr<BinEncodingInfo> VisitDecoderDef(DecoderDefCtx* ctx);
+  void VisitInstructionDef(InstructionDefCtx* ctx,
+                           InstructionGroup* inst_group);
+  void ProcessInstructionDefGenerator(InstructionDefCtx* ctx,
+                                      InstructionGroup* inst_group);
   std::string GenerateInstructionDefList(
-      const std::vector<RangeAssignmentInfo *> &range_info_vec, int index,
-      const std::string &template_str_in) const;
-  void VisitConstraint(Format *format, FieldConstraintCtx *ctx,
-                       InstructionEncoding *inst_encoding);
-  InstructionGroup *VisitInstructionGroupNameList(
-      const std::string &group_name, GroupNameListCtx *ctx,
-      absl::flat_hash_set<std::string> &group_name_set,
-      BinEncodingInfo *encoding_info);
-  void ProcessSpecializations(BinEncodingInfo *encoding_info);
+      const std::vector<RangeAssignmentInfo*>& range_info_vec, int index,
+      const std::string& template_str_in) const;
+  void VisitConstraint(Format* format, FieldConstraintCtx* ctx,
+                       InstructionEncoding* inst_encoding);
+  InstructionGroup* VisitInstructionGroupNameList(
+      const std::string& group_name, GroupNameListCtx* ctx,
+      absl::flat_hash_set<std::string>& group_name_set,
+      BinEncodingInfo* encoding_info);
+  void ProcessSpecializations(BinEncodingInfo* encoding_info);
 
   // Accessors.
-  decoder::DecoderErrorListener *error_listener() const {
+  decoder::DecoderErrorListener* error_listener() const {
     return error_listener_.get();
   }
   void set_error_listener(
@@ -165,7 +165,7 @@ class BinFormatVisitor {
   // Vector of file names.
   std::vector<std::string> file_names_;
   // Map from context pointer to file index.
-  absl::flat_hash_map<const antlr4::ParserRuleContext *, int> context_file_map_;
+  absl::flat_hash_map<const antlr4::ParserRuleContext*, int> context_file_map_;
   // This stores a vector of include file root directories.
   std::vector<std::string> include_dir_vec_;
   // Keep track of files that are included in case there is recursive includes.
@@ -174,17 +174,17 @@ class BinFormatVisitor {
   std::unique_ptr<decoder::DecoderErrorListener> error_listener_ = nullptr;
   std::string decoder_name_;
   // Maps from identifiers to declaration contexts.
-  absl::flat_hash_map<std::string, FormatDefCtx *> format_decl_map_;
-  absl::flat_hash_map<std::string, InstructionGroupDefCtx *> group_decl_map_;
-  absl::flat_hash_map<std::string, DecoderDefCtx *> decoder_decl_map_;
+  absl::flat_hash_map<std::string, FormatDefCtx*> format_decl_map_;
+  absl::flat_hash_map<std::string, InstructionGroupDefCtx*> group_decl_map_;
+  absl::flat_hash_map<std::string, DecoderDefCtx*> decoder_decl_map_;
   // AntlrParserWrapper vector.
-  std::vector<BinFmtAntlrParserWrapper *> antlr_parser_wrappers_;
+  std::vector<BinFmtAntlrParserWrapper*> antlr_parser_wrappers_;
   // Map from comparator string to constraint type.
   absl::flat_hash_map<std::string, ConstraintType> constraint_string_to_type_;
   // Set of include files marked as once.
   absl::flat_hash_set<std::string> once_include_files_;
   // Specializations to process after all instructions have been processed.
-  std::vector<InstructionDefCtx *> specializations_;
+  std::vector<InstructionDefCtx*> specializations_;
 };
 
 }  // namespace bin_format

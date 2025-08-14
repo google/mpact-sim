@@ -38,55 +38,55 @@ namespace proto_fmt {
 using mpact::sim::machine_description::instruction_set::ToPascalCase;
 
 ProtoInstructionEncoding::ProtoInstructionEncoding(
-    std::string name, ProtoInstructionGroup *parent)
+    std::string name, ProtoInstructionGroup* parent)
     : name_(name), instruction_group_(parent) {}
 
 // Copy constructor.
 ProtoInstructionEncoding::ProtoInstructionEncoding(
-    const ProtoInstructionEncoding &rhs) {
+    const ProtoInstructionEncoding& rhs) {
   name_ = rhs.name_;
   instruction_group_ = rhs.instruction_group_;
   setter_code_ = rhs.setter_code_;
-  for (const auto &[name, setter_ptr] : rhs.setter_map_) {
+  for (const auto& [name, setter_ptr] : rhs.setter_map_) {
     setter_map_.insert({name, new ProtoSetter(*setter_ptr)});
   }
-  for (const auto *constraint : rhs.equal_constraints_) {
+  for (const auto* constraint : rhs.equal_constraints_) {
     equal_constraints_.push_back(new ProtoConstraint(*constraint));
   }
-  for (const auto *constraint : rhs.other_constraints_) {
+  for (const auto* constraint : rhs.other_constraints_) {
     other_constraints_.push_back(new ProtoConstraint(*constraint));
   }
-  for (const auto &[name, constraint_ptr] : rhs.has_constraints_) {
+  for (const auto& [name, constraint_ptr] : rhs.has_constraints_) {
     has_constraints_.insert({name, new ProtoConstraint(*constraint_ptr)});
   }
 }
 
 ProtoInstructionEncoding::~ProtoInstructionEncoding() {
-  for (const auto *constraint : equal_constraints_) {
+  for (const auto* constraint : equal_constraints_) {
     delete constraint->expr;
     delete constraint;
   }
   equal_constraints_.clear();
-  for (const auto *constraint : other_constraints_) {
+  for (const auto* constraint : other_constraints_) {
     delete constraint->expr;
     delete constraint;
   }
   other_constraints_.clear();
-  for (const auto &[unused, constraint] : has_constraints_) {
+  for (const auto& [unused, constraint] : has_constraints_) {
     delete constraint;
   }
   has_constraints_.clear();
-  for (const auto &[unused, setter] : setter_map_) {
+  for (const auto& [unused, setter] : setter_map_) {
     delete setter;
   }
   setter_map_.clear();
 }
 
 absl::Status ProtoInstructionEncoding::AddSetter(
-    SetterDefCtx *ctx, const std::string &name,
-    const google::protobuf::FieldDescriptor *field_descriptor,
-    const std::vector<const google::protobuf::FieldDescriptor *> &one_of_fields,
-    IfNotCtx *if_not) {
+    SetterDefCtx* ctx, const std::string& name,
+    const google::protobuf::FieldDescriptor* field_descriptor,
+    const std::vector<const google::protobuf::FieldDescriptor*>& one_of_fields,
+    IfNotCtx* if_not) {
   if (ctx == nullptr) return absl::InvalidArgumentError("Context is null");
 
   // If there is a setter already for that name, return an error.
@@ -100,8 +100,8 @@ absl::Status ProtoInstructionEncoding::AddSetter(
   // one_of_fields vector, as it is guaranteed to be satisfied if the
   // instruction is successfully decoded. If it contradicts an existing
   // constraint, signal an error.
-  ProtoConstraint *depends_on = nullptr;
-  for (auto const *desc : one_of_fields) {
+  ProtoConstraint* depends_on = nullptr;
+  for (auto const* desc : one_of_fields) {
     auto iter = oneof_field_map_.find(desc->containing_oneof());
     if (iter != oneof_field_map_.end()) {
       // Duplicate of an encoding constraint.
@@ -121,16 +121,16 @@ absl::Status ProtoInstructionEncoding::AddSetter(
 }
 
 absl::Status ProtoInstructionEncoding::AddConstraint(
-    FieldConstraintCtx *ctx, ConstraintType op,
-    const google::protobuf::FieldDescriptor *field_descriptor,
-    const std::vector<const google::protobuf::FieldDescriptor *> &one_of_fields,
-    const ProtoConstraintExpression *expr) {
+    FieldConstraintCtx* ctx, ConstraintType op,
+    const google::protobuf::FieldDescriptor* field_descriptor,
+    const std::vector<const google::protobuf::FieldDescriptor*>& one_of_fields,
+    const ProtoConstraintExpression* expr) {
   // One_of_fields is a list of fields that have 'kHas' constraints that are
   // prerequisites for the constraint being added. The variable depends_on
   // points to the end of the dependence chain, or nullptr if there are no or
   // duplicate one_of field constraints.
-  ProtoConstraint *depends_on = nullptr;
-  for (auto const *desc : one_of_fields) {
+  ProtoConstraint* depends_on = nullptr;
+  for (auto const* desc : one_of_fields) {
     auto iter = oneof_field_map_.find(desc->containing_oneof());
     if (iter != oneof_field_map_.end()) {
       if (iter->second == field_descriptor) {
@@ -186,7 +186,7 @@ absl::Status ProtoInstructionEncoding::AddConstraint(
              (field_descriptor->containing_oneof() != nullptr)) {
     // If it's a kHas constraint on an one_of field, first make sure that it
     // does not contradict or duplicate any previous one_of kHas constraints.
-    auto *oneof_desc = field_descriptor->containing_oneof();
+    auto* oneof_desc = field_descriptor->containing_oneof();
     auto iter = oneof_field_map_.find(oneof_desc);
     if (iter != oneof_field_map_.end()) {
       // There is already a constraint on this oneof. Either it's the same
@@ -214,9 +214,9 @@ absl::Status ProtoInstructionEncoding::AddConstraint(
   return absl::OkStatus();
 }
 
-ProtoConstraint *ProtoInstructionEncoding::AddHasConstraint(
-    const google::protobuf::FieldDescriptor *field_descriptor,
-    ProtoConstraint *depends_on) {
+ProtoConstraint* ProtoInstructionEncoding::AddHasConstraint(
+    const google::protobuf::FieldDescriptor* field_descriptor,
+    ProtoConstraint* depends_on) {
   if (depends_on != nullptr) {
     if (!has_constraints_.contains(depends_on->field_descriptor->full_name())) {
       return nullptr;
@@ -225,7 +225,7 @@ ProtoConstraint *ProtoInstructionEncoding::AddHasConstraint(
   auto iter = has_constraints_.find(field_descriptor->full_name());
   if (iter != has_constraints_.end()) return iter->second;
 
-  ProtoConstraint *constraint = new ProtoConstraint{
+  ProtoConstraint* constraint = new ProtoConstraint{
       nullptr, field_descriptor, ConstraintType::kHas, nullptr, 0, depends_on};
   has_constraints_.emplace(field_descriptor->full_name(), constraint);
   return constraint;
@@ -241,28 +241,28 @@ void ProtoInstructionEncoding::GenerateSetterCode() {
   // with if_not and those without (except for those with no depends_on.).
   // Also need to group constraints by their dependencies. Use multimap that
   // maps from a constraint to those that depend on it.
-  absl::btree_multimap<const ProtoConstraint *, const ProtoConstraint *>
+  absl::btree_multimap<const ProtoConstraint*, const ProtoConstraint*>
       grouped_constraints;
   // Maintain a set of inserted constraints, so that the multimap has no
   // duplicate key-value pairs.
-  absl::flat_hash_set<const ProtoConstraint *> inserted_constraints;
+  absl::flat_hash_set<const ProtoConstraint*> inserted_constraints;
   // This set contains the top level constraints that do not depend on any
   // other constraints, and thus are the beginning of the 'dependence chains'.
-  absl::flat_hash_set<const ProtoConstraint *> constraint_tops;
+  absl::flat_hash_set<const ProtoConstraint*> constraint_tops;
   // These multimaps map from a constraint to the set of setters dependent on
   // that constraint.
-  absl::btree_multimap<const ProtoConstraint *, const ProtoSetter *>
+  absl::btree_multimap<const ProtoConstraint*, const ProtoSetter*>
       grouped_setters;
-  absl::btree_multimap<const ProtoConstraint *, const ProtoSetter *>
+  absl::btree_multimap<const ProtoConstraint*, const ProtoSetter*>
       grouped_if_not_setters;
 
   // Lambda used to determine if a constraint is already satisfied by
   // an identical constraint used in the decoding of the instruction.
-  auto is_in_eq_constraints = [&](const ProtoConstraint *constraint) {
-    auto *field_descriptor = constraint->field_descriptor;
+  auto is_in_eq_constraints = [&](const ProtoConstraint* constraint) {
+    auto* field_descriptor = constraint->field_descriptor;
     auto iter = std::find_if(
         equal_constraints_.begin(), equal_constraints_.end(),
-        [&field_descriptor](const ProtoConstraint *constraint) {
+        [&field_descriptor](const ProtoConstraint* constraint) {
           return (constraint->op == ConstraintType::kHas) &&
                  (constraint->field_descriptor == field_descriptor);
         });
@@ -271,9 +271,9 @@ void ProtoInstructionEncoding::GenerateSetterCode() {
 
   // First build up the data structures.
   // Iterate over the setters for this instruction.
-  for (auto &[name, setter_ptr] : setter_map_) {
+  for (auto& [name, setter_ptr] : setter_map_) {
     // Get any one_of dependency that the setter depends on.
-    auto *depends = setter_ptr->depends_on;
+    auto* depends = setter_ptr->depends_on;
     // If the dependency matches one in the equal constraints for decoding the
     // instruction, it will be true for the setters, and does not have to be
     // tested for again.
@@ -313,7 +313,7 @@ void ProtoInstructionEncoding::GenerateSetterCode() {
 
   // Helper lambda functions used in the loop nest below.
   // This generates the assignment.
-  auto assign = [&](int indent, const ProtoSetter *setter) {
+  auto assign = [&](int indent, const ProtoSetter* setter) {
     absl::StrAppend(&setter_code_, std::string(indent, ' '), "decoder->Set",
                     ToPascalCase(setter->name), "($.");
     auto field_name = setter->ctx->qualified_ident()->getText();
@@ -346,9 +346,9 @@ void ProtoInstructionEncoding::GenerateSetterCode() {
   // Helper lambda function to generate the if statement to guard individual
   // setters.
   auto generate_if_statement = [&](int indent,
-                                   const ProtoConstraint *constraint) {
-    auto *desc = constraint->field_descriptor;
-    auto *oneof = desc->containing_oneof();
+                                   const ProtoConstraint* constraint) {
+    auto* desc = constraint->field_descriptor;
+    auto* oneof = desc->containing_oneof();
     absl::StrAppend(&setter_code_, std::string(indent, ' '), "if ($.");
     if (oneof != nullptr) {
       absl::StrAppend(&setter_code_, oneof->name(),
@@ -361,8 +361,8 @@ void ProtoInstructionEncoding::GenerateSetterCode() {
 
   // Recursive lambda for generating nested if statements around groups of
   // setters with the same constraint.
-  std::function<void(int, const ProtoConstraint *)> generate_nested_ifs =
-      [&](int indent, const ProtoConstraint *constraint) {
+  std::function<void(int, const ProtoConstraint*)> generate_nested_ifs =
+      [&](int indent, const ProtoConstraint* constraint) {
         // Generate if statement for 'constraint'.
         generate_if_statement(indent, constraint);
         indent += 2;
@@ -384,24 +384,24 @@ void ProtoInstructionEncoding::GenerateSetterCode() {
       };
 
   // Process the setters with no if_not's.
-  for (auto *constraint : constraint_tops) {
+  for (auto* constraint : constraint_tops) {
     generate_nested_ifs(kIndent, constraint);
   }
 
   // Recursive lambda for generating the conditions of the if statements used
   // by setters with 'if_not' constructs.
-  std::function<void(const ProtoConstraint *, std::string &)>
+  std::function<void(const ProtoConstraint*, std::string&)>
       recursive_if_conditions =
-          [&](const ProtoConstraint *constraint, std::string &if_conditions) {
-            auto *desc = constraint->field_descriptor;
-            auto *depends_on = constraint->depends_on;
+          [&](const ProtoConstraint* constraint, std::string& if_conditions) {
+            auto* desc = constraint->field_descriptor;
+            auto* depends_on = constraint->depends_on;
             std::string sep = "";
             // Generate the conditions in reverse order of the depends_on list.
             if (depends_on != nullptr) {
               recursive_if_conditions(depends_on, if_conditions);
               if (!if_conditions.empty()) sep = " && ";
             }
-            auto *oneof = desc->containing_oneof();
+            auto* oneof = desc->containing_oneof();
             std::string ident = constraint->ctx->qualified_ident()->getText();
             auto pos = ident.find_last_of('.');
             std::string prefix;

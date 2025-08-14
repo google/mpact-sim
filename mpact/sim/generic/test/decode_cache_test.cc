@@ -31,13 +31,13 @@ class MockDecoder : public DecoderInterface {
  public:
   MockDecoder() : num_decoded_(0) {}
   ~MockDecoder() override {}
-  Instruction *DecodeInstruction(uint64_t address) override {
+  Instruction* DecodeInstruction(uint64_t address) override {
     num_decoded_++;
-    Instruction *inst = new Instruction(address, nullptr);
+    Instruction* inst = new Instruction(address, nullptr);
     return inst;
   }
   int GetNumOpcodes() const override { return 0; }
-  const char *GetOpcodeName(int index) const override { return ""; }
+  const char* GetOpcodeName(int index) const override { return ""; }
   void set_num_decoded(int val) { num_decoded_ = val; }
   int num_decoded() const { return num_decoded_; }
 
@@ -52,7 +52,7 @@ class DecodeCacheTest : public testing::Test {
 
   ~DecodeCacheTest() override { delete decoder_; }
 
-  MockDecoder *decoder_;
+  MockDecoder* decoder_;
 };
 
 // Test creation and verify basic properties.
@@ -61,7 +61,7 @@ TEST_F(DecodeCacheTest, BasicProperties) {
 
   props.num_entries = 1000;
   props.minimum_pc_increment = 4;
-  DecodeCache *dc = DecodeCache::Create(props, decoder_);
+  DecodeCache* dc = DecodeCache::Create(props, decoder_);
   EXPECT_EQ(dc->num_entries(), 1024);
   EXPECT_EQ(dc->address_mask(), 0xFFC);
   EXPECT_EQ(dc->address_shift(), 2);
@@ -83,9 +83,9 @@ TEST_F(DecodeCacheTest, CacheOne) {
   DecodeCacheProperties props;
   props.num_entries = 1000;
   props.minimum_pc_increment = 4;
-  DecodeCache *dc = DecodeCache::Create(props, decoder_);
+  DecodeCache* dc = DecodeCache::Create(props, decoder_);
 
-  Instruction *inst;
+  Instruction* inst;
   EXPECT_EQ(decoder_->num_decoded(), 0);
   // Not in cache, decoder will be called.
   inst = dc->GetDecodedInstruction(0x1000);
@@ -116,9 +116,9 @@ TEST_F(DecodeCacheTest, InvalidateOne) {
   DecodeCacheProperties props;
   props.num_entries = 1000;
   props.minimum_pc_increment = 4;
-  DecodeCache *dc = DecodeCache::Create(props, decoder_);
+  DecodeCache* dc = DecodeCache::Create(props, decoder_);
 
-  Instruction *inst;
+  Instruction* inst;
   inst = dc->GetDecodedInstruction(0x1000);
   inst = dc->GetDecodedInstruction(0x1004);
   inst = dc->GetDecodedInstruction(0x1008);
@@ -139,9 +139,9 @@ TEST_F(DecodeCacheTest, InvalidateRange) {
   DecodeCacheProperties props;
   props.num_entries = 1000;
   props.minimum_pc_increment = 4;
-  DecodeCache *dc = DecodeCache::Create(props, decoder_);
+  DecodeCache* dc = DecodeCache::Create(props, decoder_);
 
-  Instruction *inst;
+  Instruction* inst;
   inst = dc->GetDecodedInstruction(0x1000);
   inst = dc->GetDecodedInstruction(0x1004);
   inst = dc->GetDecodedInstruction(0x1008);
@@ -162,9 +162,9 @@ TEST_F(DecodeCacheTest, InvalidateAll) {
   DecodeCacheProperties props;
   props.num_entries = 1000;
   props.minimum_pc_increment = 4;
-  DecodeCache *dc = DecodeCache::Create(props, decoder_);
+  DecodeCache* dc = DecodeCache::Create(props, decoder_);
 
-  Instruction *inst;
+  Instruction* inst;
   inst = dc->GetDecodedInstruction(0x1000);
   inst = dc->GetDecodedInstruction(0x1004);
   inst = dc->GetDecodedInstruction(0x1008);

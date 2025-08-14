@@ -38,9 +38,9 @@ class TaggedMemoryInterface : public MemoryInterface {
   using MemoryInterface::Store;
   virtual ~TaggedMemoryInterface() = default;
   // For now, only support non-vector loads and stores with tags.
-  virtual void Load(uint64_t address, DataBuffer *db, DataBuffer *tags,
-                    Instruction *inst, ReferenceCount *context) = 0;
-  virtual void Store(uint64_t address, DataBuffer *db, DataBuffer *tags) = 0;
+  virtual void Load(uint64_t address, DataBuffer* db, DataBuffer* tags,
+                    Instruction* inst, ReferenceCount* context) = 0;
+  virtual void Store(uint64_t address, DataBuffer* db, DataBuffer* tags) = 0;
 };
 
 }  // namespace util

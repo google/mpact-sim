@@ -96,7 +96,7 @@ constexpr char kDepotPath[] = "mpact/sim/decoder/test/";
 
 std::string OutputDir() { return "./"; }
 
-static bool FileExists(const std::string &name) {
+static bool FileExists(const std::string& name) {
   std::ifstream file(name);
   return file.good();
 }
@@ -591,7 +591,7 @@ TEST_F(BinFormatVisitorTest, Constraints) {
   // Verify that decoder entries use the different constraint types.
   std::string decoder_str((std::istreambuf_iterator<char>(decoder_file)),
                           (std::istreambuf_iterator<char>()));
-  for (auto const &fragment :
+  for (auto const& fragment :
        {"field1_value != 0x1", "field2_value > 0x2", "field3_value >= 0x3",
         "field4_value < 0x4", "field5_value <= 0x5"}) {
     RE2 re(fragment);

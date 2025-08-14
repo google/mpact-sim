@@ -34,10 +34,10 @@ namespace bin_format {
 // Helper struct to group the information of a constraint (either == or !=).
 struct Constraint {
   ConstraintType type;
-  Field *field = nullptr;
-  Overlay *overlay = nullptr;
-  Field *rhs_field = nullptr;
-  Overlay *rhs_overlay = nullptr;
+  Field* field = nullptr;
+  Overlay* overlay = nullptr;
+  Field* rhs_field = nullptr;
+  Overlay* rhs_overlay = nullptr;
   bool can_ignore = false;
   uint64_t value;
 };
@@ -50,9 +50,9 @@ class InstructionEncoding {
  public:
   // Disable default constructor and assignment operator.
   InstructionEncoding() = delete;
-  InstructionEncoding(std::string name, Format *format);
-  InstructionEncoding(const InstructionEncoding &encoding);
-  InstructionEncoding &operator=(const InstructionEncoding &) = delete;
+  InstructionEncoding(std::string name, Format* format);
+  InstructionEncoding(const InstructionEncoding& encoding);
+  InstructionEncoding& operator=(const InstructionEncoding&) = delete;
   ~InstructionEncoding();
 
   // Add a constraint on a field/overlay (in the format associated with the
@@ -65,8 +65,8 @@ class InstructionEncoding {
   // Add a constraint on a field/overlay (in the format associated with the
   // instruction) that compares against another field/overlay.
   absl::Status AddOtherConstraint(ConstraintType type,
-                                  const std::string &lhs_name,
-                                  const std::string &rhs_name);
+                                  const std::string& lhs_name,
+                                  const std::string& rhs_name);
 
   // Get the value of the constant bits in the instruction (as defined by the
   // equal constraints).
@@ -78,63 +78,63 @@ class InstructionEncoding {
   // not equal constraints.
   uint64_t GetCombinedMask();
   // Add specialization to this encoding.
-  absl::Status AddSpecialization(const std::string &name,
-                                 InstructionEncoding *encoding);
+  absl::Status AddSpecialization(const std::string& name,
+                                 InstructionEncoding* encoding);
   bool HasSpecialization() const { return !specializations_.empty(); }
 
   // Accessors.
-  const std::string &name() const { return name_; }
-  const std::string &format_name() const { return format_name_; }
+  const std::string& name() const { return name_; }
+  const std::string& format_name() const { return format_name_; }
   // Return the vector of constraints on the values of this encoding. These
   // constraints determine the value that a masked set of bits have to be equal
   // to in order to match this encoding.
-  const std::vector<Constraint *> &equal_constraints() const {
+  const std::vector<Constraint*>& equal_constraints() const {
     return equal_constraints_;
   }
   // Additionally, overlays may add constant bits to field references. These
   // constraints have to be compared one by one after performing an overlay
   // extraction that adds in the bits as specified in the overlay. Thus, they
   // cannot be used in a simple mask and compare.
-  const std::vector<Constraint *> &equal_extracted_constraints() const {
+  const std::vector<Constraint*>& equal_extracted_constraints() const {
     return equal_extracted_constraints_;
   }
   // The vector of not-equal, greater, less, etc., constraints that have to be
   // satisfied for an instruction to match this encoding.
-  const std::vector<Constraint *> &other_constraints() const {
+  const std::vector<Constraint*>& other_constraints() const {
     return other_constraints_;
   }
 
-  const absl::btree_map<std::string, InstructionEncoding *> &specializations()
+  const absl::btree_map<std::string, InstructionEncoding*>& specializations()
       const {
     return specializations_;
   }
 
-  Format *format() const { return format_; }
+  Format* format() const { return format_; }
 
  private:
   // Internal helper to create and check a constraint.
-  absl::StatusOr<Constraint *> CreateConstraint(ConstraintType type,
-                                                std::string lhs_name,
-                                                std::string rhs_name);
+  absl::StatusOr<Constraint*> CreateConstraint(ConstraintType type,
+                                               std::string lhs_name,
+                                               std::string rhs_name);
 
-  absl::StatusOr<Constraint *> CreateConstraint(ConstraintType type,
-                                                std::string field_name,
-                                                int64_t value);
+  absl::StatusOr<Constraint*> CreateConstraint(ConstraintType type,
+                                               std::string field_name,
+                                               int64_t value);
   // Recomputes the masks and values.
   absl::Status ComputeMaskAndValue();
 
   std::string name_;
   std::string format_name_;
-  Format *format_ = nullptr;
-  std::vector<Constraint *> equal_constraints_;
-  std::vector<Constraint *> equal_extracted_constraints_;
-  std::vector<Constraint *> other_constraints_;
+  Format* format_ = nullptr;
+  std::vector<Constraint*> equal_constraints_;
+  std::vector<Constraint*> equal_extracted_constraints_;
+  std::vector<Constraint*> other_constraints_;
   bool mask_set_ = false;
   uint64_t mask_ = 0;
   uint64_t other_mask_ = 0;
   uint64_t extracted_mask_ = 0;
   uint64_t value_ = 0;
-  absl::btree_map<std::string, InstructionEncoding *> specializations_;
+  absl::btree_map<std::string, InstructionEncoding*> specializations_;
 };
 
 }  // namespace bin_format

@@ -38,19 +38,19 @@ class SimpleUart : public MemoryInterface {
  public:
   // Constructors.
   // Instantiate the uart and set the output to std::cerr.
-  explicit SimpleUart(ArchState *state);
+  explicit SimpleUart(ArchState* state);
   // Instantiate the uart and set the output to the given ostream.
-  SimpleUart(ArchState *state, std::ostream &output);
+  SimpleUart(ArchState* state, std::ostream& output);
 
   // Memory interface methods used to write to the memory mapped registers.
-  void Load(uint64_t address, DataBuffer *db, Instruction *inst,
-            ReferenceCount *context) override;
-  void Load(DataBuffer *address_db, DataBuffer *mask_db, int el_size,
-            DataBuffer *db, Instruction *inst,
-            ReferenceCount *context) override;
-  void Store(uint64_t address, DataBuffer *db) override;
-  void Store(DataBuffer *address, DataBuffer *mask_db, int el_size,
-             DataBuffer *db) override;
+  void Load(uint64_t address, DataBuffer* db, Instruction* inst,
+            ReferenceCount* context) override;
+  void Load(DataBuffer* address_db, DataBuffer* mask_db, int el_size,
+            DataBuffer* db, Instruction* inst,
+            ReferenceCount* context) override;
+  void Store(uint64_t address, DataBuffer* db) override;
+  void Store(DataBuffer* address, DataBuffer* mask_db, int el_size,
+             DataBuffer* db) override;
 
  private:
   // Helper methods.
@@ -65,7 +65,7 @@ class SimpleUart : public MemoryInterface {
   uint32_t divisor_low_byte_ = 0;
   uint32_t interrupt_enable_ = 0;
   uint32_t scratch_;
-  std::ostream *output_;
+  std::ostream* output_;
 };
 
 }  // namespace mpact::sim::util

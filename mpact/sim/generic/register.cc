@@ -27,12 +27,12 @@ namespace mpact {
 namespace sim {
 namespace generic {
 
-RegisterBase::RegisterBase(ArchState *state, absl::string_view name,
-                           const std::vector<int> &shape, int unit_size)
+RegisterBase::RegisterBase(ArchState* state, absl::string_view name,
+                           const std::vector<int>& shape, int unit_size)
     : StateItemBase(state, name, shape, unit_size), data_buffer_(nullptr) {
   // Initialize register with a data buffer set to 0.
   if (state != nullptr) {
-    auto *db = state->db_factory()->Allocate<uint8_t>(size());
+    auto* db = state->db_factory()->Allocate<uint8_t>(size());
     std::memset(db->raw_ptr(), 0, size());
     SetDataBuffer(db);
     db->DecRef();
@@ -46,7 +46,7 @@ RegisterBase::~RegisterBase() {
   }
 }
 
-void RegisterBase::SetDataBuffer(DataBuffer *db) {
+void RegisterBase::SetDataBuffer(DataBuffer* db) {
   // For now, ignore if the sizes don't match.
   // ABSL_HARDENING_ASSERT(db->size<uint8_t>() == size());
   if (nullptr != data_buffer_) {
@@ -56,14 +56,14 @@ void RegisterBase::SetDataBuffer(DataBuffer *db) {
   data_buffer_ = db;
 }
 
-ReservedRegisterBase::ReservedRegisterBase(ArchState *state,
+ReservedRegisterBase::ReservedRegisterBase(ArchState* state,
                                            absl::string_view name,
-                                           const std::vector<int> &shape,
+                                           const std::vector<int>& shape,
                                            int unit_size,
-                                           SimpleResource *resource)
+                                           SimpleResource* resource)
     : RegisterBase(state, name, shape, unit_size), resource_(resource) {}
 
-void ReservedRegisterBase::SetDataBuffer(DataBuffer *db) {
+void ReservedRegisterBase::SetDataBuffer(DataBuffer* db) {
   // Use the base class to update the data buffer.
   RegisterBase::SetDataBuffer(db);
   // Release the resource if set.

@@ -15,9 +15,10 @@
 #ifndef MPACT_SIM_GENERIC_COMPLEX_RESOURCE_H_
 #define MPACT_SIM_GENERIC_COMPLEX_RESOURCE_H_
 
+#include <cstddef>
+#include <cstdint>
 #include <string>
 
-#include "absl/status/status.h"
 #include "absl/types/span.h"
 #include "mpact/sim/generic/arch_state.h"
 
@@ -44,7 +45,7 @@ class ComplexResource {
  public:
   static inline const int kMaxDepth = 512;
 
-  ComplexResource(ArchState *state, std::string name, size_t cycle_depth);
+  ComplexResource(ArchState* state, std::string name, size_t cycle_depth);
   ComplexResource() = delete;
   ~ComplexResource();
 
@@ -58,8 +59,8 @@ class ComplexResource {
   // Return printable representation.
   std::string AsString() const { return name(); }
   // Accessors.
-  const std::string &name() const { return name_; }
-  const absl::Span<uint64_t> bit_array() const {
+  const std::string& name() const { return name_; }
+  absl::Span<uint64_t> bit_array() const {
     return absl::MakeSpan(bit_array_, array_size_);
   }
   size_t cycle_depth() const { return cycle_depth_; }
@@ -68,7 +69,7 @@ class ComplexResource {
   // Advance the cycle vector to current time.
   void Advance();
   // Pointer to the arch state. This is needed to obtain current time.
-  ArchState *state_;
+  ArchState* state_;
   // Name of resource.
   std::string name_;
   // Last time the cycle vector was shifted.
@@ -78,8 +79,8 @@ class ComplexResource {
   // How many uint64_t elements in the array.
   size_t array_size_;
   // Pointer to the arrays.
-  uint64_t *bit_array_ = nullptr;
-  uint64_t *mask_array_ = nullptr;
+  uint64_t* bit_array_ = nullptr;
+  uint64_t* mask_array_ = nullptr;
 };
 
 }  // namespace generic

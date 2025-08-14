@@ -25,20 +25,20 @@ namespace sim {
 namespace decoder {
 namespace bin_format {
 
-BinDecoder::BinDecoder(std::string name, BinEncodingInfo *encoding_info,
-                       DecoderErrorListener *error_listener)
+BinDecoder::BinDecoder(std::string name, BinEncodingInfo* encoding_info,
+                       DecoderErrorListener* error_listener)
     : name_(name),
       encoding_info_(encoding_info),
       error_listener_(error_listener) {}
 
 BinDecoder::~BinDecoder() { instruction_group_vec_.clear(); }
 
-void BinDecoder::AddInstructionGroup(InstructionGroup *group) {
+void BinDecoder::AddInstructionGroup(InstructionGroup* group) {
   instruction_group_vec_.push_back(group);
 }
 
 void BinDecoder::CheckEncodings() {
-  for (auto *group : instruction_group_vec_) {
+  for (auto* group : instruction_group_vec_) {
     group->ProcessEncodings();
     group->CheckEncodings();
   }

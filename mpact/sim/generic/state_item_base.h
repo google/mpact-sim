@@ -36,14 +36,14 @@ class ArchState;
 class StateItemBase : public DataBufferDestination {
  protected:
   // Only constructed from derived classes
-  StateItemBase(ArchState *arch_state, absl::string_view name,
-                const std::vector<int> &shape, int element_size);
+  StateItemBase(ArchState* arch_state, absl::string_view name,
+                const std::vector<int>& shape, int element_size);
   StateItemBase() = delete;
-  StateItemBase(const StateItemBase &) = delete;
+  StateItemBase(const StateItemBase&) = delete;
 
  public:
   // Name() returns the state item's name.
-  const std::string &name() const { return name_; }
+  const std::string& name() const { return name_; }
 
   // Returns the size vector of the state item. A scalar element has size
   // vector {1}, an N element vector item has size vector {N}, and
@@ -58,10 +58,10 @@ class StateItemBase : public DataBufferDestination {
 
   // Returns the architecture state object that this simulated state is
   // associated with.
-  ArchState *arch_state() const { return arch_state_; }
+  ArchState* arch_state() const { return arch_state_; }
 
  private:
-  ArchState *arch_state_;
+  ArchState* arch_state_;
   std::string name_;
   std::vector<int> shape_;
   int element_size_;

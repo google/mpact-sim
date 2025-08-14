@@ -39,71 +39,71 @@ class ProtoEncodingInfo;
 class ProtoEncodingGroup;
 
 struct SetterInfo {
-  SetterDefCtx *ctx;
+  SetterDefCtx* ctx;
   std::string name;
-  const google::protobuf::FieldDescriptor *field_desc;
-  std::vector<const google::protobuf::FieldDescriptor *> one_of_fields;
-  IfNotCtx *if_not;
+  const google::protobuf::FieldDescriptor* field_desc;
+  std::vector<const google::protobuf::FieldDescriptor*> one_of_fields;
+  IfNotCtx* if_not;
 };
 
 // This class represents an instruction group from the .proto_fmt file.
 class ProtoInstructionGroup {
  public:
   ProtoInstructionGroup(std::string group_name,
-                        const google::protobuf::Descriptor *message_type,
+                        const google::protobuf::Descriptor* message_type,
                         std::string opcode_enum,
-                        ProtoEncodingInfo *encoding_info);
+                        ProtoEncodingInfo* encoding_info);
   ProtoInstructionGroup() = delete;
   ~ProtoInstructionGroup();
 
   // Add group level setter.
   absl::Status AddSetter(
-      const std::string &group_name, SetterDefCtx *ctx,
-      const std::string &setter_name,
-      const google::protobuf::FieldDescriptor *field_desc,
-      std::vector<const google::protobuf::FieldDescriptor *> one_of_fields,
-      IfNotCtx *if_not);
+      const std::string& group_name, SetterDefCtx* ctx,
+      const std::string& setter_name,
+      const google::protobuf::FieldDescriptor* field_desc,
+      std::vector<const google::protobuf::FieldDescriptor*> one_of_fields,
+      IfNotCtx* if_not);
   // Look up the setters in the named setter group. If found, return the begin
   // and end iterators for those setters.
   absl::StatusOr<
-      std::pair<absl::btree_map<std::string, SetterInfo *>::const_iterator,
-                absl::btree_map<std::string, SetterInfo *>::const_iterator>>
+      std::pair<absl::btree_map<std::string, SetterInfo*>::const_iterator,
+                absl::btree_map<std::string, SetterInfo*>::const_iterator>>
   GetSetterGroup(absl::string_view group) const;
   // Create and return an instruction encoding with the given name.
-  ProtoInstructionEncoding *AddInstructionEncoding(std::string name);
+  ProtoInstructionEncoding* AddInstructionEncoding(std::string name);
   // Create a copy of the given instruction encoding.
-  void CopyInstructionEncoding(ProtoInstructionEncoding *encoding);
+  void CopyInstructionEncoding(ProtoInstructionEncoding* encoding);
   // Create an encoding group for this instruction group and then subdivide
   // it in a hierarchy as necessary.
-  void ProcessEncodings(DecoderErrorListener *error_listener);
+  void ProcessEncodings(DecoderErrorListener* error_listener);
 
   // Generate the decoder for this instruction group.
   std::string GenerateDecoder() const;
 
   // Accessors.
-  const std::string &name() const { return name_; }
-  const google::protobuf::Descriptor *message_type() const {
+  const std::string& name() const { return name_; }
+  const google::protobuf::Descriptor* message_type() const {
     return message_type_;
   }
-  const std::vector<ProtoInstructionEncoding *> &encodings() const {
+  const std::vector<ProtoInstructionEncoding*>& encodings() const {
     return encodings_;
   }
-  const ProtoEncodingInfo *encoding_info() const { return encoding_info_; }
+  const ProtoEncodingInfo* encoding_info() const { return encoding_info_; }
 
  private:
   std::string name_;
-  const google::protobuf::Descriptor *message_type_;
+  const google::protobuf::Descriptor* message_type_;
   std::string opcode_enum_;
-  ProtoEncodingInfo *encoding_info_;
+  ProtoEncodingInfo* encoding_info_;
   absl::flat_hash_set<std::string> encoding_name_set_;
-  std::vector<ProtoInstructionEncoding *> encodings_;
+  std::vector<ProtoInstructionEncoding*> encodings_;
   // Encoding group.
-  ProtoEncodingGroup *encoding_group_ = nullptr;
+  ProtoEncodingGroup* encoding_group_ = nullptr;
   // Setter names and types.
   absl::btree_map<std::string, int> setter_name_to_type_;
   // Setter group map. Maps from setter group name to a map from setter name
   // to setter info.
-  absl::btree_map<std::string, absl::btree_map<std::string, SetterInfo *>>
+  absl::btree_map<std::string, absl::btree_map<std::string, SetterInfo*>>
       setter_groups_;
 };
 

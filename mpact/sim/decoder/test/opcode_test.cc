@@ -36,7 +36,7 @@ constexpr char kOpcodeName1[] = "opcode_1";
 constexpr char kOpcodeName2[] = "opcode_2";
 constexpr char kPredicateOpName[] = "pred";
 
-const char *kOpcodeNames[] = {kOpcodeName0, kOpcodeName1, kOpcodeName2};
+const char* kOpcodeNames[] = {kOpcodeName0, kOpcodeName1, kOpcodeName2};
 
 // Test fixture for opcode test.
 class OpcodeTest : public testing::Test {
@@ -44,7 +44,7 @@ class OpcodeTest : public testing::Test {
   OpcodeTest() {
     instruction_set_ = std::make_unique<InstructionSet>(kInstructionSetName);
 
-    absl::StatusOr<Opcode *> result =
+    absl::StatusOr<Opcode*> result =
         instruction_set_->opcode_factory()->CreateOpcode(kOpcodeName0);
     opcode_ = result.ok() ? result.value() : nullptr;
   }
@@ -52,7 +52,7 @@ class OpcodeTest : public testing::Test {
   ~OpcodeTest() override { delete opcode_; }
 
   std::unique_ptr<InstructionSet> instruction_set_;
-  Opcode *opcode_;  // Does not have to be deleted, as OpcodeFactory handles it.
+  Opcode* opcode_;  // Does not have to be deleted, as OpcodeFactory handles it.
 };
 
 TEST_F(OpcodeTest, Basic) {
@@ -66,7 +66,7 @@ TEST_F(OpcodeTest, Basic) {
 // Verify that values of opcodes increment as you create new ones.
 TEST_F(OpcodeTest, Multiple) {
   // Creating a duplicate opcode should fail.
-  absl::StatusOr<Opcode *> result =
+  absl::StatusOr<Opcode*> result =
       instruction_set_->opcode_factory()->CreateOpcode(kOpcodeNames[0]);
   EXPECT_TRUE(absl::IsInternal(result.status()));
   for (int indx = 1; indx < 3; indx++) {
@@ -74,7 +74,7 @@ TEST_F(OpcodeTest, Multiple) {
         instruction_set_->opcode_factory()->CreateOpcode(kOpcodeNames[indx]);
     // Since one opcode is created in fixture, these opcode values start at 2.
     ASSERT_TRUE(result.ok());
-    Opcode *opcode = result.value();
+    Opcode* opcode = result.value();
     EXPECT_EQ(opcode->value(), indx + 1);
     delete opcode;
   }

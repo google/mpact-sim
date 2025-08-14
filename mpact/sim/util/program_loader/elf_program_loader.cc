@@ -37,18 +37,18 @@ namespace util {
 
 constexpr uint64_t kPtGnuStack = 0x6474e551;
 
-ElfProgramLoader::ElfProgramLoader(util::MemoryInterface *code_memory,
-                                   util::MemoryInterface *data_memory)
+ElfProgramLoader::ElfProgramLoader(util::MemoryInterface* code_memory,
+                                   util::MemoryInterface* data_memory)
     : code_memory_(code_memory), data_memory_(data_memory) {}
 
-ElfProgramLoader::ElfProgramLoader(util::MemoryInterface *memory)
+ElfProgramLoader::ElfProgramLoader(util::MemoryInterface* memory)
     : code_memory_(memory), data_memory_(memory) {}
 
-ElfProgramLoader::ElfProgramLoader(generic::CoreDebugInterface *dbg_if)
+ElfProgramLoader::ElfProgramLoader(generic::CoreDebugInterface* dbg_if)
     : dbg_if_(dbg_if) {}
 
 ElfProgramLoader::~ElfProgramLoader() {
-  for (auto *symtab : symbol_accessors_) {
+  for (auto* symtab : symbol_accessors_) {
     delete symtab;
   }
   symbol_accessors_.clear();
@@ -56,7 +56,7 @@ ElfProgramLoader::~ElfProgramLoader() {
 
 // Only load the program into the elf reader so that symbols can be looked up.
 absl::StatusOr<uint64_t> ElfProgramLoader::LoadSymbols(
-    const std::string &file_name) {
+    const std::string& file_name) {
   struct stat buffer;
   auto result = stat(file_name.c_str(), &buffer);
   if (result == -1) {
@@ -74,7 +74,7 @@ absl::StatusOr<uint64_t> ElfProgramLoader::LoadSymbols(
   }
   loaded_ = true;
   // Now look up any symbol sections.
-  for (auto const &section : elf_reader_.sections) {
+  for (auto const& section : elf_reader_.sections) {
     if (section->get_type() == SHT_SYMTAB) {
       symbol_accessors_.push_back(
           new ELFIO::symbol_section_accessor(elf_reader_, section));
@@ -87,7 +87,7 @@ absl::StatusOr<uint64_t> ElfProgramLoader::LoadSymbols(
   ELFIO::Elf_Half section_index;
   unsigned char other;
   // Scan symbol table. Place function names in a map for easy lookup.
-  for (auto *symtab : symbol_accessors_) {
+  for (auto* symtab : symbol_accessors_) {
     ELFIO::Elf64_Addr value;
     for (unsigned i = 0; i < symtab->get_symbols_num(); i++) {
       symtab->get_symbol(i, name, value, size, bind, type, section_index,
@@ -106,13 +106,13 @@ absl::StatusOr<uint64_t> ElfProgramLoader::LoadSymbols(
 // and iterates over the segments. For each segment it writes it to the
 // appropriate location in the given memories.
 absl::StatusOr<uint64_t> ElfProgramLoader::LoadProgram(
-    const std::string &file_name) {
+    const std::string& file_name) {
   auto load_symbols_res = LoadSymbols(file_name);
   if (!load_symbols_res.ok()) return load_symbols_res.status();
 
   generic::DataBufferFactory db_factory;
 
-  for (auto const &segment : elf_reader_.segments) {
+  for (auto const& segment : elf_reader_.segments) {
     if (segment->get_type() == kPtGnuStack) {
       stack_size_ = segment->get_memory_size();
       has_stack_size_ = (stack_size_ > 0);
@@ -123,7 +123,7 @@ absl::StatusOr<uint64_t> ElfProgramLoader::LoadProgram(
     if (segment->get_file_size() == 0) continue;
     // Read the data from the elf file.
     if (dbg_if_ == nullptr) {  // Use memory interfaces.
-      auto *db = db_factory.Allocate(segment->get_file_size());
+      auto* db = db_factory.Allocate(segment->get_file_size());
       std::memcpy(db->raw_ptr(), segment->get_data(), segment->get_file_size());
 
       if (segment->get_flags() &
@@ -148,7 +148,7 @@ absl::StatusOr<uint64_t> ElfProgramLoader::LoadProgram(
 }
 
 absl::StatusOr<std::pair<uint64_t, uint64_t>> ElfProgramLoader::GetSymbol(
-    const std::string &name) const {
+    const std::string& name) const {
   if (!loaded_) return absl::InternalError("No program loaded");
   if (symbol_accessors_.empty())
     return absl::NotFoundError("Symbol table not found");
@@ -159,7 +159,7 @@ absl::StatusOr<std::pair<uint64_t, uint64_t>> ElfProgramLoader::GetSymbol(
   unsigned char type;
   ELFIO::Elf_Half section_index;
   unsigned char other;
-  for (auto *symtab : symbol_accessors_) {
+  for (auto* symtab : symbol_accessors_) {
     if (symtab->get_symbol(name, value, size, bind, type, section_index,
                            other)) {
       return std::make_pair(static_cast<uint64_t>(value),

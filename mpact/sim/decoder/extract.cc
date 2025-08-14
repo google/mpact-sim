@@ -14,10 +14,12 @@
 
 #include "mpact/sim/decoder/extract.h"
 
+#include <cstdint>
 #include <string>
 #include <vector>
 
 #include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
 
 namespace mpact {
 namespace sim {
@@ -25,7 +27,7 @@ namespace decoder {
 namespace bin_format {
 
 uint64_t ExtractValue(uint64_t value,
-                      const std::vector<ExtractionStep> &recipe) {
+                      const std::vector<ExtractionStep>& recipe) {
   uint64_t extracted_value = 0;
   for (auto [mask, shift] : recipe) {
     extracted_value |= ((value >> shift) & mask);
@@ -33,7 +35,7 @@ uint64_t ExtractValue(uint64_t value,
   return extracted_value;
 }
 
-std::string WriteExtraction(const std::vector<ExtractionStep> &recipe,
+std::string WriteExtraction(const std::vector<ExtractionStep>& recipe,
                             absl::string_view value, absl::string_view result,
                             absl::string_view indent) {
   std::string output;

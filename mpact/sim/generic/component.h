@@ -40,73 +40,73 @@ namespace generic {
 class Component {
  public:
   // Using btree_map to ensure proto exports are done in name order.
-  using ComponentMap = absl::btree_map<std::string, Component *>;
-  using CounterMap = absl::btree_map<std::string, CounterBaseInterface *>;
-  using ConfigMap = absl::btree_map<std::string, ConfigBase *>;
+  using ComponentMap = absl::btree_map<std::string, Component*>;
+  using CounterMap = absl::btree_map<std::string, CounterBaseInterface*>;
+  using ConfigMap = absl::btree_map<std::string, ConfigBase*>;
   // Type alias for import done callback function.
   using CallbackFunction = std::function<void()>;
   // Create a Component with no parent.
   explicit Component(std::string name);
   // Create a Component under the given parent. Adds the component to the
   // parent's child components.
-  Component(std::string name, Component *parent);
+  Component(std::string name, Component* parent);
   Component() = delete;
-  Component(const Component &) = delete;
-  Component operator=(const Component &) = delete;
+  Component(const Component&) = delete;
+  Component operator=(const Component&) = delete;
   virtual ~Component() = default;
 
   // Methods to add and access child components, counters and config entries.
-  absl::Status AddChildComponent(Component &child);
-  absl::Status AddCounter(CounterBaseInterface *counter);
-  absl::Status AddConfig(ConfigBase *config);
-  Component *GetChildComponent(absl::string_view name) const;
+  absl::Status AddChildComponent(Component& child);
+  absl::Status AddCounter(CounterBaseInterface* counter);
+  absl::Status AddConfig(ConfigBase* config);
+  Component* GetChildComponent(absl::string_view name) const;
   absl::Status RemoveChildComponent(absl::string_view name);
-  CounterBaseInterface *GetCounter(absl::string_view name) const;
-  ConfigBase *GetConfig(absl::string_view name) const;
+  CounterBaseInterface* GetCounter(absl::string_view name) const;
+  ConfigBase* GetConfig(absl::string_view name) const;
 
   // Imports the ComponentData proto into the current Component, registered
   // child component instances, and registered ConfigBase instances. No values
   // are imported into counters. This method may be overridden.
   virtual absl::Status Import(
-      const mpact::sim::proto::ComponentData &component_data);
+      const mpact::sim::proto::ComponentData& component_data);
 
   // This method is called when all imports are done. Can be overridden.
   virtual void ImportDone() const;
 
   // Register a callback function to be called when import is done.
   template <typename F>
-  void AddImportDoneCallback(const F &callback) {
+  void AddImportDoneCallback(const F& callback) {
     callback_vec_.push_back(callback);
   }
 
   // Exports the data from the current Component instance, its' registered child
   // components, registered ConfigBase instances, and registered CounterBase
   // instances.
-  absl::Status Export(proto::ComponentData *component_data);
+  absl::Status Export(proto::ComponentData* component_data);
 
   // Accessors.
-  const std::string &component_name() const { return component_name_; }
-  Component *parent() const { return parent_; }
+  const std::string& component_name() const { return component_name_; }
+  Component* parent() const { return parent_; }
 
   // Map accessors.
-  const ComponentMap &child_map() const { return child_map_; }
-  const CounterMap &counter_map() const { return counter_map_; }
-  const ConfigMap &config_map() const { return config_map_; }
+  const ComponentMap& child_map() const { return child_map_; }
+  const CounterMap& counter_map() const { return counter_map_; }
+  const ConfigMap& config_map() const { return config_map_; }
 
  protected:
   // The Import method is divided into import self and import children. Each
   // can be individually overridden.
   virtual absl::Status ImportSelf(
-      const mpact::sim::proto::ComponentData &component_data);
+      const mpact::sim::proto::ComponentData& component_data);
   virtual absl::Status ImportChildren(
-      const mpact::sim::proto::ComponentData &component_data);
+      const mpact::sim::proto::ComponentData& component_data);
 
  private:
   // Private accessor.
-  void SetParent(Component *parent) { parent_ = parent; }
+  void SetParent(Component* parent) { parent_ = parent; }
 
   std::string component_name_;
-  Component *parent_ = nullptr;
+  Component* parent_ = nullptr;
 
   // None of the objects pointed to by these maps are owned by this object.
   ComponentMap child_map_;

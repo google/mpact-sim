@@ -51,8 +51,8 @@ class FlatDemandMemory : public MemoryInterface {
   // Load data from address into the DataBuffer, then schedule the Instruction
   // inst (if not nullptr) to be executed (using the function delay line) with
   // context. The size of the data access is based on size of the data buffer.
-  void Load(uint64_t address, DataBuffer *db, Instruction *inst,
-            ReferenceCount *context) override;
+  void Load(uint64_t address, DataBuffer* db, Instruction* inst,
+            ReferenceCount* context) override;
   // Load data from N addresses stored in address_db (uint64), using mask_db
   // (bool) to mask out the corresponding loads from taking place (if false).
   // Each access is el_size bytes long, and is stored into the DataBuffer.
@@ -60,29 +60,29 @@ class FlatDemandMemory : public MemoryInterface {
   // executed (using the function delay line) with context. It's the
   // responsibility of the caller to ensure that all DataBuffer instances passed
   // in are appropriately sized.
-  void Load(DataBuffer *address_db, DataBuffer *mask_db, int el_size,
-            DataBuffer *db, Instruction *inst,
-            ReferenceCount *context) override;
+  void Load(DataBuffer* address_db, DataBuffer* mask_db, int el_size,
+            DataBuffer* db, Instruction* inst,
+            ReferenceCount* context) override;
   // Convenience template function that calls the above function with the
   // element size as the sizeof() the template parameter type.
   template <typename T>
-  void Load(DataBuffer *address_db, DataBuffer *mask_db, DataBuffer *db,
-            Instruction *inst, ReferenceCount *context) {
+  void Load(DataBuffer* address_db, DataBuffer* mask_db, DataBuffer* db,
+            Instruction* inst, ReferenceCount* context) {
     Load(address_db, mask_db, sizeof(T), db, inst, context);
   }
   // Stores data from the DataBuffer instance to memory starting at address.
-  void Store(uint64_t address, DataBuffer *db) override;
+  void Store(uint64_t address, DataBuffer* db) override;
   // Stores data starting at each of the N addresses stored in address_db,
   // (uint64) using mask_db (bool) to mask out stores from taking place (if
   // false). Each store is el_size bytes long. It's the responsibility of the
   // caller to ensure that all DataBuffer instances that are passed in are
   // appropriately sized.
-  void Store(DataBuffer *address_db, DataBuffer *mask_db, int el_size,
-             DataBuffer *db) override;
+  void Store(DataBuffer* address_db, DataBuffer* mask_db, int el_size,
+             DataBuffer* db) override;
   // Convenience template function that calls the above function with the
   // element size as the sizeof() the template parameter type.
   template <typename T>
-  void Store(DataBuffer *address_db, DataBuffer *mask_db, DataBuffer *db) {
+  void Store(DataBuffer* address_db, DataBuffer* mask_db, DataBuffer* db) {
     Store(address_db, mask_db, sizeof(T), db);
   }
   static constexpr int kAllocationSize = 16 * 1024;  // Power of two.
@@ -91,7 +91,7 @@ class FlatDemandMemory : public MemoryInterface {
   void Clear();
 
  private:
-  void LoadStoreHelper(uint64_t address, uint8_t *data_ptr, int size_in_units,
+  void LoadStoreHelper(uint64_t address, uint8_t* data_ptr, int size_in_units,
                        bool is_load);
 
   static constexpr int kAllocationShift = 14;
@@ -101,7 +101,7 @@ class FlatDemandMemory : public MemoryInterface {
   uint8_t fill_value_;
   int addressable_unit_shift_;
   int allocation_byte_size_;
-  absl::flat_hash_map<uint64_t, uint8_t *> block_map_;
+  absl::flat_hash_map<uint64_t, uint8_t*> block_map_;
 };
 
 }  // namespace util

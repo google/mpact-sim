@@ -27,7 +27,7 @@ namespace riscv {
 // Helper function to insert and entry into a "getter" map. This is used in
 // the riscv_*_getter.h files.
 template <typename M, typename E, typename G>
-inline void Insert(M &map, E entry, G getter) {
+inline void Insert(M& map, E entry, G getter) {
   if (!map.contains(static_cast<int>(entry))) {
     map.insert(std::make_pair(static_cast<int>(entry), getter));
   } else {
@@ -36,7 +36,7 @@ inline void Insert(M &map, E entry, G getter) {
 }
 
 template <typename M, typename E1, typename E2, typename G>
-inline void Insert(M &map, E1 entry1, E2 entry2, G getter) {
+inline void Insert(M& map, E1 entry1, E2 entry2, G getter) {
   auto key = std::tie(entry1, entry2);
   if (!map.contains(key)) {
     map.insert(std::make_pair(key, getter));

@@ -40,11 +40,11 @@ TEST(SingleInitiatorRouterTest, MemoryTargetLoadStore) {
   DataBufferFactory db_factory;
   auto router = std::make_unique<SingleInitiatorRouter>("test");
   auto memory = std::make_unique<DummyMemory>();
-  auto *memory_target = static_cast<MemoryInterface *>(memory.get());
+  auto* memory_target = static_cast<MemoryInterface*>(memory.get());
 
   EXPECT_TRUE(router->AddTarget(memory_target, 0, 0xffff'ffff'ffff'ffff).ok());
-  auto *db = db_factory.Allocate<uint32_t>(1);
-  auto *tag_db = db_factory.Allocate<uint8_t>(1);
+  auto* db = db_factory.Allocate<uint32_t>(1);
+  auto* tag_db = db_factory.Allocate<uint8_t>(1);
 
   // Verify that only the access on the correct interface call go through.
   router->Load(0x1000, db, nullptr, nullptr);
@@ -73,12 +73,12 @@ TEST(SingleInitiatorRouterTest, MemoryTargetVectorLoadStore) {
   DataBufferFactory db_factory;
   auto router = std::make_unique<SingleInitiatorRouter>("test");
   auto memory = std::make_unique<DummyMemory>();
-  auto *memory_target = static_cast<MemoryInterface *>(memory.get());
+  auto* memory_target = static_cast<MemoryInterface*>(memory.get());
 
   EXPECT_TRUE(router->AddTarget(memory_target, 0, 0xffff'ffff'ffff'ffff).ok());
-  auto *db = db_factory.Allocate<uint32_t>(2);
-  auto *address_db = db_factory.Allocate<uint64_t>(2);
-  auto *mask_db = db_factory.Allocate<uint8_t>(2);
+  auto* db = db_factory.Allocate<uint32_t>(2);
+  auto* address_db = db_factory.Allocate<uint64_t>(2);
+  auto* mask_db = db_factory.Allocate<uint8_t>(2);
   address_db->Set<uint64_t>(0, 0x1000);
   address_db->Set<uint64_t>(1, 0x2000);
   mask_db->Set<uint8_t>(0, 1);
@@ -101,11 +101,11 @@ TEST(SingleInitiatorRouterTest, TaggedTargetLoadStore) {
   DataBufferFactory db_factory;
   auto router = std::make_unique<SingleInitiatorRouter>("test");
   auto tagged = std::make_unique<DummyMemory>();
-  auto *tagged_target = static_cast<TaggedMemoryInterface *>(tagged.get());
+  auto* tagged_target = static_cast<TaggedMemoryInterface*>(tagged.get());
 
   EXPECT_TRUE(router->AddTarget(tagged_target, 0, 0xffff'ffff'ffff'ffff).ok());
-  auto *db = db_factory.Allocate<uint32_t>(1);
-  auto *tag_db = db_factory.Allocate<uint8_t>(1);
+  auto* db = db_factory.Allocate<uint32_t>(1);
+  auto* tag_db = db_factory.Allocate<uint8_t>(1);
   // Verify that only the access on the correct interface call go through.
   router->Load(0x1000, db, nullptr, nullptr);
   EXPECT_EQ(tagged->load_address(), 0x1000);
@@ -135,12 +135,12 @@ TEST(SingleInitiatorRouterTest, TaggedTargetVectorLoadStore) {
   DataBufferFactory db_factory;
   auto router = std::make_unique<SingleInitiatorRouter>("test");
   auto tagged = std::make_unique<DummyMemory>();
-  auto *tagged_target = static_cast<TaggedMemoryInterface *>(tagged.get());
+  auto* tagged_target = static_cast<TaggedMemoryInterface*>(tagged.get());
 
   EXPECT_TRUE(router->AddTarget(tagged_target, 0, 0xffff'ffff'ffff'ffff).ok());
-  auto *db = db_factory.Allocate<uint32_t>(2);
-  auto *address_db = db_factory.Allocate<uint64_t>(2);
-  auto *mask_db = db_factory.Allocate<uint8_t>(2);
+  auto* db = db_factory.Allocate<uint32_t>(2);
+  auto* address_db = db_factory.Allocate<uint64_t>(2);
+  auto* mask_db = db_factory.Allocate<uint8_t>(2);
   address_db->Set<uint64_t>(0, 0x1000);
   address_db->Set<uint64_t>(1, 0x2000);
   mask_db->Set<uint8_t>(0, 1);
@@ -163,10 +163,10 @@ TEST(SingleInitiatorRouterTest, SingleAtomicTarget) {
   DataBufferFactory db_factory;
   auto router = std::make_unique<SingleInitiatorRouter>("test");
   auto atomic = std::make_unique<DummyMemory>();
-  auto *atomic_target = static_cast<AtomicMemoryOpInterface *>(atomic.get());
+  auto* atomic_target = static_cast<AtomicMemoryOpInterface*>(atomic.get());
   EXPECT_TRUE(router->AddTarget(atomic_target, 0, 0xffff'ffff'ffff'ffff).ok());
-  auto *db = db_factory.Allocate<uint32_t>(1);
-  auto *tag_db = db_factory.Allocate<uint8_t>(1);
+  auto* db = db_factory.Allocate<uint32_t>(1);
+  auto* tag_db = db_factory.Allocate<uint8_t>(1);
   // These should not update the address.
   router->Load(0x1000, db, nullptr, nullptr);
   EXPECT_EQ(atomic->load_address(), 0);
@@ -195,11 +195,11 @@ TEST(SingleInitiatorRouterTest, MultiTargetMemory) {
   auto memory1 = std::make_unique<DummyMemory>();
   auto memory2 = std::make_unique<DummyMemory>();
   auto default_memory = std::make_unique<DummyMemory>();
-  auto *memory_target0 = static_cast<MemoryInterface *>(memory0.get());
-  auto *memory_target1 = static_cast<MemoryInterface *>(memory1.get());
-  auto *memory_target2 = static_cast<MemoryInterface *>(memory2.get());
-  auto *default_target = static_cast<MemoryInterface *>(default_memory.get());
-  auto *db = db_factory.Allocate<uint32_t>(1);
+  auto* memory_target0 = static_cast<MemoryInterface*>(memory0.get());
+  auto* memory_target1 = static_cast<MemoryInterface*>(memory1.get());
+  auto* memory_target2 = static_cast<MemoryInterface*>(memory2.get());
+  auto* default_target = static_cast<MemoryInterface*>(default_memory.get());
+  auto* db = db_factory.Allocate<uint32_t>(1);
 
   // Add 3 targets at different areas in the memory map.
   EXPECT_TRUE(
@@ -268,13 +268,13 @@ TEST(SingleInitiatorRouterTest, MultiTargetTaggedMemory) {
   auto memory1 = std::make_unique<DummyMemory>();
   auto memory2 = std::make_unique<DummyMemory>();
   auto default_memory = std::make_unique<DummyMemory>();
-  auto *memory_target0 = static_cast<TaggedMemoryInterface *>(memory0.get());
-  auto *memory_target1 = static_cast<TaggedMemoryInterface *>(memory1.get());
-  auto *memory_target2 = static_cast<TaggedMemoryInterface *>(memory2.get());
-  auto *default_target =
-      static_cast<TaggedMemoryInterface *>(default_memory.get());
-  auto *db = db_factory.Allocate<uint32_t>(1);
-  auto *tag_db = db_factory.Allocate<uint8_t>(1);
+  auto* memory_target0 = static_cast<TaggedMemoryInterface*>(memory0.get());
+  auto* memory_target1 = static_cast<TaggedMemoryInterface*>(memory1.get());
+  auto* memory_target2 = static_cast<TaggedMemoryInterface*>(memory2.get());
+  auto* default_target =
+      static_cast<TaggedMemoryInterface*>(default_memory.get());
+  auto* db = db_factory.Allocate<uint32_t>(1);
+  auto* tag_db = db_factory.Allocate<uint8_t>(1);
 
   // Add 3 targets at different areas in the memory map.
   EXPECT_TRUE(
@@ -344,12 +344,12 @@ TEST(SingleInitiatorRouterTest, MultiTargetVectorMemory) {
   auto memory0 = std::make_unique<DummyMemory>();
   auto memory1 = std::make_unique<DummyMemory>();
   auto memory2 = std::make_unique<DummyMemory>();
-  auto *memory_target0 = static_cast<MemoryInterface *>(memory0.get());
-  auto *memory_target1 = static_cast<MemoryInterface *>(memory1.get());
-  auto *memory_target2 = static_cast<MemoryInterface *>(memory2.get());
-  auto *address_db = db_factory.Allocate<uint64_t>(2);
-  auto *mask_db = db_factory.Allocate<uint8_t>(2);
-  auto *db = db_factory.Allocate<uint32_t>(2);
+  auto* memory_target0 = static_cast<MemoryInterface*>(memory0.get());
+  auto* memory_target1 = static_cast<MemoryInterface*>(memory1.get());
+  auto* memory_target2 = static_cast<MemoryInterface*>(memory2.get());
+  auto* address_db = db_factory.Allocate<uint64_t>(2);
+  auto* mask_db = db_factory.Allocate<uint8_t>(2);
+  auto* db = db_factory.Allocate<uint32_t>(2);
   mask_db->Set<uint8_t>(0, 1);
   mask_db->Set<uint8_t>(1, 1);
 
@@ -431,12 +431,12 @@ TEST(SingleInitiatorRouterTest, MultiTargetVectorTaggedMemory) {
   auto memory0 = std::make_unique<DummyMemory>();
   auto memory1 = std::make_unique<DummyMemory>();
   auto memory2 = std::make_unique<DummyMemory>();
-  auto *tagged_target0 = static_cast<TaggedMemoryInterface *>(memory0.get());
-  auto *tagged_target1 = static_cast<TaggedMemoryInterface *>(memory1.get());
-  auto *tagged_target2 = static_cast<TaggedMemoryInterface *>(memory2.get());
-  auto *address_db = db_factory.Allocate<uint64_t>(2);
-  auto *mask_db = db_factory.Allocate<uint8_t>(2);
-  auto *db = db_factory.Allocate<uint32_t>(2);
+  auto* tagged_target0 = static_cast<TaggedMemoryInterface*>(memory0.get());
+  auto* tagged_target1 = static_cast<TaggedMemoryInterface*>(memory1.get());
+  auto* tagged_target2 = static_cast<TaggedMemoryInterface*>(memory2.get());
+  auto* address_db = db_factory.Allocate<uint64_t>(2);
+  auto* mask_db = db_factory.Allocate<uint8_t>(2);
+  auto* db = db_factory.Allocate<uint32_t>(2);
   mask_db->Set<uint8_t>(0, 1);
   mask_db->Set<uint8_t>(1, 1);
 
@@ -519,12 +519,12 @@ TEST(SingleInitiatorRouterTest, MultiTargetAtomicMemory) {
   auto memory1 = std::make_unique<DummyMemory>();
   auto memory2 = std::make_unique<DummyMemory>();
   auto default_memory = std::make_unique<DummyMemory>();
-  auto *atomic_target0 = static_cast<AtomicMemoryOpInterface *>(memory0.get());
-  auto *atomic_target1 = static_cast<AtomicMemoryOpInterface *>(memory1.get());
-  auto *atomic_target2 = static_cast<AtomicMemoryOpInterface *>(memory2.get());
-  auto *default_target =
-      static_cast<AtomicMemoryOpInterface *>(default_memory.get());
-  auto *db = db_factory.Allocate<uint32_t>(1);
+  auto* atomic_target0 = static_cast<AtomicMemoryOpInterface*>(memory0.get());
+  auto* atomic_target1 = static_cast<AtomicMemoryOpInterface*>(memory1.get());
+  auto* atomic_target2 = static_cast<AtomicMemoryOpInterface*>(memory2.get());
+  auto* default_target =
+      static_cast<AtomicMemoryOpInterface*>(default_memory.get());
+  auto* db = db_factory.Allocate<uint32_t>(1);
 
   // Add 3 targets at different areas in the memory map.
   EXPECT_TRUE(

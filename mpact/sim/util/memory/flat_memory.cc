@@ -15,7 +15,7 @@
 #include "mpact/sim/util/memory/flat_memory.h"
 
 #include <cstdint>
-#include <functional>
+#include <cstring>
 
 #include "absl/base/macros.h"
 #include "absl/numeric/bits.h"
@@ -24,12 +24,12 @@ namespace mpact {
 namespace sim {
 namespace util {
 
-void FlatMemory::Load(uint64_t address, DataBuffer *db, Instruction *inst,
-                      ReferenceCount *context) {
+void FlatMemory::Load(uint64_t address, DataBuffer* db, Instruction* inst,
+                      ReferenceCount* context) {
   ABSL_HARDENING_ASSERT(address >= base_);
   uint64_t offset = (address - base_) << shift_;
   ABSL_HARDENING_ASSERT(offset + db->size<uint8_t>() <= size_);
-  uint8_t *ptr = &memory_buffer_[offset];
+  uint8_t* ptr = &memory_buffer_[offset];
   db->CopyFrom(ptr);
   if (nullptr != inst) {
     if (db->latency() > 0) {
@@ -48,9 +48,9 @@ void FlatMemory::Load(uint64_t address, DataBuffer *db, Instruction *inst,
   }
 }
 
-void FlatMemory::Load(DataBuffer *address_db, DataBuffer *mask_db, int el_size,
-                      DataBuffer *db, Instruction *inst,
-                      ReferenceCount *context) {
+void FlatMemory::Load(DataBuffer* address_db, DataBuffer* mask_db, int el_size,
+                      DataBuffer* db, Instruction* inst,
+                      ReferenceCount* context) {
   int max = mask_db->size<bool>();
   switch (el_size) {
     case 1:
@@ -87,16 +87,16 @@ void FlatMemory::Load(DataBuffer *address_db, DataBuffer *mask_db, int el_size,
   }
 }
 
-void FlatMemory::Store(uint64_t address, DataBuffer *db) {
+void FlatMemory::Store(uint64_t address, DataBuffer* db) {
   ABSL_HARDENING_ASSERT(address >= base_);
   uint64_t offset = (address - base_) << shift_;
   ABSL_HARDENING_ASSERT(offset + db->size<uint8_t>() <= size_);
-  uint8_t *ptr = &memory_buffer_[offset];
+  uint8_t* ptr = &memory_buffer_[offset];
   db->CopyTo(ptr);
 }
 
-void FlatMemory::Store(DataBuffer *address_db, DataBuffer *mask_db, int el_size,
-                       DataBuffer *db) {
+void FlatMemory::Store(DataBuffer* address_db, DataBuffer* mask_db, int el_size,
+                       DataBuffer* db) {
   int max = mask_db->size<bool>();
 
   switch (el_size) {

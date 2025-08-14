@@ -30,7 +30,7 @@ namespace util {
 
 // Helper function that writes the value to the data buffer.
 template <typename I>
-static absl::Status WriteDb(DataBuffer *db, I value) {
+static absl::Status WriteDb(DataBuffer* db, I value) {
   switch (db->size<uint8_t>()) {
     case 1:
       db->Set<uint8_t>(0, static_cast<uint8_t>(value));
@@ -55,8 +55,8 @@ static absl::Status WriteDb(DataBuffer *db, I value) {
 // buffers.
 template <typename T>
 static void PerformOp(AtomicMemoryOpInterface::Operation op,
-                      const DataBuffer *db_lhs, const DataBuffer *db_rhs,
-                      DataBuffer *db_res) {
+                      const DataBuffer* db_lhs, const DataBuffer* db_rhs,
+                      DataBuffer* db_res) {
   using UT = typename std::make_unsigned<T>::type;
   using ST = typename std::make_signed<T>::type;
   switch (op) {
@@ -94,7 +94,7 @@ static void PerformOp(AtomicMemoryOpInterface::Operation op,
 }
 
 // Constructor.
-AtomicTaggedMemory::AtomicTaggedMemory(TaggedMemoryInterface *tagged_memory)
+AtomicTaggedMemory::AtomicTaggedMemory(TaggedMemoryInterface* tagged_memory)
     : tagged_memory_(tagged_memory) {
   // Construct and initialize the local data buffers.
   db1_ = db_factory_.Allocate<uint8_t>(1);
@@ -120,27 +120,27 @@ AtomicTaggedMemory::~AtomicTaggedMemory() {
 }
 
 // Forward the load call.
-void AtomicTaggedMemory::Load(uint64_t address, DataBuffer *db,
-                              DataBuffer *tag_db, Instruction *inst,
-                              ReferenceCount *context) {
+void AtomicTaggedMemory::Load(uint64_t address, DataBuffer* db,
+                              DataBuffer* tag_db, Instruction* inst,
+                              ReferenceCount* context) {
   tagged_memory_->Load(address, db, tag_db, inst, context);
 }
 
-void AtomicTaggedMemory::Load(uint64_t address, DataBuffer *db,
-                              Instruction *inst, ReferenceCount *context) {
+void AtomicTaggedMemory::Load(uint64_t address, DataBuffer* db,
+                              Instruction* inst, ReferenceCount* context) {
   tagged_memory_->Load(address, db, inst, context);
 }
 
 // Forward the load call.
-void AtomicTaggedMemory::Load(DataBuffer *address_db, DataBuffer *mask_db,
-                              int el_size, DataBuffer *db, Instruction *inst,
-                              ReferenceCount *context) {
+void AtomicTaggedMemory::Load(DataBuffer* address_db, DataBuffer* mask_db,
+                              int el_size, DataBuffer* db, Instruction* inst,
+                              ReferenceCount* context) {
   tagged_memory_->Load(address_db, mask_db, el_size, db, inst, context);
 }
 
 // Store the value to memory, but remove any matching tag from the tag set.
-void AtomicTaggedMemory::Store(uint64_t address, DataBuffer *db,
-                               DataBuffer *tag_db) {
+void AtomicTaggedMemory::Store(uint64_t address, DataBuffer* db,
+                               DataBuffer* tag_db) {
   // If the address matches a tag, remove the tag.
   auto ptr = ll_tag_set_.find(address >> kTagShift);
   if (ptr != ll_tag_set_.end()) {
@@ -150,7 +150,7 @@ void AtomicTaggedMemory::Store(uint64_t address, DataBuffer *db,
 }
 
 // Store the value to memory, but remove any matching tag from the tag set.
-void AtomicTaggedMemory::Store(uint64_t address, DataBuffer *db) {
+void AtomicTaggedMemory::Store(uint64_t address, DataBuffer* db) {
   // If the address matches a tag, remove the tag.
   auto ptr = ll_tag_set_.find(address >> kTagShift);
   if (ptr != ll_tag_set_.end()) {
@@ -160,8 +160,8 @@ void AtomicTaggedMemory::Store(uint64_t address, DataBuffer *db) {
 }
 
 // Store the value to memory, but remove any matching tag from the tag set.
-void AtomicTaggedMemory::Store(DataBuffer *address_db, DataBuffer *mask_db,
-                               int el_size, DataBuffer *db) {
+void AtomicTaggedMemory::Store(DataBuffer* address_db, DataBuffer* mask_db,
+                               int el_size, DataBuffer* db) {
   // If the address matches a tag, remove the tag.
   for (uint64_t address : address_db->Get<uint64_t>()) {
     auto ptr = ll_tag_set_.find(address >> kTagShift);
@@ -174,9 +174,9 @@ void AtomicTaggedMemory::Store(DataBuffer *address_db, DataBuffer *mask_db,
 
 // Perform the atomic memory operation.
 absl::Status AtomicTaggedMemory::PerformMemoryOp(uint64_t address, Operation op,
-                                                 DataBuffer *db,
-                                                 Instruction *inst,
-                                                 ReferenceCount *context) {
+                                                 DataBuffer* db,
+                                                 Instruction* inst,
+                                                 ReferenceCount* context) {
   int el_size = db->size<uint8_t>();
   db->set_latency(0);
   // Load-linked.
@@ -206,7 +206,7 @@ absl::Status AtomicTaggedMemory::PerformMemoryOp(uint64_t address, Operation op,
   }
 
   // Load the data from memory.
-  auto *tmp_db = GetDb(el_size);
+  auto* tmp_db = GetDb(el_size);
   if (tmp_db == nullptr)
     return absl::InternalError(
         absl::StrCat("Illegal element size (", el_size, ")"));
@@ -262,8 +262,8 @@ absl::Status AtomicTaggedMemory::PerformMemoryOp(uint64_t address, Operation op,
   return absl::OkStatus();
 }
 
-void AtomicTaggedMemory::WriteBack(Instruction *inst, ReferenceCount *context,
-                                   DataBuffer *db) {
+void AtomicTaggedMemory::WriteBack(Instruction* inst, ReferenceCount* context,
+                                   DataBuffer* db) {
   if (inst != nullptr) {
     if (db->latency() > 0) {
       inst->IncRef();
@@ -281,7 +281,7 @@ void AtomicTaggedMemory::WriteBack(Instruction *inst, ReferenceCount *context,
   }
 }
 
-DataBuffer *AtomicTaggedMemory::GetDb(int size) const {
+DataBuffer* AtomicTaggedMemory::GetDb(int size) const {
   switch (size) {
     case 1:
       return db1_;

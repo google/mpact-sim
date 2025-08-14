@@ -37,10 +37,10 @@ using ::mpact::sim::generic::Instruction;
 
 class CLIForwarder : public CoreDebugInterface {
  public:
-  explicit CLIForwarder(RenodeCLITop *top);
+  explicit CLIForwarder(RenodeCLITop* top);
   CLIForwarder() = delete;
-  CLIForwarder(const CLIForwarder &) = delete;
-  CLIForwarder &operator=(const CLIForwarder &) = delete;
+  CLIForwarder(const CLIForwarder&) = delete;
+  CLIForwarder& operator=(const CLIForwarder&) = delete;
 
   ~CLIForwarder() override = default;
 
@@ -62,8 +62,8 @@ class CLIForwarder : public CoreDebugInterface {
   absl::StatusOr<HaltReasonValueType> GetLastHaltReason() override;
 
   // Read/write the named registers.
-  absl::StatusOr<uint64_t> ReadRegister(const std::string &name) override;
-  absl::Status WriteRegister(const std::string &name, uint64_t value) override;
+  absl::StatusOr<uint64_t> ReadRegister(const std::string& name) override;
+  absl::Status WriteRegister(const std::string& name, uint64_t value) override;
 
   // Some registers, including vector registers, have values that exceed the
   // 64 bits supported in the Read/Write register API calls. This function
@@ -75,13 +75,13 @@ class CLIForwarder : public CoreDebugInterface {
   // Note (2): In some cases, a register write may replace the DataBuffer
   // instance within a register so that any stored references to it become
   // stale.
-  absl::StatusOr<DataBuffer *> GetRegisterDataBuffer(
-      const std::string &name) override;
+  absl::StatusOr<DataBuffer*> GetRegisterDataBuffer(
+      const std::string& name) override;
 
   // Read/write the buffers to memory.
-  absl::StatusOr<size_t> ReadMemory(uint64_t address, void *buf,
+  absl::StatusOr<size_t> ReadMemory(uint64_t address, void* buf,
                                     size_t length) override;
-  absl::StatusOr<size_t> WriteMemory(uint64_t address, const void *buf,
+  absl::StatusOr<size_t> WriteMemory(uint64_t address, const void* buf,
                                      size_t length) override;
 
   // Test to see if there's a breakpoint at the given address.
@@ -93,12 +93,12 @@ class CLIForwarder : public CoreDebugInterface {
   absl::Status ClearAllSwBreakpoints() override;
 
   // Return the instruction object for the instruction at the given address.
-  absl::StatusOr<Instruction *> GetInstruction(uint64_t address) override;
+  absl::StatusOr<Instruction*> GetInstruction(uint64_t address) override;
   // Return the string representation for the instruction at the given address.
   absl::StatusOr<std::string> GetDisassembly(uint64_t address) override;
 
  private:
-  RenodeCLITop *top_;
+  RenodeCLITop* top_;
 };
 
 }  // namespace renode

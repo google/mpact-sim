@@ -18,13 +18,16 @@
 #include <cstring>
 #include <string>
 
-#include "mpact/sim/generic/resource_operand_interface.h"
+#include "absl/types/span.h"
+#include "mpact/sim/generic/arch_state.h"
+#include "mpact/sim/generic/operand_interface.h"
+#include "mpact/sim/generic/resource_operand_interface.h"  // IWYU pragma: keep
 
 namespace mpact {
 namespace sim {
 namespace generic {
 
-void Instruction::AppendChild(Instruction *inst) {
+void Instruction::AppendChild(Instruction* inst) {
   if (nullptr == inst) return;
   inst->parent_ = this;
   if (nullptr == child_) {
@@ -35,7 +38,7 @@ void Instruction::AppendChild(Instruction *inst) {
   }
 }
 
-void Instruction::Append(Instruction *inst) {
+void Instruction::Append(Instruction* inst) {
   if (nullptr == inst) return;
   if (nullptr == next_) {
     inst->IncRef();
@@ -45,23 +48,23 @@ void Instruction::Append(Instruction *inst) {
   }
 }
 
-void Instruction::SetPredicate(PredicateOperandInterface *predicate) {
+void Instruction::SetPredicate(PredicateOperandInterface* predicate) {
   predicate_ = predicate;
 }
 
-void Instruction::AppendSource(SourceOperandInterface *op) {
+void Instruction::AppendSource(SourceOperandInterface* op) {
   sources_.push_back(op);
 }
 
 int Instruction::SourcesSize() const { return sources_.size(); }
 
-void Instruction::AppendDestination(DestinationOperandInterface *op) {
+void Instruction::AppendDestination(DestinationOperandInterface* op) {
   dests_.push_back(op);
 }
 
 int Instruction::DestinationsSize() const { return dests_.size(); }
 
-Instruction::Instruction(uint64_t address, ArchState *state)
+Instruction::Instruction(uint64_t address, ArchState* state)
     : predicate_(nullptr),
       address_(address),
       state_(state),
@@ -70,24 +73,24 @@ Instruction::Instruction(uint64_t address, ArchState *state)
       parent_(nullptr),
       next_(nullptr) {}
 
-Instruction::Instruction(ArchState *state) : Instruction(0, state) {}
+Instruction::Instruction(ArchState* state) : Instruction(0, state) {}
 
 Instruction::~Instruction() {
   delete[] attribute_array_;
   delete predicate_;
-  for (auto *op : sources_) {
+  for (auto* op : sources_) {
     delete op;
   }
   sources_.clear();
-  for (auto *op : dests_) {
+  for (auto* op : dests_) {
     delete op;
   }
   dests_.clear();
-  for (auto *op : resource_hold_) {
+  for (auto* op : resource_hold_) {
     delete op;
   }
   resource_hold_.clear();
-  for (auto *op : resource_acquire_) {
+  for (auto* op : resource_acquire_) {
     delete op;
   }
   resource_acquire_.clear();

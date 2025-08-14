@@ -29,7 +29,7 @@
 
 namespace mpact::sim::util {
 
-InstructionProfiler::InstructionProfiler(ElfProgramLoader &elf_loader,
+InstructionProfiler::InstructionProfiler(ElfProgramLoader& elf_loader,
                                          unsigned granularity)
     : elf_loader_(&elf_loader) {
   if (!absl::has_single_bit(granularity)) {
@@ -50,7 +50,7 @@ InstructionProfiler::InstructionProfiler(unsigned granularity)
 }
 
 InstructionProfiler::~InstructionProfiler() {
-  for (auto const &[unused, counters] : profile_ranges_) {
+  for (auto const& [unused, counters] : profile_ranges_) {
     delete[] counters;
   }
   profile_ranges_.clear();
@@ -72,9 +72,9 @@ void InstructionProfiler::AddSampleInternal(uint64_t sample) {
   last_profile_range_[sample - last_start_]++;
 }
 
-void InstructionProfiler::WriteProfile(std::ostream &os) {
+void InstructionProfiler::WriteProfile(std::ostream& os) {
   os << "Address,Count" << "\n";
-  for (auto const &[range, counters] : profile_ranges_) {
+  for (auto const& [range, counters] : profile_ranges_) {
     uint64_t size = range.end - range.start;
     for (auto i = 0; i < size; ++i) {
       if (counters[i] == 0) continue;
@@ -84,7 +84,7 @@ void InstructionProfiler::WriteProfile(std::ostream &os) {
   }
 }
 
-void InstructionProfiler::SetElfLoader(ElfProgramLoader *elf_loader) {
+void InstructionProfiler::SetElfLoader(ElfProgramLoader* elf_loader) {
   elf_loader_ = elf_loader;
   uint64_t begin = 0;
   uint64_t end = 0;
@@ -92,7 +92,7 @@ void InstructionProfiler::SetElfLoader(ElfProgramLoader *elf_loader) {
   // coalesces ranges that are spaced by less than 0x1'000 units of granularity.
   // This reduces the number of ranges in the map and improves performance
   // during simulation.
-  for (auto const &segment : elf_loader_->elf_reader()->segments) {
+  for (auto const& segment : elf_loader_->elf_reader()->segments) {
     // Only consider segments that are loaded, executable, and with size > 0.
     if (segment->get_type() != PT_LOAD) continue;
     if ((segment->get_flags() & PF_X) == 0) continue;
@@ -115,7 +115,7 @@ void InstructionProfiler::SetElfLoader(ElfProgramLoader *elf_loader) {
     // Otherwise, create a entry from the previously accumulated ranges, and
     // start a new range.
     size = end - begin - 1;
-    uint64_t *counters = new uint64_t[size];
+    uint64_t* counters = new uint64_t[size];
     ::memset(counters, 0, size * sizeof(uint64_t));
     profile_ranges_.insert(
         std::make_pair(MemoryWatcher::AddressRange{begin, end}, counters));
@@ -125,7 +125,7 @@ void InstructionProfiler::SetElfLoader(ElfProgramLoader *elf_loader) {
   // Make the last entry.
   if (begin != 0 || end != 0) {
     uint64_t size = end - begin - 1;
-    uint64_t *counters = new uint64_t[size];
+    uint64_t* counters = new uint64_t[size];
     ::memset(counters, 0, size * sizeof(uint64_t));
     profile_ranges_.insert(
         std::make_pair(MemoryWatcher::AddressRange{begin, end - 1}, counters));

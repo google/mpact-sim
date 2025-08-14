@@ -29,8 +29,8 @@ using ::mpact::sim::generic::Instruction;
 using ::mpact::sim::generic::ReferenceCount;
 
 // Process the load using the interface to the ReNode system bus to fetch data.
-void RenodeMemoryAccess::Load(uint64_t address, DataBuffer *db,
-                              Instruction *inst, ReferenceCount *context) {
+void RenodeMemoryAccess::Load(uint64_t address, DataBuffer* db,
+                              Instruction* inst, ReferenceCount* context) {
   if (read_fcn_ == nullptr) {
     LOG(WARNING) << "RenodeMemoryAccess: read_fcn_ is null";
     std::memset(db->raw_ptr(), 0, db->size<uint8_t>());
@@ -39,8 +39,7 @@ void RenodeMemoryAccess::Load(uint64_t address, DataBuffer *db,
   }
   int32_t size = db->size<uint8_t>();
   // Call the C# function delegate.
-  auto bytes_read =
-      read_fcn_(address, static_cast<char *>(db->raw_ptr()), size);
+  auto bytes_read = read_fcn_(address, static_cast<char*>(db->raw_ptr()), size);
   if (size != bytes_read) {
     LOG(ERROR) << "Failed to read " << size - bytes_read << " bytes of "
                << size;
@@ -49,16 +48,16 @@ void RenodeMemoryAccess::Load(uint64_t address, DataBuffer *db,
 }
 
 // TODO(torerik): add vector load functionality.
-void RenodeMemoryAccess::Load(DataBuffer *address_db, DataBuffer *mask_db,
-                              int el_size, DataBuffer *db, Instruction *inst,
-                              ReferenceCount *context) {
+void RenodeMemoryAccess::Load(DataBuffer* address_db, DataBuffer* mask_db,
+                              int el_size, DataBuffer* db, Instruction* inst,
+                              ReferenceCount* context) {
   LOG(ERROR) << "RenodeMemoryAccess: Vector loads are not supported";
 }
 
 // Complete the load by writing back (or scheduling the write back of) the
 // fetched data.
-void RenodeMemoryAccess::FinishLoad(int latency, Instruction *inst,
-                                    ReferenceCount *context) {
+void RenodeMemoryAccess::FinishLoad(int latency, Instruction* inst,
+                                    ReferenceCount* context) {
   if (inst == nullptr) return;
   // If the latency is 0, execute the instruction immediately.
   if (latency == 0) {
@@ -79,7 +78,7 @@ void RenodeMemoryAccess::FinishLoad(int latency, Instruction *inst,
 }
 
 // Process the store using the interface to the ReNode system bus to store data.
-void RenodeMemoryAccess::Store(uint64_t address, DataBuffer *db) {
+void RenodeMemoryAccess::Store(uint64_t address, DataBuffer* db) {
   if (write_fcn_ == nullptr) {
     LOG(WARNING) << "RenodeMemoryAccess: write_fcn_ is null";
     return;
@@ -87,7 +86,7 @@ void RenodeMemoryAccess::Store(uint64_t address, DataBuffer *db) {
   int32_t size = db->size<uint8_t>();
   // Call the C# function delegate.
   auto bytes_written =
-      write_fcn_(address, static_cast<char *>(db->raw_ptr()), size);
+      write_fcn_(address, static_cast<char*>(db->raw_ptr()), size);
   if (size != bytes_written) {
     LOG(ERROR) << "Failed to write " << size - bytes_written << " bytes of "
                << size;
@@ -95,8 +94,8 @@ void RenodeMemoryAccess::Store(uint64_t address, DataBuffer *db) {
 }
 
 // TODO(torerik): add vector store functionality.
-void RenodeMemoryAccess::Store(DataBuffer *address, DataBuffer *mask,
-                               int el_size, DataBuffer *db) {
+void RenodeMemoryAccess::Store(DataBuffer* address, DataBuffer* mask,
+                               int el_size, DataBuffer* db) {
   LOG(ERROR) << "RenodeMemoryAccess: Vector stores are not supported";
 }
 

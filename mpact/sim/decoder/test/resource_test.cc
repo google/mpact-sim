@@ -28,9 +28,9 @@ TEST_F(ResourceTest, Factory) {
   EXPECT_TRUE(result.status().ok());
   auto result2 = factory_.CreateResource(kResource1Name);
   EXPECT_TRUE(absl::IsAlreadyExists(result2.status()));
-  auto *resource1 = factory_.GetOrInsertResource(kResource1Name);
+  auto* resource1 = factory_.GetOrInsertResource(kResource1Name);
   EXPECT_EQ(result.value(), resource1);
-  auto *resource2 = factory_.GetOrInsertResource(kResource2Name);
+  auto* resource2 = factory_.GetOrInsertResource(kResource2Name);
   EXPECT_NE(resource2, nullptr);
   EXPECT_NE(resource2, resource1);
   auto result3 = factory_.CreateResource(kResource2Name);
@@ -42,7 +42,7 @@ TEST_F(ResourceTest, Factory) {
 
 // Test initial state of a new resource.
 TEST_F(ResourceTest, ResourceInitial) {
-  auto *resource = factory_.GetOrInsertResource(kResource1Name);
+  auto* resource = factory_.GetOrInsertResource(kResource1Name);
   EXPECT_TRUE(resource->is_simple());
   EXPECT_FALSE(resource->is_multi_valued());
   EXPECT_EQ(resource->name(), kResource1Name);
@@ -51,7 +51,7 @@ TEST_F(ResourceTest, ResourceInitial) {
 
 // Test resource setters.
 TEST_F(ResourceTest, ResourceSetters) {
-  auto *resource = factory_.GetOrInsertResource(kResource1Name);
+  auto* resource = factory_.GetOrInsertResource(kResource1Name);
   resource->set_is_simple(false);
   resource->set_is_multi_valued(true);
   EXPECT_FALSE(resource->is_simple());

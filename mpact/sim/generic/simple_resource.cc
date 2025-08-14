@@ -18,7 +18,9 @@
 
 #include "absl/log/log.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
 
 namespace mpact {
 namespace sim {
@@ -26,7 +28,7 @@ namespace generic {
 
 // Initialize the bitmap and set the bit specified by index.
 SimpleResource::SimpleResource(absl::string_view name, int index,
-                               SimpleResourcePool *pool)
+                               SimpleResourcePool* pool)
     : name_(name), index_(index), pool_(pool) {
   resource_bit_.Resize(pool_->width());
   resource_bit_.Set(index);
@@ -39,13 +41,13 @@ void SimpleResource::Release() { pool_->Release(this); }
 
 bool SimpleResource::IsFree() const { return pool_->IsFree(this); }
 
-SimpleResourceSet::SimpleResourceSet(SimpleResourcePool *pool) : pool_(pool) {
+SimpleResourceSet::SimpleResourceSet(SimpleResourcePool* pool) : pool_(pool) {
   resource_vector_.Resize(pool_->width());
 }
 
 // Verify that the resource comes from the same pool. If so, add it (union with)
 // the bitmap. Return appropriate status.
-absl::Status SimpleResourceSet::AddResource(SimpleResource *resource) {
+absl::Status SimpleResourceSet::AddResource(SimpleResource* resource) {
   // If the resource is nullptr, just return ok status.
   if (resource == nullptr) return absl::OkStatus();
   // Make sure it belongs to the same pool as the resource set.
@@ -61,7 +63,7 @@ absl::Status SimpleResourceSet::AddResource(SimpleResource *resource) {
 // If the resource doesn't exist, add it to the resource pool, before adding it
 // to the resource set.
 absl::Status SimpleResourceSet::AddResource(absl::string_view name) {
-  SimpleResource *resource = pool_->GetResource(name);
+  SimpleResource* resource = pool_->GetResource(name);
   if (nullptr == resource) {
     auto status = pool_->AddResource(name);
     if (!status.ok()) return status;
@@ -83,7 +85,7 @@ std::string SimpleResourceSet::AsString() const {
   std::string out = "[";
   std::string sep;
   for (int index = 0; resource_vector_.FindNextSetBit(&index); ++index) {
-    auto *resource = pool_->GetResource(index);
+    auto* resource = pool_->GetResource(index);
     if (resource == nullptr) {
       LOG(ERROR) << absl::StrCat("Cannot find resource (", index, ") in pool '",
                                  pool_->name(), "'");
@@ -102,7 +104,7 @@ SimpleResourcePool::SimpleResourcePool(absl::string_view name, int width)
 }
 
 SimpleResourcePool::~SimpleResourcePool() {
-  for (const auto &entry : resource_name_map_) {
+  for (const auto& entry : resource_name_map_) {
     delete entry.second;
   }
   resource_name_map_.clear();
@@ -114,7 +116,7 @@ SimpleResourcePool::~SimpleResourcePool() {
 
 // Add named resource to the pool. If the pool has reached maximum size, return
 // an error.
-absl::StatusOr<SimpleResource *> SimpleResourcePool::AddResourceInternal(
+absl::StatusOr<SimpleResource*> SimpleResourcePool::AddResourceInternal(
     absl::string_view name) {
   if (resource_name_map_.size() == width_) {
     return absl::InternalError(absl::StrCat(
@@ -127,7 +129,7 @@ absl::StatusOr<SimpleResource *> SimpleResourcePool::AddResourceInternal(
                      "' already exists in pool '", name_, "'"));
   }
   int index = resource_name_map_.size();
-  SimpleResource *resource = new SimpleResource(name, index, this);
+  SimpleResource* resource = new SimpleResource(name, index, this);
   resource_name_map_.emplace(name, resource);
   resources_.push_back(resource);
   return resource;
@@ -140,19 +142,19 @@ absl::Status SimpleResourcePool::AddResource(absl::string_view name) {
   return result.status();
 }
 
-SimpleResource *SimpleResourcePool::GetResource(unsigned index) const {
+SimpleResource* SimpleResourcePool::GetResource(unsigned index) const {
   if ((index < 0) || (index >= resources_.size())) return nullptr;
   return resources_[index];
 }
 
-SimpleResource *SimpleResourcePool::GetResource(absl::string_view name) const {
+SimpleResource* SimpleResourcePool::GetResource(absl::string_view name) const {
   auto ptr = resource_name_map_.find(name);
   if (ptr == resource_name_map_.end()) return nullptr;
   return ptr->second;
 }
 
-SimpleResource *SimpleResourcePool::GetOrAddResource(absl::string_view name) {
-  auto *resource = GetResource(name);
+SimpleResource* SimpleResourcePool::GetOrAddResource(absl::string_view name) {
+  auto* resource = GetResource(name);
   if (resource != nullptr) return resource;
 
   auto result = AddResourceInternal(name);
@@ -165,7 +167,7 @@ SimpleResource *SimpleResourcePool::GetOrAddResource(absl::string_view name) {
   return result.value();
 }
 
-SimpleResourceSet *SimpleResourcePool::CreateResourceSet() {
+SimpleResourceSet* SimpleResourcePool::CreateResourceSet() {
   resource_sets_.push_front(new SimpleResourceSet(this));
   return resource_sets_.front();
 }
@@ -173,28 +175,28 @@ SimpleResourceSet *SimpleResourcePool::CreateResourceSet() {
 // Bitmap operations to reserve, free and check resources. Union with a bitmap
 // from a resource or resource set to reserve (set), difference to free (clear),
 // and non-empty intersection (non-zero and) to check.
-bool SimpleResourcePool::IsFree(const SimpleResourceSet *resource_set) const {
+bool SimpleResourcePool::IsFree(const SimpleResourceSet* resource_set) const {
   return !resource_vector_.IsIntersectionNonEmpty(
       resource_set->resource_vector());
 }
 
-bool SimpleResourcePool::IsFree(const SimpleResource *resource) const {
+bool SimpleResourcePool::IsFree(const SimpleResource* resource) const {
   return !resource_vector_.IsIntersectionNonEmpty(resource->resource_bit());
 }
 
-void SimpleResourcePool::Acquire(const SimpleResourceSet *resource_set) {
+void SimpleResourcePool::Acquire(const SimpleResourceSet* resource_set) {
   resource_vector_.Or(resource_set->resource_vector());
 }
 
-void SimpleResourcePool::Acquire(const SimpleResource *resource) {
+void SimpleResourcePool::Acquire(const SimpleResource* resource) {
   resource_vector_.Or(resource->resource_bit());
 }
 
-void SimpleResourcePool::Release(const SimpleResourceSet *resource_set) {
+void SimpleResourcePool::Release(const SimpleResourceSet* resource_set) {
   resource_vector_.AndNot(resource_set->resource_vector());
 }
 
-void SimpleResourcePool::Release(const SimpleResource *resource) {
+void SimpleResourcePool::Release(const SimpleResource* resource) {
   resource_vector_.AndNot(resource->resource_bit());
 }
 
@@ -202,7 +204,7 @@ std::string SimpleResourcePool::ReservedAsString() const {
   std::string out = "[";
   std::string sep;
   for (int index = 0; resource_vector_.FindNextSetBit(&index); ++index) {
-    auto *resource = resources_[index];
+    auto* resource = resources_[index];
     if (resource == nullptr) {
       LOG(ERROR) << absl::StrCat("Cannot find resource (", index, ") in pool '",
                                  name(), "'");

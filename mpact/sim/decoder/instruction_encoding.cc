@@ -29,13 +29,13 @@ namespace sim {
 namespace decoder {
 namespace bin_format {
 
-InstructionEncoding::InstructionEncoding(std::string name, Format *format)
+InstructionEncoding::InstructionEncoding(std::string name, Format* format)
     : name_(name), format_(format) {
   if (format) format_name_ = format->name();
 }
 
 // Custom copy constructor.
-InstructionEncoding::InstructionEncoding(const InstructionEncoding &encoding)
+InstructionEncoding::InstructionEncoding(const InstructionEncoding& encoding)
     : name_(encoding.name_),
       format_name_(encoding.format_name_),
       format_(encoding.format_),
@@ -45,42 +45,42 @@ InstructionEncoding::InstructionEncoding(const InstructionEncoding &encoding)
       extracted_mask_(encoding.extracted_mask_),
       value_(encoding.value_) {
   // Copy construct each of the constraints.
-  for (auto *constraint : encoding.equal_constraints_) {
+  for (auto* constraint : encoding.equal_constraints_) {
     equal_constraints_.push_back(new Constraint(*constraint));
   }
-  for (auto *constraint : encoding.equal_extracted_constraints_) {
+  for (auto* constraint : encoding.equal_extracted_constraints_) {
     equal_extracted_constraints_.push_back(new Constraint(*constraint));
   }
-  for (auto *constraint : encoding.other_constraints_) {
+  for (auto* constraint : encoding.other_constraints_) {
     other_constraints_.push_back(new Constraint(*constraint));
   }
 }
 
 InstructionEncoding::~InstructionEncoding() {
-  for (auto *constraint : equal_constraints_) {
+  for (auto* constraint : equal_constraints_) {
     delete constraint;
   }
   equal_constraints_.clear();
-  for (auto *constraint : equal_extracted_constraints_) {
+  for (auto* constraint : equal_extracted_constraints_) {
     delete constraint;
   }
   equal_extracted_constraints_.clear();
-  for (auto *constraint : other_constraints_) {
+  for (auto* constraint : other_constraints_) {
     delete constraint;
   }
   other_constraints_.clear();
-  for (auto &[name, enc_ptr] : specializations_) {
+  for (auto& [name, enc_ptr] : specializations_) {
     delete enc_ptr;
   }
   specializations_.clear();
 }
 
-absl::StatusOr<Constraint *> InstructionEncoding::CreateConstraint(
+absl::StatusOr<Constraint*> InstructionEncoding::CreateConstraint(
     ConstraintType type, std::string lhs_name, std::string rhs_name) {
   Constraint constraint;
   constraint.type = type;
   // Check if the field name is indeed a field.
-  auto *lhs_field = format_->GetField(lhs_name);
+  auto* lhs_field = format_->GetField(lhs_name);
   if (lhs_field != nullptr) {
     if (lhs_field->width >= 64) {
       return absl::OutOfRangeError(absl::StrCat(
@@ -90,7 +90,7 @@ absl::StatusOr<Constraint *> InstructionEncoding::CreateConstraint(
     constraint.field = lhs_field;
   } else {
     // If not a field, is it an overlay?
-    auto *lhs_overlay = format_->GetOverlay(lhs_name);
+    auto* lhs_overlay = format_->GetOverlay(lhs_name);
     if (lhs_overlay == nullptr) {
       // If neither, it's an error.
       return absl::NotFoundError(absl::StrCat(
@@ -100,7 +100,7 @@ absl::StatusOr<Constraint *> InstructionEncoding::CreateConstraint(
     constraint.overlay = lhs_overlay;
   }
   // Check if the field name is indeed a field.
-  auto *rhs_field = format_->GetField(rhs_name);
+  auto* rhs_field = format_->GetField(rhs_name);
   if (rhs_field != nullptr) {
     if (rhs_field->width >= 64) {
       return absl::OutOfRangeError(absl::StrCat(
@@ -110,7 +110,7 @@ absl::StatusOr<Constraint *> InstructionEncoding::CreateConstraint(
     constraint.rhs_field = rhs_field;
   } else {
     // If not a field, is it an overlay?
-    auto *rhs_overlay = format_->GetOverlay(rhs_name);
+    auto* rhs_overlay = format_->GetOverlay(rhs_name);
     if (rhs_overlay == nullptr) {
       // If neither, it's an error.
       return absl::NotFoundError(absl::StrCat(
@@ -119,14 +119,14 @@ absl::StatusOr<Constraint *> InstructionEncoding::CreateConstraint(
     }
     constraint.rhs_overlay = rhs_overlay;
   }
-  Constraint *result = new Constraint(constraint);
+  Constraint* result = new Constraint(constraint);
   return result;
 }
 
-absl::StatusOr<Constraint *> InstructionEncoding::CreateConstraint(
+absl::StatusOr<Constraint*> InstructionEncoding::CreateConstraint(
     ConstraintType type, std::string field_name, int64_t value) {
   // Check if the field name is indeed a field.
-  auto *field = format_->GetField(field_name);
+  auto* field = format_->GetField(field_name);
   if (field != nullptr) {
     if (field->width >= 64) {
       return absl::OutOfRangeError(absl::StrCat(
@@ -164,14 +164,14 @@ absl::StatusOr<Constraint *> InstructionEncoding::CreateConstraint(
       }
     }
     value &= (1 << field->width) - 1;
-    auto *constraint = new Constraint();
+    auto* constraint = new Constraint();
     constraint->type = type;
     constraint->field = field;
     constraint->value = value;
     return constraint;
   }
   // If not a field, is it an overlay?
-  auto *overlay = format_->GetOverlay(field_name);
+  auto* overlay = format_->GetOverlay(field_name);
   if (overlay == nullptr) {
     // If neither, it's an error.
     return absl::NotFoundError(absl::StrCat(
@@ -208,7 +208,7 @@ absl::StatusOr<Constraint *> InstructionEncoding::CreateConstraint(
     }
   }
   value &= (1 << width) - 1;
-  auto *constraint = new Constraint();
+  auto* constraint = new Constraint();
   constraint->type = type;
   constraint->overlay = overlay;
   constraint->value = value;
@@ -222,7 +222,7 @@ absl::Status InstructionEncoding::AddEqualConstraint(std::string field_name,
   mask_set_ = false;
   auto res = CreateConstraint(ConstraintType::kEq, field_name, value);
   if (!res.ok()) return res.status();
-  auto *constraint = res.value();
+  auto* constraint = res.value();
   if ((constraint->overlay != nullptr) &&
       constraint->overlay->must_be_extracted()) {
     // If the value is not 100% based on extracted bits (i.e., it is an
@@ -241,17 +241,17 @@ absl::Status InstructionEncoding::AddOtherConstraint(ConstraintType type,
                                                      int64_t value) {
   auto res = CreateConstraint(type, field_name, value);
   if (!res.ok()) return res.status();
-  auto *constraint = res.value();
+  auto* constraint = res.value();
   other_constraints_.push_back(constraint);
   return absl::OkStatus();
 }
 
 absl::Status InstructionEncoding::AddOtherConstraint(
-    ConstraintType type, const std::string &lhs_name,
-    const std::string &rhs_name) {
+    ConstraintType type, const std::string& lhs_name,
+    const std::string& rhs_name) {
   auto res = CreateConstraint(type, lhs_name, rhs_name);
   if (!res.ok()) return res.status();
-  auto *constraint = res.value();
+  auto* constraint = res.value();
   other_constraints_.push_back(constraint);
   return absl::OkStatus();
 }
@@ -259,7 +259,7 @@ absl::Status InstructionEncoding::AddOtherConstraint(
 absl::Status InstructionEncoding::ComputeMaskAndValue() {
   // First consider equal constraints.
   mask_ = 0;
-  for (auto *constraint : equal_constraints_) {
+  for (auto* constraint : equal_constraints_) {
     uint64_t mask = 0;
     uint64_t value = 0;
     if (constraint->field != nullptr) {
@@ -279,7 +279,7 @@ absl::Status InstructionEncoding::ComputeMaskAndValue() {
   }
   // The overlays with bit constant concatenations.
   extracted_mask_ = 0;
-  for (auto *constraint : equal_extracted_constraints_) {
+  for (auto* constraint : equal_extracted_constraints_) {
     uint64_t mask = 0;
     if (constraint->field != nullptr) {
       int width = constraint->field->width;
@@ -293,7 +293,7 @@ absl::Status InstructionEncoding::ComputeMaskAndValue() {
   }
   // Other constraints.
   other_mask_ = 0;
-  for (auto *constraint : other_constraints_) {
+  for (auto* constraint : other_constraints_) {
     uint64_t mask = 0;
     if (constraint->field != nullptr) {
       int width = constraint->field->width;
@@ -343,7 +343,7 @@ uint64_t InstructionEncoding::GetCombinedMask() {
 }
 
 absl::Status InstructionEncoding::AddSpecialization(
-    const std::string &name, InstructionEncoding *encoding) {
+    const std::string& name, InstructionEncoding* encoding) {
   if (specializations_.contains(name)) {
     format_->encoding_info()->error_listener()->semanticError(
         nullptr, absl::StrCat("Duplicate instruction specialization name '",

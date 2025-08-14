@@ -49,8 +49,8 @@ class MemoryInterface {
   // Load data from address into the DataBuffer, then schedule the Instruction
   // inst (if not nullptr) to be executed (using the function delay line) with
   // context. The size of the data access is based on size of the data buffer.
-  virtual void Load(uint64_t address, DataBuffer *db, Instruction *inst,
-                    ReferenceCount *context) = 0;
+  virtual void Load(uint64_t address, DataBuffer* db, Instruction* inst,
+                    ReferenceCount* context) = 0;
   // Load data from 1 or N addresses stored in address_db (uint64), using
   // mask_db (bool) to mask out the corresponding loads from taking place (if
   // false). Each access is el_size bytes long, and is stored into the
@@ -60,19 +60,19 @@ class MemoryInterface {
   // in are appropriately sized. Use the DataBuffer size<uint64_t> to determine
   // the number of addresses availalble. The following summarizes the parameter
   // requirements:
-  virtual void Load(DataBuffer *address_db, DataBuffer *mask_db, int el_size,
-                    DataBuffer *db, Instruction *inst,
-                    ReferenceCount *context) = 0;
+  virtual void Load(DataBuffer* address_db, DataBuffer* mask_db, int el_size,
+                    DataBuffer* db, Instruction* inst,
+                    ReferenceCount* context) = 0;
   // Convenience template function that calls the above function with the
   // element size as the sizeof() the template parameter type.
   template <typename T>
-  void Load(DataBuffer *address_db, DataBuffer *mask_db, DataBuffer *db,
-            Instruction *inst, ReferenceCount *context) {
+  void Load(DataBuffer* address_db, DataBuffer* mask_db, DataBuffer* db,
+            Instruction* inst, ReferenceCount* context) {
     Load(address_db, mask_db, sizeof(T), db, inst, context);
   }
 
   // Stores data from the DataBuffer instance to memory starting at address.
-  virtual void Store(uint64_t address, DataBuffer *db) = 0;
+  virtual void Store(uint64_t address, DataBuffer* db) = 0;
   // Stores data starting at each of the 1 or N addresses stored in address_db,
   // (uint64) using mask_db (bool) to mask out stores from taking place (if
   // false). Each store is el_size bytes long. It's the responsibility of the
@@ -82,12 +82,12 @@ class MemoryInterface {
   //   address_db->size<uint64_t>)() is either 1 or N
   //   mask_db->size<bool>() is N
   //   db->size<uint8_t>()/el_size = N.
-  virtual void Store(DataBuffer *address, DataBuffer *mask, int el_size,
-                     DataBuffer *db) = 0;
+  virtual void Store(DataBuffer* address, DataBuffer* mask, int el_size,
+                     DataBuffer* db) = 0;
   // Convenience template function that calls the above function with the
   // element size as the sizeof() the template parameter type.
   template <typename T>
-  void Store(DataBuffer *address_db, DataBuffer *mask_db, DataBuffer *db) {
+  void Store(DataBuffer* address_db, DataBuffer* mask_db, DataBuffer* db) {
     Store(address_db, mask_db, sizeof(T), db);
   }
 };
@@ -137,8 +137,8 @@ class AtomicMemoryOpInterface {
   // db->size<uint8_t>() must be equal to sizeof(T) for some integer type, i.e.,
   // 1, 2, 4, or 8.
   virtual absl::Status PerformMemoryOp(uint64_t address, Operation op,
-                                       DataBuffer *db, Instruction *inst,
-                                       ReferenceCount *context) = 0;
+                                       DataBuffer* db, Instruction* inst,
+                                       ReferenceCount* context) = 0;
 };
 
 }  // namespace util

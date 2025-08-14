@@ -68,48 +68,48 @@ class SimpleAssembler {
   //   opcode_assembler_if: The opcode assembler interface to use for parsing
   //     and encoding assembly statements.
   SimpleAssembler(absl::string_view comment, int elf_file_class,
-                  OpcodeAssemblerInterface *opcode_assembler_if);
-  SimpleAssembler(const SimpleAssembler &) = delete;
-  SimpleAssembler &operator=(const SimpleAssembler &) = delete;
+                  OpcodeAssemblerInterface* opcode_assembler_if);
+  SimpleAssembler(const SimpleAssembler&) = delete;
+  SimpleAssembler& operator=(const SimpleAssembler&) = delete;
   virtual ~SimpleAssembler();
 
   // Parse the input stream as assembly.
-  absl::Status Parse(std::istream &is,
-                     ResolverInterface *zero_resolver = nullptr);
+  absl::Status Parse(std::istream& is,
+                     ResolverInterface* zero_resolver = nullptr);
   // Add the symbol to the symbol table for the current section. See ELFIO
   // documentation for details of the meaning of the parameters.
-  absl::Status AddSymbolToCurrentSection(const std::string &name,
+  absl::Status AddSymbolToCurrentSection(const std::string& name,
                                          ELFIO::Elf64_Addr value,
                                          ELFIO::Elf_Xword size, uint8_t type,
                                          uint8_t binding, uint8_t other);
   // Add the symbol to the symbol table for the named section. See ELFIO
   // documentation for details of the meaning of the parameters.
-  absl::Status AddSymbol(const std::string &name, ELFIO::Elf64_Addr value,
+  absl::Status AddSymbol(const std::string& name, ELFIO::Elf64_Addr value,
                          ELFIO::Elf_Xword size, uint8_t type, uint8_t binding,
-                         uint8_t other, const std::string &section_name);
+                         uint8_t other, const std::string& section_name);
   // Create executable ELF file with the given value as the entry point.
   // The text segment will be laid out starting at base address, followed by
   // the data segment.
   absl::Status CreateExecutable(uint64_t base_address,
-                                const std::string &entry_point,
-                                ResolverInterface *symbol_resolver = nullptr);
+                                const std::string& entry_point,
+                                ResolverInterface* symbol_resolver = nullptr);
   absl::Status CreateExecutable(uint64_t base_address, uint64_t entry_point,
-                                ResolverInterface *symbol_resolver = nullptr);
+                                ResolverInterface* symbol_resolver = nullptr);
   // Create a relocatable ELF file.
-  absl::Status CreateRelocatable(ResolverInterface *symbol_resolver = nullptr);
+  absl::Status CreateRelocatable(ResolverInterface* symbol_resolver = nullptr);
   // Write the ELF file to the given output stream.
-  absl::Status Write(std::ostream &os);
+  absl::Status Write(std::ostream& os);
   // Access the ELF writer.
-  ELFIO::elfio &writer() { return writer_; }
+  ELFIO::elfio& writer() { return writer_; }
 
   // Add a symbol reference to the symbol table if it is not already defined.
   void SimpleAddSymbol(absl::string_view name);
 
   // Getters and setters.
-  absl::flat_hash_map<std::string, ELFIO::Elf_Word> &symbol_indices() {
+  absl::flat_hash_map<std::string, ELFIO::Elf_Word>& symbol_indices() {
     return symbol_indices_;
   }
-  ELFIO::section *symtab() { return symtab_; }
+  ELFIO::section* symtab() { return symtab_; }
   unsigned data_address_unit() { return data_address_unit_; }
   void set_data_address_unit(unsigned data_address_unit) {
     data_address_unit_ = data_address_unit;
@@ -126,57 +126,57 @@ class SimpleAssembler {
   template <typename SymbolType>
   void UpdateSymtabHeaderInfo();
   // Perform second pass of parsing.
-  absl::Status ParsePassTwo(std::vector<RelocationInfo> &relo_vector,
-                            ResolverInterface *symbol_resolver);
+  absl::Status ParsePassTwo(std::vector<RelocationInfo>& relo_vector,
+                            ResolverInterface* symbol_resolver);
   // Parse and process an assembly directive.
   absl::Status ParseAsmDirective(absl::string_view line, uint64_t address,
-                                 ResolverInterface *resolver,
-                                 std::vector<uint8_t> &byte_values,
-                                 std::vector<RelocationInfo> &relocations);
+                                 ResolverInterface* resolver,
+                                 std::vector<uint8_t>& byte_values,
+                                 std::vector<RelocationInfo>& relocations);
   // Parse and process and assembly statement.
   absl::Status ParseAsmStatement(absl::string_view line, uint64_t address,
-                                 ResolverInterface *resolver,
-                                 std::vector<uint8_t> &byte_values,
-                                 std::vector<RelocationInfo> &relocations);
+                                 ResolverInterface* resolver,
+                                 std::vector<uint8_t>& byte_values,
+                                 std::vector<RelocationInfo>& relocations);
   // Add the symbol to the symbol table.
-  absl::Status AddSymbol(const std::string &name, ELFIO::Elf64_Addr value,
+  absl::Status AddSymbol(const std::string& name, ELFIO::Elf64_Addr value,
                          ELFIO::Elf_Xword size, uint8_t type, uint8_t binding,
-                         uint8_t other, ELFIO::section *section);
+                         uint8_t other, ELFIO::section* section);
   // Append the data to the current section.
-  absl::Status AppendData(const char *data, size_t size);
+  absl::Status AppendData(const char* data, size_t size);
 
   // Set the the given section as the current section. Create if it has not
   // already been created.
-  void SetTextSection(const std::string &name);
-  void SetDataSection(const std::string &name);
-  void SetBssSection(const std::string &name);
+  void SetTextSection(const std::string& name);
+  void SetDataSection(const std::string& name);
+  void SetBssSection(const std::string& name);
 
   // ELF file class.
   int elf_file_class_ = 0;
   // Elf file top level object.
   ELFIO::elfio writer_;
   // The current section being processed.
-  ELFIO::section *current_section_ = nullptr;
+  ELFIO::section* current_section_ = nullptr;
   // Map from section index to section pointer.
-  absl::flat_hash_map<uint16_t, ELFIO::section *> section_index_map_;
+  absl::flat_hash_map<uint16_t, ELFIO::section*> section_index_map_;
   // Interface used to parse and encode assembly statements.
-  OpcodeAssemblerInterface *opcode_assembler_if_ = nullptr;
+  OpcodeAssemblerInterface* opcode_assembler_if_ = nullptr;
   // Interface used to access strings in the string table.
-  ELFIO::string_section_accessor *string_accessor_ = nullptr;
+  ELFIO::string_section_accessor* string_accessor_ = nullptr;
   // Interface used to access symbols in the symbol table.
-  ELFIO::symbol_section_accessor *symbol_accessor_ = nullptr;
+  ELFIO::symbol_section_accessor* symbol_accessor_ = nullptr;
   // ELF symbol table section.
-  ELFIO::section *symtab_ = nullptr;
+  ELFIO::section* symtab_ = nullptr;
   // Elf string table section.
-  ELFIO::section *strtab_ = nullptr;
+  ELFIO::section* strtab_ = nullptr;
   // Map that tracks the current address of each section.
-  absl::flat_hash_map<ELFIO::section *, uint64_t> section_address_map_;
+  absl::flat_hash_map<ELFIO::section*, uint64_t> section_address_map_;
 
   std::vector<std::string> lines_;
   // Section pointers.
-  ELFIO::section *text_section_ = nullptr;
-  ELFIO::section *data_section_ = nullptr;
-  ELFIO::section *bss_section_ = nullptr;
+  ELFIO::section* text_section_ = nullptr;
+  ELFIO::section* data_section_ = nullptr;
+  ELFIO::section* bss_section_ = nullptr;
   // Regular expressions used to parse the assembly source.
   RE2 comment_re_;
   RE2 asm_line_re_;

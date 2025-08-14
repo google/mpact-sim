@@ -67,18 +67,18 @@ class StateItem<BaseType, ElementType, SourceOperandType,
  public:
   using ValueType = ElementType;
   template <typename... Ps>
-  explicit StateItem(ArchState *arch_state, absl::string_view name, Ps... pargs)
+  explicit StateItem(ArchState* arch_state, absl::string_view name, Ps... pargs)
       : BaseType(arch_state, name, {1}, sizeof(ElementType), pargs...) {}
-  virtual SourceOperandInterface *CreateSourceOperand() {
+  virtual SourceOperandInterface* CreateSourceOperand() {
     return new SourceOperandType(this);
   }
-  virtual DestinationOperandInterface *CreateDestinationOperand(int latency) {
+  virtual DestinationOperandInterface* CreateDestinationOperand(int latency) {
     return new DestinationOperandType(this, latency);
   }
-  virtual SourceOperandInterface *CreateSourceOperand(std::string op_name) {
+  virtual SourceOperandInterface* CreateSourceOperand(std::string op_name) {
     return new SourceOperandType(this, op_name);
   }
-  virtual DestinationOperandInterface *CreateDestinationOperand(
+  virtual DestinationOperandInterface* CreateDestinationOperand(
       int latency, std::string op_name) {
     return new DestinationOperandType(this, latency, op_name);
   }
@@ -88,28 +88,28 @@ class StateItem<BaseType, ElementType, SourceOperandType,
 // element type. The element type should be uint8_t (so it is a byte array).
 template <typename BaseType, typename ElementType, typename SourceOperandType,
           typename DestinationOperandType>
-class StateItem<BaseType, ElementType *, SourceOperandType,
+class StateItem<BaseType, ElementType*, SourceOperandType,
                 DestinationOperandType> : public BaseType {
  public:
   using ValueType = ElementType;
   template <typename... Ps>
-  explicit StateItem(ArchState *arch_state, absl::string_view name, int width,
+  explicit StateItem(ArchState* arch_state, absl::string_view name, int width,
                      Ps... pargs)
       : BaseType(arch_state, name, {width}, sizeof(ElementType), pargs...) {
     static_assert(std::is_same<ElementType, uint8_t>::value,
                   "Element type must be 'uint8_t'");
   }
-  virtual SourceOperandInterface *CreateSourceOperand() {
+  virtual SourceOperandInterface* CreateSourceOperand() {
     return new SourceOperandType(this);
   }
-  virtual SourceOperandInterface *CreateSourceOperand(std::string op_name) {
+  virtual SourceOperandInterface* CreateSourceOperand(std::string op_name) {
     return new SourceOperandType(this, op_name);
   }
-  virtual DestinationOperandInterface *CreateDestinationOperand(
+  virtual DestinationOperandInterface* CreateDestinationOperand(
       int latency, std::string op_name) {
     return new DestinationOperandType(this, latency, op_name);
   }
-  virtual DestinationOperandInterface *CreateDestinationOperand(int latency) {
+  virtual DestinationOperandInterface* CreateDestinationOperand(int latency) {
     return new DestinationOperandType(this, latency);
   }
 };
@@ -122,12 +122,12 @@ class StateItem<BaseType, ElementType, SourceOperandType, void>
  public:
   using ValueType = ElementType;
   template <typename... Ps>
-  explicit StateItem(ArchState *arch_state, absl::string_view name, Ps... pargs)
+  explicit StateItem(ArchState* arch_state, absl::string_view name, Ps... pargs)
       : BaseType(arch_state, name, {1}, sizeof(ElementType), pargs...) {}
-  virtual SourceOperandInterface *CreateSourceOperand() {
+  virtual SourceOperandInterface* CreateSourceOperand() {
     return new SourceOperandType(this);
   }
-  virtual SourceOperandInterface *CreateSourceOperand(std::string op_name) {
+  virtual SourceOperandInterface* CreateSourceOperand(std::string op_name) {
     return new SourceOperandType(this, op_name);
   }
 };
@@ -142,19 +142,19 @@ class StateItem<BaseType, ElementType, SourceOperandType,
   static constexpr int kNumDimensions = 1;
   static constexpr int kShape[] = {N};
   template <typename... Ps>
-  explicit StateItem(ArchState *arch_state, absl::string_view name, Ps... pargs)
+  explicit StateItem(ArchState* arch_state, absl::string_view name, Ps... pargs)
       : BaseType(arch_state, name, {N}, sizeof(ElementType), pargs...) {}
   // Source/destination operand creation interface.
-  virtual SourceOperandInterface *CreateSourceOperand() {
+  virtual SourceOperandInterface* CreateSourceOperand() {
     return new SourceOperandType(this);
   }
-  virtual DestinationOperandInterface *CreateDestinationOperand(int latency) {
+  virtual DestinationOperandInterface* CreateDestinationOperand(int latency) {
     return new DestinationOperandType(this, latency);
   }
-  virtual SourceOperandInterface *CreateSourceOperand(std::string op_name) {
+  virtual SourceOperandInterface* CreateSourceOperand(std::string op_name) {
     return new SourceOperandType(this, op_name);
   }
-  virtual DestinationOperandInterface *CreateDestinationOperand(
+  virtual DestinationOperandInterface* CreateDestinationOperand(
       int latency, std::string op_name) {
     return new DestinationOperandType(this, latency, op_name);
   }
@@ -170,18 +170,18 @@ class StateItem<BaseType, ElementType, SourceOperandType,
   static constexpr int kNumDimensions = 2;
   static constexpr int kShape[] = {M, N};
   template <typename... Ps>
-  explicit StateItem(ArchState *arch_state, absl::string_view name, Ps... pargs)
+  explicit StateItem(ArchState* arch_state, absl::string_view name, Ps... pargs)
       : BaseType(arch_state, name, {M, N}, sizeof(ElementType), pargs...) {}
-  virtual SourceOperandInterface *CreateSourceOperand() {
+  virtual SourceOperandInterface* CreateSourceOperand() {
     return new SourceOperandType(this);
   }
-  virtual DestinationOperandInterface *CreateDestinationOperand(int latency) {
+  virtual DestinationOperandInterface* CreateDestinationOperand(int latency) {
     return new DestinationOperandType(this, latency);
   }
-  virtual SourceOperandInterface *CreateSourceOperand(std::string op_name) {
+  virtual SourceOperandInterface* CreateSourceOperand(std::string op_name) {
     return new SourceOperandType(this, op_name);
   }
-  virtual DestinationOperandInterface *CreateDestinationOperand(
+  virtual DestinationOperandInterface* CreateDestinationOperand(
       int latency, std::string op_name) {
     return new DestinationOperandType(this, latency, op_name);
   }

@@ -92,7 +92,7 @@ class ProgramErrorController {
   // named program error. If there is no such program_error_name the internal
   // error is raised (see kInternalErrorName), and the error messages for that
   // are returned.
-  const std::vector<std::string> &GetErrorMessages(
+  const std::vector<std::string>& GetErrorMessages(
       absl::string_view program_error_name);
 
   // Raises the named program error and adds the error message to its message
@@ -142,7 +142,7 @@ class ProgramError {
  private:
   // The constructor is private, as the handle is obtained from a
   // ProgramErrorController instance.
-  ProgramError(absl::string_view name, ProgramErrorController *controller);
+  ProgramError(absl::string_view name, ProgramErrorController* controller);
 
  public:
   // Raise the error to the ProgramErrorController with the given additional
@@ -153,7 +153,7 @@ class ProgramError {
 
  private:
   std::string name_;
-  ProgramErrorController *controller_;
+  ProgramErrorController* controller_;
 };
 
 }  // namespace generic

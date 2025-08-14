@@ -49,7 +49,7 @@ class RenodeDebugInterface : public generic::CoreDebugInterface {
   using generic::CoreDebugInterface::WriteRegister;
 
   // Load executable or load symbols from executable.
-  virtual absl::StatusOr<uint64_t> LoadExecutable(const char *elf_file_name,
+  virtual absl::StatusOr<uint64_t> LoadExecutable(const char* elf_file_name,
                                                   bool for_symbols_only) = 0;
 
   // Read/write the numeric id registers.
@@ -58,11 +58,11 @@ class RenodeDebugInterface : public generic::CoreDebugInterface {
   // Get register information.
   virtual int32_t GetRenodeRegisterInfoSize() const = 0;
   virtual absl::Status GetRenodeRegisterInfo(int32_t index, int32_t max_len,
-                                             char *name,
-                                             RenodeCpuRegister &info) = 0;
+                                             char* name,
+                                             RenodeCpuRegister& info) = 0;
   // Set configuration item.
-  virtual absl::Status SetConfig(const char *config_names[],
-                                 const char *config_values[], int size) = 0;
+  virtual absl::Status SetConfig(const char* config_names[],
+                                 const char* config_values[], int size) = 0;
   // Set IRQ.
   virtual absl::Status SetIrqValue(int32_t irq_num, bool irq_value) = 0;
 
@@ -89,14 +89,14 @@ class RenodeDebugInterface : public generic::CoreDebugInterface {
   absl::StatusOr<RunStatus> GetRunStatus() final {
     return absl::InternalError("GetRunStatus: Not implemented");
   }
-  absl::StatusOr<uint64_t> ReadRegister(const std::string &name) final {
+  absl::StatusOr<uint64_t> ReadRegister(const std::string& name) final {
     return absl::InternalError("ReadRegister: Not implemented");
   }
-  absl::Status WriteRegister(const std::string &name, uint64_t value) final {
+  absl::Status WriteRegister(const std::string& name, uint64_t value) final {
     return absl::InternalError("WriteRegister: Not implemented");
   }
-  absl::StatusOr<mpact::sim::generic::DataBuffer *> GetRegisterDataBuffer(
-      const std::string &) final {
+  absl::StatusOr<mpact::sim::generic::DataBuffer*> GetRegisterDataBuffer(
+      const std::string&) final {
     return absl::InternalError("GetRegisterDataBuffer: Not implemented");
   }
   bool HasBreakpoint(uint64_t address) final { return false; }
@@ -109,7 +109,7 @@ class RenodeDebugInterface : public generic::CoreDebugInterface {
   absl::Status ClearAllSwBreakpoints() final {
     return absl::InternalError("ClearAllSwBreakpoints: Not implemented");
   }
-  absl::StatusOr<mpact::sim::generic::Instruction *> GetInstruction(
+  absl::StatusOr<mpact::sim::generic::Instruction*> GetInstruction(
       uint64_t address) final {
     return absl::InternalError("GetInstruction: Not implemented");
   }

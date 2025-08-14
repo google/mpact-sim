@@ -17,15 +17,12 @@
 #include <cstdint>
 #include <memory>
 
-#include "absl/memory/memory.h"
-#include "googlemock/include/gmock/gmock.h"
+#include "googlemock/include/gmock/gmock.h"  // IWYU pragma: keep
 #include "googletest/include/gtest/gtest.h"
-#include "mpact/sim/generic/config.h"
 #include "mpact/sim/generic/data_buffer.h"
 #include "mpact/sim/generic/program_error.h"
 #include "mpact/sim/proto/component_data.pb.h"
 #include "src/google/protobuf/text_format.h"
-#include "src/google/protobuf/util/message_differencer.h"
 
 namespace mpact {
 namespace sim {
@@ -107,7 +104,7 @@ TEST_F(FifoTest, ScalarDataBuffer) {
   EXPECT_EQ(scalar_fifo->Front(), nullptr);
 
   // Allocate a data buffer of the right byte size and bind it to the fifo.
-  DataBuffer *db = db_factory_->Allocate(scalar_fifo->size());
+  DataBuffer* db = db_factory_->Allocate(scalar_fifo->size());
   scalar_fifo->SetDataBuffer(db);
   EXPECT_EQ(scalar_fifo->Available(), 1);
   EXPECT_FALSE(scalar_fifo->IsFull());
@@ -126,7 +123,7 @@ TEST_F(FifoTest, VectorDataBuffer) {
   EXPECT_EQ(vector_fifo->Front(), nullptr);
 
   // Allocate a data buffer of the right byte size and bind it to the fifo.
-  DataBuffer *db = db_factory_->Allocate(vector_fifo->size());
+  DataBuffer* db = db_factory_->Allocate(vector_fifo->size());
   vector_fifo->SetDataBuffer(db);
   EXPECT_EQ(vector_fifo->Available(), 1);
   EXPECT_FALSE(vector_fifo->IsFull());
@@ -146,7 +143,7 @@ TEST_F(FifoTest, MatrixDataBuffer) {
   EXPECT_EQ(matrix_fifo->Front(), nullptr);
 
   // Allocate a data buffer of the right byte size and bind it to the fifo.
-  DataBuffer *db = db_factory_->Allocate(matrix_fifo->size());
+  DataBuffer* db = db_factory_->Allocate(matrix_fifo->size());
   matrix_fifo->SetDataBuffer(db);
   EXPECT_EQ(matrix_fifo->Available(), 1);
   EXPECT_FALSE(matrix_fifo->IsFull());
@@ -162,7 +159,7 @@ TEST_F(FifoTest, MatrixDataBuffer) {
 TEST_F(FifoTest, EmptyFullEmpty) {
   auto fifo = std::make_unique<ScalarFifo>(nullptr, "S0", kFifoDepth);
 
-  DataBuffer *db[kFifoDepth + 1];
+  DataBuffer* db[kFifoDepth + 1];
   for (int db_num = 0; db_num < kFifoDepth + 1; db_num++) {
     db[db_num] = db_factory_->Allocate(fifo->size());
   }
@@ -212,7 +209,7 @@ TEST_F(FifoTest, Reserve) {
   EXPECT_TRUE(fifo->IsFull());
   EXPECT_FALSE(fifo->IsOverSubscribed());
 
-  DataBuffer *db[kFifoDepth];
+  DataBuffer* db[kFifoDepth];
   for (int db_num = 0; db_num < kFifoDepth; db_num++) {
     db[db_num] = db_factory_->Allocate(fifo->size());
     fifo->Push(db[db_num]);
@@ -267,7 +264,7 @@ TEST_F(FifoTest, OverflowProgramError) {
   fifo->SetOverflowProgramError(&overflow);
   EXPECT_FALSE(controller_->HasError());
 
-  DataBuffer *db[kFifoDepth + 1];
+  DataBuffer* db[kFifoDepth + 1];
   for (int db_num = 0; db_num < kFifoDepth + 1; db_num++) {
     db[db_num] = db_factory_->Allocate(fifo->size());
     fifo->Push(db[db_num]);

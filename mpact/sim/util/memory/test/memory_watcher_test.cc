@@ -42,8 +42,8 @@ class MemoryWatcherTest : public testing::Test {
   }
 
   DataBufferFactory db_factory_;
-  MemoryWatcher *watcher_;
-  FlatDemandMemory *memory_;
+  MemoryWatcher* watcher_;
+  FlatDemandMemory* memory_;
 };
 
 // This tests if status is ok when setting non overlapping ranges.
@@ -161,10 +161,10 @@ TEST_F(MemoryWatcherTest, LoadWatch) {
                       })
                   .ok());
 
-  DataBuffer *db1 = db_factory_.Allocate<uint8_t>(1);
-  DataBuffer *db2 = db_factory_.Allocate<uint16_t>(1);
-  DataBuffer *db4 = db_factory_.Allocate<uint32_t>(1);
-  DataBuffer *db8 = db_factory_.Allocate<uint64_t>(1);
+  DataBuffer* db1 = db_factory_.Allocate<uint8_t>(1);
+  DataBuffer* db2 = db_factory_.Allocate<uint16_t>(1);
+  DataBuffer* db4 = db_factory_.Allocate<uint32_t>(1);
+  DataBuffer* db8 = db_factory_.Allocate<uint64_t>(1);
 
   // First ensure that the store doesn't trigger a callback.
   watcher_->Store(0x1000, db8);
@@ -232,9 +232,9 @@ TEST_F(MemoryWatcherTest, GatherWatch) {
                       })
                   .ok());
 
-  DataBuffer *address_db = db_factory_.Allocate<uint64_t>(4);
-  DataBuffer *mask_db = db_factory_.Allocate<bool>(4);
-  DataBuffer *data_db = db_factory_.Allocate<uint32_t>(4);
+  DataBuffer* address_db = db_factory_.Allocate<uint64_t>(4);
+  DataBuffer* mask_db = db_factory_.Allocate<bool>(4);
+  DataBuffer* data_db = db_factory_.Allocate<uint32_t>(4);
 
   auto address_span = address_db->Get<uint64_t>();
   auto mask_span = mask_db->Get<bool>();
@@ -302,10 +302,10 @@ TEST_F(MemoryWatcherTest, StoreWatch) {
                       })
                   .ok());
 
-  DataBuffer *db1 = db_factory_.Allocate<uint8_t>(1);
-  DataBuffer *db2 = db_factory_.Allocate<uint16_t>(1);
-  DataBuffer *db4 = db_factory_.Allocate<uint32_t>(1);
-  DataBuffer *db8 = db_factory_.Allocate<uint64_t>(1);
+  DataBuffer* db1 = db_factory_.Allocate<uint8_t>(1);
+  DataBuffer* db2 = db_factory_.Allocate<uint16_t>(1);
+  DataBuffer* db4 = db_factory_.Allocate<uint32_t>(1);
+  DataBuffer* db8 = db_factory_.Allocate<uint64_t>(1);
 
   // No callbacks for a load.
   watcher_->Load(0x1000, db8, nullptr, nullptr);
@@ -372,9 +372,9 @@ TEST_F(MemoryWatcherTest, ScatterWatch) {
                       })
                   .ok());
 
-  DataBuffer *address_db = db_factory_.Allocate<uint64_t>(4);
-  DataBuffer *mask_db = db_factory_.Allocate<bool>(4);
-  DataBuffer *data_db = db_factory_.Allocate<uint32_t>(4);
+  DataBuffer* address_db = db_factory_.Allocate<uint64_t>(4);
+  DataBuffer* mask_db = db_factory_.Allocate<bool>(4);
+  DataBuffer* data_db = db_factory_.Allocate<uint32_t>(4);
 
   auto address_span = address_db->Get<uint64_t>();
   auto mask_span = mask_db->Get<bool>();

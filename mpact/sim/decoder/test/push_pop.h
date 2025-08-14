@@ -24,9 +24,9 @@ namespace test {
 
 using ::mpact::sim::generic::Instruction;
 
-void Illegal(const Instruction *inst);
-void Push(const Instruction *inst);
-void Pop(const Instruction *inst);
+void Illegal(const Instruction* inst);
+void Push(const Instruction* inst);
+void Pop(const Instruction* inst);
 
 }  // namespace test
 }  // namespace decoder

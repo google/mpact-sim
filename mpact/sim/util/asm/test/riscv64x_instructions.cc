@@ -20,7 +20,7 @@
 
 namespace mpact::sim::riscv {
 
-void RiscVIllegalInstruction(const generic::Instruction *inst) {
+void RiscVIllegalInstruction(const generic::Instruction* inst) {
   std::cerr << "Illegal instruction\n";
 }
 

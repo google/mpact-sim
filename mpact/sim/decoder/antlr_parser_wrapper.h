@@ -28,14 +28,14 @@ namespace decoder {
 template <typename Parser, typename Lexer>
 class AntlrParserWrapper {
  public:
-  explicit AntlrParserWrapper(std::istream *source_stream) {
+  explicit AntlrParserWrapper(std::istream* source_stream) {
     instruction_set_input_.load(*source_stream, /*lenient=*/true);
     lexer_ = new Lexer(&instruction_set_input_);
     tokens_ = new antlr4::CommonTokenStream(lexer_);
     parser_ = new Parser(tokens_);
   }
 
-  explicit AntlrParserWrapper(const std::string &source) {
+  explicit AntlrParserWrapper(const std::string& source) {
     instruction_set_input_.load(source, /*lenient=*/true);
     lexer_ = new Lexer(&instruction_set_input_);
     tokens_ = new antlr4::CommonTokenStream(lexer_);
@@ -48,13 +48,13 @@ class AntlrParserWrapper {
     delete lexer_;
   }
 
-  Parser *parser() const { return parser_; }
+  Parser* parser() const { return parser_; }
 
  private:
   antlr4::ANTLRInputStream instruction_set_input_;
-  Lexer *lexer_;
-  antlr4::CommonTokenStream *tokens_;
-  Parser *parser_;
+  Lexer* lexer_;
+  antlr4::CommonTokenStream* tokens_;
+  Parser* parser_;
 };
 
 }  // namespace decoder

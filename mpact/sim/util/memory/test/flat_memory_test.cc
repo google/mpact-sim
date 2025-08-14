@@ -22,6 +22,9 @@
 #include "googletest/include/gtest/gtest.h"
 #include "mpact/sim/generic/arch_state.h"
 #include "mpact/sim/generic/data_buffer.h"
+#include "mpact/sim/generic/instruction.h"
+#include "mpact/sim/generic/operand_interface.h"
+#include "mpact/sim/generic/ref_count.h"
 
 namespace mpact {
 namespace sim {
@@ -32,14 +35,14 @@ using mpact::sim::generic::DataBuffer;
 
 struct InstructionContext : public generic::ReferenceCount {
  public:
-  uint32_t *value;
+  uint32_t* value;
 };
 
 // Define a class that derives from ArchState since constructors are
 // protected.
 class MyArchState : public generic::ArchState {
  public:
-  MyArchState(absl::string_view id, generic::SourceOperandInterface *pc_op)
+  MyArchState(absl::string_view id, generic::SourceOperandInterface* pc_op)
       : ArchState(id, pc_op) {}
   explicit MyArchState(absl::string_view id) : MyArchState(id, nullptr) {}
 };
@@ -50,7 +53,7 @@ class FlatMemoryTest : public testing::Test {
   FlatMemoryTest() { arch_state_ = new MyArchState("TestArchitecture"); }
   ~FlatMemoryTest() override { delete arch_state_; }
 
-  MyArchState *arch_state_;
+  MyArchState* arch_state_;
 };
 
 // Verify that size and base address are correct when created.
@@ -71,10 +74,10 @@ TEST_F(FlatMemoryTest, BasicCreate) {
 TEST_F(FlatMemoryTest, SimpleStoreLoad) {
   auto mem = std::make_unique<FlatMemory>(1024, 0x1000, 1, 0);
 
-  DataBuffer *st_db1 = arch_state_->db_factory()->Allocate<uint8_t>(1);
-  DataBuffer *st_db2 = arch_state_->db_factory()->Allocate<uint16_t>(1);
-  DataBuffer *st_db4 = arch_state_->db_factory()->Allocate<uint32_t>(1);
-  DataBuffer *st_db8 = arch_state_->db_factory()->Allocate<uint64_t>(1);
+  DataBuffer* st_db1 = arch_state_->db_factory()->Allocate<uint8_t>(1);
+  DataBuffer* st_db2 = arch_state_->db_factory()->Allocate<uint16_t>(1);
+  DataBuffer* st_db4 = arch_state_->db_factory()->Allocate<uint32_t>(1);
+  DataBuffer* st_db8 = arch_state_->db_factory()->Allocate<uint64_t>(1);
 
   st_db1->Set<uint8_t>(0, 0x0F);
   st_db2->Set<uint16_t>(0, 0xA5A5);
@@ -86,10 +89,10 @@ TEST_F(FlatMemoryTest, SimpleStoreLoad) {
   mem->Store(0x1004, st_db4);
   mem->Store(0x1008, st_db8);
 
-  DataBuffer *ld_db1 = arch_state_->db_factory()->Allocate<uint8_t>(1);
-  DataBuffer *ld_db2 = arch_state_->db_factory()->Allocate<uint16_t>(1);
-  DataBuffer *ld_db4 = arch_state_->db_factory()->Allocate<uint32_t>(1);
-  DataBuffer *ld_db8 = arch_state_->db_factory()->Allocate<uint64_t>(1);
+  DataBuffer* ld_db1 = arch_state_->db_factory()->Allocate<uint8_t>(1);
+  DataBuffer* ld_db2 = arch_state_->db_factory()->Allocate<uint16_t>(1);
+  DataBuffer* ld_db4 = arch_state_->db_factory()->Allocate<uint32_t>(1);
+  DataBuffer* ld_db8 = arch_state_->db_factory()->Allocate<uint64_t>(1);
 
   mem->Load(0x1000, ld_db1, nullptr, nullptr);
   mem->Load(0x1002, ld_db2, nullptr, nullptr);
@@ -117,11 +120,11 @@ TEST_F(FlatMemoryTest, SimpleStoreLoad) {
 TEST_F(FlatMemoryTest, MultiAddressLoadStore) {
   auto mem = std::make_unique<FlatMemory>(1024, 0x1000, 1, 0);
 
-  DataBuffer *address_db = arch_state_->db_factory()->Allocate<uint64_t>(4);
-  DataBuffer *mask_db = arch_state_->db_factory()->Allocate<bool>(4);
-  DataBuffer *store_data_db = arch_state_->db_factory()->Allocate<uint32_t>(4);
-  DataBuffer *load_data_db = arch_state_->db_factory()->Allocate<uint32_t>(4);
-  DataBuffer *load_data2_db = arch_state_->db_factory()->Allocate<uint32_t>(8);
+  DataBuffer* address_db = arch_state_->db_factory()->Allocate<uint64_t>(4);
+  DataBuffer* mask_db = arch_state_->db_factory()->Allocate<bool>(4);
+  DataBuffer* store_data_db = arch_state_->db_factory()->Allocate<uint32_t>(4);
+  DataBuffer* load_data_db = arch_state_->db_factory()->Allocate<uint32_t>(4);
+  DataBuffer* load_data2_db = arch_state_->db_factory()->Allocate<uint32_t>(8);
 
   // Should load zeros's into load_data_db
   mem->Load(0x1000, load_data_db, nullptr, nullptr);
@@ -188,14 +191,14 @@ TEST_F(FlatMemoryTest, SingleLoadWithInstruction) {
   auto context = new InstructionContext();
   auto inst = std::make_unique<Instruction>(arch_state_);
   int data = 0;
-  inst->set_semantic_function([&](Instruction *instruction) {
+  inst->set_semantic_function([&](Instruction* instruction) {
     EXPECT_EQ(inst.get(), instruction);
-    EXPECT_EQ(instruction->context(), static_cast<ReferenceCount *>(context));
+    EXPECT_EQ(instruction->context(), static_cast<ReferenceCount*>(context));
     data++;
   });
   auto mem = std::make_unique<FlatMemory>(1024, 0x1000, 1, 0);
 
-  DataBuffer *ld_db = arch_state_->db_factory()->Allocate<uint32_t>(1);
+  DataBuffer* ld_db = arch_state_->db_factory()->Allocate<uint32_t>(1);
 
   // Set latency to zero so that the instruction semantic function in inst is
   // executed immediately.
@@ -222,16 +225,16 @@ TEST_F(FlatMemoryTest, MultiLoadWithInstruction) {
   auto context = new InstructionContext();
   auto inst = std::make_unique<Instruction>(arch_state_);
   int data = 0;
-  inst->set_semantic_function([&](Instruction *instruction) {
+  inst->set_semantic_function([&](Instruction* instruction) {
     EXPECT_EQ(inst.get(), instruction);
-    EXPECT_EQ(instruction->context(), static_cast<ReferenceCount *>(context));
+    EXPECT_EQ(instruction->context(), static_cast<ReferenceCount*>(context));
     data++;
   });
   auto mem = std::make_unique<FlatMemory>(1024, 0x1000, 1, 0);
 
-  DataBuffer *address_db = arch_state_->db_factory()->Allocate<uint64_t>(4);
-  DataBuffer *mask_db = arch_state_->db_factory()->Allocate<bool>(4);
-  DataBuffer *ld_db = arch_state_->db_factory()->Allocate<uint32_t>(4);
+  DataBuffer* address_db = arch_state_->db_factory()->Allocate<uint64_t>(4);
+  DataBuffer* mask_db = arch_state_->db_factory()->Allocate<bool>(4);
+  DataBuffer* ld_db = arch_state_->db_factory()->Allocate<uint32_t>(4);
 
   // Set up addresses and mask values.
   for (int index = 0; index < 4; index++) {
@@ -264,10 +267,10 @@ TEST_F(FlatMemoryTest, MultiLoadWithInstruction) {
 TEST_F(FlatMemoryTest, MultiLoadUnitStride) {
   auto mem = std::make_unique<FlatMemory>(1024, 0x1000, 1, 0);
 
-  DataBuffer *address_db = arch_state_->db_factory()->Allocate<uint64_t>(1);
-  DataBuffer *mask_db = arch_state_->db_factory()->Allocate<bool>(4);
-  DataBuffer *ld_db = arch_state_->db_factory()->Allocate<uint32_t>(4);
-  DataBuffer *st_db = arch_state_->db_factory()->Allocate<uint32_t>(4);
+  DataBuffer* address_db = arch_state_->db_factory()->Allocate<uint64_t>(1);
+  DataBuffer* mask_db = arch_state_->db_factory()->Allocate<bool>(4);
+  DataBuffer* ld_db = arch_state_->db_factory()->Allocate<uint32_t>(4);
+  DataBuffer* st_db = arch_state_->db_factory()->Allocate<uint32_t>(4);
   auto ld_span = ld_db->Get<uint32_t>();
   auto st_span = st_db->Get<uint32_t>();
   auto mask_span = mask_db->Get<bool>();
@@ -288,10 +291,10 @@ TEST_F(FlatMemoryTest, MultiLoadUnitStride) {
 TEST_F(FlatMemoryTest, WordAddressableMemory) {
   auto mem = std::make_unique<FlatMemory>(1024, 0x1000, 4, 0);
   // Allocate data buffers for store data.
-  DataBuffer *st_db1 = arch_state_->db_factory()->Allocate<uint8_t>(1);
-  DataBuffer *st_db2 = arch_state_->db_factory()->Allocate<uint16_t>(1);
-  DataBuffer *st_db4 = arch_state_->db_factory()->Allocate<uint32_t>(1);
-  DataBuffer *st_db8 = arch_state_->db_factory()->Allocate<uint64_t>(1);
+  DataBuffer* st_db1 = arch_state_->db_factory()->Allocate<uint8_t>(1);
+  DataBuffer* st_db2 = arch_state_->db_factory()->Allocate<uint16_t>(1);
+  DataBuffer* st_db4 = arch_state_->db_factory()->Allocate<uint32_t>(1);
+  DataBuffer* st_db8 = arch_state_->db_factory()->Allocate<uint64_t>(1);
   // Initialize values to be stored.
   st_db1->Set<uint8_t>(0, 0x0F);
   st_db2->Set<uint16_t>(0, 0xA5A5);
@@ -303,10 +306,10 @@ TEST_F(FlatMemoryTest, WordAddressableMemory) {
   mem->Store(0x1002, st_db4);
   mem->Store(0x1003, st_db8);
   // Allocate data buffers for load data.
-  DataBuffer *ld_db1 = arch_state_->db_factory()->Allocate<uint8_t>(1);
-  DataBuffer *ld_db2 = arch_state_->db_factory()->Allocate<uint16_t>(1);
-  DataBuffer *ld_db4 = arch_state_->db_factory()->Allocate<uint32_t>(1);
-  DataBuffer *ld_db8 = arch_state_->db_factory()->Allocate<uint64_t>(1);
+  DataBuffer* ld_db1 = arch_state_->db_factory()->Allocate<uint8_t>(1);
+  DataBuffer* ld_db2 = arch_state_->db_factory()->Allocate<uint16_t>(1);
+  DataBuffer* ld_db4 = arch_state_->db_factory()->Allocate<uint32_t>(1);
+  DataBuffer* ld_db8 = arch_state_->db_factory()->Allocate<uint64_t>(1);
   // Perform loads from the adjacent addresses in memory.
   mem->Load(0x1000, ld_db1, nullptr, nullptr);
   mem->Load(0x1001, ld_db2, nullptr, nullptr);

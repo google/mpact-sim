@@ -19,18 +19,19 @@
 
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
+#include "mpact/sim/util/memory/memory_interface.h"
 
 namespace mpact {
 namespace sim {
 namespace util {
 
-MemoryWatcher::MemoryWatcher(MemoryInterface *memory) : memory_(memory) {}
+MemoryWatcher::MemoryWatcher(MemoryInterface* memory) : memory_(memory) {}
 
 // Methods to insert store and load watch callbacks. The methods check that
 // the address range is well formed (start <= end), and that there is no
 // overlapping range in the btree map.
 
-absl::Status MemoryWatcher::SetStoreWatchCallback(const AddressRange &range,
+absl::Status MemoryWatcher::SetStoreWatchCallback(const AddressRange& range,
                                                   Callback callback) {
   if (range.start > range.end) {
     return absl::InternalError(absl::StrCat("Illegal store watch range: start ",
@@ -57,7 +58,7 @@ absl::Status MemoryWatcher::ClearStoreWatchCallback(uint64_t address) {
   return absl::OkStatus();
 }
 
-absl::Status MemoryWatcher::SetLoadWatchCallback(const AddressRange &range,
+absl::Status MemoryWatcher::SetLoadWatchCallback(const AddressRange& range,
                                                  Callback callback) {
   if (range.start > range.end) {
     return absl::InternalError(absl::StrCat("Illegal store watch range: start ",
@@ -89,8 +90,8 @@ absl::Status MemoryWatcher::ClearLoadWatchCallback(uint64_t address) {
 // is called before/after the load/store is forwarded to the interface.
 
 // Single address.
-void MemoryWatcher::Load(uint64_t address, DataBuffer *db, Instruction *inst,
-                         ReferenceCount *context) {
+void MemoryWatcher::Load(uint64_t address, DataBuffer* db, Instruction* inst,
+                         ReferenceCount* context) {
   if (!ld_watch_actions_.empty()) {
     auto [first_match, last] = ld_watch_actions_.equal_range(
         AddressRange(address, address + db->size<uint8_t>() - 1));
@@ -103,9 +104,9 @@ void MemoryWatcher::Load(uint64_t address, DataBuffer *db, Instruction *inst,
 }
 
 // Gather load (multiple addresses and a mask vector).
-void MemoryWatcher::Load(DataBuffer *address_db, DataBuffer *mask_db,
-                         int el_size, DataBuffer *db, Instruction *inst,
-                         ReferenceCount *context) {
+void MemoryWatcher::Load(DataBuffer* address_db, DataBuffer* mask_db,
+                         int el_size, DataBuffer* db, Instruction* inst,
+                         ReferenceCount* context) {
   if (!ld_watch_actions_.empty()) {
     int num_entries = mask_db->size<bool>();
     auto addresses = address_db->Get<uint64_t>();
@@ -126,7 +127,7 @@ void MemoryWatcher::Load(DataBuffer *address_db, DataBuffer *mask_db,
 }
 
 // Single address store.
-void MemoryWatcher::Store(uint64_t address, DataBuffer *db) {
+void MemoryWatcher::Store(uint64_t address, DataBuffer* db) {
   memory_->Store(address, db);
   if (!st_watch_actions_.empty()) {
     auto [first_match, last] = st_watch_actions_.equal_range(
@@ -139,8 +140,8 @@ void MemoryWatcher::Store(uint64_t address, DataBuffer *db) {
 }
 
 // Scatter store (multiple addresses and a mask vector).
-void MemoryWatcher::Store(DataBuffer *address_db, DataBuffer *mask_db,
-                          int el_size, DataBuffer *db) {
+void MemoryWatcher::Store(DataBuffer* address_db, DataBuffer* mask_db,
+                          int el_size, DataBuffer* db) {
   memory_->Store(address_db, mask_db, el_size, db);
   if (!st_watch_actions_.empty()) {
     int num_entries = mask_db->size<bool>();

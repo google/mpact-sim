@@ -45,7 +45,7 @@ FieldOrFormat::~FieldOrFormat() {
 
 // The equality operator compares to verify that the field/format definitions
 // are equivalent, i.e., refers to the same bits.
-bool FieldOrFormat::operator==(const FieldOrFormat &rhs) const {
+bool FieldOrFormat::operator==(const FieldOrFormat& rhs) const {
   if (is_field_ != rhs.is_field_) return false;
   if (is_field_) {
     if (high_ != rhs.high_) return false;
@@ -56,17 +56,17 @@ bool FieldOrFormat::operator==(const FieldOrFormat &rhs) const {
   return true;
 }
 
-bool FieldOrFormat::operator!=(const FieldOrFormat &rhs) const {
+bool FieldOrFormat::operator!=(const FieldOrFormat& rhs) const {
   return !(*this == rhs);
 }
 
 using ::mpact::sim::machine_description::instruction_set::ToPascalCase;
 
-Format::Format(std::string name, int width, BinEncodingInfo *encoding_info)
+Format::Format(std::string name, int width, BinEncodingInfo* encoding_info)
     : Format(name, width, "", encoding_info) {}
 
 Format::Format(std::string name, int width, std::string base_format_name,
-               BinEncodingInfo *encoding_info)
+               BinEncodingInfo* encoding_info)
     : name_(name),
       base_format_name_(base_format_name),
       declared_width_(width),
@@ -77,11 +77,11 @@ Format::~Format() {
   //   delete field_ptr;
   // }
   field_map_.clear();
-  for (auto &[unused, overlay_ptr] : overlay_map_) {
+  for (auto& [unused, overlay_ptr] : overlay_map_) {
     delete overlay_ptr;
   }
   overlay_map_.clear();
-  for (auto *field : field_vec_) {
+  for (auto* field : field_vec_) {
     delete field;
   }
   field_vec_.clear();
@@ -105,14 +105,14 @@ absl::Status Format::AddField(std::string name, bool is_signed, int width) {
 // format. This will be resolved once all the formats have been parsed.
 void Format::AddFormatReferenceField(std::string format_alias,
                                      std::string format_name, int size,
-                                     antlr4::Token *ctx) {
+                                     antlr4::Token* ctx) {
   field_vec_.push_back(new FieldOrFormat(format_alias, format_name, size, ctx));
 }
 
 // Add an overlay to the current format. An overlay is a named alias for a
 // not necessarily contiguous nor in order collection of bits in the format.
-absl::StatusOr<Overlay *> Format::AddFieldOverlay(std::string name,
-                                                  bool is_signed, int width) {
+absl::StatusOr<Overlay*> Format::AddFieldOverlay(std::string name,
+                                                 bool is_signed, int width) {
   // Make sure that the name isn't used already in the format.
   if (overlay_map_.contains(name)) {
     return absl::InvalidArgumentError(
@@ -128,14 +128,14 @@ absl::StatusOr<Overlay *> Format::AddFieldOverlay(std::string name,
 }
 
 // Return the named field if it exists, nullptr otherwise.
-Field *Format::GetField(absl::string_view field_name) const {
+Field* Format::GetField(absl::string_view field_name) const {
   auto iter = field_map_.find(field_name);
   if (iter == field_map_.end()) return nullptr;
   return iter->second;
 }
 
 // Return the named field if it exists, nullptr otherwise.
-Overlay *Format::GetOverlay(absl::string_view overlay_name) const {
+Overlay* Format::GetOverlay(absl::string_view overlay_name) const {
   auto iter = overlay_map_.find(overlay_name);
   if (iter == overlay_map_.end()) return nullptr;
   return iter->second;
@@ -172,7 +172,7 @@ absl::Status Format::ComputeAndCheckFormatWidth() {
   // If there is a base format name, look up that format, verify that the widths
   // are the same.
   if (!base_format_name_.empty()) {
-    auto *base_format = encoding_info_->GetFormat(base_format_name_);
+    auto* base_format = encoding_info_->GetFormat(base_format_name_);
     if (base_format == nullptr) {
       return absl::InternalError(
           absl::StrCat("Format ", name(), " refers to undefined base format ",
@@ -191,10 +191,10 @@ absl::Status Format::ComputeAndCheckFormatWidth() {
     // Go through the list of fields/format references. Get the declared widths
     // of the formats and add to the computed width. Signal error if the
     // computed width differs from the declared width.
-    for (auto *field_or_format : field_vec_) {
+    for (auto* field_or_format : field_vec_) {
       // Field.
       if (field_or_format->is_field()) {
-        auto *field = field_or_format->field();
+        auto* field = field_or_format->field();
         field->high = declared_width_ - computed_width_ - 1;
         field->low = field->high - field->width + 1;
         computed_width_ += field->width;
@@ -203,7 +203,7 @@ absl::Status Format::ComputeAndCheckFormatWidth() {
       }
 
       // Format;
-      auto *format = field_or_format->format();
+      auto* format = field_or_format->format();
       if (format == nullptr) {
         std::string fmt_name = field_or_format->format_name();
         format = encoding_info_->GetFormat(fmt_name);
@@ -224,7 +224,7 @@ absl::Status Format::ComputeAndCheckFormatWidth() {
           ") differs from computed width (", computed_width_, ")"));
     }
   }
-  for (auto &[name, overlay_ptr] : overlay_map_) {
+  for (auto& [name, overlay_ptr] : overlay_map_) {
     auto status = overlay_ptr->ComputeHighLow();
     if (!status.ok()) return status;
     overlay_extractors_.insert(std::make_pair(name, overlay_ptr));
@@ -241,12 +241,12 @@ absl::Status Format::ComputeAndCheckFormatWidth() {
 // in the base format namespace. This method is used to propagate such
 // potential promotions upward in the inheritance tree.
 void Format::PropagateExtractorsUp() {
-  for (auto *fmt : derived_formats_) {
+  for (auto* fmt : derived_formats_) {
     fmt->PropagateExtractorsUp();
   }
   if (base_format_ != nullptr) {
     // Try to propagate extractors up the inheritance tree.
-    for (auto const &[name, field_or_format_ptr] : extractors_) {
+    for (auto const& [name, field_or_format_ptr] : extractors_) {
       // Ignore those that have a nullptr, they have already failed to be
       // promoted.
       if (field_or_format_ptr == nullptr) continue;
@@ -264,7 +264,7 @@ void Format::PropagateExtractorsUp() {
         base_format_->extractors_[name] = nullptr;
       }
     }
-    for (auto const &[name, overlay_ptr] : overlay_extractors_) {
+    for (auto const& [name, overlay_ptr] : overlay_extractors_) {
       // Ignore those that have a nullptr, they have already failed to be
       // promoted.
       if (overlay_ptr == nullptr) continue;
@@ -323,14 +323,14 @@ void Format::PropagateExtractorsDown() {
       continue;
     }
   }
-  for (auto *fmt : derived_formats_) {
+  for (auto* fmt : derived_formats_) {
     fmt->PropagateExtractorsDown();
   }
 }
 
 // Returns true if the current format, or a base format, contains an
 // extractor for field 'name'.
-bool Format::HasExtract(const std::string &name) const {
+bool Format::HasExtract(const std::string& name) const {
   auto iter = extractors_.find(name);
   if ((iter != extractors_.end()) && (iter->second != nullptr)) return true;
 
@@ -341,7 +341,7 @@ bool Format::HasExtract(const std::string &name) const {
 
 // Returns true if the current format, or a base format, contains an
 // extractor for overlay 'name'.
-bool Format::HasOverlayExtract(const std::string &name) const {
+bool Format::HasOverlayExtract(const std::string& name) const {
   auto iter = overlay_extractors_.find(name);
   if ((iter != overlay_extractors_.end()) && (iter->second != nullptr)) {
     return true;
@@ -353,7 +353,7 @@ bool Format::HasOverlayExtract(const std::string &name) const {
 }
 
 std::string Format::GeneratePackedStructFieldExtractor(
-    const Field *field) const {
+    const Field* field) const {
   std::string h_output;
   int width = field->width;
   std::string return_type = GetUIntType(width);
@@ -380,7 +380,7 @@ std::string Format::GeneratePackedStructFieldExtractor(
 
 // This method generates the C++ code for the field extractors for the current
 // format.
-std::string Format::GenerateFieldExtractor(const Field *field) const {
+std::string Format::GenerateFieldExtractor(const Field* field) const {
   std::string h_output;
   int return_width = GetIntTypeBitWidth(field->width);
   std::string result_type_name =
@@ -452,7 +452,7 @@ std::string Format::GenerateFieldExtractor(const Field *field) const {
 }
 
 std::string Format::GeneratePackedStructFieldInserter(
-    const Field *field) const {
+    const Field* field) const {
   std::string h_output;
   std::string field_type_name;
   std::string inst_word_type_name;
@@ -486,7 +486,7 @@ std::string Format::GeneratePackedStructFieldInserter(
 // This method generates the C++ code for field inserters for the current
 // format. That is, the generated code will take the value of a field and
 // insert it into the right place in the instruction word.
-std::string Format::GenerateFieldInserter(const Field *field) const {
+std::string Format::GenerateFieldInserter(const Field* field) const {
   std::string h_output;
   std::string field_type_name;
   std::string inst_word_type_name = GetUIntType(computed_width_);
@@ -542,7 +542,7 @@ std::string Format::GenerateFieldInserter(const Field *field) const {
 // This method generates the C++ code for overlay inserters for the current
 // format. That is, the generated code will take the value of an overlay and
 // insert its components into the right places in the instruction word.
-std::string Format::GenerateOverlayInserter(Overlay *overlay) const {
+std::string Format::GenerateOverlayInserter(Overlay* overlay) const {
   std::string h_output;
   std::string result_type_name = GetUIntType(computed_width_);
   std::string overlay_type_name;
@@ -580,7 +580,7 @@ std::string Format::GenerateOverlayInserter(Overlay *overlay) const {
       use_mask_variable = true;
     }
   }
-  for (auto &bits_or_field : overlay->component_vec()) {
+  for (auto& bits_or_field : overlay->component_vec()) {
     int width = bits_or_field->width();
     // Ignore the bit fields in the overlay.
     if (bits_or_field->high() < 0) {
@@ -622,7 +622,7 @@ std::string Format::GenerateOverlayInserter(Overlay *overlay) const {
 }
 
 std::string Format::GeneratePackedStructFormatInserter(
-    std::string_view format_alias, const Format *format, int high,
+    std::string_view format_alias, const Format* format, int high,
     int size) const {
   std::string h_output;
   std::string inst_word_type_name;
@@ -657,7 +657,7 @@ std::string Format::GeneratePackedStructFormatInserter(
 // format. That is, the generated code will take the value of a format and
 // insert it into the right place in the instruction word.
 std::string Format::GenerateFormatInserter(std::string_view format_alias,
-                                           const Format *format, int high,
+                                           const Format* format, int high,
                                            int size) const {
   if (size > 1) {
     return GenerateReplicatedFormatInserter(format_alias, format, high, size);
@@ -666,7 +666,7 @@ std::string Format::GenerateFormatInserter(std::string_view format_alias,
 }
 
 std::string Format::GenerateReplicatedFormatInserter(
-    std::string_view format_alias, const Format *format, int high,
+    std::string_view format_alias, const Format* format, int high,
     int size) const {
   std::string h_output;
   std::string target_type_name = GetUIntType(declared_width_);
@@ -719,7 +719,7 @@ std::string Format::GenerateReplicatedFormatInserter(
 }
 
 std::string Format::GenerateSingleFormatInserter(std::string_view format_alias,
-                                                 const Format *format,
+                                                 const Format* format,
                                                  int high) const {
   std::string h_output;
   std::string target_type_name = GetUIntType(declared_width_);
@@ -773,7 +773,7 @@ std::string Format::GenerateSingleFormatInserter(std::string_view format_alias,
 }
 
 std::string Format::GeneratePackedStructFormatExtractor(
-    absl::string_view format_alias, const Format *format, int high,
+    absl::string_view format_alias, const Format* format, int high,
     int size) const {
   std::string h_output;
   int width = format->declared_width();
@@ -802,7 +802,7 @@ std::string Format::GeneratePackedStructFormatExtractor(
 // This method generates the format extractors for the current format (for
 // when a format contains other formats).
 std::string Format::GenerateFormatExtractor(absl::string_view format_alias,
-                                            const Format *format, int high,
+                                            const Format* format, int high,
                                             int size) const {
   std::string h_output;  // For each format generate an extractor.
   int width = format->declared_width();
@@ -890,7 +890,7 @@ std::string Format::GenerateFormatExtractor(absl::string_view format_alias,
 }
 
 std::string Format::GeneratePackedStructOverlayExtractor(
-    Overlay *overlay) const {
+    Overlay* overlay) const {
   std::string h_output;
   std::string arg_type;
   if (declared_width_ > 128) {
@@ -921,7 +921,7 @@ std::string Format::GeneratePackedStructOverlayExtractor(
 }
 
 // Generates the C++ code for the overlay extractors in the current format.
-std::string Format::GenerateOverlayExtractor(Overlay *overlay) const {
+std::string Format::GenerateOverlayExtractor(Overlay* overlay) const {
   std::string h_output;
 
   std::string return_type = overlay->is_signed()
@@ -975,7 +975,7 @@ std::string Format::GenerateInserters() const {
   absl::StrAppend(&h_output, "struct ", ToPascalCase(name()), " {\n\n");
   // First fields and formats.
   std::string inserter;
-  for (auto &[unused, field_or_format_ptr] : extractors_) {
+  for (auto& [unused, field_or_format_ptr] : extractors_) {
     if (field_or_format_ptr->is_field()) {
       if (layout() == Layout::kPackedStruct) {
         inserter =
@@ -998,7 +998,7 @@ std::string Format::GenerateInserters() const {
     }
   }
   // Next the overlays.
-  for (auto &[unused, overlay_ptr] : overlay_extractors_) {
+  for (auto& [unused, overlay_ptr] : overlay_extractors_) {
     auto inserter = GenerateOverlayInserter(overlay_ptr);
     absl::StrAppend(&h_output, inserter);
   }
@@ -1011,7 +1011,7 @@ std::string Format::GeneratePackedStructTypes() const {
   // First the struct.
   absl::StrAppend(&h_output, "struct Packed", ToPascalCase(name()), " {\n");
   for (auto it = field_vec_.rbegin(); it != field_vec_.rend(); ++it) {
-    auto *component = *it;
+    auto* component = *it;
     if (component->is_field()) {
       int width = component->field()->width;
       std::string field_type = component->field()->is_signed
@@ -1073,7 +1073,7 @@ Extractors Format::GenerateExtractors() const {
   }
 
   // First fields and formats.
-  for (auto &[unused, field_or_format_ptr] : extractors_) {
+  for (auto& [unused, field_or_format_ptr] : extractors_) {
     if (field_or_format_ptr->is_field()) {
       std::string extractor;
       if (layout() == Layout::kPackedStruct) {
@@ -1101,7 +1101,7 @@ Extractors Format::GenerateExtractors() const {
   }
 
   // Then the overlays.
-  for (auto &[unused, overlay_ptr] : overlay_extractors_) {
+  for (auto& [unused, overlay_ptr] : overlay_extractors_) {
     std::string extractor;
     if (layout() == Layout::kPackedStruct) {
       extractor = GeneratePackedStructOverlayExtractor(overlay_ptr);
@@ -1120,7 +1120,7 @@ Extractors Format::GenerateExtractors() const {
   return extractors;
 }
 
-bool Format::IsDerivedFrom(const Format *format) {
+bool Format::IsDerivedFrom(const Format* format) {
   if (format == this) return true;
   if (base_format_ == nullptr) return false;
   if (base_format_ == format) return true;

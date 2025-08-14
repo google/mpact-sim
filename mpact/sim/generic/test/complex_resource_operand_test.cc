@@ -14,9 +14,17 @@
 
 #include "mpact/sim/generic/complex_resource_operand.h"
 
+#include <cstddef>
+#include <cstdint>
+
 #include "absl/status/status.h"
+#include "absl/strings/string_view.h"
+#include "absl/types/span.h"
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
+#include "mpact/sim/generic/arch_state.h"
+#include "mpact/sim/generic/complex_resource.h"
+#include "mpact/sim/generic/operand_interface.h"
 
 namespace {
 
@@ -51,7 +59,7 @@ constexpr uint64_t kAcquire100To107[] = {
 // access the clock.
 class MockArchState : public ArchState {
  public:
-  MockArchState(absl::string_view id, SourceOperandInterface *pc_op)
+  MockArchState(absl::string_view id, SourceOperandInterface* pc_op)
       : ArchState(id, pc_op) {}
   explicit MockArchState(absl::string_view id) : MockArchState(id, nullptr) {}
   void set_cycle(uint64_t value) { ArchState::set_cycle(value); }
@@ -73,9 +81,9 @@ class ComplexResourceOperandTest : public testing::Test {
     delete arch_state_;
   }
 
-  MockArchState *arch_state_;
-  ComplexResource *resource_;
-  ComplexResourceOperand *operand_;
+  MockArchState* arch_state_;
+  ComplexResource* resource_;
+  ComplexResourceOperand* operand_;
 };
 
 // Create and check name.
@@ -85,7 +93,7 @@ TEST_F(ComplexResourceOperandTest, Create) {
 
 // Check error status from setting the cycle mask.
 TEST_F(ComplexResourceOperandTest, CycleMask) {
-  auto *op = new ComplexResourceOperand(nullptr);
+  auto* op = new ComplexResourceOperand(nullptr);
   EXPECT_TRUE(absl::IsInternal(op->SetCycleMask(kLow, kHigh)));
   EXPECT_TRUE(absl::IsInvalidArgument(operand_->SetCycleMask(kHigh, kLow)));
   EXPECT_TRUE(

@@ -49,17 +49,17 @@ class ZeroResolver : public ResolverInterface {
 class SymbolResolver : public ResolverInterface {
  public:
   SymbolResolver(
-      int elf_file_class, ELFIO::section *symtab,
-      const absl::flat_hash_map<std::string, ELFIO::Elf_Word> &symbol_indices);
+      int elf_file_class, ELFIO::section* symtab,
+      const absl::flat_hash_map<std::string, ELFIO::Elf_Word>& symbol_indices);
   absl::StatusOr<uint64_t> Resolve(absl::string_view text) override;
 
  private:
   // Elf file class.
   int elf_file_class_ = 0;
   // The symbol table ELF section.
-  ELFIO::section *symtab_;
+  ELFIO::section* symtab_;
   // Map from symbol name to symbol index in the symbol table.
-  const absl::flat_hash_map<std::string, ELFIO::Elf_Word> &symbol_indices_;
+  const absl::flat_hash_map<std::string, ELFIO::Elf_Word>& symbol_indices_;
 };
 
 }  // namespace mpact::sim::util::assembler

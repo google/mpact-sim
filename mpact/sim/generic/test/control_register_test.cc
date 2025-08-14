@@ -17,10 +17,10 @@
 #include <cstdint>
 #include <memory>
 
-#include "absl/memory/memory.h"
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
 #include "mpact/sim/generic/data_buffer.h"
+#include "mpact/sim/generic/register.h"
 
 namespace {
 
@@ -36,13 +36,13 @@ class ControlRegisterTest : public testing::Test {
 
   ~ControlRegisterTest() override { delete db_factory_; }
 
-  DataBufferFactory *db_factory_;
+  DataBufferFactory* db_factory_;
 };
 
 // Create scalar register and verify attributes.
 TEST_F(ControlRegisterTest, Create) {
   auto scalar_reg = std::make_unique<TestRegister>(
-      nullptr, "R0", [](ControlRegisterBase *, DataBuffer *) {});
+      nullptr, "R0", [](ControlRegisterBase*, DataBuffer*) {});
   EXPECT_THAT(scalar_reg->name(), StrEq("R0"));
   EXPECT_EQ(scalar_reg->shape().size(), 1);
   EXPECT_EQ(scalar_reg->size(), sizeof(uint32_t));
@@ -53,14 +53,14 @@ TEST_F(ControlRegisterTest, DataBuffer) {
   bool works = false;
   // Allocate register and make sure data_buffer is nullptr.
   auto reg = std::make_unique<TestRegister>(
-      nullptr, "R0", [&works](ControlRegisterBase *creg, DataBuffer *db) {
+      nullptr, "R0", [&works](ControlRegisterBase* creg, DataBuffer* db) {
         works = true;
         creg->RegisterBase::SetDataBuffer(db);
       });
   EXPECT_EQ(reg->data_buffer(), nullptr);
 
   // Allocate a data buffer of the right byte size and bind it to the register.
-  DataBuffer *db = db_factory_->Allocate(reg->size());
+  DataBuffer* db = db_factory_->Allocate(reg->size());
   reg->SetDataBuffer(db);
 
   EXPECT_TRUE(works);

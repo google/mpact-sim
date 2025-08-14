@@ -29,14 +29,14 @@ class SocketCLI {
   // Constructor takes the port number to listen to, the top level CherIoT
   // simulator interface, and a callback to notify when the connection status
   // of the port/cli changes.
-  SocketCLI(int port, DebugCommandShellInterface &dbg_shell,
+  SocketCLI(int port, DebugCommandShellInterface& dbg_shell,
             absl::AnyInvocable<void(bool)> is_connected_cb);
   ~SocketCLI();
 
   bool good() const { return good_; }
 
  private:
-  DebugCommandShellInterface &dbg_shell_;
+  DebugCommandShellInterface& dbg_shell_;
   std::thread cli_thread_;
   bool good_ = false;
   int server_socket_ = -1;

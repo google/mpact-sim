@@ -61,7 +61,7 @@ class ArrayOperandTest : public ::testing::Test {
     }
     // Write instructions to memory - 16 each of pushes and pops. The first
     // 4 of each are illegal instructions since rlist < 4.
-    DataBuffer *db = state_->db_factory()->Allocate<uint16_t>(1);
+    DataBuffer* db = state_->db_factory()->Allocate<uint16_t>(1);
     for (int i = 0; i < 16; i++) {
       db->Set<uint16_t>(0, GeneratePushInstruction(i, i & 0x3));
       memory_->Store(kBase + i * db->size<uint8_t>(), db);
@@ -82,7 +82,7 @@ class ArrayOperandTest : public ::testing::Test {
 // Verify that the push instructions are decoded correctly.
 TEST_F(ArrayOperandTest, PushInstructionDecoding) {
   for (int i = 0; i < 16; i++) {
-    auto *inst = decoder_->DecodeInstruction(kBase + i * 2);
+    auto* inst = decoder_->DecodeInstruction(kBase + i * 2);
     CHECK_NE(inst, nullptr);
     if (i < 4) {
       EXPECT_EQ(inst->opcode(), *OpcodeEnum::kNone);
@@ -96,7 +96,7 @@ TEST_F(ArrayOperandTest, PushInstructionDecoding) {
 // Verify that the pop instructions are decoded correctly.
 TEST_F(ArrayOperandTest, PopInstructionDecoding) {
   for (int i = 0; i < 16; i++) {
-    auto *inst = decoder_->DecodeInstruction(kBase + 16 * 2 + i * 2);
+    auto* inst = decoder_->DecodeInstruction(kBase + 16 * 2 + i * 2);
     CHECK_NE(inst, nullptr);
     if (i < 4) {
       EXPECT_EQ(inst->opcode(), *OpcodeEnum::kNone);
@@ -111,7 +111,7 @@ TEST_F(ArrayOperandTest, PopInstructionDecoding) {
 // destination operands.
 TEST_F(ArrayOperandTest, PushOperands) {
   for (int i = 4; i < 16; i++) {
-    auto *inst = decoder_->DecodeInstruction(kBase + i * 2);
+    auto* inst = decoder_->DecodeInstruction(kBase + i * 2);
     CHECK_NE(inst, nullptr);
     EXPECT_EQ(inst->opcode(), *OpcodeEnum::kPush)
         << inst->AsString() << " for instruction " << i;
@@ -130,7 +130,7 @@ TEST_F(ArrayOperandTest, PushOperands) {
 // destination operands.
 TEST_F(ArrayOperandTest, PopOperands) {
   for (int i = 4; i < 16; i++) {
-    auto *inst = decoder_->DecodeInstruction(kBase + 16 * 2 + i * 2);
+    auto* inst = decoder_->DecodeInstruction(kBase + 16 * 2 + i * 2);
     CHECK_NE(inst, nullptr);
     EXPECT_EQ(inst->opcode(), *OpcodeEnum::kPop)
         << inst->AsString() << " for instruction " << i;

@@ -22,6 +22,7 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/string_view.h"
 #include "mpact/sim/generic/resource_bitset.h"
 
 namespace mpact {
@@ -59,7 +60,7 @@ class SimpleResource {
  private:
   // The constructor is private. It is called from a SimpleResourcePool
   // instance in which the resource belongs.
-  SimpleResource(absl::string_view name, int index, SimpleResourcePool *pool);
+  SimpleResource(absl::string_view name, int index, SimpleResourcePool* pool);
   SimpleResource() = delete;
   virtual ~SimpleResource() = default;
 
@@ -73,20 +74,20 @@ class SimpleResource {
   bool IsFree() const;
 
   // Returns the "one hot" bitvector for the resource.
-  const ResourceBitSet &resource_bit() const { return resource_bit_; }
+  const ResourceBitSet& resource_bit() const { return resource_bit_; }
 
   // The bit index of the resource in the bitvector.
   int index() const { return index_; }
 
   // Other accessors.
-  const std::string &name() const { return name_; }
-  const SimpleResourcePool *pool() const { return pool_; }
+  const std::string& name() const { return name_; }
+  const SimpleResourcePool* pool() const { return pool_; }
 
  private:
   ResourceBitSet resource_bit_;
   std::string name_;
   int index_;
-  SimpleResourcePool *pool_;
+  SimpleResourcePool* pool_;
 };
 
 // The SimpleResourceSet models a set of individual SimpleResources that are
@@ -95,14 +96,14 @@ class SimpleResourceSet {
   friend class SimpleResourcePool;
 
  private:
-  explicit SimpleResourceSet(SimpleResourcePool *);
+  explicit SimpleResourceSet(SimpleResourcePool*);
   SimpleResourceSet() = delete;
   virtual ~SimpleResourceSet() = default;
 
  public:
   // Adds the resource to the resource set. Return error if the resource
   // belongs to a different pool.
-  absl::Status AddResource(SimpleResource *resource);
+  absl::Status AddResource(SimpleResource* resource);
   absl::Status AddResource(absl::string_view name);
 
   // Mark the resources in the set reserved in the associated resource pool.
@@ -118,11 +119,11 @@ class SimpleResourceSet {
   std::string AsString() const;
 
   // Return the bit vector for the resources in this set.
-  const ResourceBitSet &resource_vector() const { return resource_vector_; }
+  const ResourceBitSet& resource_vector() const { return resource_vector_; }
 
  private:
   ResourceBitSet resource_vector_;
-  SimpleResourcePool *pool_;
+  SimpleResourcePool* pool_;
 };
 
 // The SimpleResourcePool is a class for managing a group of SimpleResource
@@ -141,45 +142,45 @@ class SimpleResourcePool {
 
   // Return the SimpleResource pointer of the named resource, or nullptr if it
   // hasn't been added.
-  SimpleResource *GetResource(absl::string_view name) const;
+  SimpleResource* GetResource(absl::string_view name) const;
   // Return the SimpleResource pointer of resource with bit index 'index', or
   // nullptr if it hasn't been added.
-  SimpleResource *GetResource(unsigned index) const;
+  SimpleResource* GetResource(unsigned index) const;
   // If the resource does not exisit, add it. Return a pointer to the named
   // resource.
-  SimpleResource *GetOrAddResource(absl::string_view name);
+  SimpleResource* GetOrAddResource(absl::string_view name);
   // Create an resource set for the current resource pool.
-  SimpleResourceSet *CreateResourceSet();
+  SimpleResourceSet* CreateResourceSet();
 
   // Return true if the resources in the resource/resource set are not reserved
   // in the resource pool.
-  bool IsFree(const SimpleResourceSet *resource_set) const;
-  bool IsFree(const SimpleResource *resource) const;
+  bool IsFree(const SimpleResourceSet* resource_set) const;
+  bool IsFree(const SimpleResource* resource) const;
 
   // Mark the resource/resource set reserved in the resource pool.
-  void Acquire(const SimpleResourceSet *resource_set);
-  void Acquire(const SimpleResource *resource);
+  void Acquire(const SimpleResourceSet* resource_set);
+  void Acquire(const SimpleResource* resource);
 
   // Mark the resource/resource set unreserved in the resource pool.
-  void Release(const SimpleResourceSet *resource_set);
-  void Release(const SimpleResource *resource);
+  void Release(const SimpleResourceSet* resource_set);
+  void Release(const SimpleResource* resource);
 
   // List reserved resources as string.
   std::string ReservedAsString() const;
 
   // Accessors.
-  const std::string &name() const { return name_; }
-  const ResourceBitSet &resource_vector() const { return resource_vector_; }
+  const std::string& name() const { return name_; }
+  const ResourceBitSet& resource_vector() const { return resource_vector_; }
 
   // The width is the max number of resources (i.e., bitwidth of the resource
   // vector).
   unsigned width() const { return width_; }
 
  private:
-  absl::StatusOr<SimpleResource *> AddResourceInternal(absl::string_view name);
-  absl::flat_hash_map<std::string, SimpleResource *> resource_name_map_;
-  std::vector<SimpleResource *> resources_;
-  std::list<SimpleResourceSet *> resource_sets_;
+  absl::StatusOr<SimpleResource*> AddResourceInternal(absl::string_view name);
+  absl::flat_hash_map<std::string, SimpleResource*> resource_name_map_;
+  std::vector<SimpleResource*> resources_;
+  std::list<SimpleResourceSet*> resource_sets_;
   ResourceBitSet resource_vector_;
   std::string name_;
   unsigned width_;

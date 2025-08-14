@@ -16,12 +16,14 @@
 #define MPACT_SIM_GENERIC_STATUS_REGISTER_H_
 
 #include <any>
+#include <cstdint>
 #include <string>
 #include <type_traits>
 #include <utility>
 #include <vector>
 
 #include "absl/functional/any_invocable.h"
+#include "absl/strings/string_view.h"
 #include "mpact/sim/generic/data_buffer.h"
 #include "mpact/sim/generic/operand_interface.h"
 #include "mpact/sim/generic/state_item.h"
@@ -51,13 +53,13 @@ class StatusRegisterBase : public StateItemBase {
   using Evaluate = absl::AnyInvocable<bool()>;
   // The constructor is in the protected section below. Others are deleted.
   StatusRegisterBase() = delete;
-  StatusRegisterBase(const StatusRegisterBase &) = delete;
-  StatusRegisterBase &operator=(const StatusRegisterBase &) = delete;
+  StatusRegisterBase(const StatusRegisterBase&) = delete;
+  StatusRegisterBase& operator=(const StatusRegisterBase&) = delete;
 
   T Read();
   T Read(T mask);
 
-  void SetDataBuffer(DataBuffer *db) override {
+  void SetDataBuffer(DataBuffer* db) override {
     // Read only state item, so just decrement the ref count and ignore.
     db->DecRef();
   }
@@ -68,8 +70,8 @@ class StatusRegisterBase : public StateItemBase {
 
  protected:
   // The constructor is called from StateItem<>
-  StatusRegisterBase(ArchState *state, absl::string_view name,
-                     const std::vector<int> &shape, int unit_size);
+  StatusRegisterBase(ArchState* state, absl::string_view name,
+                     const std::vector<int>& shape, int unit_size);
 
  private:
   std::vector<Evaluate> evaluate_;
@@ -77,9 +79,9 @@ class StatusRegisterBase : public StateItemBase {
 };
 
 template <typename T>
-StatusRegisterBase<T>::StatusRegisterBase(ArchState *state,
+StatusRegisterBase<T>::StatusRegisterBase(ArchState* state,
                                           absl::string_view name,
-                                          const std::vector<int> &shape,
+                                          const std::vector<int>& shape,
                                           int unit_size)
     : StateItemBase(state, name, shape, unit_size), size_(sizeof(T) * 8) {
   // Initialize the evaluate functions to lambdas that return false.
@@ -119,10 +121,10 @@ template <typename T>
 class StatusRegisterSourceOperand : public SourceOperandInterface {
  public:
   // Construtor. Note, default constructor deleted.
-  StatusRegisterSourceOperand(StatusRegisterBase<T> *status_reg,
+  StatusRegisterSourceOperand(StatusRegisterBase<T>* status_reg,
                               std::string op_name)
       : status_register_(status_reg), op_name_(op_name) {}
-  explicit StatusRegisterSourceOperand(StatusRegisterBase<T> *status_reg)
+  explicit StatusRegisterSourceOperand(StatusRegisterBase<T>* status_reg)
       : StatusRegisterSourceOperand(status_reg, status_reg->name()) {}
   StatusRegisterSourceOperand() = delete;
 
@@ -164,7 +166,7 @@ class StatusRegisterSourceOperand : public SourceOperandInterface {
   std::string AsString() const override { return op_name_; }
 
  private:
-  StatusRegisterBase<T> *status_register_;
+  StatusRegisterBase<T>* status_register_;
   std::string op_name_;
 };
 
@@ -172,7 +174,7 @@ class StatusRegisterSourceOperand : public SourceOperandInterface {
 // used without template arguments, deducing the type from the constructor
 // argument instead.
 template <typename T>
-StatusRegisterSourceOperand(StatusRegisterBase<T> *)
+StatusRegisterSourceOperand(StatusRegisterBase<T>*)
     -> StatusRegisterSourceOperand<T>;
 
 template <typename ElementType>

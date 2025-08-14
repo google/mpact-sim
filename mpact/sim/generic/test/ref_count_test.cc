@@ -14,7 +14,7 @@
 
 #include "mpact/sim/generic/ref_count.h"
 
-#include "googlemock/include/gmock/gmock.h"
+#include "googlemock/include/gmock/gmock.h"  // IWYU pragma: keep
 #include "googletest/include/gtest/gtest.h"
 
 namespace mpact {
@@ -25,7 +25,7 @@ namespace {
 // Test class that counts calls to the destructor and OnRefCountIsZero.
 class TestRefCount : public ReferenceCount {
  public:
-  TestRefCount(int *destructor_call_count, int *refcount_zero_call_count)
+  TestRefCount(int* destructor_call_count, int* refcount_zero_call_count)
       : destructor_call_count_(destructor_call_count),
         refcount_zero_call_count_(refcount_zero_call_count) {}
 
@@ -45,20 +45,20 @@ class TestRefCount : public ReferenceCount {
   }
 
  private:
-  int *destructor_call_count_;
-  int *refcount_zero_call_count_;
+  int* destructor_call_count_;
+  int* refcount_zero_call_count_;
 };
 
 // Call constructor and ensure that the refcount is initialized to 1.
 TEST(RefCount, Create) {
-  ReferenceCount *ref_count = new ReferenceCount();
+  ReferenceCount* ref_count = new ReferenceCount();
   EXPECT_EQ(ref_count->ref_count(), 1);
   ref_count->DecRef();
 }
 
 // Test that ref count increases when Inc is called.
 TEST(RefCount, IncRef) {
-  ReferenceCount *ref_count = new ReferenceCount();
+  ReferenceCount* ref_count = new ReferenceCount();
   EXPECT_EQ(ref_count->ref_count(), 1);
   ref_count->IncRef();
   EXPECT_EQ(ref_count->ref_count(), 2);
@@ -73,7 +73,7 @@ TEST(RefCount, IncRef) {
 TEST(RefCount, OnRefCountIsZero) {
   int destructor_call_count = 0;
   int refcount_zero_call_count = 0;
-  TestRefCount *test_ref_count =
+  TestRefCount* test_ref_count =
       new TestRefCount(&destructor_call_count, &refcount_zero_call_count);
 
   EXPECT_EQ(test_ref_count->ref_count(), 1);

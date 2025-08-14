@@ -43,14 +43,14 @@ class InstructionProfiler : public CounterValueSetInterface<uint64_t> {
   // The granularity is a power of two and determines the value difference
   // between two adjacent sample buckets. For instruction profiling this is
   // the smallest instruction size in bytes.
-  InstructionProfiler(ElfProgramLoader &elf_loader, unsigned granularity);
+  InstructionProfiler(ElfProgramLoader& elf_loader, unsigned granularity);
   explicit InstructionProfiler(unsigned granularity);
   ~InstructionProfiler() override;
 
   // Inherited from CounterValueSetInterface. This will connect to a counter
   // that is assigned the value to profile. The most recently used range is
   // cached for performance. If it doesn't match, call AddSampleInternal().
-  void SetValue(const uint64_t &value) override {
+  void SetValue(const uint64_t& value) override {
     // See if the previously referenced range applies.
     uint64_t sample = value >> shift_;
     if ((sample >= last_start_) && (sample <= last_end_)) {
@@ -61,22 +61,22 @@ class InstructionProfiler : public CounterValueSetInterface<uint64_t> {
   }
 
   // Write the profile to the given stream in csv format.
-  void WriteProfile(std::ostream &os);
+  void WriteProfile(std::ostream& os);
 
   // If the elf loader wasn't set in the constructor, use this method to set
   // it once the elf file is available.
-  void SetElfLoader(ElfProgramLoader *elf_loader);
+  void SetElfLoader(ElfProgramLoader* elf_loader);
 
  private:
   void AddSampleInternal(uint64_t sample);
   int shift_ = 0;
-  ElfProgramLoader *elf_loader_ = nullptr;
-  absl::btree_map<MemoryWatcher::AddressRange, uint64_t *,
+  ElfProgramLoader* elf_loader_ = nullptr;
+  absl::btree_map<MemoryWatcher::AddressRange, uint64_t*,
                   MemoryWatcher::AddressRangeLess>
       profile_ranges_;
   uint64_t last_start_ = 0xffff'ffff'ffff'ffffULL;
   uint64_t last_end_ = 0xffff'ffff'ffff'ffffULL;
-  uint64_t *last_profile_range_ = nullptr;
+  uint64_t* last_profile_range_ = nullptr;
 };
 
 }  // namespace mpact::sim::util

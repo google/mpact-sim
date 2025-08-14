@@ -39,7 +39,7 @@ namespace renode {
 
 using ::mpact::sim::generic::DebugCommandShellInterface;
 
-SocketCLI::SocketCLI(int port, DebugCommandShellInterface &dbg_shell,
+SocketCLI::SocketCLI(int port, DebugCommandShellInterface& dbg_shell,
                      absl::AnyInvocable<void(bool)> is_connected_cb)
     : dbg_shell_(dbg_shell), is_connected_cb_(std::move(is_connected_cb)) {
   // Set initial status as not connected.
@@ -68,7 +68,7 @@ SocketCLI::SocketCLI(int port, DebugCommandShellInterface &dbg_shell,
   std::memset(&server_address_int.sin_zero, 0,
               sizeof(server_address_int.sin_zero));
   int res = bind(server_socket_,
-                 reinterpret_cast<const sockaddr *>(&server_address_int),
+                 reinterpret_cast<const sockaddr*>(&server_address_int),
                  sizeof(server_address_int));
   if (res != 0) {
     good_ = false;

@@ -43,23 +43,23 @@ class CacheTest : public testing::Test {
     cache_ = new Cache("cache");
     db_ = db_factory_.Allocate<uint32_t>(1);
     db_->set_latency(0);
-    read_hits_ = reinterpret_cast<SimpleCounter<uint64_t> *>(
+    read_hits_ = reinterpret_cast<SimpleCounter<uint64_t>*>(
         cache_->GetCounter("read_hit"));
-    read_misses_ = reinterpret_cast<SimpleCounter<uint64_t> *>(
+    read_misses_ = reinterpret_cast<SimpleCounter<uint64_t>*>(
         cache_->GetCounter("read_miss"));
-    write_hits_ = reinterpret_cast<SimpleCounter<uint64_t> *>(
+    write_hits_ = reinterpret_cast<SimpleCounter<uint64_t>*>(
         cache_->GetCounter("write_hit"));
-    write_misses_ = reinterpret_cast<SimpleCounter<uint64_t> *>(
+    write_misses_ = reinterpret_cast<SimpleCounter<uint64_t>*>(
         cache_->GetCounter("write_miss"));
-    dirty_line_writebacks_ = reinterpret_cast<SimpleCounter<uint64_t> *>(
+    dirty_line_writebacks_ = reinterpret_cast<SimpleCounter<uint64_t>*>(
         cache_->GetCounter("dirty_line_writeback"));
-    read_arounds_ = reinterpret_cast<SimpleCounter<uint64_t> *>(
+    read_arounds_ = reinterpret_cast<SimpleCounter<uint64_t>*>(
         cache_->GetCounter("read_around"));
-    write_arounds_ = reinterpret_cast<SimpleCounter<uint64_t> *>(
+    write_arounds_ = reinterpret_cast<SimpleCounter<uint64_t>*>(
         cache_->GetCounter("write_around"));
-    read_non_cacheable_ = reinterpret_cast<SimpleCounter<uint64_t> *>(
+    read_non_cacheable_ = reinterpret_cast<SimpleCounter<uint64_t>*>(
         cache_->GetCounter("read_non_cacheable"));
-    write_non_cacheable_ = reinterpret_cast<SimpleCounter<uint64_t> *>(
+    write_non_cacheable_ = reinterpret_cast<SimpleCounter<uint64_t>*>(
         cache_->GetCounter("write_non_cacheable"));
   }
 
@@ -69,17 +69,17 @@ class CacheTest : public testing::Test {
   }
 
   DataBufferFactory db_factory_;
-  DataBuffer *db_;
-  Cache *cache_;
-  SimpleCounter<uint64_t> *read_hits_;
-  SimpleCounter<uint64_t> *read_misses_;
-  SimpleCounter<uint64_t> *write_hits_;
-  SimpleCounter<uint64_t> *write_misses_;
-  SimpleCounter<uint64_t> *dirty_line_writebacks_;
-  SimpleCounter<uint64_t> *read_arounds_;
-  SimpleCounter<uint64_t> *write_arounds_;
-  SimpleCounter<uint64_t> *read_non_cacheable_;
-  SimpleCounter<uint64_t> *write_non_cacheable_;
+  DataBuffer* db_;
+  Cache* cache_;
+  SimpleCounter<uint64_t>* read_hits_;
+  SimpleCounter<uint64_t>* read_misses_;
+  SimpleCounter<uint64_t>* write_hits_;
+  SimpleCounter<uint64_t>* write_misses_;
+  SimpleCounter<uint64_t>* dirty_line_writebacks_;
+  SimpleCounter<uint64_t>* read_arounds_;
+  SimpleCounter<uint64_t>* write_arounds_;
+  SimpleCounter<uint64_t>* read_non_cacheable_;
+  SimpleCounter<uint64_t>* write_non_cacheable_;
   SimpleCounter<uint64_t> cycle_counter_;
 };
 
@@ -196,10 +196,10 @@ TEST_F(CacheTest, MemoryTest) {
   cache_->set_memory(&memory);
   CHECK_OK(cache_->Configure("1k,16,1,true", &cycle_counter_));
 
-  DataBuffer *st_db1 = db_factory_.Allocate<uint8_t>(1);
-  DataBuffer *st_db2 = db_factory_.Allocate<uint16_t>(1);
-  DataBuffer *st_db4 = db_factory_.Allocate<uint32_t>(1);
-  DataBuffer *st_db8 = db_factory_.Allocate<uint64_t>(1);
+  DataBuffer* st_db1 = db_factory_.Allocate<uint8_t>(1);
+  DataBuffer* st_db2 = db_factory_.Allocate<uint16_t>(1);
+  DataBuffer* st_db4 = db_factory_.Allocate<uint32_t>(1);
+  DataBuffer* st_db8 = db_factory_.Allocate<uint64_t>(1);
 
   st_db1->Set<uint8_t>(0, 0x0F);
   st_db2->Set<uint16_t>(0, 0xA5A5);
@@ -211,10 +211,10 @@ TEST_F(CacheTest, MemoryTest) {
   cache_->Store(0x1004, st_db4);
   cache_->Store(0x1008, st_db8);
 
-  DataBuffer *ld_db1 = db_factory_.Allocate<uint8_t>(1);
-  DataBuffer *ld_db2 = db_factory_.Allocate<uint16_t>(1);
-  DataBuffer *ld_db4 = db_factory_.Allocate<uint32_t>(1);
-  DataBuffer *ld_db8 = db_factory_.Allocate<uint64_t>(1);
+  DataBuffer* ld_db1 = db_factory_.Allocate<uint8_t>(1);
+  DataBuffer* ld_db2 = db_factory_.Allocate<uint16_t>(1);
+  DataBuffer* ld_db4 = db_factory_.Allocate<uint32_t>(1);
+  DataBuffer* ld_db8 = db_factory_.Allocate<uint64_t>(1);
 
   ld_db1->set_latency(0);
   ld_db2->set_latency(0);
@@ -247,10 +247,10 @@ TEST_F(CacheTest, TaggedMemoryTest) {
   cache_->set_tagged_memory(&memory);
   CHECK_OK(cache_->Configure("1k,16,1,true", &cycle_counter_));
 
-  DataBuffer *ld_data_db = db_factory_.Allocate<uint8_t>(kTagGranule * 16);
-  DataBuffer *ld_tag_db = db_factory_.Allocate<uint8_t>(16);
-  DataBuffer *st_data_db = db_factory_.Allocate<uint8_t>(kTagGranule * 16);
-  DataBuffer *st_tag_db = db_factory_.Allocate<uint8_t>(16);
+  DataBuffer* ld_data_db = db_factory_.Allocate<uint8_t>(kTagGranule * 16);
+  DataBuffer* ld_tag_db = db_factory_.Allocate<uint8_t>(16);
+  DataBuffer* st_data_db = db_factory_.Allocate<uint8_t>(kTagGranule * 16);
+  DataBuffer* st_tag_db = db_factory_.Allocate<uint8_t>(16);
   ld_data_db->set_latency(0);
   ld_tag_db->set_latency(0);
 

@@ -37,69 +37,69 @@ using ::mpact::sim::generic::SourceOperandInterface;
 using TestRegister = ::mpact::sim::generic::Register<uint32_t>;
 
 template <typename RegType>
-inline RegType *GetRegister(ArchState *state, std::string name) {
+inline RegType* GetRegister(ArchState* state, std::string name) {
   auto iter = state->registers()->find(name);
   if (iter == state->registers()->end()) {
     return nullptr;
   }
-  return static_cast<RegType *>(iter->second);
+  return static_cast<RegType*>(iter->second);
 }
 
 // Generic helper functions to create register operands.
 template <typename RegType>
-inline DestinationOperandInterface *GetRegisterDestinationOp(ArchState *state,
+inline DestinationOperandInterface* GetRegisterDestinationOp(ArchState* state,
                                                              std::string name,
                                                              int latency) {
-  auto *reg = GetRegister<RegType>(state, name);
+  auto* reg = GetRegister<RegType>(state, name);
   return reg->CreateDestinationOperand(latency);
 }
 
 template <typename RegType>
-inline DestinationOperandInterface *GetRegisterDestinationOp(
-    ArchState *state, std::string name, int latency, std::string op_name) {
-  auto *reg = GetRegister<RegType>(state, name);
+inline DestinationOperandInterface* GetRegisterDestinationOp(
+    ArchState* state, std::string name, int latency, std::string op_name) {
+  auto* reg = GetRegister<RegType>(state, name);
   return reg->CreateDestinationOperand(latency, op_name);
 }
 
 template <typename RegType>
-inline SourceOperandInterface *GetRegisterSourceOp(ArchState *state,
+inline SourceOperandInterface* GetRegisterSourceOp(ArchState* state,
                                                    std::string name) {
-  auto *reg = GetRegister<RegType>(state, name);
-  auto *op = reg->CreateSourceOperand();
+  auto* reg = GetRegister<RegType>(state, name);
+  auto* op = reg->CreateSourceOperand();
   return op;
 }
 
 template <typename RegType>
-inline SourceOperandInterface *GetRegisterSourceOp(ArchState *state,
+inline SourceOperandInterface* GetRegisterSourceOp(ArchState* state,
                                                    std::string name,
                                                    std::string op_name) {
-  auto *reg = GetRegister<RegType>(state, name);
-  auto *op = reg->CreateSourceOperand(op_name);
+  auto* reg = GetRegister<RegType>(state, name);
+  auto* op = reg->CreateSourceOperand(op_name);
   return op;
 }
 
-PushPopEncoding::PushPopEncoding(ArchState *state) : state_(state) {
+PushPopEncoding::PushPopEncoding(ArchState* state) : state_(state) {
   source_op_getters_.insert(std::make_pair(
-      *SourceOpEnum::kRlist, [this]() -> SourceOperandInterface * {
+      *SourceOpEnum::kRlist, [this]() -> SourceOperandInterface* {
         return new generic::ImmediateOperand<uint32_t>(
             p_type::ExtractRlist(inst_word_));
       }));
 
   source_op_getters_.insert(std::make_pair(
-      *SourceOpEnum::kSpimm6, [this]() -> SourceOperandInterface * {
+      *SourceOpEnum::kSpimm6, [this]() -> SourceOperandInterface* {
         return new generic::ImmediateOperand<uint32_t>(
             p_type::ExtractSpimm6(inst_word_));
       }));
 
   source_op_getters_.insert(
-      std::make_pair(*SourceOpEnum::kX2, [this]() -> SourceOperandInterface * {
+      std::make_pair(*SourceOpEnum::kX2, [this]() -> SourceOperandInterface* {
         return GetRegisterSourceOp<TestRegister>(state_, "x2");
       }));
 
   list_source_op_getters_.insert(std::make_pair(
       *ListSourceOpEnum::kRlist,
-      [this]() -> std::vector<SourceOperandInterface *> {
-        std::vector<SourceOperandInterface *> result;
+      [this]() -> std::vector<SourceOperandInterface*> {
+        std::vector<SourceOperandInterface*> result;
         auto rlist = p_type::ExtractRlist(inst_word_);
         // Get the value of 'rlist', and add source operands accordingly.
         if (rlist < 4) return result;
@@ -131,15 +131,15 @@ PushPopEncoding::PushPopEncoding(ArchState *state) : state_(state) {
       }));
 
   dest_op_getters_.insert(std::make_pair(
-      *DestOpEnum::kX2, [this](int latency) -> DestinationOperandInterface * {
+      *DestOpEnum::kX2, [this](int latency) -> DestinationOperandInterface* {
         return GetRegisterDestinationOp<TestRegister>(state_, "x2", latency);
       }));
 
   list_dest_op_getters_.insert(
       std::make_pair(*ListDestOpEnum::kRlist,
-                     [this](const std::vector<int> &latency)
-                         -> std::vector<DestinationOperandInterface *> {
-                       std::vector<DestinationOperandInterface *> result;
+                     [this](const std::vector<int>& latency)
+                         -> std::vector<DestinationOperandInterface*> {
+                       std::vector<DestinationOperandInterface*> result;
                        // Get the value of 'rlist', and add destination operands
                        // accordingly.
                        auto rlist = p_type::ExtractRlist(inst_word_);
@@ -191,7 +191,7 @@ void PushPopEncoding::ParseInstruction(uint16_t inst_word) {
   opcode_ = DecodePushPop(inst_word_);
 }
 
-SourceOperandInterface *PushPopEncoding::GetSource(SlotEnum, int, OpcodeEnum,
+SourceOperandInterface* PushPopEncoding::GetSource(SlotEnum, int, OpcodeEnum,
                                                    SourceOpEnum op,
                                                    int source_no) {
   auto iter = source_op_getters_.find(*op);
@@ -201,7 +201,7 @@ SourceOperandInterface *PushPopEncoding::GetSource(SlotEnum, int, OpcodeEnum,
   return iter->second();
 }
 
-std::vector<SourceOperandInterface *> PushPopEncoding::GetSources(
+std::vector<SourceOperandInterface*> PushPopEncoding::GetSources(
     SlotEnum, int, OpcodeEnum, ListSourceOpEnum op, int source_no) {
   auto iter = list_source_op_getters_.find(*op);
   if (iter == list_source_op_getters_.end()) {
@@ -210,7 +210,7 @@ std::vector<SourceOperandInterface *> PushPopEncoding::GetSources(
   return iter->second();
 }
 
-DestinationOperandInterface *PushPopEncoding::GetDestination(
+DestinationOperandInterface* PushPopEncoding::GetDestination(
     SlotEnum, int, OpcodeEnum, DestOpEnum op, int dest_no, int latency) {
   auto iter = dest_op_getters_.find(*op);
   if (iter == dest_op_getters_.end()) {
@@ -219,9 +219,9 @@ DestinationOperandInterface *PushPopEncoding::GetDestination(
   return iter->second(latency);
 }
 
-std::vector<DestinationOperandInterface *> PushPopEncoding::GetDestinations(
+std::vector<DestinationOperandInterface*> PushPopEncoding::GetDestinations(
     SlotEnum, int, OpcodeEnum, ListDestOpEnum op, int dest_no,
-    const std::vector<int> &latency) {
+    const std::vector<int>& latency) {
   auto iter = list_dest_op_getters_.find(*op);
   if (iter == list_dest_op_getters_.end()) {
     return {};

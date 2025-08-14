@@ -39,7 +39,7 @@ namespace mpact::sim::util {
 using ::mpact::sim::generic::Component;
 
 // Constructors.
-Cache::Cache(std::string name, Component *parent, MemoryInterface *memory)
+Cache::Cache(std::string name, Component* parent, MemoryInterface* memory)
     : Component(name, parent),
       read_hit_counter_("read_hit", 0ULL),
       read_miss_counter_("read_miss", 0ULL),
@@ -66,8 +66,8 @@ Cache::Cache(std::string name, Component *parent, MemoryInterface *memory)
   cache_inst_->set_semantic_function(absl::bind_front(&Cache::LoadChild, this));
 }
 
-Cache::Cache(std::string name, Component *parent,
-             TaggedMemoryInterface *tagged_memory)
+Cache::Cache(std::string name, Component* parent,
+             TaggedMemoryInterface* tagged_memory)
     : Component(name, parent),
       read_hit_counter_("read_hit", 0ULL),
       read_miss_counter_("read_miss", 0ULL),
@@ -93,25 +93,25 @@ Cache::Cache(std::string name, Component *parent,
 }
 
 // The simple constructors just call the main constructors.
-Cache::Cache(std::string name, MemoryInterface *memory)
+Cache::Cache(std::string name, MemoryInterface* memory)
     : Cache(name, nullptr, memory) {}
 
-Cache::Cache(std::string name, TaggedMemoryInterface *tagged_memory)
+Cache::Cache(std::string name, TaggedMemoryInterface* tagged_memory)
     : Cache(name, nullptr, tagged_memory) {}
 
-Cache::Cache(std::string name, Component *parent)
-    : Cache(name, parent, static_cast<MemoryInterface *>(nullptr)) {}
+Cache::Cache(std::string name, Component* parent)
+    : Cache(name, parent, static_cast<MemoryInterface*>(nullptr)) {}
 
 Cache::Cache(std::string name)
-    : Cache(name, static_cast<Component *>(nullptr)) {}
+    : Cache(name, static_cast<Component*>(nullptr)) {}
 
 Cache::~Cache() {
   delete[] cache_lines_;
   cache_inst_->DecRef();
 }
 
-absl::Status Cache::Configure(const std::string &config,
-                              CounterValueOutputBase<uint64_t> *cycle_counter) {
+absl::Status Cache::Configure(const std::string& config,
+                              CounterValueOutputBase<uint64_t>* cycle_counter) {
   if (cycle_counter == nullptr) {
     return absl::InvalidArgumentError("Cycle counter is null");
   }
@@ -239,13 +239,13 @@ absl::Status Cache::Configure(const std::string &config,
 // the method will call the ReplaceBlock method to replace the block in the
 // cache. The memory request itself will be forwarded to the memory interface
 // provided to the constructor (if not nullptr).
-void Cache::Load(uint64_t address, DataBuffer *db, Instruction *inst,
-                 ReferenceCount *context) {
+void Cache::Load(uint64_t address, DataBuffer* db, Instruction* inst,
+                 ReferenceCount* context) {
   (void)CacheLookup(address, db->size<uint8_t>(), /*is_read=*/true);
 
   if (memory_ == nullptr) return;
 
-  auto *cache_context = new CacheContext(context, db, inst, db->latency());
+  auto* cache_context = new CacheContext(context, db, inst, db->latency());
   if (context) context->IncRef();
   if (inst) inst->IncRef();
   db->IncRef();
@@ -254,8 +254,8 @@ void Cache::Load(uint64_t address, DataBuffer *db, Instruction *inst,
   cache_context->DecRef();
 }
 
-void Cache::Load(DataBuffer *address_db, DataBuffer *mask_db, int el_size,
-                 DataBuffer *db, Instruction *inst, ReferenceCount *context) {
+void Cache::Load(DataBuffer* address_db, DataBuffer* mask_db, int el_size,
+                 DataBuffer* db, Instruction* inst, ReferenceCount* context) {
   auto address_span = address_db->Get<uint64_t>();
   auto mask_span = mask_db->Get<bool>();
   for (int i = 0; i < address_db->size<uint64_t>(); i++) {
@@ -265,7 +265,7 @@ void Cache::Load(DataBuffer *address_db, DataBuffer *mask_db, int el_size,
   }
   if (memory_ == nullptr) return;
 
-  auto *cache_context = new CacheContext(context, db, inst, db->latency());
+  auto* cache_context = new CacheContext(context, db, inst, db->latency());
   if (context) context->IncRef();
   if (inst) inst->IncRef();
   db->IncRef();
@@ -274,8 +274,8 @@ void Cache::Load(DataBuffer *address_db, DataBuffer *mask_db, int el_size,
   cache_context->DecRef();
 }
 
-void Cache::Load(uint64_t address, DataBuffer *db, DataBuffer *tags,
-                 Instruction *inst, ReferenceCount *context) {
+void Cache::Load(uint64_t address, DataBuffer* db, DataBuffer* tags,
+                 Instruction* inst, ReferenceCount* context) {
   // Since db can be nullptr (for a tag only load), the size and latency may
   // have to be computed differently. For size, base it on the number of tags
   // that are being loaded. For latency, use 0.
@@ -296,7 +296,7 @@ void Cache::Load(uint64_t address, DataBuffer *db, DataBuffer *tags,
     return;
   }
 
-  auto *cache_context = new CacheContext(context, db, inst, latency);
+  auto* cache_context = new CacheContext(context, db, inst, latency);
   if (context) context->IncRef();
   if (inst) inst->IncRef();
   if (db) {
@@ -307,15 +307,15 @@ void Cache::Load(uint64_t address, DataBuffer *db, DataBuffer *tags,
   cache_context->DecRef();
 }
 
-void Cache::Store(uint64_t address, DataBuffer *db) {
+void Cache::Store(uint64_t address, DataBuffer* db) {
   (void)CacheLookup(address, db->size<uint8_t>(), /*is_read=*/false);
   if (memory_ == nullptr) return;
 
   memory_->Store(address, db);
 }
 
-void Cache::Store(DataBuffer *address_db, DataBuffer *mask_db, int el_size,
-                  DataBuffer *db) {
+void Cache::Store(DataBuffer* address_db, DataBuffer* mask_db, int el_size,
+                  DataBuffer* db) {
   auto address_span = address_db->Get<uint64_t>();
   auto mask_span = mask_db->Get<bool>();
   for (int i = 0; i < address_db->size<uint64_t>(); i++) {
@@ -328,7 +328,7 @@ void Cache::Store(DataBuffer *address_db, DataBuffer *mask_db, int el_size,
   memory_->Store(address_db, mask_db, el_size, db);
 }
 
-void Cache::Store(uint64_t address, DataBuffer *db, DataBuffer *tags) {
+void Cache::Store(uint64_t address, DataBuffer* db, DataBuffer* tags) {
   (void)CacheLookup(address, db->size<uint8_t>(), /*is_read=*/false);
   if (tagged_memory_ == nullptr) return;
 
@@ -338,11 +338,11 @@ void Cache::Store(uint64_t address, DataBuffer *db, DataBuffer *tags) {
 // This is the semantic function that is bound to the cache_inst_ instruction
 // and is used to perform the writeback to the processor of the data that was
 // read.
-void Cache::LoadChild(const Instruction *inst) {
-  auto *cache_context = static_cast<CacheContext *>(inst->context());
-  auto *og_context = cache_context->context;
-  auto *db = cache_context->db;
-  auto *og_inst = cache_context->inst;
+void Cache::LoadChild(const Instruction* inst) {
+  auto* cache_context = static_cast<CacheContext*>(inst->context());
+  auto* og_context = cache_context->context;
+  auto* db = cache_context->db;
+  auto* og_inst = cache_context->inst;
   // Reset the db latency to the original value.
   if (nullptr != og_inst) {
     if (cache_context->latency > 0) {
@@ -393,7 +393,7 @@ int Cache::CacheLookup(uint64_t address, int size, bool is_read) {
     bool hit = false;
     // Iterate over the number of sets in the cache.
     for (int set = 0; set < num_sets_; set++) {
-      CacheLine &line = cache_lines_[index + set];
+      CacheLine& line = cache_lines_[index + set];
       if (line.valid && line.tag == block) {
         hit = true;
         line.lru = cycle_counter_->GetValue();
@@ -432,7 +432,7 @@ void Cache::ReplaceBlock(uint64_t block, bool is_read) {
   int victim = -1;
   uint64_t victim_lru = std::numeric_limits<uint64_t>::max();
   for (int set = 0; set < num_sets_; set++) {
-    CacheLine &line = cache_lines_[index + set];
+    CacheLine& line = cache_lines_[index + set];
     // If the line is invalid, use it as the victim.
     if (!line.valid) {
       victim = index + set;
@@ -458,7 +458,7 @@ void Cache::ReplaceBlock(uint64_t block, bool is_read) {
     return;
   }
   // Perform the replacement on the victim.
-  CacheLine &line = cache_lines_[victim];
+  CacheLine& line = cache_lines_[victim];
   // If the line is dirty (and valid), count the writeback.
   if (line.valid && line.dirty) {
     dirty_line_writeback_counter_.Increment(1ULL);

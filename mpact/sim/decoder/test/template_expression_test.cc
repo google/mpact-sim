@@ -19,7 +19,6 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
-#include "absl/types/variant.h"
 #include "googletest/include/gtest/gtest.h"
 
 namespace mpact {
@@ -34,7 +33,7 @@ constexpr int kIntConst3 = 3;
 constexpr int kIntConst0 = 0;
 
 static absl::StatusOr<TemplateValue> Add3TemplateFunc(
-    TemplateInstantiationArgs *args) {
+    TemplateInstantiationArgs* args) {
   if (args->size() != 1) {
     return absl::InternalError(absl::StrCat(
         "Wrong number of arguments, expected 1, was given ", args->size()));
@@ -42,7 +41,7 @@ static absl::StatusOr<TemplateValue> Add3TemplateFunc(
   auto result = (*args)[0]->GetValue();
   if (!result.ok()) return result.status();
 
-  auto *value_ptr = std::get_if<int>(&result.value());
+  auto* value_ptr = std::get_if<int>(&result.value());
   if (value_ptr == nullptr) {
     return absl::InternalError("Type mismatch - int expected");
   }
@@ -57,23 +56,23 @@ TEST(TemplateExpressionTest, Constant) {
   ASSERT_TRUE(result.status().ok());
   ASSERT_TRUE(five->IsConstant());
   auto template_value = result.value();
-  int *value_ptr = std::get_if<int>(&template_value);
+  int* value_ptr = std::get_if<int>(&template_value);
   EXPECT_EQ(*value_ptr, kIntConst5);
   delete five;
 }
 
 TEST(TemplateExpressionTest, Negate) {
-  auto *five = new TemplateConstant(kIntConst5);
-  auto *negate_expr = new TemplateNegate(five);
+  auto* five = new TemplateConstant(kIntConst5);
+  auto* negate_expr = new TemplateNegate(five);
   auto result = negate_expr->GetValue();
   ASSERT_TRUE(result.status().ok());
   auto template_value = result.value();
-  int *value_ptr = std::get_if<int>(&template_value);
+  int* value_ptr = std::get_if<int>(&template_value);
   EXPECT_EQ(*value_ptr, -kIntConst5);
   // Call Evaluate and check that the value is the same.
   auto eval_res = negate_expr->Evaluate(nullptr);
   EXPECT_TRUE(eval_res.status().ok());
-  auto *eval_expr = eval_res.value();
+  auto* eval_expr = eval_res.value();
   result = eval_expr->GetValue();
   ASSERT_TRUE(result.status().ok());
   template_value = result.value();
@@ -91,7 +90,7 @@ TEST(TemplateExpressionTest, Add) {
   auto result = add_expr->GetValue();
   ASSERT_TRUE(result.status().ok());
   auto template_value = result.value();
-  int *value_ptr = std::get_if<int>(&template_value);
+  int* value_ptr = std::get_if<int>(&template_value);
   EXPECT_EQ(*value_ptr, kIntConst2 + kIntConst3);
   delete add_expr;
 }
@@ -104,7 +103,7 @@ TEST(TemplateExpressionTest, Subtract) {
   auto result = subtract_expr->GetValue();
   ASSERT_TRUE(result.status().ok());
   auto template_value = result.value();
-  int *value_ptr = std::get_if<int>(&template_value);
+  int* value_ptr = std::get_if<int>(&template_value);
   EXPECT_EQ(*value_ptr, kIntConst2 - kIntConst3);
   delete subtract_expr;
 }
@@ -117,7 +116,7 @@ TEST(TemplateExpressionTest, Mult) {
   auto result = mult_expr->GetValue();
   ASSERT_TRUE(result.status().ok());
   auto template_value = result.value();
-  int *value_ptr = std::get_if<int>(&template_value);
+  int* value_ptr = std::get_if<int>(&template_value);
   EXPECT_EQ(*value_ptr, kIntConst2 * kIntConst3);
   delete mult_expr;
 }
@@ -130,7 +129,7 @@ TEST(TemplateExpressionTest, Divide) {
   auto result = div_expr->GetValue();
   ASSERT_TRUE(result.status().ok());
   auto template_value = result.value();
-  int *value_ptr = std::get_if<int>(&template_value);
+  int* value_ptr = std::get_if<int>(&template_value);
   EXPECT_EQ(*value_ptr, kIntConst5 / kIntConst2);
   delete div_expr;
 }
@@ -148,43 +147,43 @@ TEST(TemplateExpressionTest, DivideByZero) {
 }
 
 TEST(TemplateExpressionTest, TemplateFunctionAdd3) {
-  auto *two = new TemplateConstant(kIntConst2);
-  auto *args = new TemplateInstantiationArgs{two};
-  auto *func = new TemplateFunction(Add3TemplateFunc, args);
+  auto* two = new TemplateConstant(kIntConst2);
+  auto* args = new TemplateInstantiationArgs{two};
+  auto* func = new TemplateFunction(Add3TemplateFunc, args);
   EXPECT_TRUE(func->IsConstant());
   auto expr_value = func->GetValue();
   ASSERT_TRUE(expr_value.status().ok());
-  auto *value_ptr = std::get_if<int>(&expr_value.value());
+  auto* value_ptr = std::get_if<int>(&expr_value.value());
   ASSERT_NE(value_ptr, nullptr);
   EXPECT_EQ(*value_ptr, kIntConst2 + kIntConst3);
   delete func;
 }
 
 TEST(TemplateExpressionTest, TemplateFunctionAdd3Evaluate) {
-  TemplateFormal *formal_b = new TemplateFormal("b", 0);
-  auto *b_plus_two = new TemplateAdd(new TemplateParam(formal_b),
+  TemplateFormal* formal_b = new TemplateFormal("b", 0);
+  auto* b_plus_two = new TemplateAdd(new TemplateParam(formal_b),
                                      new TemplateConstant(kIntConst2));
-  auto *args = new TemplateInstantiationArgs{b_plus_two};
-  auto *func = new TemplateFunction(Add3TemplateFunc, args);
+  auto* args = new TemplateInstantiationArgs{b_plus_two};
+  auto* func = new TemplateFunction(Add3TemplateFunc, args);
   // First attempt at evaluating function should fail, due to the template
   // formal b.
   auto result = func->GetValue();
   EXPECT_FALSE(result.status().ok());
   // Create a deep copy of func.
-  auto *deep_func = func->DeepCopy();
+  auto* deep_func = func->DeepCopy();
   // Specialize based on b = 3.
-  auto *three = new TemplateConstant(kIntConst3);
+  auto* three = new TemplateConstant(kIntConst3);
   TemplateInstantiationArgs instance_b{three};
   auto eval_result = func->Evaluate(&instance_b);
   ASSERT_TRUE(eval_result.status().ok());
-  auto *eval_func = eval_result.value();
+  auto* eval_func = eval_result.value();
   // Specialize the deep copy too.
   auto deep_eval_result = deep_func->Evaluate(&instance_b);
   ASSERT_TRUE(deep_eval_result.status().ok());
-  auto *deep_eval_func = deep_eval_result.value();
+  auto* deep_eval_func = deep_eval_result.value();
   // Now get the value.
   result = eval_func->GetValue();
-  auto *value_ptr = std::get_if<int>(&result.value());
+  auto* value_ptr = std::get_if<int>(&result.value());
   ASSERT_NE(value_ptr, nullptr);
   EXPECT_EQ(*value_ptr, kIntConst2 + kIntConst3 + kIntConst3);
   // Get the value from the deep copy too.
@@ -205,16 +204,16 @@ TEST(TemplateExpressionTest, TemplateFunctionAdd3Evaluate) {
 // template <int b> B where the expression b + 2 is used in B.
 // Compute b + 2 given instantiation argument of B<3>
 TEST(TemplateExpressionTest, TemplateParameter) {
-  auto *three = new TemplateConstant(kIntConst3);
-  TemplateFormal *formal_b = new TemplateFormal("b", 0);
-  auto *b_plus_two = new TemplateAdd(new TemplateParam(formal_b),
+  auto* three = new TemplateConstant(kIntConst3);
+  TemplateFormal* formal_b = new TemplateFormal("b", 0);
+  auto* b_plus_two = new TemplateAdd(new TemplateParam(formal_b),
                                      new TemplateConstant(kIntConst2));
   TemplateInstantiationArgs instance_b{three};
   auto result = b_plus_two->Evaluate(&instance_b);
   ASSERT_TRUE(result.status().ok());
   auto expr_value = result.value()->GetValue();
   ASSERT_TRUE(expr_value.status().ok());
-  int *value_ptr = std::get_if<int>(&expr_value.value());
+  int* value_ptr = std::get_if<int>(&expr_value.value());
   ASSERT_NE(value_ptr, nullptr);
   EXPECT_EQ(*value_ptr, kIntConst2 + kIntConst3);
   delete formal_b;

@@ -14,7 +14,10 @@
 
 #include "mpact/sim/util/memory/atomic_memory.h"
 
-#include "googlemock/include/gmock/gmock.h"
+#include <algorithm>
+#include <cstdint>
+
+#include "googlemock/include/gmock/gmock.h"  // IWYU pragma: keep
 #include "googletest/include/gtest/gtest.h"
 #include "mpact/sim/generic/data_buffer.h"
 #include "mpact/sim/util/memory/flat_demand_memory.h"
@@ -46,19 +49,19 @@ class AtomicMemoryTest : public ::testing::Test {
     delete flat_memory_;
   }
 
-  AtomicMemory *memory_;
-  FlatDemandMemory *flat_memory_;
+  AtomicMemory* memory_;
+  FlatDemandMemory* flat_memory_;
   DataBufferFactory db_factory_;
-  DataBuffer *db_;
+  DataBuffer* db_;
 };
 
 // Test that loads and stores are passed through to the FlatDemandMemory
 // for simple loads and stores.
 TEST_F(AtomicMemoryTest, PassThroughLoadsStores) {
-  DataBuffer *st_db1 = db_factory_.Allocate<uint8_t>(1);
-  DataBuffer *st_db2 = db_factory_.Allocate<uint16_t>(1);
-  DataBuffer *st_db4 = db_factory_.Allocate<uint32_t>(1);
-  DataBuffer *st_db8 = db_factory_.Allocate<uint64_t>(1);
+  DataBuffer* st_db1 = db_factory_.Allocate<uint8_t>(1);
+  DataBuffer* st_db2 = db_factory_.Allocate<uint16_t>(1);
+  DataBuffer* st_db4 = db_factory_.Allocate<uint32_t>(1);
+  DataBuffer* st_db8 = db_factory_.Allocate<uint64_t>(1);
 
   st_db1->Set<uint8_t>(0, 0x0F);
   st_db2->Set<uint16_t>(0, 0xA5A5);
@@ -70,10 +73,10 @@ TEST_F(AtomicMemoryTest, PassThroughLoadsStores) {
   memory_->Store(0x1004, st_db4);
   memory_->Store(0x1008, st_db8);
 
-  DataBuffer *ld_db1 = db_factory_.Allocate<uint8_t>(1);
-  DataBuffer *ld_db2 = db_factory_.Allocate<uint16_t>(1);
-  DataBuffer *ld_db4 = db_factory_.Allocate<uint32_t>(1);
-  DataBuffer *ld_db8 = db_factory_.Allocate<uint64_t>(1);
+  DataBuffer* ld_db1 = db_factory_.Allocate<uint8_t>(1);
+  DataBuffer* ld_db2 = db_factory_.Allocate<uint16_t>(1);
+  DataBuffer* ld_db4 = db_factory_.Allocate<uint32_t>(1);
+  DataBuffer* ld_db8 = db_factory_.Allocate<uint64_t>(1);
 
   flat_memory_->Load(0x1000, ld_db1, nullptr, nullptr);
   flat_memory_->Load(0x1002, ld_db2, nullptr, nullptr);
@@ -108,7 +111,7 @@ TEST_F(AtomicMemoryTest, PassThroughLoadsStores) {
 
 // Test load-linked, store-conditional.
 TEST_F(AtomicMemoryTest, TestLlSc) {
-  auto *db = db_factory_.Allocate<uint32_t>(1);
+  auto* db = db_factory_.Allocate<uint32_t>(1);
   // Store a known value to kBaseAddr.
   db->Set<uint32_t>(0, kBaseValue);
   flat_memory_->Store(kBaseAddr, db);
@@ -142,8 +145,8 @@ TEST_F(AtomicMemoryTest, TestLlSc) {
 
 // Test load-linked, store-conditional.
 TEST_F(AtomicMemoryTest, TestLlScFailure) {
-  auto *db = db_factory_.Allocate<uint32_t>(1);
-  auto *db2 = db_factory_.Allocate<uint16_t>(1);
+  auto* db = db_factory_.Allocate<uint32_t>(1);
+  auto* db2 = db_factory_.Allocate<uint16_t>(1);
   // Store a known value to kBaseAddr.
   db->Set<uint32_t>(0, kBaseValue);
   memory_->Store(kBaseAddr, db);
@@ -178,7 +181,7 @@ TEST_F(AtomicMemoryTest, TestLlScFailure) {
 
 // Swap
 TEST_F(AtomicMemoryTest, Swap) {
-  auto *db = db_factory_.Allocate<uint32_t>(1);
+  auto* db = db_factory_.Allocate<uint32_t>(1);
   // Store a known value to kBaseAddr.
   db->Set<uint32_t>(0, kBaseValue);
   flat_memory_->Store(kBaseAddr, db);
@@ -195,7 +198,7 @@ TEST_F(AtomicMemoryTest, Swap) {
 
 // Add
 TEST_F(AtomicMemoryTest, Add) {
-  auto *db = db_factory_.Allocate<uint32_t>(1);
+  auto* db = db_factory_.Allocate<uint32_t>(1);
   // Store a known value to kBaseAddr.
   db->Set<uint32_t>(0, kBaseValue);
   flat_memory_->Store(kBaseAddr, db);
@@ -212,7 +215,7 @@ TEST_F(AtomicMemoryTest, Add) {
 
 // Subtract
 TEST_F(AtomicMemoryTest, Sub) {
-  auto *db = db_factory_.Allocate<uint32_t>(1);
+  auto* db = db_factory_.Allocate<uint32_t>(1);
   // Store a known value to kBaseAddr.
   db->Set<uint32_t>(0, kBaseValue);
   flat_memory_->Store(kBaseAddr, db);
@@ -229,7 +232,7 @@ TEST_F(AtomicMemoryTest, Sub) {
 
 // And
 TEST_F(AtomicMemoryTest, And) {
-  auto *db = db_factory_.Allocate<uint32_t>(1);
+  auto* db = db_factory_.Allocate<uint32_t>(1);
   // Store a known value to kBaseAddr.
   db->Set<uint32_t>(0, kBaseValue);
   flat_memory_->Store(kBaseAddr, db);
@@ -246,7 +249,7 @@ TEST_F(AtomicMemoryTest, And) {
 
 // Or
 TEST_F(AtomicMemoryTest, Or) {
-  auto *db = db_factory_.Allocate<uint32_t>(1);
+  auto* db = db_factory_.Allocate<uint32_t>(1);
   // Store a known value to kBaseAddr.
   db->Set<uint32_t>(0, kBaseValue);
   flat_memory_->Store(kBaseAddr, db);
@@ -263,7 +266,7 @@ TEST_F(AtomicMemoryTest, Or) {
 
 // Xor
 TEST_F(AtomicMemoryTest, Xor) {
-  auto *db = db_factory_.Allocate<uint32_t>(1);
+  auto* db = db_factory_.Allocate<uint32_t>(1);
   // Store a known value to kBaseAddr.
   db->Set<uint32_t>(0, kBaseValue);
   flat_memory_->Store(kBaseAddr, db);
@@ -280,7 +283,7 @@ TEST_F(AtomicMemoryTest, Xor) {
 
 // Max
 TEST_F(AtomicMemoryTest, Max) {
-  auto *db = db_factory_.Allocate<uint32_t>(1);
+  auto* db = db_factory_.Allocate<uint32_t>(1);
   // Store a known value to kBaseAddr.
   db->Set<uint32_t>(0, kBaseValue);
   flat_memory_->Store(kBaseAddr, db);
@@ -298,7 +301,7 @@ TEST_F(AtomicMemoryTest, Max) {
 
 // Maxu
 TEST_F(AtomicMemoryTest, Maxu) {
-  auto *db = db_factory_.Allocate<uint32_t>(1);
+  auto* db = db_factory_.Allocate<uint32_t>(1);
   // Store a known value to kBaseAddr.
   db->Set<uint32_t>(0, kBaseValue);
   flat_memory_->Store(kBaseAddr, db);
@@ -317,7 +320,7 @@ TEST_F(AtomicMemoryTest, Maxu) {
 
 // Min
 TEST_F(AtomicMemoryTest, Min) {
-  auto *db = db_factory_.Allocate<uint32_t>(1);
+  auto* db = db_factory_.Allocate<uint32_t>(1);
   // Store a known value to kBaseAddr.
   db->Set<uint32_t>(0, kBaseValue);
   flat_memory_->Store(kBaseAddr, db);
@@ -335,7 +338,7 @@ TEST_F(AtomicMemoryTest, Min) {
 
 // Minu
 TEST_F(AtomicMemoryTest, Minu) {
-  auto *db = db_factory_.Allocate<uint32_t>(1);
+  auto* db = db_factory_.Allocate<uint32_t>(1);
   // Store a known value to kBaseAddr.
   db->Set<uint32_t>(0, kBaseValue);
   flat_memory_->Store(kBaseAddr, db);

@@ -54,7 +54,7 @@ ABSL_FLAG(std::string, prefix, "", "prefix for generated files");
 ABSL_FLAG(std::string, isa_name, "", "isa name");
 ABSL_FLAG(std::string, include, "", "include file directories");
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
   auto arg_vec = absl::ParseCommandLine(argc, argv);
 
   std::vector<std::string> file_names;

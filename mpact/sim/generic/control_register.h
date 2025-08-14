@@ -34,10 +34,7 @@
 // method is called from the update callback function, as that is the only way
 // the register object's data pointer is updated.
 
-#include <cstdint>
 #include <functional>
-#include <map>
-#include <string>
 #include <vector>
 
 #include "absl/strings/string_view.h"
@@ -59,17 +56,17 @@ class ControlRegisterBase : public RegisterBase {
  public:
   // Type alias for the update callback function type (set in the constructor).
   using UpdateCallbackFunction =
-      std::function<void(ControlRegisterBase *, DataBuffer *)>;
+      std::function<void(ControlRegisterBase*, DataBuffer*)>;
   ControlRegisterBase() = delete;
-  ControlRegisterBase(const ControlRegisterBase &) = delete;
+  ControlRegisterBase(const ControlRegisterBase&) = delete;
   ~ControlRegisterBase() override = default;
 
   // Calls the update callback function.
-  void SetDataBuffer(DataBuffer *db) override;
+  void SetDataBuffer(DataBuffer* db) override;
 
  protected:
-  ControlRegisterBase(ArchState *arch_state, absl::string_view name,
-                      const std::vector<int> &shape, int element_size,
+  ControlRegisterBase(ArchState* arch_state, absl::string_view name,
+                      const std::vector<int>& shape, int element_size,
                       UpdateCallbackFunction on_update_callback);
 
  private:

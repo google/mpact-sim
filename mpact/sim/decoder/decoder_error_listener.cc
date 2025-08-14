@@ -27,18 +27,18 @@ namespace sim {
 namespace decoder {
 
 // Error listener methods.
-void DecoderErrorListener::semanticError(antlr4::Token *token,
+void DecoderErrorListener::semanticError(antlr4::Token* token,
                                          absl::string_view msg) {
   semanticError(file_name_, token, msg);
 }
 
-void DecoderErrorListener::semanticWarning(antlr4::Token *token,
+void DecoderErrorListener::semanticWarning(antlr4::Token* token,
                                            absl::string_view msg) {
   semanticWarning(file_name_, token, msg);
 }
 
-void DecoderErrorListener::semanticError(const std::string &file_name,
-                                         antlr4::Token *token,
+void DecoderErrorListener::semanticError(const std::string& file_name,
+                                         antlr4::Token* token,
                                          absl::string_view msg) {
   if (token != nullptr) {
     size_t line = token->getLine();
@@ -51,8 +51,8 @@ void DecoderErrorListener::semanticError(const std::string &file_name,
   semantic_error_count_++;
 }
 
-void DecoderErrorListener::semanticWarning(const std::string &file_name,
-                                           antlr4::Token *token,
+void DecoderErrorListener::semanticWarning(const std::string& file_name,
+                                           antlr4::Token* token,
                                            absl::string_view msg) {
   if (token != nullptr) {
     size_t line = token->getLine();
@@ -65,35 +65,35 @@ void DecoderErrorListener::semanticWarning(const std::string &file_name,
   semantic_warning_count_++;
 }
 
-void DecoderErrorListener::syntaxError(antlr4::Recognizer *recognizer,
-                                       antlr4::Token *offendingSymbol,
+void DecoderErrorListener::syntaxError(antlr4::Recognizer* recognizer,
+                                       antlr4::Token* offendingSymbol,
                                        size_t line, size_t charPositionInLine,
-                                       const std::string &msg,
+                                       const std::string& msg,
                                        std::exception_ptr e) {
   LOG(ERROR) << absl::StrCat(file_name_, ":", line, ":", charPositionInLine,
                              "\n  ", msg, "\n");
   syntax_error_count_++;
 }
 
-void DecoderErrorListener::reportAmbiguity(antlr4::Parser *recognizer,
-                                           const antlr4::dfa::DFA &dfa,
+void DecoderErrorListener::reportAmbiguity(antlr4::Parser* recognizer,
+                                           const antlr4::dfa::DFA& dfa,
                                            size_t startIndex, size_t stopIndex,
                                            bool exact,
-                                           const antlrcpp::BitSet &ambigAlts,
-                                           antlr4::atn::ATNConfigSet *configs) {
+                                           const antlrcpp::BitSet& ambigAlts,
+                                           antlr4::atn::ATNConfigSet* configs) {
   // Empty.
 }
 
 void DecoderErrorListener::reportAttemptingFullContext(
-    antlr4::Parser *recognizer, const antlr4::dfa::DFA &dfa, size_t startIndex,
-    size_t stopIndex, const antlrcpp::BitSet &conflictingAlts,
-    antlr4::atn::ATNConfigSet *configs) {
+    antlr4::Parser* recognizer, const antlr4::dfa::DFA& dfa, size_t startIndex,
+    size_t stopIndex, const antlrcpp::BitSet& conflictingAlts,
+    antlr4::atn::ATNConfigSet* configs) {
   // Empty.
 }
 
 void DecoderErrorListener::reportContextSensitivity(
-    antlr4::Parser *recognizer, const antlr4::dfa::DFA &dfa, size_t startIndex,
-    size_t stopIndex, size_t prediction, antlr4::atn::ATNConfigSet *configs) {
+    antlr4::Parser* recognizer, const antlr4::dfa::DFA& dfa, size_t startIndex,
+    size_t stopIndex, size_t prediction, antlr4::atn::ATNConfigSet* configs) {
   // Empty.
 }
 

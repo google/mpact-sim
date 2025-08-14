@@ -34,7 +34,7 @@ using RunStatus = ::mpact::sim::generic::CoreDebugInterface::RunStatus;
 using HaltReasonValueType =
     ::mpact::sim::generic::CoreDebugInterface::HaltReasonValueType;
 
-CLIForwarder::CLIForwarder(RenodeCLITop *top) : top_(top) {}
+CLIForwarder::CLIForwarder(RenodeCLITop* top) : top_(top) {}
 
 // Forward the calls to the CheriotRenodeCLITop class - CLI methods.
 
@@ -54,27 +54,27 @@ absl::StatusOr<HaltReasonValueType> CLIForwarder::GetLastHaltReason() {
   return top_->CLIGetLastHaltReason();
 }
 
-absl::StatusOr<uint64_t> CLIForwarder::ReadRegister(const std::string &name) {
+absl::StatusOr<uint64_t> CLIForwarder::ReadRegister(const std::string& name) {
   return top_->CLIReadRegister(name);
 }
 
-absl::Status CLIForwarder::WriteRegister(const std::string &name,
+absl::Status CLIForwarder::WriteRegister(const std::string& name,
                                          uint64_t value) {
   return top_->CLIWriteRegister(name, value);
 }
 
-absl::StatusOr<DataBuffer *> CLIForwarder::GetRegisterDataBuffer(
-    const std::string &name) {
+absl::StatusOr<DataBuffer*> CLIForwarder::GetRegisterDataBuffer(
+    const std::string& name) {
   return top_->CLIGetRegisterDataBuffer(name);
 }
 
-absl::StatusOr<size_t> CLIForwarder::ReadMemory(uint64_t address, void *buf,
+absl::StatusOr<size_t> CLIForwarder::ReadMemory(uint64_t address, void* buf,
                                                 size_t length) {
   return top_->CLIReadMemory(address, buf, length);
 }
 
 absl::StatusOr<size_t> CLIForwarder::WriteMemory(uint64_t address,
-                                                 const void *buf,
+                                                 const void* buf,
                                                  size_t length) {
   return top_->CLIWriteMemory(address, buf, length);
 }
@@ -95,7 +95,7 @@ absl::Status CLIForwarder::ClearAllSwBreakpoints() {
   return top_->CLIClearAllSwBreakpoints();
 }
 
-absl::StatusOr<Instruction *> CLIForwarder::GetInstruction(uint64_t address) {
+absl::StatusOr<Instruction*> CLIForwarder::GetInstruction(uint64_t address) {
   return top_->CLIGetInstruction(address);
 }
 

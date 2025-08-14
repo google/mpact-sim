@@ -28,9 +28,9 @@ namespace generic {
 class ResourceBitSet {
  public:
   ResourceBitSet() = default;
-  ResourceBitSet(const ResourceBitSet &rhs);
-  ResourceBitSet(ResourceBitSet &&rhs);
-  ResourceBitSet &operator=(const ResourceBitSet &rhs);
+  ResourceBitSet(const ResourceBitSet& rhs);
+  ResourceBitSet(ResourceBitSet&& rhs);
+  ResourceBitSet& operator=(const ResourceBitSet& rhs);
   explicit ResourceBitSet(int bit_size);
   ~ResourceBitSet();
 
@@ -39,22 +39,22 @@ class ResourceBitSet {
   // Add rhs bitset content to this. If the size of rhs is greater than this,
   // resize this to match. If the size of this is larger than rhs, the bits not
   // in rhs are assumed to be zero.
-  void Or(const ResourceBitSet &rhs);
+  void Or(const ResourceBitSet& rhs);
   // Remove rhs bitset content from this. If the size of rhs is greater than
   // this, the additional bits are ignored. If this is larger than rhs, the
   // missing rhs bits are assumed to be zero.
-  void AndNot(const ResourceBitSet &rhs);
+  void AndNot(const ResourceBitSet& rhs);
   // Return true if the bitsets have a non-empty intersection. If either is
   // larger than the other, the "missing" bits are assumed to be zero.
-  bool IsIntersectionNonEmpty(const ResourceBitSet &rhs) const;
+  bool IsIntersectionNonEmpty(const ResourceBitSet& rhs) const;
   // Locate the first bit set.  If there is no such bit
   // return false, otherwise, return true and set *position to the position of
   // that bit.
-  bool FindFirstSetBit(int *position) const;
+  bool FindFirstSetBit(int* position) const;
   // Locate the first bit set at or after *position. If there is no such bit
   // return false, otherwise, return true and set *position to the position of
   // that bit.
-  bool FindNextSetBit(int *position) const;
+  bool FindNextSetBit(int* position) const;
   // Return the number of set bits.
   int GetOnesCount() const;
   // Make the bitsize at least size bits long.
@@ -63,7 +63,7 @@ class ResourceBitSet {
  private:
   using UInt = uint64_t;
   static constexpr int kBitsInUint = sizeof(UInt) * 8;
-  UInt *bits_ = nullptr;
+  UInt* bits_ = nullptr;
   int size_ = 0;
 };
 

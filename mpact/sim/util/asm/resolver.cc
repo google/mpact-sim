@@ -26,8 +26,8 @@ absl::StatusOr<uint64_t> ZeroResolver::Resolve(absl::string_view text) {
 }
 
 SymbolResolver::SymbolResolver(
-    int elf_file_class, ELFIO::section *symtab,
-    const absl::flat_hash_map<std::string, ELFIO::Elf_Word> &symbol_indices)
+    int elf_file_class, ELFIO::section* symtab,
+    const absl::flat_hash_map<std::string, ELFIO::Elf_Word>& symbol_indices)
     : elf_file_class_(elf_file_class),
       symtab_(symtab),
       symbol_indices_(symbol_indices) {}
@@ -40,10 +40,10 @@ absl::StatusOr<uint64_t> SymbolResolver::Resolve(absl::string_view text) {
   }
   auto index = iter->second;
   if (elf_file_class_ == ELFCLASS64) {
-    auto *sym = reinterpret_cast<const ELFIO::Elf64_Sym *>(symtab_->get_data());
+    auto* sym = reinterpret_cast<const ELFIO::Elf64_Sym*>(symtab_->get_data());
     return sym[index].st_value;
   } else if (elf_file_class_ == ELFCLASS32) {
-    auto *sym = reinterpret_cast<const ELFIO::Elf32_Sym *>(symtab_->get_data());
+    auto* sym = reinterpret_cast<const ELFIO::Elf32_Sym*>(symtab_->get_data());
     return sym[index].st_value;
   }
   return absl::InternalError("Unsupported ELF file class");

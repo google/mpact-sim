@@ -56,7 +56,7 @@ std::string GetCppTypeName(
 }
 
 // Operator to implement negation.
-absl::StatusOr<ProtoValue> operator-(const ProtoValue &value) {
+absl::StatusOr<ProtoValue> operator-(const ProtoValue& value) {
   switch (value.index()) {
     case *ProtoValueIndex::kInt32:
       return -std::get<int32_t>(value);

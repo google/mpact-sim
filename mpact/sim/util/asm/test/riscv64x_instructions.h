@@ -21,7 +21,7 @@ namespace mpact::sim::riscv {
 
 using ::mpact::sim::generic::Instruction;
 
-void RiscVIllegalInstruction(const generic::Instruction *inst);
+void RiscVIllegalInstruction(const generic::Instruction* inst);
 
 }  // namespace mpact::sim::riscv
 

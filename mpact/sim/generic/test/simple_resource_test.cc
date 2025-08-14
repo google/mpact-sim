@@ -33,7 +33,7 @@ static constexpr int kNumResources = 3;
 static constexpr char kTestResource0[] = "Resource0";
 static constexpr char kTestResource1[] = "Resource1";
 static constexpr char kTestResource2[] = "Resource2";
-static constexpr char const *kTestResources[] = {kTestResource0, kTestResource1,
+static constexpr char const* kTestResources[] = {kTestResource0, kTestResource1,
                                                  kTestResource2};
 
 class SimpleResourceTest : public testing::Test {
@@ -53,9 +53,9 @@ TEST_F(SimpleResourceTest, Instantiation) {
 }
 
 TEST_F(SimpleResourceTest, Resources) {
-  SimpleResource *resources[kNumResources];
+  SimpleResource* resources[kNumResources];
   for (int num = 0; num < kNumResources; num++) {
-    const char *name = kTestResources[num];
+    const char* name = kTestResources[num];
     // Creat resource.
     EXPECT_TRUE(pool_->AddResource(name).ok());
     resources[num] = pool_->GetResource(name);
@@ -83,16 +83,16 @@ TEST_F(SimpleResourceTest, Resources) {
 }
 
 TEST_F(SimpleResourceTest, ResourceSets) {
-  SimpleResource *resources[kNumResources];
+  SimpleResource* resources[kNumResources];
   for (int num = 0; num < kNumResources; num++) {
-    const char *name = kTestResources[num];
+    const char* name = kTestResources[num];
     // Creat resource.
     EXPECT_TRUE(pool_->AddResource(name).ok());
     resources[num] = pool_->GetResource(name);
   }
 
   // Create a resource set and add resource 0 and 1 to it.
-  SimpleResourceSet *resource_set = pool_->CreateResourceSet();
+  SimpleResourceSet* resource_set = pool_->CreateResourceSet();
   EXPECT_TRUE(resource_set->AddResource(kTestResource0).ok());
   EXPECT_TRUE(resource_set->AddResource(resources[1]).ok());
 

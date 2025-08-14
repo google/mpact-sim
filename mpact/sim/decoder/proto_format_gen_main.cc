@@ -41,7 +41,7 @@ ABSL_FLAG(std::string, proto_files, "", "proto file(s)");
 
 static constexpr char kRootDir[] = "";
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
   // Process the command line options.
   auto arg_vec = absl::ParseCommandLine(argc, argv);
 

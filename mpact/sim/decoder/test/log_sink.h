@@ -18,7 +18,7 @@ class LogSink : public absl::LogSink {
   LogSink() = default;
   ~LogSink() override = default;
   // Method called for each log message.
-  void Send(const absl::LogEntry &entry) override {
+  void Send(const absl::LogEntry& entry) override {
     switch (entry.log_severity()) {
       case absl::LogSeverity::kInfo:
         absl::StrAppend(&info_log_, entry.text_message());

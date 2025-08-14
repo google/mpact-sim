@@ -57,7 +57,7 @@ struct DecodeCacheProperties {
 class DecodeCache {
  private:
   // Constructed using static factory method.
-  DecodeCache(const DecodeCacheProperties &props, DecoderInterface *decoder);
+  DecodeCache(const DecodeCacheProperties& props, DecoderInterface* decoder);
 
  public:
   DecodeCache() = delete;
@@ -65,12 +65,12 @@ class DecodeCache {
   // The DecodeCache factory method takes the property struct and the interface
   // to a decoder that will supply an instruction internal representation for
   // a given address. If memory allocation fails it returns nullptr.
-  static DecodeCache *Create(const DecodeCacheProperties &props,
-                             DecoderInterface *decoder);
+  static DecodeCache* Create(const DecodeCacheProperties& props,
+                             DecoderInterface* decoder);
   // Returns the decoded instruction associated with the given address. If there
   // is not an instruction with that address in the decode cache, the decoder
   // will be called and the newly decoded instruction will be cached.
-  Instruction *GetDecodedInstruction(uint64_t address);
+  Instruction* GetDecodedInstruction(uint64_t address);
   // Invalidation operations
   // These methods cases the removal from the cache of the instruction
   // internal represenations that match the address, address range [start, end),
@@ -87,12 +87,12 @@ class DecodeCache {
   int address_inc() const { return address_inc_; }
 
  private:
-  DecoderInterface *decoder_;
+  DecoderInterface* decoder_;
   int num_entries_;
   int address_shift_;
   uint32_t address_inc_;
   uint64_t address_mask_;
-  Instruction **instruction_cache_;
+  Instruction** instruction_cache_;
 };
 
 }  // namespace generic

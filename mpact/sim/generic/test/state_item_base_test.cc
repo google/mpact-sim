@@ -33,8 +33,8 @@ using testing::StrEq;
 
 class TestStateItemBase : public StateItemBase {
  public:
-  void SetDataBuffer(DataBuffer *db) override {}
-  TestStateItemBase(ArchState *state, absl::string_view nm,
+  void SetDataBuffer(DataBuffer* db) override {}
+  TestStateItemBase(ArchState* state, absl::string_view nm,
                     const std::vector<int> sz, int unit_size)
       : StateItemBase(state, nm, sz, unit_size) {}
   ~TestStateItemBase() override {}

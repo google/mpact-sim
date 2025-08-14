@@ -53,7 +53,7 @@ class DestinationOperand {
  public:
   // Operand latency is defined by the expression.
   DestinationOperand(std::string name, bool is_array, bool is_reloc,
-                     TemplateExpression *expression)
+                     TemplateExpression* expression)
       : name_(std::move(name)),
         pascal_case_name_(ToPascalCase(name_)),
         expression_(expression),
@@ -80,9 +80,9 @@ class DestinationOperand {
     expression_ = nullptr;
   }
 
-  const std::string &name() const { return name_; }
-  const std::string &pascal_case_name() const { return pascal_case_name_; }
-  TemplateExpression *expression() const { return expression_; }
+  const std::string& name() const { return name_; }
+  const std::string& pascal_case_name() const { return pascal_case_name_; }
+  TemplateExpression* expression() const { return expression_; }
   bool is_array() const { return is_array_; }
   bool is_reloc() const { return is_reloc_; }
   bool HasLatency() const { return expression_ != nullptr; }
@@ -94,7 +94,7 @@ class DestinationOperand {
           "Template expression evaluation error", res.status().message()));
     }
     auto variant_value = res.value();
-    auto *value_ptr = std::get_if<int>(&variant_value);
+    auto* value_ptr = std::get_if<int>(&variant_value);
     if (value_ptr == nullptr) {
       return absl::InternalError("Template expression type error");
     }
@@ -104,7 +104,7 @@ class DestinationOperand {
  private:
   std::string name_;
   std::string pascal_case_name_;
-  TemplateExpression *expression_;
+  TemplateExpression* expression_;
   bool is_array_ = false;
   bool is_reloc_ = false;
 };
@@ -144,7 +144,7 @@ struct OperandLocator {
 struct FormatInfo {
   FormatInfo() = default;
   // Use default copy constructor.
-  FormatInfo(const FormatInfo &) = default;
+  FormatInfo(const FormatInfo&) = default;
   std::string op_name;
   bool is_formatted = true;
   bool is_optional = false;
@@ -158,18 +158,18 @@ struct FormatInfo {
 struct DisasmFormat {
   DisasmFormat() = default;
   // Copy constructor.
-  DisasmFormat(const DisasmFormat &df) {
+  DisasmFormat(const DisasmFormat& df) {
     width = df.width;
-    for (auto const &frag : df.format_fragment_vec) {
+    for (auto const& frag : df.format_fragment_vec) {
       format_fragment_vec.push_back(frag);
     }
-    for (auto const *info : df.format_info_vec) {
+    for (auto const* info : df.format_info_vec) {
       format_info_vec.push_back(new FormatInfo(*info));
     }
   }
   // Destructor.
   ~DisasmFormat() {
-    for (auto *info : format_info_vec) {
+    for (auto* info : format_info_vec) {
       delete info;
     }
     format_info_vec.clear();
@@ -177,25 +177,25 @@ struct DisasmFormat {
   int width = 0;
   int num_optional = 0;
   std::vector<std::string> format_fragment_vec;
-  std::vector<FormatInfo *> format_info_vec;
+  std::vector<FormatInfo*> format_info_vec;
 };
 
 struct ResourceReference {
-  Resource *resource;
+  Resource* resource;
   bool is_array;
-  DestinationOperand *dest_op;
-  TemplateExpression *begin_expression;
-  TemplateExpression *end_expression;
-  ResourceReference(Resource *resource_, bool is_array_,
-                    DestinationOperand *dest_op_,
-                    TemplateExpression *begin_expr_,
-                    TemplateExpression *end_expr_)
+  DestinationOperand* dest_op;
+  TemplateExpression* begin_expression;
+  TemplateExpression* end_expression;
+  ResourceReference(Resource* resource_, bool is_array_,
+                    DestinationOperand* dest_op_,
+                    TemplateExpression* begin_expr_,
+                    TemplateExpression* end_expr_)
       : resource(resource_),
         is_array(is_array_),
         dest_op(dest_op_),
         begin_expression(begin_expr_),
         end_expression(end_expr_) {}
-  ResourceReference(const ResourceReference &rhs) {
+  ResourceReference(const ResourceReference& rhs) {
     resource = rhs.resource;
     is_array = rhs.is_array;
     dest_op = rhs.dest_op;
@@ -230,47 +230,47 @@ class Opcode {
   // methods will be left to the user of this generator tool.
   void AppendSourceOp(absl::string_view op_name, bool is_array, bool is_reloc);
   void AppendDestOp(absl::string_view op_name, bool is_array, bool is_reloc,
-                    TemplateExpression *expression);
+                    TemplateExpression* expression);
   void AppendDestOp(absl::string_view op_name, bool is_array, bool is_reloc);
-  DestinationOperand *GetDestOp(absl::string_view op_name);
+  DestinationOperand* GetDestOp(absl::string_view op_name);
   // Append child opcode specification.
-  void AppendChild(Opcode *op) { child_ = op; }
+  void AppendChild(Opcode* op) { child_ = op; }
   // Checks destination latencies with the given function. Returns true if all
   // comply.
-  bool ValidateDestLatencies(const std::function<bool(int)> &validator) const;
+  bool ValidateDestLatencies(const std::function<bool(int)>& validator) const;
   int instruction_size() const { return instruction_size_; }
   void set_instruction_size(int val) { instruction_size_ = val; }
-  Opcode *child() const { return child_; }
-  Opcode *parent() const { return parent_; }
-  const std::string &name() const { return name_; }
-  const std::string &pascal_name() const { return pascal_name_; }
+  Opcode* child() const { return child_; }
+  Opcode* parent() const { return parent_; }
+  const std::string& name() const { return name_; }
+  const std::string& pascal_name() const { return pascal_name_; }
   // Each opcode is assigned a unique value that is used in the slot class
   // enum definition.
   int value() const { return value_; }
   // Predicate, source and destination operand names.
-  const std::string &predicate_op_name() const { return predicate_op_name_; }
+  const std::string& predicate_op_name() const { return predicate_op_name_; }
   void set_predicate_op_name(absl::string_view op_name) {
     predicate_op_name_ = op_name;
   }
-  const std::vector<SourceOperand> &source_op_vec() const {
+  const std::vector<SourceOperand>& source_op_vec() const {
     return source_op_vec_;
   }
-  const std::vector<DestinationOperand *> &dest_op_vec() const {
+  const std::vector<DestinationOperand*>& dest_op_vec() const {
     return dest_op_vec_;
   }
 
-  OpLocatorMap &op_locator_map() { return op_locator_map_; }  // not const.
-  const OpLocatorMap &op_locator_map() const { return op_locator_map_; }
+  OpLocatorMap& op_locator_map() { return op_locator_map_; }  // not const.
+  const OpLocatorMap& op_locator_map() const { return op_locator_map_; }
 
  private:
   Opcode(absl::string_view name, int value);
   int instruction_size_;
-  Opcode *child_ = nullptr;
-  Opcode *parent_ = nullptr;
+  Opcode* child_ = nullptr;
+  Opcode* parent_ = nullptr;
   std::string predicate_op_name_;
   std::vector<SourceOperand> source_op_vec_;
-  std::vector<DestinationOperand *> dest_op_vec_;
-  absl::flat_hash_map<std::string, DestinationOperand *> dest_op_map_;
+  std::vector<DestinationOperand*> dest_op_vec_;
+  absl::flat_hash_map<std::string, DestinationOperand*> dest_op_map_;
   std::string name_;
   std::string pascal_name_;
   std::string semfunc_code_string_;
@@ -285,18 +285,18 @@ class OpcodeFactory {
 
   // If the opcode doesn't yet exist, create a new opcode and return the
   // pointer, otherwise return an error code.
-  absl::StatusOr<Opcode *> CreateOpcode(absl::string_view name);
-  Opcode *CreateDefaultOpcode();
-  Opcode *CreateChildOpcode(Opcode *opcode) const;
+  absl::StatusOr<Opcode*> CreateOpcode(absl::string_view name);
+  Opcode* CreateDefaultOpcode();
+  Opcode* CreateChildOpcode(Opcode* opcode) const;
   // Duplicate the opcode, but evaluate the destination latency expressions
   // with the template argument expression vector.
-  absl::StatusOr<Opcode *> CreateDerivedOpcode(const Opcode *opcode,
-                                               TemplateInstantiationArgs *args);
-  const std::vector<Opcode *> &opcode_vec() const { return opcode_vec_; }
+  absl::StatusOr<Opcode*> CreateDerivedOpcode(const Opcode* opcode,
+                                              TemplateInstantiationArgs* args);
+  const std::vector<Opcode*>& opcode_vec() const { return opcode_vec_; }
 
  private:
   absl::btree_set<std::string> opcode_names_;
-  std::vector<Opcode *> opcode_vec_;
+  std::vector<Opcode*> opcode_vec_;
   int opcode_value_ = 1;
 };
 

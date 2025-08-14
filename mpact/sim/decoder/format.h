@@ -46,8 +46,8 @@ struct Field {
   int high;
   int low;
   int width;
-  Format *format = nullptr;
-  Field(std::string name_, bool is_signed_, int width_, Format *format_)
+  Format* format = nullptr;
+  Field(std::string name_, bool is_signed_, int width_, Format* format_)
       : name(name_),
         is_signed(is_signed_),
         high(-1),
@@ -70,9 +70,9 @@ struct FormatReference {
 
 class FieldOrFormat {
  public:
-  explicit FieldOrFormat(Field *field) : is_field_(true), field_(field) {}
+  explicit FieldOrFormat(Field* field) : is_field_(true), field_(field) {}
   FieldOrFormat(std::string format_alias, std::string fmt_name, int size,
-                antlr4::Token *ctx)
+                antlr4::Token* ctx)
       : is_field_(false),
         format_name_(fmt_name),
         format_alias_(format_alias),
@@ -81,28 +81,28 @@ class FieldOrFormat {
   ~FieldOrFormat();
 
   bool is_field() const { return is_field_; }
-  Field *field() const { return field_; }
+  Field* field() const { return field_; }
   int high() const { return high_; }
   void set_high(int value) { high_ = value; }
-  const std::string &format_name() const { return format_name_; }
-  antlr4::Token *ctx() const { return ctx_; }
-  Format *format() const { return format_; }
+  const std::string& format_name() const { return format_name_; }
+  antlr4::Token* ctx() const { return ctx_; }
+  Format* format() const { return format_; }
   absl::string_view format_alias() const { return format_alias_; }
   int size() const { return size_; }
-  void set_format(Format *fmt) { format_ = fmt; }
+  void set_format(Format* fmt) { format_ = fmt; }
 
-  bool operator==(const FieldOrFormat &rhs) const;
-  bool operator!=(const FieldOrFormat &rhs) const;
+  bool operator==(const FieldOrFormat& rhs) const;
+  bool operator!=(const FieldOrFormat& rhs) const;
 
  private:
   bool is_field_;
-  Field *field_ = nullptr;
+  Field* field_ = nullptr;
   std::string format_name_;
   std::string format_alias_;
   int high_ = 0;
   int size_ = 0;
-  antlr4::Token *ctx_ = nullptr;
-  Format *format_ = nullptr;
+  antlr4::Token* ctx_ = nullptr;
+  Format* format_ = nullptr;
 };
 
 struct Extractors {
@@ -120,9 +120,9 @@ class Format {
   };
 
   Format() = delete;
-  Format(std::string name, int width, BinEncodingInfo *encoding_info);
+  Format(std::string name, int width, BinEncodingInfo* encoding_info);
   Format(std::string name, int width, std::string base_format_name,
-         BinEncodingInfo *encoding_info);
+         BinEncodingInfo* encoding_info);
   ~Format();
 
   // Adds a field (signed or unsigned) of the given width to the format.
@@ -131,18 +131,18 @@ class Format {
   // another format later, or generate an error at that time.
   void AddFormatReferenceField(std::string format_alias,
                                std::string format_name, int size,
-                               antlr4::Token *ctx);
+                               antlr4::Token* ctx);
   // Adds an overlay to the format. An overlay is an alias to a set of bits
   // in the instruction format.
-  absl::StatusOr<Overlay *> AddFieldOverlay(std::string name, bool is_signed,
-                                            int width);
+  absl::StatusOr<Overlay*> AddFieldOverlay(std::string name, bool is_signed,
+                                           int width);
 
   // Returns the named field if it exists in the format. Otherwise it returns
   // nullptr.
-  Field *GetField(absl::string_view field_name) const;
+  Field* GetField(absl::string_view field_name) const;
   // Returns the named overlay if it exists in the format. Otherwise it returns
   // nullptr.
-  Overlay *GetOverlay(absl::string_view overlay_name) const;
+  Overlay* GetOverlay(absl::string_view overlay_name) const;
 
   // Performs a consistency check on the format.
   absl::Status ComputeAndCheckFormatWidth();
@@ -156,54 +156,54 @@ class Format {
   std::string GenerateInserters() const;
 
   // True if the current format is a descendent of format.
-  bool IsDerivedFrom(const Format *format);
+  bool IsDerivedFrom(const Format* format);
 
   // Accessors.
-  const std::string &name() const { return name_; }
+  const std::string& name() const { return name_; }
   // The unsigned integer type name larger or equal to the format width.
   // E.g. uint32_t etc.
-  const std::string &uint_type_name() const { return uint_type_name_; }
+  const std::string& uint_type_name() const { return uint_type_name_; }
   int declared_width() const { return declared_width_; }
   int computed_width() const { return computed_width_; }
-  Format *base_format() const { return base_format_; }
+  Format* base_format() const { return base_format_; }
   // Return pointer to the parent encoding info class.
-  BinEncodingInfo *encoding_info() const { return encoding_info_; }
+  BinEncodingInfo* encoding_info() const { return encoding_info_; }
   // Field layout.
   Layout layout() const { return layout_; }
   void set_layout(Layout layout) { layout_ = layout; }
 
  private:
-  bool HasExtract(const std::string &name) const;
-  bool HasOverlayExtract(const std::string &name) const;
+  bool HasExtract(const std::string& name) const;
+  bool HasOverlayExtract(const std::string& name) const;
 
   // Extractor generators.
   std::string GeneratePackedStructTypes() const;
-  std::string GeneratePackedStructFieldExtractor(const Field *field) const;
+  std::string GeneratePackedStructFieldExtractor(const Field* field) const;
   std::string GeneratePackedStructFormatExtractor(std::string_view format_alias,
-                                                  const Format *format,
+                                                  const Format* format,
                                                   int high, int size) const;
-  std::string GeneratePackedStructOverlayExtractor(Overlay *overlay) const;
-  std::string GenerateFieldExtractor(const Field *field) const;
+  std::string GeneratePackedStructOverlayExtractor(Overlay* overlay) const;
+  std::string GenerateFieldExtractor(const Field* field) const;
   std::string GenerateFormatExtractor(std::string_view format_alias,
-                                      const Format *format, int high,
+                                      const Format* format, int high,
                                       int size) const;
-  std::string GenerateOverlayExtractor(Overlay *overlay) const;
+  std::string GenerateOverlayExtractor(Overlay* overlay) const;
   // Inserters.
-  std::string GenerateFieldInserter(const Field *field) const;
-  std::string GeneratePackedStructFieldInserter(const Field *field) const;
+  std::string GenerateFieldInserter(const Field* field) const;
+  std::string GeneratePackedStructFieldInserter(const Field* field) const;
   std::string GenerateFormatInserter(std::string_view format_alias,
-                                     const Format *format, int high,
+                                     const Format* format, int high,
                                      int size) const;
   std::string GeneratePackedStructFormatInserter(std::string_view format_alias,
-                                                 const Format *format, int high,
+                                                 const Format* format, int high,
                                                  int size) const;
   std::string GenerateReplicatedFormatInserter(std::string_view format_alias,
-                                               const Format *format, int high,
+                                               const Format* format, int high,
                                                int size) const;
   std::string GenerateSingleFormatInserter(std::string_view format_alias,
-                                           const Format *format,
+                                           const Format* format,
                                            int high) const;
-  std::string GenerateOverlayInserter(Overlay *overlay) const;
+  std::string GenerateOverlayInserter(Overlay* overlay) const;
   // Return string representation of the int type that contains bitwidth bits.
   std::string GetIntType(int bitwidth) const;
   std::string GetUIntType(int bitwidth) const;
@@ -216,17 +216,17 @@ class Format {
   int declared_width_;
   int computed_width_ = 0;
   Layout layout_ = Layout::kDefault;
-  Format *base_format_ = nullptr;
-  std::vector<Format *> derived_formats_;
-  BinEncodingInfo *encoding_info_;
+  Format* base_format_ = nullptr;
+  std::vector<Format*> derived_formats_;
+  BinEncodingInfo* encoding_info_;
 
-  absl::btree_map<std::string, Overlay *> overlay_map_;
-  absl::btree_map<std::string, Field *> field_map_;
-  std::vector<FieldOrFormat *> field_vec_;
+  absl::btree_map<std::string, Overlay*> overlay_map_;
+  absl::btree_map<std::string, Field*> field_map_;
+  std::vector<FieldOrFormat*> field_vec_;
   // Using std::map because of sorted traversal and better iterator stability
   // when elements are erased.
-  std::map<std::string, FieldOrFormat *> extractors_;
-  std::map<std::string, Overlay *> overlay_extractors_;
+  std::map<std::string, FieldOrFormat*> extractors_;
+  std::map<std::string, Overlay*> overlay_extractors_;
 };
 
 }  // namespace bin_format

@@ -62,19 +62,19 @@ class DataBufferFactory {
   // Allocates a DataBuffer instance with a buffer size of num instances of T.
   // The free list is searched before falling back on using new.
   template <typename T>
-  DataBuffer *Allocate(int num) {
+  DataBuffer* Allocate(int num) {
     return Allocate(sizeof(T) * num);
   }
 
   // Allocates a DataBuffer instance with a buffer of size bytes. The free
   // list is searched before falling back on using new.
-  inline DataBuffer *Allocate(int size);
+  inline DataBuffer* Allocate(int size);
 
   // Allocates a new DataBuffer instance with the same size as db and
   // initializes the contents of the internal buffer to the value of that of
   // db - without changing db. Except for the memcpy this method acts just like
   // Allocate()
-  DataBuffer *MakeCopyOf(const DataBuffer *src_db);
+  DataBuffer* MakeCopyOf(const DataBuffer* src_db);
 
   // Clears and frees up all the objects contained in the DBStore that holds
   // the recycled DataBuffers.
@@ -83,15 +83,15 @@ class DataBufferFactory {
  private:
   // Moves the DataBuffer instance on to a free list based on the size of the
   // internal buffer. This method is only called by DataBuffere instances.
-  inline void Recycle(DataBuffer *db);
+  inline void Recycle(DataBuffer* db);
   // The DBStore keeps free DataBuffer instances in free lists by size of
   // the data_ store. That way runtime overhead is reduced, since DataBuffer
   // objects are allocated very frequently.
   //
   // map <size of data buffer data_, list of free data buffers >
-  using DataBufferFreeList = absl::btree_map<int, std::vector<DataBuffer *>>;
+  using DataBufferFreeList = absl::btree_map<int, std::vector<DataBuffer*>>;
 
-  std::vector<DataBuffer *> short_free_list_[kShortSize + 1];
+  std::vector<DataBuffer*> short_free_list_[kShortSize + 1];
   DataBufferFreeList free_list_;
 };
 
@@ -103,7 +103,7 @@ class DataBufferFactory {
 
 class DataBufferDestination {
  public:
-  virtual void SetDataBuffer(DataBuffer *db) = 0;
+  virtual void SetDataBuffer(DataBuffer* db) = 0;
   virtual ~DataBufferDestination() = default;
 };
 
@@ -153,15 +153,15 @@ class DataBuffer : public ReferenceCount {
   template <typename ElementType>
   inline void Set(int index, ElementType value) {
     ABSL_HARDENING_ASSERT((index + 1) * sizeof(ElementType) <= size_);
-    reinterpret_cast<ElementType *>(raw_ptr_)[index] = value;
+    reinterpret_cast<ElementType*>(raw_ptr_)[index] = value;
   }
 
   // Set entry using a span.
   template <typename ElementType>
   inline void Set(absl::Span<const ElementType> values) {
     ABSL_HARDENING_ASSERT(values.size() * sizeof(ElementType) <= size_);
-    auto *data_ptr = reinterpret_cast<ElementType *>(raw_ptr_);
-    for (auto const &value : values) {
+    auto* data_ptr = reinterpret_cast<ElementType*>(raw_ptr_);
+    for (auto const& value : values) {
       *data_ptr++ = value;
     }
   }
@@ -170,7 +170,7 @@ class DataBuffer : public ReferenceCount {
   template <typename ElementType>
   inline void SetSubmit(int index, ElementType value) {
     ABSL_HARDENING_ASSERT((index + 1) * sizeof(ElementType) <= size_);
-    reinterpret_cast<ElementType *>(raw_ptr_)[index] = value;
+    reinterpret_cast<ElementType*>(raw_ptr_)[index] = value;
     Submit(latency_);
   }
 
@@ -178,8 +178,8 @@ class DataBuffer : public ReferenceCount {
   template <typename ElementType>
   inline void SetSubmit(absl::Span<const ElementType> values) {
     ABSL_HARDENING_ASSERT(values.size() * sizeof(ElementType) <= size_);
-    auto *data_ptr = reinterpret_cast<ElementType *>(raw_ptr_);
-    for (auto const &value : values) {
+    auto* data_ptr = reinterpret_cast<ElementType*>(raw_ptr_);
+    for (auto const& value : values) {
       *data_ptr++ = value;
     }
     Submit(latency_);
@@ -190,7 +190,7 @@ class DataBuffer : public ReferenceCount {
   template <typename ElementType>
   inline ElementType Get(unsigned index) const {
     ABSL_HARDENING_ASSERT((index + 1) * sizeof(ElementType) <= size_);
-    return reinterpret_cast<ElementType *>(raw_ptr_)[index];
+    return reinterpret_cast<ElementType*>(raw_ptr_)[index];
   }
 
   template <int N>
@@ -202,27 +202,27 @@ class DataBuffer : public ReferenceCount {
   // Return the data buffer as a span of elements of type ElementType.
   template <typename ElementType>
   inline absl::Span<ElementType> Get() const {
-    return absl::MakeSpan(reinterpret_cast<ElementType *>(raw_ptr_),
+    return absl::MakeSpan(reinterpret_cast<ElementType*>(raw_ptr_),
                           size<ElementType>());
   }
 
   // Copies the content of the data buffer to the buffer stored at the
   // given location. The caller is responsible for ensuring that the
   // target buffer is of sufficient size.
-  inline void CopyTo(uint8_t *data) const {
+  inline void CopyTo(uint8_t* data) const {
     std::memcpy(data, raw_ptr_, size_);
   }
 
   // Copies the content of the data stored at the given location into
   // the data buffer. The caller is responsible for ensuring that the
   // source buffer is of sufficient size.
-  inline void CopyFrom(const uint8_t *data) {
+  inline void CopyFrom(const uint8_t* data) {
     std::memcpy(raw_ptr_, data, size_);
   }
 
   // Copies the data from the given data buffer. The sizes have to be
   // identical.
-  inline void CopyFrom(const DataBuffer *src_db) {
+  inline void CopyFrom(const DataBuffer* src_db) {
     ABSL_HARDENING_ASSERT(size_ == src_db->size_);
     std::memcpy(raw_ptr_, src_db->raw_ptr_, size_);
   }
@@ -255,26 +255,26 @@ class DataBuffer : public ReferenceCount {
 
   // Sets the destination state object that will receive the data buffer upon
   // Submit(0)/0 latency, or after latency cycles from a "delay line".
-  inline void set_destination(DataBufferDestination *dest) {
+  inline void set_destination(DataBufferDestination* dest) {
     destination_ = dest;
   }
 
   // Sets the delay line to use for this data buffer when it's submitted with
   // a non-zero latency.
-  inline void set_delay_line(DataBufferDelayLine *delay_line) {
+  inline void set_delay_line(DataBufferDelayLine* delay_line) {
     delay_line_ = delay_line;
   }
   // Returns the raw byte pointer to the data buffer storage.
-  void *raw_ptr() const { return raw_ptr_; }
+  void* raw_ptr() const { return raw_ptr_; }
 
  private:
   explicit DataBuffer(unsigned size);
-  DataBufferFactory *db_factory_;
-  DataBufferDelayLine *delay_line_;
-  DataBufferDestination *destination_;
+  DataBufferFactory* db_factory_;
+  DataBufferDelayLine* delay_line_;
+  DataBufferDestination* destination_;
   int latency_;
   unsigned size_;
-  void *raw_ptr_;
+  void* raw_ptr_;
 };
 
 // DataBufferDelayRecord is used as the parameter for the DelayLine for
@@ -283,12 +283,12 @@ class DataBuffer : public ReferenceCount {
 class DataBufferDelayRecord {
  public:
   DataBufferDelayRecord() = delete;
-  DataBufferDelayRecord(const DataBufferDelayRecord &rhs) {
+  DataBufferDelayRecord(const DataBufferDelayRecord& rhs) {
     dest_ = rhs.dest_;
     data_buffer_ = rhs.data_buffer_;
     data_buffer_->IncRef();
   }
-  DataBufferDelayRecord(DataBuffer *data_buffer, DataBufferDestination *dest)
+  DataBufferDelayRecord(DataBuffer* data_buffer, DataBufferDestination* dest)
       : data_buffer_(data_buffer), dest_(dest) {}
   ~DataBufferDelayRecord() {
     if (data_buffer_ != nullptr) {
@@ -299,14 +299,14 @@ class DataBufferDelayRecord {
   void Apply() { dest_->SetDataBuffer(data_buffer_); }
 
  private:
-  DataBuffer *data_buffer_;
-  DataBufferDestination *dest_;
+  DataBuffer* data_buffer_;
+  DataBufferDestination* dest_;
 };
 
 // Put the DataBuffer into the db_store based on size of the data it can hold.
 // This method is only call from DataBuffer instance, so no need to check for
 // db == nullptr.
-inline void DataBufferFactory::Recycle(DataBuffer *db) {
+inline void DataBufferFactory::Recycle(DataBuffer* db) {
   int size = db->size<uint8_t>();
   if (size <= kShortSize) {
     short_free_list_[size].push_back(db);
@@ -316,17 +316,17 @@ inline void DataBufferFactory::Recycle(DataBuffer *db) {
       ptr->second.push_back(db);
       return;
     }
-    free_list_.emplace(size, std::vector<DataBuffer *>{db});
+    free_list_.emplace(size, std::vector<DataBuffer*>{db});
   }
 }
 
 // Search through the DataBuffer recycled store to see if there is a buffer
 // of the appropriate size. If not, allocate a new one.
-inline DataBuffer *DataBufferFactory::Allocate(int size) {
-  DataBuffer *db = nullptr;
+inline DataBuffer* DataBufferFactory::Allocate(int size) {
+  DataBuffer* db = nullptr;
   {
     if (size <= kShortSize) {
-      auto &free_list = short_free_list_[size];
+      auto& free_list = short_free_list_[size];
       if (!free_list.empty()) {
         db = free_list.back();
         free_list.pop_back();

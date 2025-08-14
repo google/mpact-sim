@@ -196,7 +196,7 @@ TEST(ConfigTest, ProtoExport) {
   // and exporting it to a proto. Saving the configuration after a simulation
   // is useful in post analysis to be able to tie together the configuration
   // information and the collected statistics.
-  std::vector<ConfigBase *> config_vector;
+  std::vector<ConfigBase*> config_vector;
   config_vector.push_back(&bool_config);
   config_vector.push_back(&int64_config);
   config_vector.push_back(&uint64_config);
@@ -204,8 +204,8 @@ TEST(ConfigTest, ProtoExport) {
   config_vector.push_back(&string_config);
 
   auto exported_proto = std::make_unique<ComponentData>();
-  ComponentValueEntry *entry;
-  for (auto const &config : config_vector) {
+  ComponentValueEntry* entry;
+  for (auto const& config : config_vector) {
     entry = exported_proto->add_configuration();
     EXPECT_TRUE(config->Export(entry).ok());
   }
@@ -231,7 +231,7 @@ TEST(ConfigTest, ProtoImport) {
   // Add the configuration entries to a map from name to ConfigBase. This is to
   // mimic a use case where a proto is read in for a software component and the
   // values are imported into its configuration entries (stored in a registry).
-  absl::btree_map<std::string, ConfigBase *> config_map;
+  absl::btree_map<std::string, ConfigBase*> config_map;
   config_map.insert(std::make_pair(bool_config.name(), &bool_config));
   config_map.insert(std::make_pair(int64_config.name(), &int64_config));
   config_map.insert(std::make_pair(uint64_config.name(), &uint64_config));
@@ -245,9 +245,9 @@ TEST(ConfigTest, ProtoImport) {
   // For each configuration entry, look up a config entry with a matching name
   // and import the proto value to the config.
   for (int index = 0; index < fromText.configuration_size(); index++) {
-    const ComponentValueEntry &entry = fromText.configuration(index);
+    const ComponentValueEntry& entry = fromText.configuration(index);
     if (entry.has_name() && config_map.contains(entry.name())) {
-      ConfigBase *config = config_map.at(entry.name());
+      ConfigBase* config = config_map.at(entry.name());
       EXPECT_TRUE(config->Import(&entry).ok());
     }
   }
@@ -268,7 +268,7 @@ TEST(ConfigTest, ImportFailNullProto) {
   Config<double> double_config(kDoubleConfigName);
   Config<std::string> string_config(kStringConfigName);
 
-  std::vector<ConfigBase *> config_vector;
+  std::vector<ConfigBase*> config_vector;
   config_vector.push_back(&bool_config);
   config_vector.push_back(&int64_config);
   config_vector.push_back(&uint64_config);
@@ -276,7 +276,7 @@ TEST(ConfigTest, ImportFailNullProto) {
   config_vector.push_back(&string_config);
 
   // Expect each import to fail with invalid argument.
-  for (auto *config : config_vector) {
+  for (auto* config : config_vector) {
     EXPECT_TRUE(absl::IsInvalidArgument(config->Import(nullptr)));
   }
 }
@@ -289,7 +289,7 @@ TEST(ConfigTest, ImportFailNoNameInProto) {
   Config<double> double_config(kDoubleConfigName);
   Config<std::string> string_config(kStringConfigName);
 
-  std::vector<ConfigBase *> config_vector;
+  std::vector<ConfigBase*> config_vector;
   config_vector.push_back(&bool_config);
   config_vector.push_back(&int64_config);
   config_vector.push_back(&uint64_config);
@@ -301,7 +301,7 @@ TEST(ConfigTest, ImportFailNoNameInProto) {
   EXPECT_TRUE(
       google::protobuf::TextFormat::ParseFromString(kProtoNoName, &fromText));
   // Expect each import to fail with internal error.
-  const ComponentValueEntry &entry = fromText.configuration(0);
+  const ComponentValueEntry& entry = fromText.configuration(0);
   for (int index = 0; index < fromText.configuration_size(); index++) {
     EXPECT_TRUE(absl::IsInternal(config_vector[index]->Import(&entry)));
   }
@@ -315,7 +315,7 @@ TEST(ConfigTest, ImportFailWrongNameInProto) {
   Config<double> double_config(kDoubleConfigName);
   Config<std::string> string_config(kStringConfigName);
 
-  std::vector<ConfigBase *> config_vector;
+  std::vector<ConfigBase*> config_vector;
   config_vector.push_back(&bool_config);
   config_vector.push_back(&int64_config);
   config_vector.push_back(&uint64_config);
@@ -329,7 +329,7 @@ TEST(ConfigTest, ImportFailWrongNameInProto) {
   // Expect each import to fail with internal error, as the proto message
   // passed in has a name that doesn't match the configuration entry.
   for (int index = 0; index < fromText.configuration_size(); index++) {
-    const ComponentValueEntry &entry = fromText.configuration(index);
+    const ComponentValueEntry& entry = fromText.configuration(index);
     EXPECT_TRUE(absl::IsInternal(config_vector[index]->Import(&entry)));
   }
 }
@@ -345,7 +345,7 @@ TEST(ConfigTest, ImportFailWrongValue) {
   // Add the configuration entries to a map from name to ConfigBase. This is to
   // mimic a use case where a proto is read in for a software component and the
   // values are imported into its configuration entries (stored in a registry).
-  absl::btree_map<std::string, ConfigBase *> config_map;
+  absl::btree_map<std::string, ConfigBase*> config_map;
   config_map.insert(std::make_pair(bool_config.name(), &bool_config));
   config_map.insert(std::make_pair(int64_config.name(), &int64_config));
   config_map.insert(std::make_pair(uint64_config.name(), &uint64_config));
@@ -361,9 +361,9 @@ TEST(ConfigTest, ImportFailWrongValue) {
   // mismatches to the type of the config entry they should all fail with
   // internal errors.
   for (int index = 0; index < fromText.configuration_size(); index++) {
-    const ComponentValueEntry &entry = fromText.configuration(index);
+    const ComponentValueEntry& entry = fromText.configuration(index);
     if (entry.has_name() && config_map.contains(entry.name())) {
-      ConfigBase *config = config_map.at(entry.name());
+      ConfigBase* config = config_map.at(entry.name());
       EXPECT_TRUE(absl::IsInternal(config->Import(&entry)));
     }
   }

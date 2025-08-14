@@ -48,8 +48,8 @@ template <typename T>
 class RegisterSourceOperand : public SourceOperandInterface {
  public:
   // Constructor. Note, default constructor deleted.
-  RegisterSourceOperand(RegisterBase *reg, std::string op_name);
-  explicit RegisterSourceOperand(RegisterBase *reg);
+  RegisterSourceOperand(RegisterBase* reg, std::string op_name);
+  explicit RegisterSourceOperand(RegisterBase* reg);
 
   RegisterSourceOperand() = delete;
 
@@ -72,14 +72,14 @@ class RegisterSourceOperand : public SourceOperandInterface {
   // Returns the RegisterBase object wrapped in absl::any.
   std::any GetObject() const override { return std::any(register_); }
   // Non-inherited method to get the register object.
-  RegisterBase *GetRegister() const { return register_; }
+  RegisterBase* GetRegister() const { return register_; }
   // Returns the shape of the register.
   std::vector<int> shape() const override;
 
   std::string AsString() const override { return op_name_; }
 
  private:
-  RegisterBase *register_;
+  RegisterBase* register_;
   std::string op_name_;
 };
 
@@ -89,23 +89,23 @@ template <typename T>
 class RegisterDestinationOperand : public DestinationOperandInterface {
  public:
   // Constructor and Destructor
-  RegisterDestinationOperand(RegisterBase *reg, int latency);
-  RegisterDestinationOperand(RegisterBase *reg, int latency,
+  RegisterDestinationOperand(RegisterBase* reg, int latency);
+  RegisterDestinationOperand(RegisterBase* reg, int latency,
                              std::string op_name);
   RegisterDestinationOperand() = delete;
 
   // Initializes the DataBuffer instance so that when Submit is called, it can
   // be entered into the correct delay line, with the correct latency, targeting
   // the correct register.
-  void InitializeDataBuffer(DataBuffer *db) override;
+  void InitializeDataBuffer(DataBuffer* db) override;
 
   // Allocates and returns an initialized DataBuffer instance that contains a
   // copy of the current value of the register. This is useful when only part
   // of the destination register will be modified.
-  DataBuffer *CopyDataBuffer() override;
+  DataBuffer* CopyDataBuffer() override;
 
   // Allocates and returns an initialized DataBuffer instance.
-  DataBuffer *AllocateDataBuffer() final;
+  DataBuffer* AllocateDataBuffer() final;
 
   // Returns the latency associated with writes to this register operand.
   int latency() const override { return latency_; }
@@ -113,7 +113,7 @@ class RegisterDestinationOperand : public DestinationOperandInterface {
   // Returns the RegisterBase object wrapped in absl::any.
   std::any GetObject() const override { return std::any(register_); }
   // Non-inherited method to get the register object.
-  RegisterBase *GetRegister() const { return register_; }
+  RegisterBase* GetRegister() const { return register_; }
 
   // Returns the shape of the underlying register (the number of elements in
   // each dimension). For instance {0} indicates a scalar quantity, whereas
@@ -123,10 +123,10 @@ class RegisterDestinationOperand : public DestinationOperandInterface {
   std::string AsString() const override { return op_name_; }
 
  private:
-  RegisterBase *register_;
-  DataBufferFactory *db_factory_;
+  RegisterBase* register_;
+  DataBufferFactory* db_factory_;
   int latency_;
-  DataBufferDelayLine *delay_line_;
+  DataBufferDelayLine* delay_line_;
   std::string op_name_;
 };
 
@@ -141,21 +141,21 @@ class RegisterBase : public StateItemBase {
   // protected section below.
   ~RegisterBase() override;
   RegisterBase() = delete;
-  RegisterBase(const RegisterBase &) = delete;
-  RegisterBase &operator=(const RegisterBase &) = delete;
+  RegisterBase(const RegisterBase&) = delete;
+  RegisterBase& operator=(const RegisterBase&) = delete;
 
   // DecRef's the current data buffer and replaces it with a new one.
-  void SetDataBuffer(DataBuffer *db) override;
+  void SetDataBuffer(DataBuffer* db) override;
   // Returns a pointer to the DataBuffer that contains the current value of
   // the register.
-  DataBuffer *data_buffer() const { return data_buffer_; }
+  DataBuffer* data_buffer() const { return data_buffer_; }
 
  protected:
-  RegisterBase(ArchState *state, absl::string_view name,
-               const std::vector<int> &shape, int unit_size);
+  RegisterBase(ArchState* state, absl::string_view name,
+               const std::vector<int>& shape, int unit_size);
 
  private:
-  DataBuffer *data_buffer_;
+  DataBuffer* data_buffer_;
   std::vector<UpdateCallbackFunction> next_update_callbacks_;
 };
 
@@ -165,24 +165,24 @@ class RegisterBase : public StateItemBase {
 class ReservedRegisterBase : public RegisterBase {
  public:
   ReservedRegisterBase() = delete;
-  ReservedRegisterBase(const ReservedRegisterBase &) = delete;
-  ReservedRegisterBase &operator=(const ReservedRegisterBase &) = delete;
+  ReservedRegisterBase(const ReservedRegisterBase&) = delete;
+  ReservedRegisterBase& operator=(const ReservedRegisterBase&) = delete;
 
   // Override the SetDataBuffer to release the SimpleResource instance when
   // called.
-  void SetDataBuffer(DataBuffer *db) override;
+  void SetDataBuffer(DataBuffer* db) override;
 
   // Accessor.
-  SimpleResource *resource() const { return resource_; }
+  SimpleResource* resource() const { return resource_; }
 
  protected:
-  ReservedRegisterBase(ArchState *state, absl::string_view name,
-                       const std::vector<int> &shape, int unit_size,
-                       SimpleResource *resource);
+  ReservedRegisterBase(ArchState* state, absl::string_view name,
+                       const std::vector<int>& shape, int unit_size,
+                       SimpleResource* resource);
 
  private:
   // SimpleResource instance associated with the register.
-  SimpleResource *resource_;
+  SimpleResource* resource_;
 };
 
 // Scalar register type with value type ElementType.
@@ -224,12 +224,12 @@ using ReservedMatrixRegister =
               RegisterDestinationOperand<ElementType>, M, N>;
 
 template <typename T>
-RegisterSourceOperand<T>::RegisterSourceOperand(RegisterBase *reg,
+RegisterSourceOperand<T>::RegisterSourceOperand(RegisterBase* reg,
                                                 const std::string op_name)
     : register_(reg), op_name_(op_name) {}
 
 template <typename T>
-RegisterSourceOperand<T>::RegisterSourceOperand(RegisterBase *reg)
+RegisterSourceOperand<T>::RegisterSourceOperand(RegisterBase* reg)
     : RegisterSourceOperand(reg, reg->name()) {}
 
 template <typename T>
@@ -279,7 +279,7 @@ std::vector<int> RegisterSourceOperand<T>::shape() const {
 }
 
 template <typename T>
-RegisterDestinationOperand<T>::RegisterDestinationOperand(RegisterBase *reg,
+RegisterDestinationOperand<T>::RegisterDestinationOperand(RegisterBase* reg,
                                                           int latency,
                                                           std::string op_name)
     : register_(reg),
@@ -289,27 +289,27 @@ RegisterDestinationOperand<T>::RegisterDestinationOperand(RegisterBase *reg,
       op_name_(op_name) {}
 
 template <typename T>
-RegisterDestinationOperand<T>::RegisterDestinationOperand(RegisterBase *reg,
+RegisterDestinationOperand<T>::RegisterDestinationOperand(RegisterBase* reg,
                                                           int latency)
     : RegisterDestinationOperand(reg, latency, reg->name()) {}
 
 template <typename T>
-void RegisterDestinationOperand<T>::InitializeDataBuffer(DataBuffer *db) {
+void RegisterDestinationOperand<T>::InitializeDataBuffer(DataBuffer* db) {
   db->set_destination(register_);
   db->set_latency(latency_);
   db->set_delay_line(delay_line_);
 }
 
 template <typename T>
-DataBuffer *RegisterDestinationOperand<T>::CopyDataBuffer() {
-  DataBuffer *db = db_factory_->MakeCopyOf(register_->data_buffer());
+DataBuffer* RegisterDestinationOperand<T>::CopyDataBuffer() {
+  DataBuffer* db = db_factory_->MakeCopyOf(register_->data_buffer());
   InitializeDataBuffer(db);
   return db;
 }
 
 template <typename T>
-DataBuffer *RegisterDestinationOperand<T>::AllocateDataBuffer() {
-  DataBuffer *db = db_factory_->Allocate(register_->size());
+DataBuffer* RegisterDestinationOperand<T>::AllocateDataBuffer() {
+  DataBuffer* db = db_factory_->Allocate(register_->size());
   InitializeDataBuffer(db);
   return db;
 }

@@ -16,7 +16,7 @@
 #include <ios>
 
 #include "absl/numeric/bits.h"
-#include "googlemock/include/gmock/gmock.h"
+#include "googlemock/include/gmock/gmock.h"  // IWYU pragma: keep
 #include "googletest/include/gtest/gtest.h"
 
 namespace {
@@ -26,7 +26,7 @@ namespace {
 // out to a source file as part of a code generator, so it is not included.
 
 template <typename T>
-static inline T ExtractBits(const uint8_t *data, int data_size, int msb,
+static inline T ExtractBits(const uint8_t* data, int data_size, int msb,
                             int width) {
   if (width == 0) return 0;
 

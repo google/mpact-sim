@@ -40,14 +40,14 @@ using ::mpact::sim::util::test::DummyMemory;
 TEST(MemoryRouterTest, AddInitiator) {
   auto memory_router = std::make_unique<MemoryRouter>();
   // Add initiator.
-  auto *memory_initiator0 = memory_router->AddMemoryInitiator("initiator0");
+  auto* memory_initiator0 = memory_router->AddMemoryInitiator("initiator0");
   // Try to add a second initiator with the same name.
-  auto *memory_initiator1 = memory_router->AddMemoryInitiator("initiator0");
+  auto* memory_initiator1 = memory_router->AddMemoryInitiator("initiator0");
   // They should be the same object.
   EXPECT_EQ(memory_initiator0, memory_initiator1);
 
   // Add tagged initiator by the same name - it should also be the same object.
-  auto *tagged_initiator = memory_router->AddTaggedInitiator("initiator0");
+  auto* tagged_initiator = memory_router->AddTaggedInitiator("initiator0");
   // Since the types are different, make sure that the pointers point to the
   // same area within the size of SingleInitiatorRouter.
   uint64_t p0 = reinterpret_cast<uint64_t>(memory_initiator0);
@@ -56,7 +56,7 @@ TEST(MemoryRouterTest, AddInitiator) {
               ((p1 >= p0) && (p1 < p0 + sizeof(SingleInitiatorRouter))));
 
   // Add atomic initiator by the same name - it should also be the same object.
-  auto *atomic_initiator = memory_router->AddAtomicInitiator("initiator0");
+  auto* atomic_initiator = memory_router->AddAtomicInitiator("initiator0");
   // Since the types are different, make sure that the pointers point to the
   // same area within the size of SingleInitiatorRouter.
   p0 = reinterpret_cast<uint64_t>(tagged_initiator);
@@ -71,37 +71,36 @@ TEST(MemoryRouterTest, AddTarget) {
   // Add memory target.
   EXPECT_TRUE(memory_router
                   ->AddTarget("memory_target",
-                              static_cast<MemoryInterface *>(memory.get()))
+                              static_cast<MemoryInterface*>(memory.get()))
                   .ok());
   // Try adding it again, for each interface. It should fail.
   EXPECT_FALSE(memory_router
                    ->AddTarget("memory_target",
-                               static_cast<MemoryInterface *>(memory.get()))
+                               static_cast<MemoryInterface*>(memory.get()))
                    .ok());
   EXPECT_FALSE(
       memory_router
           ->AddTarget("memory_target",
-                      static_cast<TaggedMemoryInterface *>(memory.get()))
+                      static_cast<TaggedMemoryInterface*>(memory.get()))
           .ok());
   EXPECT_FALSE(
       memory_router
           ->AddTarget("memory_target",
-                      static_cast<AtomicMemoryOpInterface *>(memory.get()))
+                      static_cast<AtomicMemoryOpInterface*>(memory.get()))
           .ok());
   // Add the memory target with different names. This should work.
   EXPECT_TRUE(memory_router
                   ->AddTarget("memory_target_2",
-                              static_cast<MemoryInterface *>(memory.get()))
+                              static_cast<MemoryInterface*>(memory.get()))
+                  .ok());
+  EXPECT_TRUE(memory_router
+                  ->AddTarget("tagged_target",
+                              static_cast<TaggedMemoryInterface*>(memory.get()))
                   .ok());
   EXPECT_TRUE(
       memory_router
-          ->AddTarget("tagged_target",
-                      static_cast<TaggedMemoryInterface *>(memory.get()))
-          .ok());
-  EXPECT_TRUE(
-      memory_router
           ->AddTarget("atomic_target",
-                      static_cast<AtomicMemoryOpInterface *>(memory.get()))
+                      static_cast<AtomicMemoryOpInterface*>(memory.get()))
           .ok());
 }
 
@@ -112,7 +111,7 @@ TEST(MemoryRouterTest, AddMapping) {
   (void)memory_router->AddMemoryInitiator("initiator");
   EXPECT_TRUE(
       memory_router
-          ->AddTarget("mem", static_cast<MemoryInterface *>(memory.get()))
+          ->AddTarget("mem", static_cast<MemoryInterface*>(memory.get()))
           .ok());
   EXPECT_TRUE(
       memory_router->AddMapping("initiator", "mem", 0x1000, 0x1fff).ok());
@@ -131,19 +130,19 @@ TEST(MemoryRouterTest, RoutingTest) {
   // Create a router with 2 initiators and 2 memory targets. With different
   // mappings for each initiator.
   DataBufferFactory factory;
-  auto *db = factory.Allocate<uint32_t>(1);
+  auto* db = factory.Allocate<uint32_t>(1);
   auto memory_router = std::make_unique<MemoryRouter>();
   auto memory0 = std::make_unique<DummyMemory>();
   auto memory1 = std::make_unique<DummyMemory>();
-  auto *initiator0 = memory_router->AddMemoryInitiator("initiator0");
-  auto *initiator1 = memory_router->AddMemoryInitiator("initiator1");
+  auto* initiator0 = memory_router->AddMemoryInitiator("initiator0");
+  auto* initiator1 = memory_router->AddMemoryInitiator("initiator1");
   EXPECT_TRUE(
       memory_router
-          ->AddTarget("mem0", static_cast<MemoryInterface *>(memory0.get()))
+          ->AddTarget("mem0", static_cast<MemoryInterface*>(memory0.get()))
           .ok());
   EXPECT_TRUE(
       memory_router
-          ->AddTarget("mem1", static_cast<MemoryInterface *>(memory1.get()))
+          ->AddTarget("mem1", static_cast<MemoryInterface*>(memory1.get()))
           .ok());
   EXPECT_TRUE(
       memory_router->AddMapping("initiator0", "mem0", 0x1000, 0x1fff).ok());

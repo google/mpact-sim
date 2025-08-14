@@ -15,6 +15,8 @@
 #ifndef MPACT_SIM_GENERIC_COMPLEX_RESOURCE_OPERAND_H_
 #define MPACT_SIM_GENERIC_COMPLEX_RESOURCE_OPERAND_H_
 
+#include <cstddef>
+#include <cstdint>
 #include <string>
 
 #include "absl/status/status.h"
@@ -32,7 +34,7 @@ namespace generic {
 class ComplexResourceOperand : public ResourceOperandInterface {
  public:
   ComplexResourceOperand() = delete;
-  explicit ComplexResourceOperand(ComplexResource *resource)
+  explicit ComplexResourceOperand(ComplexResource* resource)
       : resource_(resource) {}
 
   ~ComplexResourceOperand() override { delete[] bit_array_; }
@@ -62,8 +64,8 @@ class ComplexResourceOperand : public ResourceOperandInterface {
   }
 
  private:
-  ComplexResource *resource_ = nullptr;
-  uint64_t *bit_array_ = nullptr;
+  ComplexResource* resource_ = nullptr;
+  uint64_t* bit_array_ = nullptr;
   int span_size_ = 0;
 };
 

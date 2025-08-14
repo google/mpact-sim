@@ -16,13 +16,17 @@
 
 #include <vector>
 
+#include "absl/strings/string_view.h"
+#include "mpact/sim/generic/data_buffer.h"
+#include "mpact/sim/generic/register.h"
+
 namespace mpact {
 namespace sim {
 namespace generic {
 
 ControlRegisterBase::ControlRegisterBase(
-    ArchState *arch_state, absl::string_view name,
-    const std::vector<int> &shape, int element_size,
+    ArchState* arch_state, absl::string_view name,
+    const std::vector<int>& shape, int element_size,
     UpdateCallbackFunction on_update_callback)
     : RegisterBase(arch_state, name, shape, element_size),
       on_update_callback_(on_update_callback) {}
@@ -37,7 +41,7 @@ ControlRegisterBase::ControlRegisterBase(
 //   register->RegisterBase::SetDataBuffer(db);
 // }
 //
-void ControlRegisterBase::SetDataBuffer(DataBuffer *db) {
+void ControlRegisterBase::SetDataBuffer(DataBuffer* db) {
   on_update_callback_(this, db);
 }
 

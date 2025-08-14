@@ -72,8 +72,8 @@ class TaggedFlatDemandMemory : public TaggedMemoryInterface {
   ~TaggedFlatDemandMemory() override;
   // Disabled constructors and operator.
   TaggedFlatDemandMemory() = delete;
-  TaggedFlatDemandMemory(const TaggedFlatDemandMemory &) = delete;
-  TaggedFlatDemandMemory &operator=(const TaggedFlatDemandMemory &) = delete;
+  TaggedFlatDemandMemory(const TaggedFlatDemandMemory&) = delete;
+  TaggedFlatDemandMemory& operator=(const TaggedFlatDemandMemory&) = delete;
 
   // Methods inherited directly from TaggedMemoryInterface.
   // Single address load. Loads the data into data buffer 'db', and accompanying
@@ -81,54 +81,54 @@ class TaggedFlatDemandMemory : public TaggedMemoryInterface {
   // the size and the address have to be aligned to the tag granule for the
   // memory. Upon completion, and timed according to the latency of 'db', if
   // non-null, 'inst' is executed with context 'context'.
-  void Load(uint64_t address, generic::DataBuffer *db,
-            generic::DataBuffer *tags, generic::Instruction *inst,
-            generic::ReferenceCount *context) override;
-  void Store(uint64_t address, generic::DataBuffer *db,
-             generic::DataBuffer *tags) override;
+  void Load(uint64_t address, generic::DataBuffer* db,
+            generic::DataBuffer* tags, generic::Instruction* inst,
+            generic::ReferenceCount* context) override;
+  void Store(uint64_t address, generic::DataBuffer* db,
+             generic::DataBuffer* tags) override;
   // Methods inherited from MemoryInterface. These methods do not handle tags.
   // Loads are identical to FlatDemandMemory loads.
-  void Load(uint64_t address, generic::DataBuffer *db,
-            generic::Instruction *inst,
-            generic::ReferenceCount *context) override;
-  void Load(generic::DataBuffer *address_db, generic::DataBuffer *mask_db,
-            int el_size, generic::DataBuffer *db, Instruction *inst,
-            generic::ReferenceCount *context) override;
+  void Load(uint64_t address, generic::DataBuffer* db,
+            generic::Instruction* inst,
+            generic::ReferenceCount* context) override;
+  void Load(generic::DataBuffer* address_db, generic::DataBuffer* mask_db,
+            int el_size, generic::DataBuffer* db, Instruction* inst,
+            generic::ReferenceCount* context) override;
   // Convenience template function that calls the above function with the
   // element size as the sizeof() the template parameter type.
   template <typename T>
-  void Load(DataBuffer *address_db, DataBuffer *mask_db, DataBuffer *db,
-            Instruction *inst, ReferenceCount *context) {
+  void Load(DataBuffer* address_db, DataBuffer* mask_db, DataBuffer* db,
+            Instruction* inst, ReferenceCount* context) {
     Load(address_db, mask_db, sizeof(T), db, inst, context);
   }
   // Store methods inherited from MemoryInterface. These methods do not handle
   // tags. Instead, tags are cleared for any part of memory that is written to.
-  void Store(uint64_t address, DataBuffer *db) override;
-  void Store(generic::DataBuffer *address_db, generic::DataBuffer *mask_db,
-             int el_size, generic::DataBuffer *db) override;
+  void Store(uint64_t address, DataBuffer* db) override;
+  void Store(generic::DataBuffer* address_db, generic::DataBuffer* mask_db,
+             int el_size, generic::DataBuffer* db) override;
   // Convenience template function that calls the above function with the
   // element size as the sizeof() the template parameter type.
   template <typename T>
-  void Store(DataBuffer *address_db, DataBuffer *mask_db, DataBuffer *db) {
+  void Store(DataBuffer* address_db, DataBuffer* mask_db, DataBuffer* db) {
     Store(address_db, mask_db, sizeof(T), db);
   }
 
  private:
   // Check that the tagged load or store is properly aligned to the tag
   // granule, and that the number of tags provided is correct.
-  bool CheckRequest(uint64_t address, const generic::DataBuffer *db,
-                    const generic::DataBuffer *tags);
+  bool CheckRequest(uint64_t address, const generic::DataBuffer* db,
+                    const generic::DataBuffer* tags);
   // Complete the load
-  void FinishLoad(int latency, generic::Instruction *inst,
-                  generic::ReferenceCount *context);
+  void FinishLoad(int latency, generic::Instruction* inst,
+                  generic::ReferenceCount* context);
   // Clear the tags for the specified range of memory.
   void ClearTags(uint64_t address, unsigned size);
 
   unsigned tag_granule_;
   unsigned tag_granule_shift_;
-  FlatDemandMemory *data_memory_ = nullptr;
-  FlatDemandMemory *tag_memory_ = nullptr;
-  generic::DataBufferFactory *db_factory_ = nullptr;
+  FlatDemandMemory* data_memory_ = nullptr;
+  FlatDemandMemory* tag_memory_ = nullptr;
+  generic::DataBufferFactory* db_factory_ = nullptr;
 };
 
 }  // namespace util

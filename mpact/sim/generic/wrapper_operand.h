@@ -34,11 +34,11 @@ namespace generic {
 template <typename T>
 class WrapperSourceOperand : public SourceOperandInterface {
  public:
-  WrapperSourceOperand(T *value, const std::vector<int> &shape)
+  WrapperSourceOperand(T* value, const std::vector<int>& shape)
       : value_(value), shape_(shape) {}
   WrapperSourceOperand() = delete;
-  WrapperSourceOperand(const WrapperSourceOperand &) = delete;
-  WrapperSourceOperand &operator=(const WrapperSourceOperand &) = delete;
+  WrapperSourceOperand(const WrapperSourceOperand&) = delete;
+  WrapperSourceOperand& operator=(const WrapperSourceOperand&) = delete;
   bool AsBool(int index) override { return false; }
   int8_t AsInt8(int index) override { return 0; }
   uint8_t AsUint8(int index) override { return 0; }
@@ -57,7 +57,7 @@ class WrapperSourceOperand : public SourceOperandInterface {
   std::string AsString() const override { return value_->AsString(); }
 
  private:
-  T *value_;
+  T* value_;
   std::vector<int> shape_;
 };
 
@@ -67,17 +67,17 @@ class WrapperSourceOperand : public SourceOperandInterface {
 template <typename T>
 class WrapperDestinationOperand : public DestinationOperandInterface {
  public:
-  WrapperDestinationOperand(T *value, const std::vector<int> &shape)
+  WrapperDestinationOperand(T* value, const std::vector<int>& shape)
       : value_(value), shape_(shape) {}
   WrapperDestinationOperand() = delete;
-  WrapperDestinationOperand(const WrapperDestinationOperand &) = delete;
-  WrapperDestinationOperand &operator=(const WrapperDestinationOperand &) =
+  WrapperDestinationOperand(const WrapperDestinationOperand&) = delete;
+  WrapperDestinationOperand& operator=(const WrapperDestinationOperand&) =
       delete;
   ~WrapperDestinationOperand() override = default;
 
-  DataBuffer *AllocateDataBuffer() override { return nullptr; }
-  void InitializeDataBuffer(DataBuffer *db) override { /* Do nothing. */ }
-  DataBuffer *CopyDataBuffer() override { return nullptr; }
+  DataBuffer* AllocateDataBuffer() override { return nullptr; }
+  void InitializeDataBuffer(DataBuffer* db) override { /* Do nothing. */ }
+  DataBuffer* CopyDataBuffer() override { return nullptr; }
   int latency() const override { return 0; }
   // Return a pointer to the MR object.
   std::any GetObject() const override { return std::any(value_); }
@@ -87,7 +87,7 @@ class WrapperDestinationOperand : public DestinationOperandInterface {
   std::string AsString() const override { return value_->AsString(); }
 
  private:
-  T *value_;
+  T* value_;
   std::vector<int> shape_;
 };
 

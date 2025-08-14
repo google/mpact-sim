@@ -15,7 +15,7 @@
 #include "mpact/sim/decoder/format.h"
 
 #include "absl/status/status.h"
-#include "googlemock/include/gmock/gmock.h"
+#include "googlemock/include/gmock/gmock.h"  // IWYU pragma: keep
 #include "googletest/include/gtest/gtest.h"
 #include "mpact/sim/decoder/bin_encoding_info.h"
 #include "mpact/sim/decoder/decoder_error_listener.h"
@@ -52,12 +52,12 @@ class FormatTest : public testing::Test {
     delete encoding_info_;
   }
 
-  DecoderErrorListener *error_listener_;
-  BinEncodingInfo *encoding_info_;
+  DecoderErrorListener* error_listener_;
+  BinEncodingInfo* encoding_info_;
 };
 
 TEST_F(FormatTest, Constructor) {
-  auto *format = new Format("format_name", 16, encoding_info_);
+  auto* format = new Format("format_name", 16, encoding_info_);
   EXPECT_EQ(format->name(), "format_name");
   EXPECT_EQ(format->declared_width(), 16);
   EXPECT_EQ(format->computed_width(), 0);
@@ -77,7 +77,7 @@ TEST_F(FormatTest, Constructor) {
 }
 
 TEST_F(FormatTest, AddFields) {
-  auto *format = new Format("format", 16, encoding_info_);
+  auto* format = new Format("format", 16, encoding_info_);
   ASSERT_TRUE(format->AddField("func3", /*is_signed=*/false, 3).ok());
   ASSERT_TRUE(format->AddField("imm3", /*is_signed=*/false, 3).ok());
   ASSERT_TRUE(format->AddField("rs1p", /*is_signed=*/false, 3).ok());
@@ -86,8 +86,8 @@ TEST_F(FormatTest, AddFields) {
   ASSERT_TRUE(format->AddField("op", /*is_signed=*/false, 2).ok());
   ASSERT_TRUE(format->ComputeAndCheckFormatWidth().ok());
   EXPECT_EQ(format->declared_width(), format->computed_width());
-  for (auto &name : {"func3", "imm3", "rs1p", "imm2", "rdp", "op"}) {
-    auto *field = format->GetField(name);
+  for (auto& name : {"func3", "imm3", "rs1p", "imm2", "rdp", "op"}) {
+    auto* field = format->GetField(name);
     ASSERT_NE(field, nullptr);
     EXPECT_EQ(field->name, name);
   }
@@ -96,7 +96,7 @@ TEST_F(FormatTest, AddFields) {
 }
 
 TEST_F(FormatTest, AddOverlay) {
-  auto *format = new Format("format", 16, encoding_info_);
+  auto* format = new Format("format", 16, encoding_info_);
   ASSERT_TRUE(format->AddField("func3", /*is_signed=*/false, 3).ok());
   ASSERT_TRUE(format->AddField("imm3", /*is_signed=*/false, 3).ok());
   ASSERT_TRUE(format->AddField("rs1p", /*is_signed=*/false, 3).ok());

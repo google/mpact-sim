@@ -20,6 +20,7 @@
 #include <string>
 #include <vector>
 
+#include "absl/base/macros.h"
 #include "mpact/sim/generic/operand_interface.h"
 
 namespace mpact {
@@ -36,9 +37,9 @@ class ImmediateOperand : public SourceOperandInterface {
       : value_(val), shape_({1}), as_string_(absl::StrCat(val)) {}
   ImmediateOperand(T val, std::string as_string)
       : value_(val), shape_({1}), as_string_(as_string) {}
-  ImmediateOperand(T val, const std::vector<int> &shape)
+  ImmediateOperand(T val, const std::vector<int>& shape)
       : value_(val), shape_(shape), as_string_(absl::StrCat(val)) {}
-  ImmediateOperand(T val, const std::vector<int> &shape, std::string as_string)
+  ImmediateOperand(T val, const std::vector<int>& shape, std::string as_string)
       : value_(val), shape_(shape), as_string_(as_string) {}
 
   // Methods for accessing the immediate value. Always returns the same
@@ -83,7 +84,7 @@ class VectorImmediateOperand : public SourceOperandInterface {
   explicit VectorImmediateOperand(std::vector<T> val) : value_(val) {
     shape_.push_back(value_.size());
   }
-  VectorImmediateOperand(std::vector<T> val, const std::vector<int> &shape)
+  VectorImmediateOperand(std::vector<T> val, const std::vector<int>& shape)
       : value_(val), shape_(shape) {
     ABSL_HARDENING_ASSERT((shape.size() == 1) && (shape[0] == val.size()));
   }

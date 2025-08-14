@@ -17,7 +17,8 @@
 #include <cstdint>
 #include <memory>
 
-#include "googlemock/include/gmock/gmock.h"
+#include "absl/status/status.h"
+#include "googlemock/include/gmock/gmock.h"  // IWYU pragma: keep
 #include "googletest/include/gtest/gtest.h"
 #include "mpact/sim/generic/config.h"
 #include "mpact/sim/generic/counters.h"
@@ -116,15 +117,15 @@ class ComponentTest : public testing::Test {
         int64_config_(kInt64ConfigName, kInt64ConfigValue),
         uint64_config_(kUint64ConfigName, kUint64ConfigValue) {}
 
-  Component &top() { return top_; }
-  Component &child() { return child_; }
-  SimpleCounter<int64_t> &int64_counter() { return int64_counter_; }
-  SimpleCounter<uint64_t> &uint64_counter() { return uint64_counter_; }
-  SimpleCounter<uint64_t> &uninitialized_counter() {
+  Component& top() { return top_; }
+  Component& child() { return child_; }
+  SimpleCounter<int64_t>& int64_counter() { return int64_counter_; }
+  SimpleCounter<uint64_t>& uint64_counter() { return uint64_counter_; }
+  SimpleCounter<uint64_t>& uninitialized_counter() {
     return uninitialized_counter_;
   }
-  Config<int64_t> &int64_config() { return int64_config_; }
-  Config<uint64_t> &uint64_config() { return uint64_config_; }
+  Config<int64_t>& int64_config() { return int64_config_; }
+  Config<uint64_t>& uint64_config() { return uint64_config_; }
 
  private:
   Component top_;
@@ -157,9 +158,9 @@ TEST_F(ComponentTest, ChildComponent) {
 // Add counter objects to the two components. Ensure that the counters are
 // found in the expected component.
 TEST_F(ComponentTest, ComponentsWithCounters) {
-  auto *top_counter = &int64_counter();
-  auto *child_counter = &uint64_counter();
-  auto *uninit_counter = &uninitialized_counter();
+  auto* top_counter = &int64_counter();
+  auto* child_counter = &uint64_counter();
+  auto* uninit_counter = &uninitialized_counter();
 
   EXPECT_TRUE(top().AddCounter(top_counter).ok());
   EXPECT_TRUE(child().AddCounter(child_counter).ok());
@@ -174,8 +175,8 @@ TEST_F(ComponentTest, ComponentsWithCounters) {
 // Add config objects to the two components. Ensure that the config objects
 // are found in the expected component.
 TEST_F(ComponentTest, ComponentsWithConfigs) {
-  auto *top_config = &int64_config();
-  auto *child_config = &uint64_config();
+  auto* top_config = &int64_config();
+  auto* child_config = &uint64_config();
 
   EXPECT_TRUE(top().AddConfig(top_config).ok());
   EXPECT_TRUE(child().AddConfig(child_config).ok());
@@ -201,13 +202,13 @@ TEST_F(ComponentTest, ImportDoneCallback) {
 // then export the components to a proto, and verify the proto against the
 // expected value.
 TEST_F(ComponentTest, ExportTest) {
-  auto *top_config = &int64_config();
-  auto *child_config = &uint64_config();
+  auto* top_config = &int64_config();
+  auto* child_config = &uint64_config();
   EXPECT_TRUE(top().AddConfig(top_config).ok());
   EXPECT_TRUE(child().AddConfig(child_config).ok());
 
-  auto *top_counter = &int64_counter();
-  auto *child_counter = &uint64_counter();
+  auto* top_counter = &int64_counter();
+  auto* child_counter = &uint64_counter();
   EXPECT_TRUE(top().AddCounter(top_counter).ok());
   EXPECT_TRUE(child().AddCounter(child_counter).ok());
 
@@ -219,13 +220,13 @@ TEST_F(ComponentTest, ExportTest) {
 
 // Failed import due to missing top-level name.
 TEST_F(ComponentTest, ImportTestNameMissing) {
-  auto *top_config = &int64_config();
-  auto *child_config = &uint64_config();
+  auto* top_config = &int64_config();
+  auto* child_config = &uint64_config();
   EXPECT_TRUE(top().AddConfig(top_config).ok());
   EXPECT_TRUE(child().AddConfig(child_config).ok());
 
-  auto *top_counter = &int64_counter();
-  auto *child_counter = &uint64_counter();
+  auto* top_counter = &int64_counter();
+  auto* child_counter = &uint64_counter();
   EXPECT_TRUE(top().AddCounter(top_counter).ok());
   EXPECT_TRUE(child().AddCounter(child_counter).ok());
 
@@ -238,13 +239,13 @@ TEST_F(ComponentTest, ImportTestNameMissing) {
 
 // Failed import due to malformed component data.
 TEST_F(ComponentTest, ImportTestMalformed) {
-  auto *top_config = &int64_config();
-  auto *child_config = &uint64_config();
+  auto* top_config = &int64_config();
+  auto* child_config = &uint64_config();
   EXPECT_TRUE(top().AddConfig(top_config).ok());
   EXPECT_TRUE(child().AddConfig(child_config).ok());
 
-  auto *top_counter = &int64_counter();
-  auto *child_counter = &uint64_counter();
+  auto* top_counter = &int64_counter();
+  auto* child_counter = &uint64_counter();
   EXPECT_TRUE(top().AddCounter(top_counter).ok());
   EXPECT_TRUE(child().AddCounter(child_counter).ok());
 
@@ -257,13 +258,13 @@ TEST_F(ComponentTest, ImportTestMalformed) {
 
 // Failed import due to missing child name.
 TEST_F(ComponentTest, ImportTestChildNameMissing) {
-  auto *top_config = &int64_config();
-  auto *child_config = &uint64_config();
+  auto* top_config = &int64_config();
+  auto* child_config = &uint64_config();
   EXPECT_TRUE(top().AddConfig(top_config).ok());
   EXPECT_TRUE(child().AddConfig(child_config).ok());
 
-  auto *top_counter = &int64_counter();
-  auto *child_counter = &uint64_counter();
+  auto* top_counter = &int64_counter();
+  auto* child_counter = &uint64_counter();
   EXPECT_TRUE(top().AddCounter(top_counter).ok());
   EXPECT_TRUE(child().AddCounter(child_counter).ok());
 
@@ -276,13 +277,13 @@ TEST_F(ComponentTest, ImportTestChildNameMissing) {
 
 // Failed import due to top level name mismatch.
 TEST_F(ComponentTest, ImportTestNameMismatch) {
-  auto *top_config = &int64_config();
-  auto *child_config = &uint64_config();
+  auto* top_config = &int64_config();
+  auto* child_config = &uint64_config();
   EXPECT_TRUE(top().AddConfig(top_config).ok());
   EXPECT_TRUE(child().AddConfig(child_config).ok());
 
-  auto *top_counter = &int64_counter();
-  auto *child_counter = &uint64_counter();
+  auto* top_counter = &int64_counter();
+  auto* child_counter = &uint64_counter();
   EXPECT_TRUE(top().AddCounter(top_counter).ok());
   EXPECT_TRUE(child().AddCounter(child_counter).ok());
 
@@ -296,13 +297,13 @@ TEST_F(ComponentTest, ImportTestNameMismatch) {
 // Import a proto into the components. Verify that the value of config entries
 // are updated, but the counters are not.
 TEST_F(ComponentTest, ImportTest) {
-  auto *top_config = &int64_config();
-  auto *child_config = &uint64_config();
+  auto* top_config = &int64_config();
+  auto* child_config = &uint64_config();
   EXPECT_TRUE(top().AddConfig(top_config).ok());
   EXPECT_TRUE(child().AddConfig(child_config).ok());
 
-  auto *top_counter = &int64_counter();
-  auto *child_counter = &uint64_counter();
+  auto* top_counter = &int64_counter();
+  auto* child_counter = &uint64_counter();
   EXPECT_TRUE(top().AddCounter(top_counter).ok());
   EXPECT_TRUE(child().AddCounter(child_counter).ok());
 

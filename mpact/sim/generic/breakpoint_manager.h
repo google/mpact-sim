@@ -37,7 +37,7 @@ class BreakpointManager {
   // Define a function type to use for the breakpoint action to call for a halt.
   using RequestHaltFunction = absl::AnyInvocable<void()>;
 
-  BreakpointManager(ActionPointManagerBase *action_point_manager,
+  BreakpointManager(ActionPointManagerBase* action_point_manager,
                     RequestHaltFunction req_halt_function);
   ~BreakpointManager();
 
@@ -55,7 +55,7 @@ class BreakpointManager {
   bool IsBreakpoint(uint64_t address) const;
 
   // Accessor.
-  ActionPointManagerBase *action_point_manager() const {
+  ActionPointManagerBase* action_point_manager() const {
     return action_point_manager_;
   }
 
@@ -71,8 +71,8 @@ class BreakpointManager {
   RequestHaltFunction req_halt_function_;
   void DoBreakpointAction(uint64_t, int);
 
-  ActionPointManagerBase *action_point_manager_;
-  absl::btree_map<uint64_t, BreakpointInfo *> breakpoint_map_;
+  ActionPointManagerBase* action_point_manager_;
+  absl::btree_map<uint64_t, BreakpointInfo*> breakpoint_map_;
 };
 
 }  // namespace generic

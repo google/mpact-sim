@@ -38,12 +38,12 @@ namespace sim {
 namespace machine_description {
 namespace instruction_set {
 
-absl::btree_set<std::string> *InstructionSet::attribute_names_ = nullptr;
+absl::btree_set<std::string>* InstructionSet::attribute_names_ = nullptr;
 
-static void EmitEnumNames(const absl::btree_set<std::string> &names,
+static void EmitEnumNames(const absl::btree_set<std::string>& names,
                           absl::string_view namespace_name,
-                          absl::string_view op_name, std::string &h_output,
-                          std::string &cc_output) {
+                          absl::string_view op_name, std::string& h_output,
+                          std::string& cc_output) {
   // Emit array of enum names.
   absl::StrAppend(&cc_output, "const char *k", op_name,
                   "Names[static_cast<int>(", op_name,
@@ -53,7 +53,7 @@ static void EmitEnumNames(const absl::btree_set<std::string> &names,
   absl::StrAppend(&h_output, "namespace ", namespace_name,
                   " {\n"
                   "  constexpr char kNoneName[] = \"none\";\n");
-  for (auto const &name : names) {
+  for (auto const& name : names) {
     absl::StrAppend(&h_output, "  constexpr char k", name, "Name[] = \"", name,
                     "\";\n");
     absl::StrAppend(&cc_output, "  ", namespace_name, "::k", name, "Name,\n");
@@ -74,41 +74,41 @@ InstructionSet::InstructionSet(absl::string_view name)
 
 InstructionSet::~InstructionSet() {
   delete bundle_;
-  for (auto &[unused, bundle_ptr] : bundle_map_) {
+  for (auto& [unused, bundle_ptr] : bundle_map_) {
     delete bundle_ptr;
   }
-  for (auto &[unused, slot_ptr] : slot_map_) {
+  for (auto& [unused, slot_ptr] : slot_map_) {
     delete slot_ptr;
   }
   bundle_map_.clear();
   slot_map_.clear();
 }
 
-void InstructionSet::AddBundle(Bundle *bundle) {
+void InstructionSet::AddBundle(Bundle* bundle) {
   bundle_map_.insert({bundle->name(), bundle});
 }
 
-void InstructionSet::AddSlot(Slot *slot) {
+void InstructionSet::AddSlot(Slot* slot) {
   slot_map_.insert({slot->name(), slot});
 }
 
 // Lookup bundle and slot by name.
-Bundle *InstructionSet::GetBundle(absl::string_view bundle_name) const {
+Bundle* InstructionSet::GetBundle(absl::string_view bundle_name) const {
   auto iter = bundle_map_.find(bundle_name);
   if (iter == bundle_map_.end()) return nullptr;
   return iter->second;
 }
 
-Slot *InstructionSet::GetSlot(absl::string_view slot_name) const {
+Slot* InstructionSet::GetSlot(absl::string_view slot_name) const {
   auto iter = slot_map_.find(slot_name);
   if (iter == slot_map_.end()) return nullptr;
   return iter->second;
 }
 
 absl::Status InstructionSet::AnalyzeResourceUse() {
-  for (auto const *slot : slot_order_) {
-    for (auto &[unused, inst_ptr] : slot->instruction_map()) {
-      for (auto const *def : inst_ptr->resource_acquire_vec()) {
+  for (auto const* slot : slot_order_) {
+    for (auto& [unused, inst_ptr] : slot->instruction_map()) {
+      for (auto const* def : inst_ptr->resource_acquire_vec()) {
         if (def->begin_expression != nullptr) {
           auto result = def->begin_expression->GetValue();
           if (!result.ok()) return result.status();
@@ -128,38 +128,38 @@ absl::Status InstructionSet::AnalyzeResourceUse() {
 
 void InstructionSet::ComputeSlotAndBundleOrders() {
   // Compute order of slot definitions
-  for (auto const &[unused, slot_ptr] : slot_map_) {
+  for (auto const& [unused, slot_ptr] : slot_map_) {
     if (slot_ptr->is_marked()) continue;
     AddToSlotOrder(slot_ptr);
   }
 
   // Compute order of bundle definitions
-  for (auto const &[unused, bundle_ptr] : bundle_map_) {
+  for (auto const& [unused, bundle_ptr] : bundle_map_) {
     if (bundle_ptr->is_marked()) continue;
     AddToBundleOrder(bundle_ptr);
   }
 }
 
-void InstructionSet::AddToBundleOrder(Bundle *bundle) {
+void InstructionSet::AddToBundleOrder(Bundle* bundle) {
   if (bundle->is_marked()) return;
-  for (auto const &bundle_name : bundle->bundle_names()) {
-    Bundle *sub_bundle = bundle_map_[bundle_name];
+  for (auto const& bundle_name : bundle->bundle_names()) {
+    Bundle* sub_bundle = bundle_map_[bundle_name];
     AddToBundleOrder(sub_bundle);
   }
   bundle_order_.push_back(bundle);
   bundle->set_is_marked(true);
 }
 
-void InstructionSet::AddToSlotOrder(Slot *slot) {
+void InstructionSet::AddToSlotOrder(Slot* slot) {
   if (slot->is_marked()) return;
-  for (auto const &base_slot : slot->base_slots()) {
+  for (auto const& base_slot : slot->base_slots()) {
     AddToSlotOrder(slot_map_[base_slot.base->name()]);
   }
   slot->set_is_marked(true);
   slot_order_.push_back(slot);
 }
 
-void InstructionSet::AddAttributeName(const std::string &name) {
+void InstructionSet::AddAttributeName(const std::string& name) {
   if (attribute_names_ == nullptr) {
     attribute_names_ = new absl::btree_set<std::string>();
   }
@@ -302,11 +302,11 @@ std::string InstructionSet::GenerateClassDeclarations(
   std::string factory_class_name = pascal_name() + "InstructionSetFactory";
 
   absl::StrAppend(&output, "class ", factory_class_name, ";\n");
-  for (auto const *slot : slot_order_) {
+  for (auto const* slot : slot_order_) {
     absl::StrAppend(&output, slot->GenerateClassDeclaration(encoding_type));
   }
 
-  for (auto const *bundle : bundle_order_) {
+  for (auto const* bundle : bundle_order_) {
     absl::StrAppend(&output, bundle->GenerateClassDeclaration(encoding_type));
   }
   // Generate factory class.
@@ -352,11 +352,11 @@ std::string InstructionSet::GenerateClassDeclarations(
                   " *encoding);\n"
                   "\n"
                   " private:\n");
-  for (auto const &bundle_name : bundle_->bundle_names()) {
+  for (auto const& bundle_name : bundle_->bundle_names()) {
     absl::StrAppend(&output, "  std::unique_ptr<", ToPascalCase(bundle_name),
                     "Decoder> ", bundle_name, "_decoder_;\n");
   }
-  for (auto const &[slot_name, unused] : bundle_->slot_uses()) {
+  for (auto const& [slot_name, unused] : bundle_->slot_uses()) {
     absl::StrAppend(&output, "  std::unique_ptr<", ToPascalCase(slot_name),
                     "Slot> ", slot_name, "_decoder_;\n");
   }
@@ -374,7 +374,7 @@ std::string InstructionSet::GenerateClassDefinitions(
 
   std::string class_name = pascal_name() + "InstructionSet";
   std::string factory_class_name = class_name + "Factory";
-  for (auto *slot : slot_order_) {
+  for (auto* slot : slot_order_) {
     absl::StrAppend(&output, slot->GenerateClassDefinition(encoding_type));
   }
   // Constructor.
@@ -382,11 +382,11 @@ std::string InstructionSet::GenerateClassDefinitions(
                   "(ArchState *arch_state, ", factory_class_name,
                   "*factory) : \n"
                   "  arch_state_(arch_state) {\n");
-  for (auto const &bundle_name : bundle_->bundle_names()) {
+  for (auto const& bundle_name : bundle_->bundle_names()) {
     absl::StrAppend(&output, "  ", bundle_name, "_decoder_ = factory->Create",
                     ToPascalCase(bundle_name), "Decoder(arch_state_);\n");
   }
-  for (auto const &[slot_name, unused] : bundle_->slot_uses()) {
+  for (auto const& [slot_name, unused] : bundle_->slot_uses()) {
     absl::StrAppend(&output, "  ", slot_name, "_decoder_ = factory->Create",
                     ToPascalCase(slot_name), "Slot(arch_state_);\n");
   }
@@ -410,7 +410,7 @@ std::string InstructionSet::GenerateClassDefinitions(
     absl::StrAppend(&output,
                     "  inst = new Instruction(address, arch_state_);\n");
     // Generate calls to each of the top level bundle Decode methods.
-    for (auto const &bundle_name : bundle_->bundle_names()) {
+    for (auto const& bundle_name : bundle_->bundle_names()) {
       absl::StrAppend(&output, "  tmp_inst = ", bundle_name,
                       "_decoder_->Decode(address, encoding);\n"
                       "  inst->AppendChild(tmp_inst);\n"
@@ -420,7 +420,7 @@ std::string InstructionSet::GenerateClassDefinitions(
     }
   }
   // Generate calls to each of the top level slot Decode methods.
-  for (auto const &[slot_name, instance_vec] : bundle_->slot_uses()) {
+  for (auto const& [slot_name, instance_vec] : bundle_->slot_uses()) {
     std::string enum_name =
         absl::StrCat("SlotEnum::", "k", ToPascalCase(slot_name));
     if (instance_vec.empty()) {
@@ -473,14 +473,14 @@ InstructionSet::StringPair InstructionSet::GenerateEnums(
   absl::StrAppend(&h_output,
                   "  enum class SlotEnum {\n"
                   "    kNone = 0,\n");
-  absl::btree_map<std::string, const Slot *> slots_by_name;
-  for (auto const *slot : slot_order_) {
+  absl::btree_map<std::string, const Slot*> slots_by_name;
+  for (auto const* slot : slot_order_) {
     if (slot->is_referenced()) {
       std::string name = slot->pascal_name();
       slots_by_name.emplace(name, slot);
     }
   }
-  for (auto const &[name, unused] : slots_by_name) {
+  for (auto const& [name, unused] : slots_by_name) {
     absl::StrAppend(&h_output, "    k", name, ",\n");
   }
   absl::StrAppend(&h_output, "  };\n\n");
@@ -493,23 +493,23 @@ InstructionSet::StringPair InstructionSet::GenerateEnums(
   absl::btree_set<std::string> list_dest_operands;
   absl::btree_set<std::string> dest_latency;
   // Insert PascalCase operand names into the sets to select unique names.
-  for (auto const &[unused, slot] : slots_by_name) {
+  for (auto const& [unused, slot] : slots_by_name) {
     // Slot specific operands.
     absl::btree_set<std::string> slot_predicate_operands;
     absl::btree_set<std::string> slot_source_operands;
     absl::btree_set<std::string> slot_list_source_operands;
     absl::btree_set<std::string> slot_dest_operands;
     absl::btree_set<std::string> slot_list_dest_operands;
-    for (auto const &[unused, inst_ptr] : slot->instruction_map()) {
-      auto *inst = inst_ptr;
+    for (auto const& [unused, inst_ptr] : slot->instruction_map()) {
+      auto* inst = inst_ptr;
       while (inst != nullptr) {
-        auto *opcode = inst->opcode();
+        auto* opcode = inst->opcode();
         if (!opcode->predicate_op_name().empty()) {
           predicate_operands.insert(ToPascalCase(opcode->predicate_op_name()));
           slot_predicate_operands.insert(
               ToPascalCase(opcode->predicate_op_name()));
         }
-        for (auto const &source_op : opcode->source_op_vec()) {
+        for (auto const& source_op : opcode->source_op_vec()) {
           if (source_op.is_array) {
             list_source_operands.insert(ToPascalCase(source_op.name));
             slot_list_source_operands.insert(ToPascalCase(source_op.name));
@@ -518,7 +518,7 @@ InstructionSet::StringPair InstructionSet::GenerateEnums(
             slot_source_operands.insert(ToPascalCase(source_op.name));
           }
         }
-        for (auto const *dest_op : opcode->dest_op_vec()) {
+        for (auto const* dest_op : opcode->dest_op_vec()) {
           if (dest_op->is_array()) {
             list_dest_operands.insert(dest_op->pascal_case_name());
             slot_list_dest_operands.insert(dest_op->pascal_case_name());
@@ -539,7 +539,7 @@ InstructionSet::StringPair InstructionSet::GenerateEnums(
     absl::StrAppend(&h_output, "  enum class ", slot_name, "PredOpEnum {\n");
     int pred_count = 0;
     absl::StrAppend(&h_output, "    kNone = ", pred_count++, ",\n");
-    for (auto const &pred_name : slot_predicate_operands) {
+    for (auto const& pred_name : slot_predicate_operands) {
       pred_op_map_.insert({pred_name, pred_count});
       absl::StrAppend(&h_output, "    k", pred_name, " = ", pred_count++,
                       ",\n");
@@ -551,7 +551,7 @@ InstructionSet::StringPair InstructionSet::GenerateEnums(
     absl::StrAppend(&h_output, "  enum class ", slot_name, "SourceOpEnum {\n");
     int src_count = 0;
     absl::StrAppend(&h_output, "    kNone = ", src_count++, ",\n");
-    for (auto const &source_name : slot_source_operands) {
+    for (auto const& source_name : slot_source_operands) {
       source_op_map_.insert({source_name, src_count});
       absl::StrAppend(&h_output, "    k", source_name, " = ", src_count++,
                       ",\n");
@@ -564,7 +564,7 @@ InstructionSet::StringPair InstructionSet::GenerateEnums(
                     "ListSourceOpEnum {\n");
     int list_src_count = 0;
     absl::StrAppend(&h_output, "    kNone = ", list_src_count++, ",\n");
-    for (auto const &source_name : slot_list_source_operands) {
+    for (auto const& source_name : slot_list_source_operands) {
       list_source_op_map_.insert({source_name, list_src_count});
       absl::StrAppend(&h_output, "    k", source_name, " = ", list_src_count++,
                       ",\n");
@@ -576,7 +576,7 @@ InstructionSet::StringPair InstructionSet::GenerateEnums(
     absl::StrAppend(&h_output, "  enum class ", slot_name, "DestOpEnum {\n");
     int dst_count = 0;
     absl::StrAppend(&h_output, "    kNone = ", dst_count++, ",\n");
-    for (auto const &dest_name : slot_dest_operands) {
+    for (auto const& dest_name : slot_dest_operands) {
       dest_op_map_.insert({dest_name, dst_count});
       absl::StrAppend(&h_output, "    k", dest_name, " = ", dst_count++, ",\n");
     }
@@ -588,7 +588,7 @@ InstructionSet::StringPair InstructionSet::GenerateEnums(
                     "ListDestOpEnum {\n");
     int list_dst_count = 0;
     absl::StrAppend(&h_output, "    kNone = ", list_dst_count++, ",\n");
-    for (auto const &dest_name : slot_list_dest_operands) {
+    for (auto const& dest_name : slot_list_dest_operands) {
       list_dest_op_map_.insert({dest_name, list_dst_count});
       absl::StrAppend(&h_output, "    k", dest_name, " = ", list_dst_count++,
                       ",\n");
@@ -604,7 +604,7 @@ InstructionSet::StringPair InstructionSet::GenerateEnums(
   absl::StrAppend(&h_output, "  enum class PredOpEnum {\n");
   int pred_count = 0;
   absl::StrAppend(&h_output, "    kNone = ", pred_count++, ",\n");
-  for (auto const &pred_name : predicate_operands) {
+  for (auto const& pred_name : predicate_operands) {
     pred_op_map_.insert({pred_name, pred_count});
     absl::StrAppend(&h_output, "    k", pred_name, " = ", pred_count++, ",\n");
   }
@@ -615,7 +615,7 @@ InstructionSet::StringPair InstructionSet::GenerateEnums(
   absl::StrAppend(&h_output, "  enum class SourceOpEnum {\n");
   int src_count = 0;
   absl::StrAppend(&h_output, "    kNone = ", src_count++, ",\n");
-  for (auto const &source_name : source_operands) {
+  for (auto const& source_name : source_operands) {
     source_op_map_.insert({source_name, src_count});
     absl::StrAppend(&h_output, "    k", source_name, " = ", src_count++, ",\n");
   }
@@ -626,7 +626,7 @@ InstructionSet::StringPair InstructionSet::GenerateEnums(
   absl::StrAppend(&h_output, "  enum class ListSourceOpEnum {\n");
   int list_src_count = 0;
   absl::StrAppend(&h_output, "    kNone = ", list_src_count++, ",\n");
-  for (auto const &source_name : list_source_operands) {
+  for (auto const& source_name : list_source_operands) {
     list_source_op_map_.insert({source_name, list_src_count});
     absl::StrAppend(&h_output, "    k", source_name, " = ", list_src_count++,
                     ",\n");
@@ -638,7 +638,7 @@ InstructionSet::StringPair InstructionSet::GenerateEnums(
   absl::StrAppend(&h_output, "  enum class DestOpEnum {\n");
   int dst_count = 0;
   absl::StrAppend(&h_output, "    kNone = ", dst_count++, ",\n");
-  for (auto const &dest_name : dest_operands) {
+  for (auto const& dest_name : dest_operands) {
     dest_op_map_.insert({dest_name, dst_count});
     absl::StrAppend(&h_output, "    k", dest_name, " = ", dst_count++, ",\n");
   }
@@ -649,7 +649,7 @@ InstructionSet::StringPair InstructionSet::GenerateEnums(
   absl::StrAppend(&h_output, "  enum class ListDestOpEnum {\n");
   int list_dst_count = 0;
   absl::StrAppend(&h_output, "    kNone = ", list_dst_count++, ",\n");
-  for (auto const &dest_name : list_dest_operands) {
+  for (auto const& dest_name : list_dest_operands) {
     list_dest_op_map_.insert({dest_name, list_dst_count});
     absl::StrAppend(&h_output, "    k", dest_name, " = ", list_dst_count++,
                     ",\n");
@@ -662,11 +662,11 @@ InstructionSet::StringPair InstructionSet::GenerateEnums(
                   "  enum class OpcodeEnum {\n"
                   "    kNone = 0,\n");
   absl::btree_set<std::string> name_set;
-  for (auto const *opcode : opcode_factory_->opcode_vec()) {
+  for (auto const* opcode : opcode_factory_->opcode_vec()) {
     name_set.insert(opcode->pascal_name());
   }
   int opcode_value = 1;
-  for (auto const &name : name_set) {
+  for (auto const& name : name_set) {
     absl::StrAppend(&h_output, "    k", name, " = ", opcode_value++, ",\n");
   }
   absl::StrAppend(&h_output, "    kPastMaxValue = ", opcode_value, "\n");
@@ -687,7 +687,7 @@ InstructionSet::StringPair InstructionSet::GenerateEnums(
                   "OpcodeEnum::kPastMaxValue)] = {\n"
                   "  kNoneName,\n");
   absl::StrAppend(&h_output, "  constexpr char kNoneName[] = \"none\";\n");
-  for (auto const &name : name_set) {
+  for (auto const& name : name_set) {
     absl::StrAppend(&h_output, "  constexpr char k", name, "Name[] = \"", name,
                     "\";\n");
     absl::StrAppend(&cc_output, "  k", name, "Name,\n");
@@ -702,12 +702,12 @@ InstructionSet::StringPair InstructionSet::GenerateEnums(
                   "    kNone = 0,\n");
   int resource_count = 1;
   name_set.clear();
-  for (auto const &[unused, resource_ptr] : resource_factory_->resource_map()) {
+  for (auto const& [unused, resource_ptr] : resource_factory_->resource_map()) {
     if (resource_ptr->is_simple()) {
       name_set.insert(resource_ptr->pascal_name());
     }
   }
-  for (auto const &name : name_set) {
+  for (auto const& name : name_set) {
     absl::StrAppend(&h_output, "    k", name, " = ", resource_count++, ",\n");
   }
   absl::StrAppend(&h_output, "    kPastMaxValue = ", resource_count,
@@ -720,12 +720,12 @@ InstructionSet::StringPair InstructionSet::GenerateEnums(
                   "    kNone = 0,\n");
   resource_count = 1;
   name_set.clear();
-  for (auto const &[unused, resource_ptr] : resource_factory_->resource_map()) {
+  for (auto const& [unused, resource_ptr] : resource_factory_->resource_map()) {
     if (!resource_ptr->is_simple() && !resource_ptr->is_array()) {
       name_set.insert(resource_ptr->pascal_name());
     }
   }
-  for (auto const &name : name_set) {
+  for (auto const& name : name_set) {
     absl::StrAppend(&h_output, "    k", name, " = ", resource_count++, ",\n");
   }
   absl::StrAppend(&h_output, "    kPastMaxValue = ", resource_count,
@@ -738,12 +738,12 @@ InstructionSet::StringPair InstructionSet::GenerateEnums(
                   "    kNone = 0,\n");
   resource_count = 1;
   name_set.clear();
-  for (auto const &[unused, resource_ptr] : resource_factory_->resource_map()) {
+  for (auto const& [unused, resource_ptr] : resource_factory_->resource_map()) {
     if (!resource_ptr->is_simple() && resource_ptr->is_array()) {
       name_set.insert(resource_ptr->pascal_name());
     }
   }
-  for (auto const &name : name_set) {
+  for (auto const& name : name_set) {
     absl::StrAppend(&h_output, "    k", name, " = ", resource_count++, ",\n");
   }
   absl::StrAppend(&h_output, "    kPastMaxValue = ", resource_count,
@@ -754,7 +754,7 @@ InstructionSet::StringPair InstructionSet::GenerateEnums(
   absl::StrAppend(&h_output, "  enum class AttributeEnum {\n");
   int attribute_count = 0;
   if (InstructionSet::attribute_names_ != nullptr) {
-    for (auto const &name : *InstructionSet::attribute_names_) {
+    for (auto const& name : *InstructionSet::attribute_names_) {
       absl::StrAppend(&h_output, "    k", ToPascalCase(name), " = ",
                       attribute_count++, ",\n");
     }
@@ -766,8 +766,8 @@ InstructionSet::StringPair InstructionSet::GenerateEnums(
 }
 
 std::string InstructionSet::GenerateOperandEncoder(
-    int position, absl::string_view op_name, const OperandLocator &locator,
-    const Opcode *opcode) const {
+    int position, absl::string_view op_name, const OperandLocator& locator,
+    const Opcode* opcode) const {
   std::string output;
   switch (locator.type) {
     case OperandLocator::kPredicate: {
@@ -931,10 +931,10 @@ std::tuple<std::string, std::string> InstructionSet::GenerateEncClasses(
       "&, ResolverInterface *, std::vector<RelocationInfo> &);\n"
       "EncodeFcn encode_fcns[] = {\n"
       "  EncodeNone,\n");
-  for (auto &[name, inst_ptr] : instruction_map_) {
+  for (auto& [name, inst_ptr] : instruction_map_) {
     std::string prefix;
     std::string suffix;
-    auto *opcode = inst_ptr->opcode();
+    auto* opcode = inst_ptr->opcode();
     absl::StrAppend(&array, "  Encode", opcode->pascal_name(), ",\n");
     absl::StrAppend(&prefix, "absl::StatusOr<std::tuple<uint64_t, int>> Encode",
                     opcode->pascal_name(), "(\n     ", encoder,
@@ -951,8 +951,8 @@ std::tuple<std::string, std::string> InstructionSet::GenerateEncClasses(
                     "  auto [encoding, bit_size] = res_opcode.value();\n"
                     "  absl::StatusOr<uint64_t> result;\n");
     int position = 0;
-    for (auto const *disasm_format : inst_ptr->disasm_format_vec()) {
-      for (auto const *format_info : disasm_format->format_info_vec) {
+    for (auto const* disasm_format : inst_ptr->disasm_format_vec()) {
+      for (auto const* format_info : disasm_format->format_info_vec) {
         if (format_info->op_name.empty()) continue;
         auto iter = opcode->op_locator_map().find(format_info->op_name);
         if (iter == opcode->op_locator_map().end()) {
@@ -1001,7 +1001,7 @@ std::tuple<std::string, std::string> InstructionSet::GenerateEncClasses(
       "};\n\n");
 
   // Generate the regex matchers for each slot.
-  for (auto *slot : slot_order_) {
+  for (auto* slot : slot_order_) {
     if (!slot->is_referenced()) continue;
     auto [h_slot, cc_slot] = slot->GenerateAsmRegexMatcher();
     absl::StrAppend(&h_output, h_slot);

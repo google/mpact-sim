@@ -30,7 +30,7 @@ namespace generic {
 class SimpleResourceDelayRecord {
  public:
   SimpleResourceDelayRecord() = delete;
-  explicit SimpleResourceDelayRecord(SimpleResourceSet *resource_set)
+  explicit SimpleResourceDelayRecord(SimpleResourceSet* resource_set)
       : resource_set_(resource_set) {}
 
   ~SimpleResourceDelayRecord() = default;
@@ -38,7 +38,7 @@ class SimpleResourceDelayRecord {
   void Apply() { resource_set_->Release(); }
 
  private:
-  SimpleResourceSet *resource_set_;
+  SimpleResourceSet* resource_set_;
 };
 
 // Type def for the SimpleResourceDelayLine.
@@ -53,12 +53,12 @@ using SimpleResourceDelayLine = DelayLine<SimpleResourceDelayRecord>;
 class SimpleResourceOperand : public ResourceOperandInterface {
  public:
   // Constructors and Destructors. Default constructor deleted.
-  SimpleResourceOperand(SimpleResourceSet *resource_set, int latency,
-                        SimpleResourceDelayLine *delay_line)
+  SimpleResourceOperand(SimpleResourceSet* resource_set, int latency,
+                        SimpleResourceDelayLine* delay_line)
       : resource_set_(resource_set),
         latency_(latency),
         delay_line_(delay_line) {}
-  SimpleResourceOperand(SimpleResourceSet *resource_set, int latency)
+  SimpleResourceOperand(SimpleResourceSet* resource_set, int latency)
       : SimpleResourceOperand(resource_set, latency, nullptr) {}
   SimpleResourceOperand() = delete;
   ~SimpleResourceOperand() override = default;
@@ -87,20 +87,20 @@ class SimpleResourceOperand : public ResourceOperandInterface {
   std::string AsString() const override { return resource_set_->AsString(); }
 
   // Accessor.
-  void set_delay_line(SimpleResourceDelayLine *delay_line) {
+  void set_delay_line(SimpleResourceDelayLine* delay_line) {
     delay_line_ = delay_line;
   }
 
-  SimpleResourceSet *resource_set() const { return resource_set_; }
+  SimpleResourceSet* resource_set() const { return resource_set_; }
   int latency() const { return latency_; }
 
  private:
   // Pointer to the resource set that will be released.
-  SimpleResourceSet *resource_set_ = nullptr;
+  SimpleResourceSet* resource_set_ = nullptr;
   // Latency of the release. 0 = immediate, 1 = before next cycle, etc.
   int latency_;
   // Pointer to the delay line to be used.
-  SimpleResourceDelayLine *delay_line_;
+  SimpleResourceDelayLine* delay_line_;
 };
 
 }  // namespace generic

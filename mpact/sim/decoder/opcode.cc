@@ -37,7 +37,7 @@ Opcode::Opcode(absl::string_view name, int value)
     : name_(name), pascal_name_(ToPascalCase(name)), value_(value) {}
 
 Opcode::~Opcode() {
-  for (auto *dest_op : dest_op_vec_) {
+  for (auto* dest_op : dest_op_vec_) {
     delete dest_op;
   }
   dest_op_vec_.clear();
@@ -51,20 +51,20 @@ void Opcode::AppendSourceOp(absl::string_view op_name, bool is_array,
 
 void Opcode::AppendDestOp(absl::string_view op_name, bool is_array,
                           bool is_reloc) {
-  auto *op = new DestinationOperand(std::string(op_name), is_array, is_reloc);
+  auto* op = new DestinationOperand(std::string(op_name), is_array, is_reloc);
   dest_op_vec_.push_back(op);
   dest_op_map_.insert(std::make_pair(std::string(op_name), op));
 }
 
 void Opcode::AppendDestOp(absl::string_view op_name, bool is_array,
-                          bool is_reloc, TemplateExpression *expression) {
-  auto *op = new DestinationOperand(std::string(op_name), is_array, is_reloc,
+                          bool is_reloc, TemplateExpression* expression) {
+  auto* op = new DestinationOperand(std::string(op_name), is_array, is_reloc,
                                     expression);
   dest_op_vec_.push_back(op);
   dest_op_map_.insert(std::make_pair(std::string(op_name), op));
 }
 
-DestinationOperand *Opcode::GetDestOp(absl::string_view op_name) {
+DestinationOperand* Opcode::GetDestOp(absl::string_view op_name) {
   auto iter = dest_op_map_.find(op_name);
   if (iter != dest_op_map_.end()) return iter->second;
 
@@ -72,8 +72,8 @@ DestinationOperand *Opcode::GetDestOp(absl::string_view op_name) {
 }
 
 bool Opcode::ValidateDestLatencies(
-    const std::function<bool(int)> &validator) const {
-  for (auto const *dest_op : dest_op_vec_) {
+    const std::function<bool(int)>& validator) const {
+  for (auto const* dest_op : dest_op_vec_) {
     if (dest_op->expression() != nullptr) {
       auto result = dest_op->GetLatency();
       if (!result.ok()) return false;
@@ -83,9 +83,9 @@ bool Opcode::ValidateDestLatencies(
   return true;
 }
 
-Opcode *OpcodeFactory::CreateDefaultOpcode() { return new Opcode("", -1); }
+Opcode* OpcodeFactory::CreateDefaultOpcode() { return new Opcode("", -1); }
 
-absl::StatusOr<Opcode *> OpcodeFactory::CreateOpcode(absl::string_view name) {
+absl::StatusOr<Opcode*> OpcodeFactory::CreateOpcode(absl::string_view name) {
   if (opcode_names_.contains(name)) {
     return absl::InternalError(
         absl::StrCat("Opcode '", name, "' already declared"));
@@ -97,26 +97,26 @@ absl::StatusOr<Opcode *> OpcodeFactory::CreateOpcode(absl::string_view name) {
   return opcode;
 }
 
-Opcode *OpcodeFactory::CreateChildOpcode(Opcode *opcode) const {
+Opcode* OpcodeFactory::CreateChildOpcode(Opcode* opcode) const {
   if (opcode == nullptr) return nullptr;
-  auto *child = new Opcode(opcode->name(), -1);
+  auto* child = new Opcode(opcode->name(), -1);
   return child;
 }
 
-absl::StatusOr<Opcode *> OpcodeFactory::CreateDerivedOpcode(
-    const Opcode *opcode, TemplateInstantiationArgs *args) {
+absl::StatusOr<Opcode*> OpcodeFactory::CreateDerivedOpcode(
+    const Opcode* opcode, TemplateInstantiationArgs* args) {
   // Allocate a new opcode. Copy the basic information.
   auto new_opcode = new Opcode(opcode->name(), opcode->value());
   new_opcode->set_instruction_size(opcode->instruction_size());
   new_opcode->predicate_op_name_ = opcode->predicate_op_name();
   new_opcode->op_locator_map_ = opcode->op_locator_map();
-  for (auto const &src_op : opcode->source_op_vec()) {
+  for (auto const& src_op : opcode->source_op_vec()) {
     new_opcode->AppendSourceOp(src_op.name, src_op.is_array, src_op.is_reloc);
   }
 
   // Copy destination operands, but evaluate any latencies using the template
   // instantiation arguments, in case those expressions use them.
-  for (auto const *dest_op : opcode->dest_op_vec()) {
+  for (auto const* dest_op : opcode->dest_op_vec()) {
     if (dest_op->expression() == nullptr) {
       new_opcode->AppendDestOp(dest_op->name(), dest_op->is_array(),
                                dest_op->is_reloc());

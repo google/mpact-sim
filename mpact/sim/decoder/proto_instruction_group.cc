@@ -40,22 +40,22 @@ namespace proto_fmt {
 using ::mpact::sim::machine_description::instruction_set::ToPascalCase;
 
 ProtoInstructionGroup::ProtoInstructionGroup(
-    std::string group_name, const google::protobuf::Descriptor *message_type,
-    std::string opcode_enum, ProtoEncodingInfo *encoding_info)
+    std::string group_name, const google::protobuf::Descriptor* message_type,
+    std::string opcode_enum, ProtoEncodingInfo* encoding_info)
     : name_(group_name),
       message_type_(message_type),
       opcode_enum_(opcode_enum),
       encoding_info_(encoding_info) {}
 
 ProtoInstructionGroup::~ProtoInstructionGroup() {
-  for (auto *encoding : encodings_) {
+  for (auto* encoding : encodings_) {
     delete encoding;
   }
   encodings_.clear();
   delete encoding_group_;
   encoding_group_ = nullptr;
-  for (auto &[unused, setter_map] : setter_groups_) {
-    for (auto &[unused, setter_info] : setter_map) {
+  for (auto& [unused, setter_map] : setter_groups_) {
+    for (auto& [unused, setter_info] : setter_map) {
       delete setter_info;
     }
     setter_map.clear();
@@ -63,33 +63,33 @@ ProtoInstructionGroup::~ProtoInstructionGroup() {
   setter_groups_.clear();
 }
 
-ProtoInstructionEncoding *ProtoInstructionGroup::AddInstructionEncoding(
+ProtoInstructionEncoding* ProtoInstructionGroup::AddInstructionEncoding(
     std::string name) {
-  auto *encoding = new ProtoInstructionEncoding(name, this);
+  auto* encoding = new ProtoInstructionEncoding(name, this);
   encodings_.push_back(encoding);
   return encoding;
 }
 
 absl::StatusOr<
-    std::pair<absl::btree_map<std::string, SetterInfo *>::const_iterator,
-              absl::btree_map<std::string, SetterInfo *>::const_iterator>>
+    std::pair<absl::btree_map<std::string, SetterInfo*>::const_iterator,
+              absl::btree_map<std::string, SetterInfo*>::const_iterator>>
 ProtoInstructionGroup::GetSetterGroup(absl::string_view group) const {
   auto map_iter = setter_groups_.find(group);
   if (map_iter == setter_groups_.end()) {
     return absl::NotFoundError(absl::StrCat("No setter group '", group, "'."));
   }
-  return std::pair<absl::btree_map<std::string, SetterInfo *>::const_iterator,
-                   absl::btree_map<std::string, SetterInfo *>::const_iterator>{
+  return std::pair<absl::btree_map<std::string, SetterInfo*>::const_iterator,
+                   absl::btree_map<std::string, SetterInfo*>::const_iterator>{
       map_iter->second.begin(), map_iter->second.end()};
 }
 
 // Add a group level setter.
 absl::Status ProtoInstructionGroup::AddSetter(
-    const std::string &group_name, SetterDefCtx *ctx,
-    const std::string &setter_name,
-    const google::protobuf::FieldDescriptor *field_desc,
-    std::vector<const google::protobuf::FieldDescriptor *> one_of_fields,
-    IfNotCtx *if_not) {
+    const std::string& group_name, SetterDefCtx* ctx,
+    const std::string& setter_name,
+    const google::protobuf::FieldDescriptor* field_desc,
+    std::vector<const google::protobuf::FieldDescriptor*> one_of_fields,
+    IfNotCtx* if_not) {
   auto map_iter = setter_groups_.find(group_name);
   if (map_iter == setter_groups_.end()) {
     auto [iter, unused] = setter_groups_.insert({group_name, {}});
@@ -100,14 +100,14 @@ absl::Status ProtoInstructionGroup::AddSetter(
         absl::StrCat("Duplicate setter name '", setter_name,
                      "' in setter group '", group_name, "'."));
   }
-  auto *setter_info =
+  auto* setter_info =
       new SetterInfo({ctx, setter_name, field_desc, one_of_fields, if_not});
   map_iter->second.insert({setter_name, setter_info});
   return absl::OkStatus();
 }
 
 void ProtoInstructionGroup::CopyInstructionEncoding(
-    ProtoInstructionEncoding *encoding) {
+    ProtoInstructionEncoding* encoding) {
   if (encoding_name_set_.contains(encoding->name())) {
     encoding_info_->error_listener()->semanticWarning(
         nullptr, absl::StrCat("Duplicate instruction opcode name '",
@@ -118,11 +118,11 @@ void ProtoInstructionGroup::CopyInstructionEncoding(
 }
 
 void ProtoInstructionGroup::ProcessEncodings(
-    DecoderErrorListener *error_listener) {
+    DecoderErrorListener* error_listener) {
   // Create a new encoding group for this instruction group and add all the
   // encodings to it.
   encoding_group_ = new ProtoEncodingGroup(this, 0, error_listener);
-  for (auto *encoding : encodings_) {
+  for (auto* encoding : encodings_) {
     encoding_group_->AddEncoding(new ProtoInstructionEncoding(*encoding));
   }
   // Call the encoding group to break it into a proper decoding hierarchy.

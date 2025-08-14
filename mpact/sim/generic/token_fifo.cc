@@ -16,6 +16,12 @@
 
 #include <vector>
 
+#include "absl/status/status.h"
+#include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
+#include "mpact/sim/generic/arch_state.h"
+#include "mpact/sim/generic/data_buffer.h"
+
 namespace mpact {
 namespace sim {
 namespace generic {
@@ -38,9 +44,9 @@ absl::Status FifoTokenStore::Release() {
 }
 
 // Token fifo base method definitions.
-TokenFifoBase::TokenFifoBase(ArchState *arch_state, absl::string_view name,
-                             const std::vector<int> &shape, int element_size,
-                             unsigned capacity, FifoTokenStore *tokens)
+TokenFifoBase::TokenFifoBase(ArchState* arch_state, absl::string_view name,
+                             const std::vector<int>& shape, int element_size,
+                             unsigned capacity, FifoTokenStore* tokens)
     : FifoBase(arch_state, name, shape, element_size, capacity),
       token_store_(tokens) {}
 
@@ -54,7 +60,7 @@ bool TokenFifoBase::IsOverSubscribed() const {
   return Reserved() > token_store_->available();
 }
 
-bool TokenFifoBase::Push(DataBuffer *db) {
+bool TokenFifoBase::Push(DataBuffer* db) {
   if (token_store_->available() == 0) {
     if (nullptr != overflow_program_error()) {
       overflow_program_error()->Raise("Overflow in fifo " + name());

@@ -39,13 +39,13 @@ struct ProtoConstraint;
 class ProtoConstraintValueSet {
  public:
   struct SubRange {
-    const ProtoConstraintExpression *min = nullptr;
+    const ProtoConstraintExpression* min = nullptr;
     bool min_included;
-    const ProtoConstraintExpression *max = nullptr;
+    const ProtoConstraintExpression* max = nullptr;
     bool max_included;
     SubRange() = default;
-    SubRange(const ProtoConstraintExpression *min, bool min_included,
-             const ProtoConstraintExpression *max, bool max_included)
+    SubRange(const ProtoConstraintExpression* min, bool min_included,
+             const ProtoConstraintExpression* max, bool max_included)
         : min(min),
           min_included(min_included),
           max(max),
@@ -53,26 +53,26 @@ class ProtoConstraintValueSet {
   };
 
   ProtoConstraintValueSet() = default;
-  ProtoConstraintValueSet(const ProtoConstraintExpression *min,
+  ProtoConstraintValueSet(const ProtoConstraintExpression* min,
                           bool min_included,
-                          const ProtoConstraintExpression *max,
+                          const ProtoConstraintExpression* max,
                           bool max_included);
-  explicit ProtoConstraintValueSet(const ProtoConstraint *constraint);
-  explicit ProtoConstraintValueSet(const ProtoConstraint &constraint)
+  explicit ProtoConstraintValueSet(const ProtoConstraint* constraint);
+  explicit ProtoConstraintValueSet(const ProtoConstraint& constraint)
       : ProtoConstraintValueSet(&constraint) {}
-  ProtoConstraintValueSet(const ProtoConstraintValueSet &other);
+  ProtoConstraintValueSet(const ProtoConstraintValueSet& other);
   ~ProtoConstraintValueSet();
 
   // Intersect rhs with this, modifying this value set.
-  absl::Status IntersectWith(const ProtoConstraintValueSet &rhs);
+  absl::Status IntersectWith(const ProtoConstraintValueSet& rhs);
   // Simply add the sub ranges associated with rhs to this.
-  absl::Status UnionWith(const ProtoConstraintValueSet &rhs);
+  absl::Status UnionWith(const ProtoConstraintValueSet& rhs);
 
   bool IsEmpty() const;
 
   // Accessors.
-  const std::vector<SubRange> &subranges() const { return subranges_; }
-  const google::protobuf::FieldDescriptor *field_descriptor() const {
+  const std::vector<SubRange>& subranges() const { return subranges_; }
+  const google::protobuf::FieldDescriptor* field_descriptor() const {
     return field_descriptor_;
   }
 
@@ -80,15 +80,15 @@ class ProtoConstraintValueSet {
   // Private templated helper methods for intersection. The definitions are in
   // the .cc file.
   template <typename T>
-  SubRange IntersectSubrange(const SubRange &lhs_subrange,
-                             const SubRange &rhs_subrange) const;
+  SubRange IntersectSubrange(const SubRange& lhs_subrange,
+                             const SubRange& rhs_subrange) const;
   template <typename T>
-  void IntersectSubranges(const std::vector<SubRange> &lhs_subranges,
-                          const std::vector<SubRange> &rhs_subranges,
-                          std::vector<SubRange> &new_subranges) const;
+  void IntersectSubranges(const std::vector<SubRange>& lhs_subranges,
+                          const std::vector<SubRange>& rhs_subranges,
+                          std::vector<SubRange>& new_subranges) const;
   // The range consists of a union of a number of subranges.
   std::vector<SubRange> subranges_;
-  const google::protobuf::FieldDescriptor *field_descriptor_ = nullptr;
+  const google::protobuf::FieldDescriptor* field_descriptor_ = nullptr;
 };
 
 }  // namespace proto_fmt

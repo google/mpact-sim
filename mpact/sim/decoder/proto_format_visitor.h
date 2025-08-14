@@ -71,15 +71,15 @@ class ProtoFormatVisitor {
   //   proto_dirs: vector of directories from which to resolve proto files.
   //   proto_files: vector of .proto files to import.
   //   directory: target directory to generate the C++ files in.
-  absl::Status Process(const std::vector<std::string> &file_names,
-                       const std::string &decoder_name, std::string_view prefix,
-                       const std::vector<std::string> &include_roots,
-                       const std::vector<std::string> &proto_dirs,
-                       const std::vector<std::string> &proto_files,
+  absl::Status Process(const std::vector<std::string>& file_names,
+                       const std::string& decoder_name, std::string_view prefix,
+                       const std::vector<std::string>& include_roots,
+                       const std::vector<std::string>& proto_dirs,
+                       const std::vector<std::string>& proto_files,
                        std::string_view directory);
 
   // Accessors for the error listener.
-  decoder::DecoderErrorListener *error_listener() const {
+  decoder::DecoderErrorListener* error_listener() const {
     return error_listener_.get();
   }
   void set_error_listener(
@@ -101,94 +101,92 @@ class ProtoFormatVisitor {
   // Get the field descriptor for the named field from the message type while
   // building up a vector of one_of_fields that are on the path from the top
   // level message to the field.
-  const google::protobuf::FieldDescriptor *GetField(
-      const std::string &field_name,
-      const google::protobuf::Descriptor *message_type,
-      std::vector<const google::protobuf::FieldDescriptor *> &one_of_fields)
+  const google::protobuf::FieldDescriptor* GetField(
+      const std::string& field_name,
+      const google::protobuf::Descriptor* message_type,
+      std::vector<const google::protobuf::FieldDescriptor*>& one_of_fields)
       const;
   // Get the descriptor for the named enumeration member.
-  const google::protobuf::EnumValueDescriptor *GetEnumValueDescriptor(
-      const std::string &full_name) const;
+  const google::protobuf::EnumValueDescriptor* GetEnumValueDescriptor(
+      const std::string& full_name) const;
   // Get the numeric value of the named enumeration member.
-  absl::StatusOr<int> GetEnumValue(const std::string &enum_name) const;
+  absl::StatusOr<int> GetEnumValue(const std::string& enum_name) const;
   // Helpful template function used to find a descriptor by name.
   template <typename T>
-  const T *FindByName(
-      const std::string &message_name, const std::string &name,
-      std::function<const T *(const std::string &)> finder) const;
+  const T* FindByName(const std::string& message_name, const std::string& name,
+                      std::function<const T*(const std::string&)> finder) const;
   // Visit the parse tree to catalog the different declarations.
-  void PreProcessDeclarations(
-      const std::vector<DeclarationCtx *> &declarations);
+  void PreProcessDeclarations(const std::vector<DeclarationCtx*>& declarations);
   // Process an include file declaration.
-  void VisitIncludeFile(IncludeFileCtx *ctx);
+  void VisitIncludeFile(IncludeFileCtx* ctx);
   // Parse an included file.
-  void ParseIncludeFile(antlr4::ParserRuleContext *ctx,
-                        const std::string &file_name,
-                        const std::vector<std::string> &dirs);
+  void ParseIncludeFile(antlr4::ParserRuleContext* ctx,
+                        const std::string& file_name,
+                        const std::vector<std::string>& dirs);
   // Creates the top level data structures and visits the declarations that
   // are necessary to generate the instruction decoder.
   std::unique_ptr<ProtoEncodingInfo> ProcessTopLevel(
-      const std::string &decoder_name);
+      const std::string& decoder_name);
   // The following methods visit specific nodes in the parse tree.
-  ProtoInstructionGroup *VisitInstructionGroupDef(
-      InstructionGroupDefCtx *ctx, ProtoEncodingInfo *encoding_info);
-  void VisitInstructionDef(InstructionDefCtx *ctx,
-                           ProtoInstructionGroup *inst_group,
-                           ProtoEncodingInfo *encoding_info);
-  void VisitFieldConstraint(FieldConstraintCtx *ctx,
-                            ProtoInstructionEncoding *inst_encoding,
-                            const ProtoInstructionGroup *inst_group);
-  ProtoConstraintExpression *VisitConstraintExpression(
-      ConstraintExprCtx *ctx,
-      const google::protobuf::FieldDescriptor *field_desc,
-      const ProtoInstructionGroup *inst_group);
-  ProtoConstraintExpression *VisitValue(ValueCtx *ctx);
-  ProtoConstraintExpression *VisitNumber(NumberCtx *ctx);
-  ProtoConstraintExpression *VisitQualifiedIdent(
-      QualifiedIdentCtx *ctx,
-      const google::protobuf::FieldDescriptor *field_desc,
-      const ProtoInstructionGroup *inst_group);
-  void VisitSetterGroupDef(SetterGroupDefCtx *ctx,
-                           ProtoInstructionGroup *inst_group,
-                           ProtoEncodingInfo *encoding_info);
-  void VisitSetterDef(SetterDefCtx *ctx,
-                      ProtoInstructionEncoding *inst_encoding,
-                      ProtoInstructionGroup *inst_group,
-                      ProtoEncodingInfo *encoding_info);
-  void VisitSetterRef(SetterRefCtx *ctx,
-                      ProtoInstructionEncoding *inst_encoding,
-                      ProtoInstructionGroup *inst_group,
-                      ProtoEncodingInfo *encoding_info);
-  std::unique_ptr<ProtoEncodingInfo> VisitDecoderDef(DecoderDefCtx *ctx);
+  ProtoInstructionGroup* VisitInstructionGroupDef(
+      InstructionGroupDefCtx* ctx, ProtoEncodingInfo* encoding_info);
+  void VisitInstructionDef(InstructionDefCtx* ctx,
+                           ProtoInstructionGroup* inst_group,
+                           ProtoEncodingInfo* encoding_info);
+  void VisitFieldConstraint(FieldConstraintCtx* ctx,
+                            ProtoInstructionEncoding* inst_encoding,
+                            const ProtoInstructionGroup* inst_group);
+  ProtoConstraintExpression* VisitConstraintExpression(
+      ConstraintExprCtx* ctx,
+      const google::protobuf::FieldDescriptor* field_desc,
+      const ProtoInstructionGroup* inst_group);
+  ProtoConstraintExpression* VisitValue(ValueCtx* ctx);
+  ProtoConstraintExpression* VisitNumber(NumberCtx* ctx);
+  ProtoConstraintExpression* VisitQualifiedIdent(
+      QualifiedIdentCtx* ctx,
+      const google::protobuf::FieldDescriptor* field_desc,
+      const ProtoInstructionGroup* inst_group);
+  void VisitSetterGroupDef(SetterGroupDefCtx* ctx,
+                           ProtoInstructionGroup* inst_group,
+                           ProtoEncodingInfo* encoding_info);
+  void VisitSetterDef(SetterDefCtx* ctx,
+                      ProtoInstructionEncoding* inst_encoding,
+                      ProtoInstructionGroup* inst_group,
+                      ProtoEncodingInfo* encoding_info);
+  void VisitSetterRef(SetterRefCtx* ctx,
+                      ProtoInstructionEncoding* inst_encoding,
+                      ProtoInstructionGroup* inst_group,
+                      ProtoEncodingInfo* encoding_info);
+  std::unique_ptr<ProtoEncodingInfo> VisitDecoderDef(DecoderDefCtx* ctx);
   // Process and generate instruction definitions from a generate statement.
-  void ProcessInstructionDefGenerator(InstructionDefCtx *ctx,
-                                      ProtoInstructionGroup *inst_group,
-                                      ProtoEncodingInfo *encoding_info);
+  void ProcessInstructionDefGenerator(InstructionDefCtx* ctx,
+                                      ProtoInstructionGroup* inst_group,
+                                      ProtoEncodingInfo* encoding_info);
   std::string GenerateInstructionDefList(
-      const std::vector<RangeAssignmentInfo *> &range_info_vec, int index,
-      const std::string &template_str_in) const;
+      const std::vector<RangeAssignmentInfo*>& range_info_vec, int index,
+      const std::string& template_str_in) const;
   // Process instruction groups.
-  void ProcessSingleGroup(DecoderAttributeCtx *attr_ctx,
-                          ProtoEncodingInfo *encoding_info,
-                          absl::flat_hash_set<std::string> &group_name_set);
-  void ProcessParentGroup(DecoderAttributeCtx *attr_ctx,
-                          ProtoEncodingInfo *encoding_info,
-                          absl::flat_hash_set<std::string> &group_name_set);
+  void ProcessSingleGroup(DecoderAttributeCtx* attr_ctx,
+                          ProtoEncodingInfo* encoding_info,
+                          absl::flat_hash_set<std::string>& group_name_set);
+  void ProcessParentGroup(DecoderAttributeCtx* attr_ctx,
+                          ProtoEncodingInfo* encoding_info,
+                          absl::flat_hash_set<std::string>& group_name_set);
 
   // Called to generate and emit code for the decoder according to the parsed
   // input file.
-  StringPair EmitCode(ProtoEncodingInfo *encoding_info);
+  StringPair EmitCode(ProtoEncodingInfo* encoding_info);
 
   // Finders used to find specific object types from the proto2 pool.
-  using FieldFinder = std::function<const google::protobuf::FieldDescriptor *(
-      const std::string &)>;
+  using FieldFinder = std::function<const google::protobuf::FieldDescriptor*(
+      const std::string&)>;
   using MessageFinder =
-      std::function<const google::protobuf::Descriptor *(const std::string &)>;
-  using EnumTypeFinder = std::function<const google::protobuf::EnumDescriptor *(
-      const std::string &)>;
+      std::function<const google::protobuf::Descriptor*(const std::string&)>;
+  using EnumTypeFinder = std::function<const google::protobuf::EnumDescriptor*(
+      const std::string&)>;
   using EnumValueFinder =
-      std::function<const google::protobuf::EnumValueDescriptor *(
-          const std::string &)>;
+      std::function<const google::protobuf::EnumValueDescriptor*(
+          const std::string&)>;
 
   FieldFinder field_finder_;
   MessageFinder message_finder_;
@@ -203,16 +201,16 @@ class ProtoFormatVisitor {
   std::unique_ptr<decoder::DecoderErrorListener> error_listener_ = nullptr;
   std::string decoder_name_;
   // Descriptor pool.
-  const google::protobuf::DescriptorPool *descriptor_pool_;
-  absl::flat_hash_map<std::string, const google::protobuf::FileDescriptor *>
+  const google::protobuf::DescriptorPool* descriptor_pool_;
+  absl::flat_hash_map<std::string, const google::protobuf::FileDescriptor*>
       file_descriptor_map_;
   // Using decl map.
   absl::flat_hash_map<std::string, std::string> using_decl_map_;
   // Maps from identifiers to declaration contexts.
-  absl::flat_hash_map<std::string, InstructionGroupDefCtx *> group_decl_map_;
-  absl::flat_hash_map<std::string, DecoderDefCtx *> decoder_decl_map_;
+  absl::flat_hash_map<std::string, InstructionGroupDefCtx*> group_decl_map_;
+  absl::flat_hash_map<std::string, DecoderDefCtx*> decoder_decl_map_;
   // AntlrParserWrapper vector.
-  std::vector<ProtoFmtAntlrParserWrapper *> antlr_parser_wrappers_;
+  std::vector<ProtoFmtAntlrParserWrapper*> antlr_parser_wrappers_;
 };
 
 }  // namespace proto_fmt

@@ -15,9 +15,13 @@
 #include "mpact/sim/generic/complex_resource.h"
 
 #include <algorithm>
+#include <cstddef>
+#include <cstdint>
+#include <cstring>
 #include <string>
 
-#include "absl/status/status.h"
+#include "absl/types/span.h"
+#include "mpact/sim/generic/arch_state.h"
 
 namespace mpact {
 namespace sim {
@@ -26,7 +30,7 @@ namespace generic {
 constexpr size_t kNumBitsPerWord = sizeof(uint64_t) * 8;
 constexpr size_t kLowBitMask = kNumBitsPerWord - 1;
 
-ComplexResource::ComplexResource(ArchState *state, std::string name,
+ComplexResource::ComplexResource(ArchState* state, std::string name,
                                  size_t cycle_depth)
     : state_(state), name_(name), cycle_depth_(cycle_depth) {
   array_size_ = (cycle_depth_ + kNumBitsPerWord - 1) / kNumBitsPerWord;

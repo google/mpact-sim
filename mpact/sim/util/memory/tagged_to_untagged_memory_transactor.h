@@ -39,23 +39,23 @@ using ::mpact::sim::util::TaggedMemoryInterface;
 // on loads.
 class TaggedToUntaggedMemoryTransactor : public util::TaggedMemoryInterface {
  public:
-  explicit TaggedToUntaggedMemoryTransactor(MemoryInterface *target_mem)
+  explicit TaggedToUntaggedMemoryTransactor(MemoryInterface* target_mem)
       : target_mem_(target_mem) {}
 
-  void Load(uint64_t address, DataBuffer *db, Instruction *inst,
-            ReferenceCount *context) override;
-  void Load(DataBuffer *address_db, DataBuffer *mask_db, int el_size,
-            DataBuffer *db, Instruction *inst,
-            ReferenceCount *context) override;
-  void Store(uint64_t address, DataBuffer *db) override;
-  void Store(DataBuffer *address, DataBuffer *mask, int el_size,
-             DataBuffer *db) override;
-  void Load(uint64_t address, DataBuffer *db, DataBuffer *tags,
-            Instruction *inst, ReferenceCount *context) override;
-  void Store(uint64_t address, DataBuffer *db, DataBuffer *tags) override;
+  void Load(uint64_t address, DataBuffer* db, Instruction* inst,
+            ReferenceCount* context) override;
+  void Load(DataBuffer* address_db, DataBuffer* mask_db, int el_size,
+            DataBuffer* db, Instruction* inst,
+            ReferenceCount* context) override;
+  void Store(uint64_t address, DataBuffer* db) override;
+  void Store(DataBuffer* address, DataBuffer* mask, int el_size,
+             DataBuffer* db) override;
+  void Load(uint64_t address, DataBuffer* db, DataBuffer* tags,
+            Instruction* inst, ReferenceCount* context) override;
+  void Store(uint64_t address, DataBuffer* db, DataBuffer* tags) override;
 
  private:
-  MemoryInterface *target_mem_;
+  MemoryInterface* target_mem_;
 };
 
 }  // namespace util

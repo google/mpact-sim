@@ -38,15 +38,15 @@ class InstructionSet;
 class Bundle {
  public:
   // Constructor and destructor.
-  Bundle(absl::string_view name, InstructionSet *instruction_set,
-         BundleDeclCtx *ctx);
+  Bundle(absl::string_view name, InstructionSet* instruction_set,
+         BundleDeclCtx* ctx);
   virtual ~Bundle() = default;
 
   // Append a slot to the bundle. In case the slot has multiple instances,
   // a non-empty vector of instance numbers specify which slot instances are
   // part of this bundle.
   void AppendSlot(absl::string_view slot_name,
-                  const std::vector<int> &instance_vec);
+                  const std::vector<int>& instance_vec);
   // Append a sub bundle to this bundle.
   void AppendBundleName(absl::string_view bundle_name);
   // Return string for  bundle class declaration.
@@ -55,15 +55,15 @@ class Bundle {
   std::string GenerateClassDefinition(absl::string_view encoding_type) const;
 
   // Getters and setters.
-  const BundleDeclCtx *ctx() const { return ctx_; }
-  const std::string &name() const { return name_; }
-  const std::string &pascal_name() const { return pascal_name_; }
-  const std::vector<std::pair<std::string, const std::vector<int>>> &slot_uses()
+  const BundleDeclCtx* ctx() const { return ctx_; }
+  const std::string& name() const { return name_; }
+  const std::string& pascal_name() const { return pascal_name_; }
+  const std::vector<std::pair<std::string, const std::vector<int>>>& slot_uses()
       const {
     return slot_uses_;
   }
-  const std::vector<std::string> &bundle_names() const { return bundle_names_; }
-  InstructionSet *instruction_set() const { return instruction_set_; }
+  const std::vector<std::string>& bundle_names() const { return bundle_names_; }
+  InstructionSet* instruction_set() const { return instruction_set_; }
   bool is_marked() const { return is_marked_; }
   void set_is_marked(bool value) { is_marked_ = value; }
   std::string semfunc_code_string() const { return semfunc_code_string_; }
@@ -72,11 +72,11 @@ class Bundle {
   }
 
  private:
-  BundleDeclCtx *ctx_;
+  BundleDeclCtx* ctx_;
   // The is_marked flag is used to ensure bundle classes are only added once.
   bool is_marked_ = false;
   // Parent instruction set.
-  InstructionSet *instruction_set_;
+  InstructionSet* instruction_set_;
   std::string name_;
   // Name in PascalCase.
   std::string pascal_name_;

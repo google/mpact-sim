@@ -14,6 +14,7 @@
 
 #include "mpact/sim/generic/data_buffer.h"
 
+#include <cstddef>
 #include <cstdint>
 #include <vector>
 
@@ -32,17 +33,17 @@ class DataBufferTest : public testing::Test {
 
   ~DataBufferTest() override { delete db_factory_; }
 
-  DataBufferFactory *db_factory_;
+  DataBufferFactory* db_factory_;
 };
 
 // Test that DataBufferFactory allocates the right sizes.
 TEST_F(DataBufferTest, DataBufferFactoryAllocate) {
-  DataBuffer *db8_1 = db_factory_->Allocate<uint32_t>(8);
+  DataBuffer* db8_1 = db_factory_->Allocate<uint32_t>(8);
   EXPECT_EQ(db8_1->size<uint32_t>(), 8);
   EXPECT_EQ(db8_1->size<uint8_t>(), 32);
   EXPECT_EQ(db8_1->ref_count(), 1);
 
-  DataBuffer *db4_1 = db_factory_->Allocate<uint32_t>(4);
+  DataBuffer* db4_1 = db_factory_->Allocate<uint32_t>(4);
   EXPECT_EQ(db4_1->size<uint32_t>(), 4);
   EXPECT_EQ(db4_1->size<uint8_t>(), 16);
   EXPECT_EQ(db4_1->ref_count(), 1);
@@ -53,17 +54,17 @@ TEST_F(DataBufferTest, DataBufferFactoryAllocate) {
 
 // Test that DataBuffers are allocated and recycled.
 TEST_F(DataBufferTest, DataBufferFactoryAllocateRecycleAllocate) {
-  DataBuffer *db8_1 = db_factory_->Allocate<uint32_t>(8);
+  DataBuffer* db8_1 = db_factory_->Allocate<uint32_t>(8);
 
   db8_1->DecRef();
 
-  DataBuffer *db4_1 = db_factory_->Allocate<uint32_t>(4);
+  DataBuffer* db4_1 = db_factory_->Allocate<uint32_t>(4);
   EXPECT_NE(db8_1, db4_1);
 
   db4_1->DecRef();
 
-  DataBuffer *db8_2 = db_factory_->Allocate<uint32_t>(8);
-  DataBuffer *db4_2 = db_factory_->Allocate<uint32_t>(4);
+  DataBuffer* db8_2 = db_factory_->Allocate<uint32_t>(8);
+  DataBuffer* db4_2 = db_factory_->Allocate<uint32_t>(4);
 
   EXPECT_EQ(db8_1, db8_2);
   EXPECT_EQ(db4_1, db4_2);
@@ -79,13 +80,13 @@ TEST_F(DataBufferTest, DataBufferFactoryMakeCopyOf) {
   const uint32_t kValues[] = {0x01020304, 0xDEADBEEF, 0xA5A55A5A, 0xF0F00F0F};
   const int kSize = 4;
 
-  DataBuffer *db_source = db_factory_->Allocate<uint32_t>(kSize);
+  DataBuffer* db_source = db_factory_->Allocate<uint32_t>(kSize);
 
   for (int index = 0; index < kSize; index++) {
     db_source->Set<uint32_t>(index, kValues[index]);
   }
 
-  DataBuffer *db_dest = db_factory_->MakeCopyOf(db_source);
+  DataBuffer* db_dest = db_factory_->MakeCopyOf(db_source);
 
   EXPECT_NE(db_source, db_dest);
   EXPECT_EQ(db_source->size<uint32_t>(), db_dest->size<uint32_t>());
@@ -104,7 +105,7 @@ TEST_F(DataBufferTest, DataBufferVectorSet) {
   const std::vector<uint32_t> kValueVec{0x01020304, 0xDEADBEEF, 0xA5A55A5A,
                                         0xF0F00F0F};
 
-  DataBuffer *db = db_factory_->Allocate<uint32_t>(kValueVec.size());
+  DataBuffer* db = db_factory_->Allocate<uint32_t>(kValueVec.size());
   db->Set<uint32_t>(kValueVec);
 
   for (size_t index = 0; index < kValueVec.size(); index++) {
@@ -136,9 +137,9 @@ TEST_F(DataBufferTest, DataBufferRawPointer) {
     double y;
   };
 
-  DataBuffer *db = db_factory_->Allocate(sizeof(MyTest));
+  DataBuffer* db = db_factory_->Allocate(sizeof(MyTest));
   EXPECT_EQ(sizeof(MyTest), db->size<unsigned char>());
-  MyTest *my_test = reinterpret_cast<MyTest *>(db->raw_ptr());
+  MyTest* my_test = reinterpret_cast<MyTest*>(db->raw_ptr());
   my_test->y = 3.14;
   db->DecRef();
 }

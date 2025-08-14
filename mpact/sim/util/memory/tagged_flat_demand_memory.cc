@@ -60,9 +60,9 @@ TaggedFlatDemandMemory::~TaggedFlatDemandMemory() {
   db_factory_ = nullptr;
 }
 
-void TaggedFlatDemandMemory::Load(uint64_t address, DataBuffer *db,
-                                  DataBuffer *tags, Instruction *inst,
-                                  ReferenceCount *context) {
+void TaggedFlatDemandMemory::Load(uint64_t address, DataBuffer* db,
+                                  DataBuffer* tags, Instruction* inst,
+                                  ReferenceCount* context) {
   if (!CheckRequest(address, db, tags)) return;
 
   // Load data with no latency. If db is null, then skip the load, but load the
@@ -75,8 +75,8 @@ void TaggedFlatDemandMemory::Load(uint64_t address, DataBuffer *db,
   FinishLoad(latency, inst, context);
 }
 
-void TaggedFlatDemandMemory::Store(uint64_t address, DataBuffer *db,
-                                   DataBuffer *tags) {
+void TaggedFlatDemandMemory::Store(uint64_t address, DataBuffer* db,
+                                   DataBuffer* tags) {
   if (!CheckRequest(address, db, tags)) return;
   // Store data and tags.
   data_memory_->Store(address, db);
@@ -84,28 +84,28 @@ void TaggedFlatDemandMemory::Store(uint64_t address, DataBuffer *db,
 }
 
 // Untagged load is passed directly to the data memory.
-void TaggedFlatDemandMemory::Load(uint64_t address, DataBuffer *db,
-                                  Instruction *inst, ReferenceCount *context) {
+void TaggedFlatDemandMemory::Load(uint64_t address, DataBuffer* db,
+                                  Instruction* inst, ReferenceCount* context) {
   data_memory_->Load(address, db, inst, context);
 }
 
 // Untagged vector load is passed directly to the data memory.
-void TaggedFlatDemandMemory::Load(DataBuffer *address_db, DataBuffer *mask_db,
-                                  int el_size, DataBuffer *db,
-                                  Instruction *inst, ReferenceCount *context) {
+void TaggedFlatDemandMemory::Load(DataBuffer* address_db, DataBuffer* mask_db,
+                                  int el_size, DataBuffer* db,
+                                  Instruction* inst, ReferenceCount* context) {
   data_memory_->Load(address_db, mask_db, el_size, db, inst, context);
 }
 
 // Untagged store.
-void TaggedFlatDemandMemory::Store(uint64_t address, DataBuffer *db) {
+void TaggedFlatDemandMemory::Store(uint64_t address, DataBuffer* db) {
   data_memory_->Store(address, db);
   // Clear any affected tags.
   ClearTags(address, db->size<uint8_t>());
 }
 
 // Untagged vector store.
-void TaggedFlatDemandMemory::Store(DataBuffer *address_db, DataBuffer *mask_db,
-                                   int el_size, DataBuffer *db) {
+void TaggedFlatDemandMemory::Store(DataBuffer* address_db, DataBuffer* mask_db,
+                                   int el_size, DataBuffer* db) {
   unsigned num_stores = address_db->size<uint64_t>();
   if (num_stores == 0) return;
   unsigned store_size = db->size<uint8_t>() / num_stores;
@@ -123,8 +123,8 @@ void TaggedFlatDemandMemory::Store(DataBuffer *address_db, DataBuffer *mask_db,
 }
 
 bool TaggedFlatDemandMemory::CheckRequest(uint64_t address,
-                                          const DataBuffer *db,
-                                          const DataBuffer *tags) {
+                                          const DataBuffer* db,
+                                          const DataBuffer* tags) {
   uint64_t mask = (1ULL << tag_granule_shift_) - 1;
   if (address & mask) {
     LOG(ERROR) << absl::StrCat(
@@ -150,8 +150,8 @@ bool TaggedFlatDemandMemory::CheckRequest(uint64_t address,
   return true;
 }
 
-void TaggedFlatDemandMemory::FinishLoad(int latency, Instruction *inst,
-                                        ReferenceCount *context) {
+void TaggedFlatDemandMemory::FinishLoad(int latency, Instruction* inst,
+                                        ReferenceCount* context) {
   if (inst == nullptr) return;
   // If the latency is 0, execute the instruction immediately.
   if (latency == 0) {
@@ -176,7 +176,7 @@ void TaggedFlatDemandMemory::ClearTags(uint64_t address, unsigned size) {
   uint64_t lo = address >> tag_granule_shift_;
   uint64_t hi = (address + size - 1) >> tag_granule_shift_;
   int num_tags = hi - lo + 1;
-  auto *tag_db = db_factory_->Allocate(num_tags);
+  auto* tag_db = db_factory_->Allocate(num_tags);
   std::memset(tag_db->raw_ptr(), 0, num_tags);
   tag_memory_->Store(lo, tag_db);
   tag_db->DecRef();

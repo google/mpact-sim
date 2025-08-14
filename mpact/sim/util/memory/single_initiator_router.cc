@@ -40,7 +40,7 @@ SingleInitiatorRouter::~SingleInitiatorRouter() {}
 // memory interface, base address, and address space size.
 template <typename Interface>
 static absl::Status AddTargetPrivate(
-    SingleInitiatorRouter::InterfaceMap<Interface> &map, Interface *interface,
+    SingleInitiatorRouter::InterfaceMap<Interface>& map, Interface* interface,
     uint64_t base, uint64_t top) {
   // Make sure the range is valid and makes sense.
   if (base > top) {
@@ -69,20 +69,20 @@ static absl::Status AddTargetPrivate(
 // Template specializations of the AddTarget method.
 template <>
 absl::Status SingleInitiatorRouter::AddTarget<MemoryInterface>(
-    MemoryInterface *memory, uint64_t base, uint64_t top) {
+    MemoryInterface* memory, uint64_t base, uint64_t top) {
   return AddTargetPrivate<MemoryInterface>(memory_targets_, memory, base, top);
 }
 
 template <>
 absl::Status SingleInitiatorRouter::AddTarget<TaggedMemoryInterface>(
-    TaggedMemoryInterface *tagged_memory, uint64_t base, uint64_t top) {
+    TaggedMemoryInterface* tagged_memory, uint64_t base, uint64_t top) {
   return AddTargetPrivate<TaggedMemoryInterface>(tagged_targets_, tagged_memory,
                                                  base, top);
 }
 
 template <>
 absl::Status SingleInitiatorRouter::AddTarget<AtomicMemoryOpInterface>(
-    AtomicMemoryOpInterface *atomic_memory, uint64_t base, uint64_t top) {
+    AtomicMemoryOpInterface* atomic_memory, uint64_t base, uint64_t top) {
   return AddTargetPrivate<AtomicMemoryOpInterface>(atomic_targets_,
                                                    atomic_memory, base, top);
 }
@@ -90,7 +90,7 @@ absl::Status SingleInitiatorRouter::AddTarget<AtomicMemoryOpInterface>(
 // Template specializations of the AddDefaultTarget method.
 template <>
 absl::Status SingleInitiatorRouter::AddDefaultTarget<MemoryInterface>(
-    MemoryInterface *memory) {
+    MemoryInterface* memory) {
   if ((memory != nullptr) && (default_memory_target_ != nullptr)) {
     return absl::AlreadyExistsError("Default memory target already exists");
   }
@@ -100,7 +100,7 @@ absl::Status SingleInitiatorRouter::AddDefaultTarget<MemoryInterface>(
 
 template <>
 absl::Status SingleInitiatorRouter::AddDefaultTarget<TaggedMemoryInterface>(
-    TaggedMemoryInterface *tagged_memory) {
+    TaggedMemoryInterface* tagged_memory) {
   if ((tagged_memory != nullptr) && (default_tagged_target_ != nullptr)) {
     return absl::AlreadyExistsError(
         "Default tagged memory target already exists");
@@ -111,7 +111,7 @@ absl::Status SingleInitiatorRouter::AddDefaultTarget<TaggedMemoryInterface>(
 
 template <>
 absl::Status SingleInitiatorRouter::AddDefaultTarget<AtomicMemoryOpInterface>(
-    AtomicMemoryOpInterface *atomic_memory) {
+    AtomicMemoryOpInterface* atomic_memory) {
   if ((atomic_memory != nullptr) && (default_atomic_target_ != nullptr)) {
     return absl::AlreadyExistsError(
         "Default atomic memory target already exists");
@@ -125,12 +125,12 @@ absl::Status SingleInitiatorRouter::AddDefaultTarget<AtomicMemoryOpInterface>(
 // they log an error and return.
 
 // Plain memory load.
-void SingleInitiatorRouter::Load(uint64_t address, DataBuffer *db,
-                                 Instruction *inst, ReferenceCount *context) {
+void SingleInitiatorRouter::Load(uint64_t address, DataBuffer* db,
+                                 Instruction* inst, ReferenceCount* context) {
   int size = db->size<uint8_t>();
   auto it = memory_targets_.find({address, address + size - 1});
   if (it != memory_targets_.end()) {
-    auto &range = it->first;
+    auto& range = it->first;
     if ((range.base <= address) && (range.top >= address + size - 1)) {
       return it->second->Load(address, db, inst, context);
     }
@@ -144,7 +144,7 @@ void SingleInitiatorRouter::Load(uint64_t address, DataBuffer *db,
   // too.
   auto tagged_it = tagged_targets_.find({address, address});
   if (tagged_it != tagged_targets_.end()) {
-    auto &range = tagged_it->first;
+    auto& range = tagged_it->first;
     if ((range.base <= address) && (range.top >= address + size - 1)) {
       return tagged_it->second->Load(address, db, inst, context);
     }
@@ -159,25 +159,25 @@ void SingleInitiatorRouter::Load(uint64_t address, DataBuffer *db,
 }
 
 // Vector memory load.
-void SingleInitiatorRouter::Load(DataBuffer *address_db, DataBuffer *mask_db,
-                                 int el_size, DataBuffer *db, Instruction *inst,
-                                 ReferenceCount *context) {
+void SingleInitiatorRouter::Load(DataBuffer* address_db, DataBuffer* mask_db,
+                                 int el_size, DataBuffer* db, Instruction* inst,
+                                 ReferenceCount* context) {
   // This is a vector load, so check each address that is not masked off.
   // Vector memory loads will not be split across multiple targets.
   int count = address_db->size<uint64_t>();
-  MemoryInterface *memory = nullptr;
+  MemoryInterface* memory = nullptr;
   for (int i = 0; i < count; i++) {
     // If the mask is true, check this address.
     if (mask_db->Get<uint8_t>(i)) {
       auto address = address_db->Get<uint64_t>(i);
       auto it = memory_targets_.find({address, address + el_size - 1});
-      MemoryInterface *tmp_memory = nullptr;
+      MemoryInterface* tmp_memory = nullptr;
       if (it == memory_targets_.end()) {
         // If there are no overlapping targets, use the default, if it is set.
         if (default_memory_target_ == nullptr) break;
         tmp_memory = default_memory_target_;
       } else {
-        auto &range = it->first;
+        auto& range = it->first;
         // If there is no proper overlap, just break out of the loop. We are
         // not splitting the memory access across multiple targets.
         if ((range.base > address) || (range.top < address + el_size - 1))
@@ -200,18 +200,18 @@ void SingleInitiatorRouter::Load(DataBuffer *address_db, DataBuffer *mask_db,
   // Since the vector memory load can occur in both MemoryInterface and
   // TaggedMemoryInterface, we need to check the tagged memory interface map
   // too.
-  TaggedMemoryInterface *tagged_memory = nullptr;
+  TaggedMemoryInterface* tagged_memory = nullptr;
   for (int i = 0; i < count; i++) {
     if (mask_db->Get<uint8_t>(i)) {
       auto address = address_db->Get<uint64_t>(i);
       auto it = tagged_targets_.find({address, address + el_size - 1});
-      TaggedMemoryInterface *tmp_memory = nullptr;
+      TaggedMemoryInterface* tmp_memory = nullptr;
       if (it == tagged_targets_.end()) {
         // If there are no overlapping targets, use the default, if it is set.
         if (default_tagged_target_ == nullptr) break;
         tmp_memory = default_tagged_target_;
       } else {
-        auto &range = it->first;
+        auto& range = it->first;
         // If there is no proper overlap, just break out of the loop. We are
         // not splitting the memory access across multiple targets.
         if ((range.base > address) || (range.top < address + el_size - 1))
@@ -235,9 +235,9 @@ void SingleInitiatorRouter::Load(DataBuffer *address_db, DataBuffer *mask_db,
 }
 
 // Tagged memory load.
-void SingleInitiatorRouter::Load(uint64_t address, DataBuffer *db,
-                                 DataBuffer *tags, Instruction *inst,
-                                 ReferenceCount *context) {
+void SingleInitiatorRouter::Load(uint64_t address, DataBuffer* db,
+                                 DataBuffer* tags, Instruction* inst,
+                                 ReferenceCount* context) {
   int size;
   // If db is null, then this is a tag load. The size for routing purposes is
   // the size of tags * 8.
@@ -248,7 +248,7 @@ void SingleInitiatorRouter::Load(uint64_t address, DataBuffer *db,
   }
   auto tagged_it = tagged_targets_.find({address, address + size - 1});
   if (tagged_it != tagged_targets_.end()) {
-    auto &range = tagged_it->first;
+    auto& range = tagged_it->first;
     if ((range.base <= address) && (range.top >= address + size - 1)) {
       return tagged_it->second->Load(address, db, tags, inst, context);
     }
@@ -263,11 +263,11 @@ void SingleInitiatorRouter::Load(uint64_t address, DataBuffer *db,
 }
 
 // Plain memory store.
-void SingleInitiatorRouter::Store(uint64_t address, DataBuffer *db) {
+void SingleInitiatorRouter::Store(uint64_t address, DataBuffer* db) {
   int size = db->size<uint8_t>();
   auto it = memory_targets_.find({address, address + size});
   if (it != memory_targets_.end()) {
-    auto &range = it->first;
+    auto& range = it->first;
     if ((range.base <= address) && (range.top >= address + size - 1)) {
       return it->second->Store(address, db);
     }
@@ -281,7 +281,7 @@ void SingleInitiatorRouter::Store(uint64_t address, DataBuffer *db) {
   // too.
   auto tagged_it = tagged_targets_.find({address, address});
   if (tagged_it != tagged_targets_.end()) {
-    auto &range = tagged_it->first;
+    auto& range = tagged_it->first;
     if ((range.base <= address) && (range.top >= address + size - 1)) {
       return tagged_it->second->Store(address, db);
     }
@@ -296,24 +296,24 @@ void SingleInitiatorRouter::Store(uint64_t address, DataBuffer *db) {
 }
 
 // Vector memory store.
-void SingleInitiatorRouter::Store(DataBuffer *address_db, DataBuffer *mask_db,
-                                  int el_size, DataBuffer *db) {
+void SingleInitiatorRouter::Store(DataBuffer* address_db, DataBuffer* mask_db,
+                                  int el_size, DataBuffer* db) {
   // This is a vector store, so check each address that is not masked off.
   // Vector memory stores will not be split across multiple targets.
   int count = address_db->size<uint64_t>();
-  MemoryInterface *memory = nullptr;
+  MemoryInterface* memory = nullptr;
   for (int i = 0; i < count; i++) {
     // If the mask is true, check this address.
     if (mask_db->Get<uint8_t>(i)) {
       auto address = address_db->Get<uint64_t>(i);
       auto it = memory_targets_.find({address, address + el_size - 1});
-      MemoryInterface *tmp_memory = nullptr;
+      MemoryInterface* tmp_memory = nullptr;
       if (it == memory_targets_.end()) {
         // If there are no overlapping targets, use the default, if it is set.
         if (default_memory_target_ == nullptr) break;
         tmp_memory = default_memory_target_;
       } else {
-        auto &range = it->first;
+        auto& range = it->first;
         // If there is no proper overlap, just break out of the loop. We are
         // not splitting the memory access across multiple targets.
         if ((range.base > address) || (range.top < address + el_size - 1))
@@ -336,18 +336,18 @@ void SingleInitiatorRouter::Store(DataBuffer *address_db, DataBuffer *mask_db,
   // Since the vector memory store can occur in both MemoryInterface and
   // TaggedMemoryInterface, we need to check the tagged memory interface map
   // too.
-  TaggedMemoryInterface *tagged_memory = nullptr;
+  TaggedMemoryInterface* tagged_memory = nullptr;
   for (int i = 0; i < count; i++) {
     if (mask_db->Get<uint8_t>(i)) {
       auto address = address_db->Get<uint64_t>(i);
       auto it = tagged_targets_.find({address, address + el_size});
-      TaggedMemoryInterface *tmp_memory = nullptr;
+      TaggedMemoryInterface* tmp_memory = nullptr;
       if (it == tagged_targets_.end()) {
         // If there are no overlapping targets, use the default, if it is set.
         if (default_tagged_target_ == nullptr) break;
         tmp_memory = default_tagged_target_;
       } else {
-        auto &range = it->first;
+        auto& range = it->first;
         // If there is no proper overlap, just break out of the loop. We are
         // not splitting the memory access across multiple targets.
         if ((range.base > address) || (range.top < address + el_size)) break;
@@ -370,12 +370,12 @@ void SingleInitiatorRouter::Store(DataBuffer *address_db, DataBuffer *mask_db,
 }
 
 // Simple tagged memory store.
-void SingleInitiatorRouter::Store(uint64_t address, DataBuffer *db,
-                                  DataBuffer *tags) {
+void SingleInitiatorRouter::Store(uint64_t address, DataBuffer* db,
+                                  DataBuffer* tags) {
   int size = db->size<uint8_t>();
   auto tagged_it = tagged_targets_.find({address, address + size - 1});
   if (tagged_it != tagged_targets_.end()) {
-    auto &range = tagged_it->first;
+    auto& range = tagged_it->first;
     if ((range.base <= address) && (range.top >= address + size - 1)) {
       return tagged_it->second->Store(address, db, tags);
     } else {
@@ -395,13 +395,13 @@ void SingleInitiatorRouter::Store(uint64_t address, DataBuffer *db,
 // Atomic memory operation.
 absl::Status SingleInitiatorRouter::PerformMemoryOp(uint64_t address,
                                                     Operation op,
-                                                    DataBuffer *db,
-                                                    Instruction *inst,
-                                                    ReferenceCount *context) {
+                                                    DataBuffer* db,
+                                                    Instruction* inst,
+                                                    ReferenceCount* context) {
   int size = db->size<uint8_t>();
   auto atomic_it = atomic_targets_.find({address, address + size - 1});
   if (atomic_it != atomic_targets_.end()) {
-    auto &range = atomic_it->first;
+    auto& range = atomic_it->first;
     if ((range.base <= address) && (range.top >= address + size - 1)) {
       return atomic_it->second->PerformMemoryOp(address, op, db, inst, context);
     }

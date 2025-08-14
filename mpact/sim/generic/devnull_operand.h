@@ -39,7 +39,7 @@ class DevNullOperand : public DestinationOperandInterface {
  public:
   // Constructor requires machine state to access data buffer factory, and
   // shape to allocate the correct size.
-  DevNullOperand(ArchState *state, const std::vector<int> &shape,
+  DevNullOperand(ArchState* state, const std::vector<int>& shape,
                  absl::string_view string_value)
       : db_factory_(state->db_factory()),
         shape_(shape),
@@ -49,24 +49,24 @@ class DevNullOperand : public DestinationOperandInterface {
       size_ *= sz;
     }
   }
-  DevNullOperand(ArchState *state, const std::vector<int> &shape)
+  DevNullOperand(ArchState* state, const std::vector<int>& shape)
       : DevNullOperand(state, shape, "") {}
   DevNullOperand() = delete;
   // Allocates a data buffer of the correct size, but initializes it with a
   // null destination.
-  DataBuffer *AllocateDataBuffer() override {
-    DataBuffer *db = db_factory_->Allocate(size_);
+  DataBuffer* AllocateDataBuffer() override {
+    DataBuffer* db = db_factory_->Allocate(size_);
     InitializeDataBuffer(db);
     return db;
   }
   // Initializes the data buffer with null attributes.
-  void InitializeDataBuffer(DataBuffer *db) override {
+  void InitializeDataBuffer(DataBuffer* db) override {
     db->set_destination(nullptr);
     db->set_latency(0);
     db->set_delay_line(nullptr);
   }
   // Just call AllocateDataBuffer, as there is no underlying state item.
-  DataBuffer *CopyDataBuffer() override { return AllocateDataBuffer(); }
+  DataBuffer* CopyDataBuffer() override { return AllocateDataBuffer(); }
   // Zero latency always.
   int latency() const override { return 0; }
   // No object to return.
@@ -77,7 +77,7 @@ class DevNullOperand : public DestinationOperandInterface {
   std::string AsString() const override { return string_value_; }
 
  private:
-  DataBufferFactory *db_factory_;
+  DataBufferFactory* db_factory_;
   std::vector<int> shape_;
   int size_;
   std::string string_value_;

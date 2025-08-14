@@ -67,16 +67,16 @@ class Cache : public Component, public TaggedMemoryInterface {
   // the memory request when it's forwarded on to the memory interface.
   struct CacheContext : public ReferenceCount {
     // The context of the original memory reference.
-    ReferenceCount *context;
+    ReferenceCount* context;
     // Original data buffer.
-    DataBuffer *db;
+    DataBuffer* db;
     // Instruction to be executed upon memory access completion.
-    Instruction *inst;
+    Instruction* inst;
     // Latency of the memory access.
     int latency;
     // Two constructors depending on whether the cache is used with a tagged
     // memory interface or not.
-    CacheContext(ReferenceCount *context_, DataBuffer *db_, Instruction *inst_,
+    CacheContext(ReferenceCount* context_, DataBuffer* db_, Instruction* inst_,
                  int latency_)
         : context(context_), db(db_), inst(inst_), latency(latency_) {}
   };
@@ -86,17 +86,17 @@ class Cache : public Component, public TaggedMemoryInterface {
   // to use for the cache, a pointer to the parent component (used to register
   // and provide access to the performance counters), and a memory interface
   // used to forward memory requests to.
-  Cache(std::string name, Component *parent, MemoryInterface *memory);
-  Cache(std::string name, Component *parent,
-        TaggedMemoryInterface *tagged_memory);
+  Cache(std::string name, Component* parent, MemoryInterface* memory);
+  Cache(std::string name, Component* parent,
+        TaggedMemoryInterface* tagged_memory);
   // Shorthand constructors that omit some parameters.
-  Cache(std::string name, MemoryInterface *memory);
-  Cache(std::string name, TaggedMemoryInterface *tagged_memory);
-  Cache(std::string name, Component *parent);
+  Cache(std::string name, MemoryInterface* memory);
+  Cache(std::string name, TaggedMemoryInterface* tagged_memory);
+  Cache(std::string name, Component* parent);
   explicit Cache(std::string name);
   Cache() = delete;
-  Cache(const Cache &) = delete;
-  Cache operator=(const Cache &) = delete;
+  Cache(const Cache&) = delete;
+  Cache operator=(const Cache&) = delete;
   ~Cache() override;
 
   // Configure the cache. The configuration string is expected to be in the
@@ -114,29 +114,29 @@ class Cache : public Component, public TaggedMemoryInterface {
   //
   // cycle_counter is a pointer to a counter that counts cycles in the
   // simulation.
-  absl::Status Configure(const std::string &config,
-                         CounterValueOutputBase<uint64_t> *cycle_counter);
+  absl::Status Configure(const std::string& config,
+                         CounterValueOutputBase<uint64_t>* cycle_counter);
 
   // MemoryInterface and TaggedMemoryInterfacemethods.
-  void Load(uint64_t address, DataBuffer *db, Instruction *inst,
-            ReferenceCount *context) override;
-  void Load(DataBuffer *address_db, DataBuffer *mask_db, int el_size,
-            DataBuffer *db, Instruction *inst,
-            ReferenceCount *context) override;
-  void Load(uint64_t address, DataBuffer *db, DataBuffer *tags,
-            Instruction *inst, ReferenceCount *context) override;
-  void Store(uint64_t address, DataBuffer *db) override;
-  void Store(DataBuffer *address, DataBuffer *mask, int el_size,
-             DataBuffer *db) override;
-  void Store(uint64_t address, DataBuffer *db, DataBuffer *tags) override;
+  void Load(uint64_t address, DataBuffer* db, Instruction* inst,
+            ReferenceCount* context) override;
+  void Load(DataBuffer* address_db, DataBuffer* mask_db, int el_size,
+            DataBuffer* db, Instruction* inst,
+            ReferenceCount* context) override;
+  void Load(uint64_t address, DataBuffer* db, DataBuffer* tags,
+            Instruction* inst, ReferenceCount* context) override;
+  void Store(uint64_t address, DataBuffer* db) override;
+  void Store(DataBuffer* address, DataBuffer* mask, int el_size,
+             DataBuffer* db) override;
+  void Store(uint64_t address, DataBuffer* db, DataBuffer* tags) override;
   // Setters for the memory interfaces.
-  void set_memory(MemoryInterface *memory) {
+  void set_memory(MemoryInterface* memory) {
     memory_ = memory;
     tagged_memory_ = nullptr;
   }
-  void set_tagged_memory(TaggedMemoryInterface *tagged_memory) {
+  void set_tagged_memory(TaggedMemoryInterface* tagged_memory) {
     tagged_memory_ = tagged_memory;
-    memory_ = static_cast<MemoryInterface *>(tagged_memory);
+    memory_ = static_cast<MemoryInterface*>(tagged_memory);
   }
 
  private:
@@ -155,8 +155,8 @@ class Cache : public Component, public TaggedMemoryInterface {
   // of the second. Thus if neither is less than the other, they overlap in
   // in some way.
   struct AddressRangeLess {
-    constexpr bool operator()(const AddressRange &lhs,
-                              const AddressRange &rhs) const {
+    constexpr bool operator()(const AddressRange& lhs,
+                              const AddressRange& rhs) const {
       return lhs.end < rhs.start;
     }
   };
@@ -178,12 +178,12 @@ class Cache : public Component, public TaggedMemoryInterface {
   // This is a semantic function that is bound to a local instruction instance
   // and is used to perform the writeback to the processor of the data that was
   // read.
-  void LoadChild(const Instruction *inst);
+  void LoadChild(const Instruction* inst);
   // Cache read/write function. Returns the number of cache misses.
   int CacheLookup(uint64_t address, int size, bool is_read);
   void ReplaceBlock(uint64_t block, bool is_read);
   // The cache.
-  CacheLine *cache_lines_ = nullptr;
+  CacheLine* cache_lines_ = nullptr;
   // Shift amounts and mask used to compute the index from the address.
   int block_shift_ = 0;
   int set_shift_ = 0;
@@ -197,8 +197,8 @@ class Cache : public Component, public TaggedMemoryInterface {
   bool has_non_cacheable_ = false;
   bool has_cacheable_ = false;
   // Instruction object used to perform the writeback to the processor.
-  Instruction *cache_inst_;
-  CounterValueOutputBase<uint64_t> *cycle_counter_;
+  Instruction* cache_inst_;
+  CounterValueOutputBase<uint64_t>* cycle_counter_;
   // Performance counters.
   SimpleCounter<uint64_t> read_hit_counter_;
   SimpleCounter<uint64_t> read_miss_counter_;
@@ -210,8 +210,8 @@ class Cache : public Component, public TaggedMemoryInterface {
   SimpleCounter<uint64_t> read_non_cacheable_counter_;
   SimpleCounter<uint64_t> write_non_cacheable_counter_;
   // Memory interface pointers.
-  MemoryInterface *memory_;
-  TaggedMemoryInterface *tagged_memory_;
+  MemoryInterface* memory_;
+  TaggedMemoryInterface* tagged_memory_;
 };
 
 }  // namespace mpact::sim::util

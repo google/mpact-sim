@@ -18,7 +18,7 @@
 #include <string>
 
 #include "absl/strings/str_cat.h"
-#include "googlemock/include/gmock/gmock.h"
+#include "googlemock/include/gmock/gmock.h"  // IWYU pragma: keep
 #include "googletest/include/gtest/gtest.h"
 #include "mpact/sim/decoder/instruction.h"
 #include "mpact/sim/decoder/instruction_set.h"
@@ -91,7 +91,7 @@ TEST_F(SlotTest, OpcodeVec) {
     std::string opcode_name = absl::StrCat("opcode_", inst_indx);
     auto res = instruction_set_->opcode_factory()->CreateOpcode(opcode_name);
     ASSERT_TRUE(res.status().ok());
-    auto *inst = new Instruction(res.value(), slot_.get());
+    auto* inst = new Instruction(res.value(), slot_.get());
     EXPECT_TRUE(slot_->AppendInstruction(inst).ok());
     EXPECT_EQ(slot_->instruction_map().size(), inst_indx + 1);
     EXPECT_EQ(slot_->instruction_map().at(opcode_name), inst);

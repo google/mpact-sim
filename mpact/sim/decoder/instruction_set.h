@@ -52,14 +52,14 @@ class InstructionSet {
   virtual ~InstructionSet();
 
   // Add bundle and slot to instruction set.
-  void AddBundle(Bundle *bundle);
-  void AddSlot(Slot *slot);
+  void AddBundle(Bundle* bundle);
+  void AddSlot(Slot* slot);
   void PrependNamespace(absl::string_view namespace_name);
 
   // Look up bundle and slot names and return pointers to their respective
   // objects. If not found, return nullptr.
-  Bundle *GetBundle(absl::string_view) const;
-  Slot *GetSlot(absl::string_view) const;
+  Bundle* GetBundle(absl::string_view) const;
+  Slot* GetSlot(absl::string_view) const;
   // Compute the set of reachable bundles and slots.
   void ComputeSlotAndBundleOrders();
   // Analyze the resource use in the opcodes in the slots. This is done to
@@ -80,40 +80,40 @@ class InstructionSet {
   // defined.
   StringPair GenerateEnums(absl::string_view file_name);
 
-  static void AddAttributeName(const std::string &name);
+  static void AddAttributeName(const std::string& name);
 
-  void AddInstruction(Instruction *inst) {
+  void AddInstruction(Instruction* inst) {
     if (instruction_map_.contains(inst->opcode()->name())) return;
     instruction_map_.emplace(inst->opcode()->name(), inst);
   }
 
   // Getters and setters.
-  std::vector<std::string> &namespaces() { return namespaces_; }
-  const std::string &name() const { return name_; }
-  const std::string &pascal_name() const { return pascal_name_; }
-  void set_bundle(Bundle *bundle) { bundle_ = bundle; }
-  Bundle *bundle() { return bundle_; }
-  OpcodeFactory *opcode_factory() const { return opcode_factory_.get(); }
-  ResourceFactory *resource_factory() const { return resource_factory_.get(); }
+  std::vector<std::string>& namespaces() { return namespaces_; }
+  const std::string& name() const { return name_; }
+  const std::string& pascal_name() const { return pascal_name_; }
+  void set_bundle(Bundle* bundle) { bundle_ = bundle; }
+  Bundle* bundle() { return bundle_; }
+  OpcodeFactory* opcode_factory() const { return opcode_factory_.get(); }
+  ResourceFactory* resource_factory() const { return resource_factory_.get(); }
   // Attribute names are shared across the isa's.
-  static const absl::btree_set<std::string> *attribute_names() {
+  static const absl::btree_set<std::string>* attribute_names() {
     return attribute_names_;
   }
-  absl::flat_hash_map<std::string, Bundle *> &bundle_map() {
+  absl::flat_hash_map<std::string, Bundle*>& bundle_map() {
     return bundle_map_;
   }
-  absl::flat_hash_map<std::string, Slot *> &slot_map() { return slot_map_; }
+  absl::flat_hash_map<std::string, Slot*>& slot_map() { return slot_map_; }
 
   // Maps from operand names to enum values.
-  absl::flat_hash_map<std::string, int> &pred_op_map() { return pred_op_map_; }
-  absl::flat_hash_map<std::string, int> &source_op_map() {
+  absl::flat_hash_map<std::string, int>& pred_op_map() { return pred_op_map_; }
+  absl::flat_hash_map<std::string, int>& source_op_map() {
     return source_op_map_;
   }
-  absl::flat_hash_map<std::string, int> &list_source_op_map() {
+  absl::flat_hash_map<std::string, int>& list_source_op_map() {
     return list_source_op_map_;
   }
-  absl::flat_hash_map<std::string, int> &dest_op_map() { return dest_op_map_; }
-  absl::flat_hash_map<std::string, int> &list_dest_op_map() {
+  absl::flat_hash_map<std::string, int>& dest_op_map() { return dest_op_map_; }
+  absl::flat_hash_map<std::string, int>& list_dest_op_map() {
     return list_dest_op_map_;
   }
 
@@ -121,28 +121,28 @@ class InstructionSet {
 
  private:
   std::string GenerateOperandEncoder(int position, absl::string_view op_name,
-                                     const OperandLocator &locator,
-                                     const Opcode *opcode) const;
+                                     const OperandLocator& locator,
+                                     const Opcode* opcode) const;
   // Add bundle and slot to list of classes that need to be generated.
-  void AddToBundleOrder(Bundle *);
-  void AddToSlotOrder(Slot *);
+  void AddToBundleOrder(Bundle*);
+  void AddToSlotOrder(Slot*);
   // Data members.
   std::vector<std::string> namespaces_;
-  std::vector<Slot *> slot_order_;
-  std::vector<Bundle *> bundle_order_;
+  std::vector<Slot*> slot_order_;
+  std::vector<Bundle*> bundle_order_;
   std::unique_ptr<OpcodeFactory> opcode_factory_;
   std::unique_ptr<ResourceFactory> resource_factory_;
   std::string name_;
   // Name in PascalCase.
   std::string pascal_name_;
-  Bundle *bundle_ = nullptr;
+  Bundle* bundle_ = nullptr;
   // Map from instruction name to pointer.
-  absl::btree_map<std::string, Instruction *> instruction_map_;
+  absl::btree_map<std::string, Instruction*> instruction_map_;
   // Maps from names to bundle/slot pointers.
-  absl::flat_hash_map<std::string, Bundle *> bundle_map_;
-  absl::flat_hash_map<std::string, Slot *> slot_map_;
+  absl::flat_hash_map<std::string, Bundle*> bundle_map_;
+  absl::flat_hash_map<std::string, Slot*> slot_map_;
   // Attribute name list - shared across all the isas.
-  static absl::btree_set<std::string> *attribute_names_;
+  static absl::btree_set<std::string>* attribute_names_;
   // Maps from operand names to enum values.
   absl::flat_hash_map<std::string, int> pred_op_map_;
   absl::flat_hash_map<std::string, int> source_op_map_;

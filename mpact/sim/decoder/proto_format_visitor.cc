@@ -57,7 +57,7 @@ using ::mpact::sim::machine_description::instruction_set::ToHeaderGuard;
 
 namespace {
 
-std::string StripQuotes(const std::string &str) {
+std::string StripQuotes(const std::string& str) {
   return str.substr(1, str.length() - 2);
 }
 
@@ -68,8 +68,8 @@ class MultiFileErrorCollector
     : public google::protobuf::compiler::MultiFileErrorCollector {
  public:
   MultiFileErrorCollector() {}
-  MultiFileErrorCollector(const MultiFileErrorCollector &) = delete;
-  MultiFileErrorCollector &operator=(const MultiFileErrorCollector &) = delete;
+  MultiFileErrorCollector(const MultiFileErrorCollector&) = delete;
+  MultiFileErrorCollector& operator=(const MultiFileErrorCollector&) = delete;
 
   void RecordError(absl::string_view filename, int line, int column,
                    absl::string_view message) override {
@@ -78,7 +78,7 @@ class MultiFileErrorCollector
     absl::StrAppend(&error_, "Line ", line, " Column ", column, ": ", message,
                     "\n");
   }
-  const std::string &GetError() const { return error_; }
+  const std::string& GetError() const { return error_; }
 
  private:
   std::string error_;
@@ -95,18 +95,18 @@ class MultiFileErrorCollector
 //   proto_files: vector of .proto files to import.
 //   directory: target directory to generate the C++ files in.
 absl::Status ProtoFormatVisitor::Process(
-    const std::vector<std::string> &file_names, const std::string &decoder_name,
-    std::string_view prefix, const std::vector<std::string> &include_roots,
-    const std::vector<std::string> &proto_dirs,
-    const std::vector<std::string> &proto_files, std::string_view directory) {
+    const std::vector<std::string>& file_names, const std::string& decoder_name,
+    std::string_view prefix, const std::vector<std::string>& include_roots,
+    const std::vector<std::string>& proto_dirs,
+    const std::vector<std::string>& proto_files, std::string_view directory) {
   decoder_name_ = decoder_name;
 
   include_dir_vec_.push_back(".");
-  for (const auto &root : include_roots) {
+  for (const auto& root : include_roots) {
     include_dir_vec_.push_back(root);
   }
 
-  std::istream *source_stream = &std::cin;
+  std::istream* source_stream = &std::cin;
 
   if (!file_names.empty()) {
     source_stream = new std::fstream(file_names[0], std::fstream::in);
@@ -125,15 +125,15 @@ absl::Status ProtoFormatVisitor::Process(
   // proto files from.
   google::protobuf::compiler::DiskSourceTree source_tree;
   source_tree.MapPath("", "./");
-  for (auto const &proto_dir : proto_dirs) {
+  for (auto const& proto_dir : proto_dirs) {
     source_tree.MapPath("", proto_dir);
   }
   // Import the proto files.
   MultiFileErrorCollector proto_error_collector;
   google::protobuf::compiler::Importer importer(&source_tree,
                                                 &proto_error_collector);
-  for (auto const &proto_file : proto_files) {
-    auto *file_desc = importer.Import(proto_file);
+  for (auto const& proto_file : proto_files) {
+    auto* file_desc = importer.Import(proto_file);
     if (file_desc == nullptr) {
       error_listener()->semanticError(
           nullptr, absl::StrCat("Failed to import '", proto_file, "'"));
@@ -162,7 +162,7 @@ absl::Status ProtoFormatVisitor::Process(
       &google::protobuf::DescriptorPool::FindEnumValueByName, descriptor_pool_);
 
   // Parse the file and then create the data structures.
-  TopLevelCtx *top_level = parser_wrapper.parser()->top_level();
+  TopLevelCtx* top_level = parser_wrapper.parser()->top_level();
   (void)top_level;
   if (!file_names.empty()) {
     delete source_stream;
@@ -243,24 +243,24 @@ std::string ProtoFormatVisitor::Expand(std::string_view name) const {
 
 // Helper templated function used to find proto objects by name.
 template <typename T>
-const T *ProtoFormatVisitor::FindByName(
-    const std::string &name, const std::string &message_name,
-    std::function<const T *(const std::string &)> finder) const {
-  auto *object = finder(Expand(message_name + "." + name));
+const T* ProtoFormatVisitor::FindByName(
+    const std::string& name, const std::string& message_name,
+    std::function<const T*(const std::string&)> finder) const {
+  auto* object = finder(Expand(message_name + "." + name));
   if (object != nullptr) return object;
   object = finder(Expand(name));
   return object;
 }
 
-const google::protobuf::FieldDescriptor *ProtoFormatVisitor::GetField(
-    const std::string &field_name,
-    const google::protobuf::Descriptor *message_type,
-    std::vector<const google::protobuf::FieldDescriptor *> &one_of_fields)
+const google::protobuf::FieldDescriptor* ProtoFormatVisitor::GetField(
+    const std::string& field_name,
+    const google::protobuf::Descriptor* message_type,
+    std::vector<const google::protobuf::FieldDescriptor*>& one_of_fields)
     const {
   auto pos = field_name.find_first_of('.');
   // If this is a "leaf" field, find it and return if found.
   if (pos == std::string::npos) {
-    auto *field_desc = message_type->FindFieldByName(field_name);
+    auto* field_desc = message_type->FindFieldByName(field_name);
     if (field_desc->containing_oneof() != nullptr) {
       one_of_fields.push_back(field_desc);
     }
@@ -269,18 +269,18 @@ const google::protobuf::FieldDescriptor *ProtoFormatVisitor::GetField(
   // Recursively traverse the components of the field name.
   std::string field = field_name.substr(0, pos);
   std::string remainder = field_name.substr(pos + 1);
-  auto const *field_desc = message_type->FindFieldByName(field);
+  auto const* field_desc = message_type->FindFieldByName(field);
   if (field_desc == nullptr) return nullptr;
   if (field_desc->containing_oneof() != nullptr) {
     one_of_fields.push_back(field_desc);
   }
-  auto const *message_desc = field_desc->message_type();
+  auto const* message_desc = field_desc->message_type();
   if (message_desc == nullptr) return nullptr;
   return GetField(remainder, message_desc, one_of_fields);
 }
 
-const google::protobuf::EnumValueDescriptor *
-ProtoFormatVisitor::GetEnumValueDescriptor(const std::string &full_name) const {
+const google::protobuf::EnumValueDescriptor*
+ProtoFormatVisitor::GetEnumValueDescriptor(const std::string& full_name) const {
   std::string expanded = Expand(full_name);
   auto pos = expanded.find_last_of('.');
   // If this is a "leaf", it fails. The enum must be qualified by enum type.
@@ -290,17 +290,17 @@ ProtoFormatVisitor::GetEnumValueDescriptor(const std::string &full_name) const {
   std::string enum_name = expanded.substr(pos + 1);
   std::string enum_type_name = expanded.substr(0, pos);
   // Find the enum type.
-  auto const *enum_type_desc =
+  auto const* enum_type_desc =
       descriptor_pool_->FindEnumTypeByName(enum_type_name);
   if (enum_type_desc == nullptr) return nullptr;
   // Find the enum value in the enum type.
-  auto const *enum_value_desc = enum_type_desc->FindValueByName(enum_name);
+  auto const* enum_value_desc = enum_type_desc->FindValueByName(enum_name);
   return enum_value_desc;
 }
 
 absl::StatusOr<int> ProtoFormatVisitor::GetEnumValue(
-    const std::string &enum_name) const {
-  auto *enum_value_desc = GetEnumValueDescriptor(enum_name);
+    const std::string& enum_name) const {
+  auto* enum_value_desc = GetEnumValueDescriptor(enum_name);
   if (enum_value_desc == nullptr) {
     return absl::NotFoundError(
         absl::StrCat("Enum '", enum_name, "' not found"));
@@ -309,9 +309,9 @@ absl::StatusOr<int> ProtoFormatVisitor::GetEnumValue(
 }
 
 void ProtoFormatVisitor::PreProcessDeclarations(
-    const std::vector<DeclarationCtx *> &declarations) {
-  std::vector<IncludeFileCtx *> include_files;
-  for (auto *declaration : declarations) {
+    const std::vector<DeclarationCtx*>& declarations) {
+  std::vector<IncludeFileCtx*> include_files;
+  for (auto* declaration : declarations) {
     // Create map from instruction group name to instruction group ctx. That
     // way we can visit those that are referenced by the decoder definition
     // later.
@@ -355,7 +355,7 @@ void ProtoFormatVisitor::PreProcessDeclarations(
     }
     // Create a map from decoder definitions to their parse contexts.
     if (declaration->decoder_def() != nullptr) {
-      auto *decoder = declaration->decoder_def();
+      auto* decoder = declaration->decoder_def();
       auto name = decoder->name->getText();
       auto iter = decoder_decl_map_.find(name);
       if (iter != decoder_decl_map_.end()) {
@@ -372,19 +372,19 @@ void ProtoFormatVisitor::PreProcessDeclarations(
     include_files.push_back(declaration->include_file());
   }
   // Visit all the include files captured above.
-  for (auto *include_file_ctx : include_files) {
+  for (auto* include_file_ctx : include_files) {
     VisitIncludeFile(include_file_ctx);
   }
 }
 
-void ProtoFormatVisitor::VisitIncludeFile(IncludeFileCtx *ctx) {
+void ProtoFormatVisitor::VisitIncludeFile(IncludeFileCtx* ctx) {
   // The literal includes the double quotes.
   std::string literal = ctx->STRING_LITERAL()->getText();
   // Remove the double quotes from the literal and construct the full file name.
   std::string file_name = literal.substr(1, literal.length() - 2);
   // Check for recursive include by comparing the current name to those on the
   // current include file stack.
-  for (auto const &name : include_file_stack_) {
+  for (auto const& name : include_file_stack_) {
     if (name == file_name) {
       error_listener()->semanticError(
           ctx->start,
@@ -396,14 +396,14 @@ void ProtoFormatVisitor::VisitIncludeFile(IncludeFileCtx *ctx) {
 }
 
 void ProtoFormatVisitor::ParseIncludeFile(
-    antlr4::ParserRuleContext *ctx, const std::string &file_name,
-    const std::vector<std::string> &dirs) {
+    antlr4::ParserRuleContext* ctx, const std::string& file_name,
+    const std::vector<std::string>& dirs) {
   std::fstream include_file;
   // Open include file.
   include_file.open(file_name, std::fstream::in);
   if (!include_file.is_open()) {
     // Try each of the include file directories.
-    for (auto const &dir : dirs) {
+    for (auto const& dir : dirs) {
       std::string include_name = absl::StrCat(dir, "/", file_name);
       include_file.open(include_name, std::fstream::in);
       if (include_file.is_open()) break;
@@ -420,7 +420,7 @@ void ProtoFormatVisitor::ParseIncludeFile(
   }
   std::string previous_file_name = error_listener()->file_name();
   error_listener()->set_file_name(std::string(file_name));
-  auto *include_parser = new ProtoFmtAntlrParserWrapper(&include_file);
+  auto* include_parser = new ProtoFmtAntlrParserWrapper(&include_file);
   // We need to save the parser state so it's available for analysis after
   // we are done with building the parse trees.
   antlr_parser_wrappers_.push_back(include_parser);
@@ -441,7 +441,7 @@ void ProtoFormatVisitor::ParseIncludeFile(
 }
 
 std::unique_ptr<ProtoEncodingInfo> ProtoFormatVisitor::ProcessTopLevel(
-    const std::string &decoder_name) {
+    const std::string& decoder_name) {
   // Look up the decoder declaration that matches the decoder name for which
   // to generate C++ code.
   auto decoder_iter = decoder_decl_map_.find(decoder_name);
@@ -455,14 +455,14 @@ std::unique_ptr<ProtoEncodingInfo> ProtoFormatVisitor::ProcessTopLevel(
 }
 
 // Process instruction groups.
-ProtoInstructionGroup *ProtoFormatVisitor::VisitInstructionGroupDef(
-    InstructionGroupDefCtx *ctx, ProtoEncodingInfo *encoding_info) {
+ProtoInstructionGroup* ProtoFormatVisitor::VisitInstructionGroupDef(
+    InstructionGroupDefCtx* ctx, ProtoEncodingInfo* encoding_info) {
   if (ctx == nullptr) return nullptr;
 
   std::string group_name = ctx->name->getText();
   // Verify that the message type exists.
   std::string message_name = Expand(ctx->message_name->getText());
-  auto const *message_desc =
+  auto const* message_desc =
       descriptor_pool_->FindMessageTypeByName(message_name);
   // If the message type doesn't exist, its an error
   if (message_desc == nullptr) {
@@ -480,22 +480,22 @@ ProtoInstructionGroup *ProtoFormatVisitor::VisitInstructionGroupDef(
     return nullptr;
   }
 
-  auto *inst_group = inst_group_res.value();
+  auto* inst_group = inst_group_res.value();
   // First visit all the setter declarations.
-  for (auto *group_def : ctx->setter_group_def()) {
+  for (auto* group_def : ctx->setter_group_def()) {
     VisitSetterGroupDef(group_def, inst_group, encoding_info);
   }
   // Parse the instruction encoding definitions in the instruction group.
-  for (auto *inst_def : ctx->instruction_def()) {
+  for (auto* inst_def : ctx->instruction_def()) {
     VisitInstructionDef(inst_def, inst_group, encoding_info);
   }
   return inst_group;
 }
 
 // Process instruction definitions.
-void ProtoFormatVisitor::VisitInstructionDef(InstructionDefCtx *ctx,
-                                             ProtoInstructionGroup *inst_group,
-                                             ProtoEncodingInfo *encoding_info) {
+void ProtoFormatVisitor::VisitInstructionDef(InstructionDefCtx* ctx,
+                                             ProtoInstructionGroup* inst_group,
+                                             ProtoEncodingInfo* encoding_info) {
   if (ctx == nullptr) return;
 
   // If it is a generator, call the generator parsing function.
@@ -505,17 +505,17 @@ void ProtoFormatVisitor::VisitInstructionDef(InstructionDefCtx *ctx,
   }
   // Get the instruction name.
   std::string name = ctx->name->getText();
-  auto *inst_encoding = inst_group->AddInstructionEncoding(name);
+  auto* inst_encoding = inst_group->AddInstructionEncoding(name);
   // Add Constraints to the instruction encoding.
-  for (auto *constraint : ctx->field_constraint_list()->field_constraint()) {
+  for (auto* constraint : ctx->field_constraint_list()->field_constraint()) {
     VisitFieldConstraint(constraint, inst_encoding, inst_group);
   }
   // Visit references to setters defined in the instruction group.
-  for (auto *setter : ctx->setter_ref()) {
+  for (auto* setter : ctx->setter_ref()) {
     VisitSetterRef(setter, inst_encoding, inst_group, encoding_info);
   }
   // Visit locally (to the instruction) defined setters.
-  for (auto *setter : ctx->setter_def()) {
+  for (auto* setter : ctx->setter_def()) {
     VisitSetterDef(setter, inst_encoding, inst_group, encoding_info);
   }
   // Generate the setter code template.
@@ -523,8 +523,8 @@ void ProtoFormatVisitor::VisitInstructionDef(InstructionDefCtx *ctx,
 }
 
 void ProtoFormatVisitor::VisitFieldConstraint(
-    FieldConstraintCtx *ctx, ProtoInstructionEncoding *inst_encoding,
-    const ProtoInstructionGroup *inst_group) {
+    FieldConstraintCtx* ctx, ProtoInstructionEncoding* inst_encoding,
+    const ProtoInstructionGroup* inst_group) {
   if (ctx == nullptr) return;
 
   // Constraints are based on field names ==/!=/>/>=/</<= to a value, or
@@ -535,8 +535,8 @@ void ProtoFormatVisitor::VisitFieldConstraint(
   absl::Status status;
   if (ctx->HAS() != nullptr) {
     std::string field_name = ctx->qualified_ident()->getText();
-    std::vector<const google::protobuf::FieldDescriptor *> one_of_fields;
-    auto *field_desc =
+    std::vector<const google::protobuf::FieldDescriptor*> one_of_fields;
+    auto* field_desc =
         GetField(field_name, inst_group->message_type(), one_of_fields);
     if (field_desc == nullptr) {
       error_listener()->semanticError(
@@ -557,8 +557,8 @@ void ProtoFormatVisitor::VisitFieldConstraint(
     // The field name is relative to the message type, but may refer to fields
     // in sub-messages contained within that message.
     std::string field_name = ctx->field->getText();
-    std::vector<const google::protobuf::FieldDescriptor *> one_of_fields;
-    auto *field_desc =
+    std::vector<const google::protobuf::FieldDescriptor*> one_of_fields;
+    auto* field_desc =
         GetField(field_name, inst_group->message_type(), one_of_fields);
     if (field_desc == nullptr) {
       error_listener()->semanticError(
@@ -569,7 +569,7 @@ void ProtoFormatVisitor::VisitFieldConstraint(
     }
     std::string op = ctx->constraint_op()->getText();
 
-    auto *constraint_expr = VisitConstraintExpression(ctx->constraint_expr(),
+    auto* constraint_expr = VisitConstraintExpression(ctx->constraint_expr(),
                                                       field_desc, inst_group);
 
     // Add the constraint according to the type.
@@ -598,11 +598,11 @@ void ProtoFormatVisitor::VisitFieldConstraint(
   }
 }
 
-ProtoConstraintExpression *ProtoFormatVisitor::VisitConstraintExpression(
-    ConstraintExprCtx *ctx, const google::protobuf::FieldDescriptor *field_desc,
-    const ProtoInstructionGroup *inst_group) {
+ProtoConstraintExpression* ProtoFormatVisitor::VisitConstraintExpression(
+    ConstraintExprCtx* ctx, const google::protobuf::FieldDescriptor* field_desc,
+    const ProtoInstructionGroup* inst_group) {
   if (ctx == nullptr) return nullptr;
-  ProtoConstraintExpression *constraint_expr = nullptr;
+  ProtoConstraintExpression* constraint_expr = nullptr;
   if (ctx->value() != nullptr) {
     constraint_expr = VisitValue(ctx->value());
   } else if (ctx->qualified_ident() != nullptr) {
@@ -612,7 +612,7 @@ ProtoConstraintExpression *ProtoFormatVisitor::VisitConstraintExpression(
   return constraint_expr;
 }
 
-ProtoConstraintExpression *ProtoFormatVisitor::VisitValue(ValueCtx *ctx) {
+ProtoConstraintExpression* ProtoFormatVisitor::VisitValue(ValueCtx* ctx) {
   if (ctx == nullptr) return nullptr;
   if (ctx->number() != nullptr) {
     return VisitNumber(ctx->number());
@@ -630,7 +630,7 @@ ProtoConstraintExpression *ProtoFormatVisitor::VisitValue(ValueCtx *ctx) {
   return nullptr;
 }
 
-ProtoConstraintExpression *ProtoFormatVisitor::VisitNumber(NumberCtx *ctx) {
+ProtoConstraintExpression* ProtoFormatVisitor::VisitNumber(NumberCtx* ctx) {
   std::string num_str = ctx->getText();
   // Convert to lower case to avoid capital chars in suffix.
   for (int i = 0; i < num_str.size(); ++i) num_str[i] = tolower(num_str[i]);
@@ -690,9 +690,9 @@ ProtoConstraintExpression *ProtoFormatVisitor::VisitNumber(NumberCtx *ctx) {
 }
 
 // Visits a qualified identifier that specifies an enumerator value.
-ProtoConstraintExpression *ProtoFormatVisitor::VisitQualifiedIdent(
-    QualifiedIdentCtx *ctx, const google::protobuf::FieldDescriptor *field_desc,
-    const ProtoInstructionGroup *inst_group) {
+ProtoConstraintExpression* ProtoFormatVisitor::VisitQualifiedIdent(
+    QualifiedIdentCtx* ctx, const google::protobuf::FieldDescriptor* field_desc,
+    const ProtoInstructionGroup* inst_group) {
   if (ctx == nullptr) return nullptr;
   // Verify that the field is an enum.
   if (field_desc->enum_type() == nullptr) {
@@ -702,7 +702,7 @@ ProtoConstraintExpression *ProtoFormatVisitor::VisitQualifiedIdent(
     return nullptr;
   }
   // Look up the value (if it exists).
-  auto const *enum_value_desc =
+  auto const* enum_value_desc =
       field_desc->enum_type()->FindValueByName(ctx->getText());
   if (enum_value_desc == nullptr) {
     error_listener()->semanticError(
@@ -714,16 +714,16 @@ ProtoConstraintExpression *ProtoFormatVisitor::VisitQualifiedIdent(
 }
 
 // Process the instruction group setters.
-void ProtoFormatVisitor::VisitSetterGroupDef(SetterGroupDefCtx *ctx,
-                                             ProtoInstructionGroup *inst_group,
-                                             ProtoEncodingInfo *encoding_info) {
+void ProtoFormatVisitor::VisitSetterGroupDef(SetterGroupDefCtx* ctx,
+                                             ProtoInstructionGroup* inst_group,
+                                             ProtoEncodingInfo* encoding_info) {
   if (ctx == nullptr) return;
   auto group_name = ctx->name->getText();
-  for (auto *setter_def : ctx->setter_def()) {
+  for (auto* setter_def : ctx->setter_def()) {
     std::string name = setter_def->name->getText();
     std::string field_name = setter_def->qualified_ident()->getText();
-    std::vector<const google::protobuf::FieldDescriptor *> one_of_fields;
-    auto const *field_desc =
+    std::vector<const google::protobuf::FieldDescriptor*> one_of_fields;
+    auto const* field_desc =
         GetField(field_name, inst_group->message_type(), one_of_fields);
     if (field_desc == nullptr) {
       error_listener()->semanticError(
@@ -733,7 +733,7 @@ void ProtoFormatVisitor::VisitSetterGroupDef(SetterGroupDefCtx *ctx,
       return;
     }
 
-    IfNotCtx *if_not = setter_def->if_not();
+    IfNotCtx* if_not = setter_def->if_not();
     auto status = encoding_info->CheckSetterType(name, field_desc);
     if (!status.ok()) {
       error_listener()->semanticError(setter_def->start, status.message());
@@ -749,15 +749,15 @@ void ProtoFormatVisitor::VisitSetterGroupDef(SetterGroupDefCtx *ctx,
 }
 
 // Process local (to instruction) setters.
-void ProtoFormatVisitor::VisitSetterDef(SetterDefCtx *ctx,
-                                        ProtoInstructionEncoding *inst_encoding,
-                                        ProtoInstructionGroup *inst_group,
-                                        ProtoEncodingInfo *encoding_info) {
+void ProtoFormatVisitor::VisitSetterDef(SetterDefCtx* ctx,
+                                        ProtoInstructionEncoding* inst_encoding,
+                                        ProtoInstructionGroup* inst_group,
+                                        ProtoEncodingInfo* encoding_info) {
   if (ctx == nullptr) return;
   std::string name = ctx->name->getText();
   std::string field_name = ctx->qualified_ident()->getText();
-  std::vector<const google::protobuf::FieldDescriptor *> one_of_fields;
-  auto const *field_desc =
+  std::vector<const google::protobuf::FieldDescriptor*> one_of_fields;
+  auto const* field_desc =
       GetField(field_name, inst_group->message_type(), one_of_fields);
   if (field_desc == nullptr) {
     error_listener()->semanticError(
@@ -767,7 +767,7 @@ void ProtoFormatVisitor::VisitSetterDef(SetterDefCtx *ctx,
     return;
   }
 
-  IfNotCtx *if_not = ctx->if_not();
+  IfNotCtx* if_not = ctx->if_not();
   auto status = encoding_info->CheckSetterType(name, field_desc);
   if (!status.ok()) {
     error_listener()->semanticError(ctx->start, status.message());
@@ -782,10 +782,10 @@ void ProtoFormatVisitor::VisitSetterDef(SetterDefCtx *ctx,
 }
 
 // Process references to instruction group setters.
-void ProtoFormatVisitor::VisitSetterRef(SetterRefCtx *ctx,
-                                        ProtoInstructionEncoding *inst_encoding,
-                                        ProtoInstructionGroup *inst_group,
-                                        ProtoEncodingInfo *encoding_info) {
+void ProtoFormatVisitor::VisitSetterRef(SetterRefCtx* ctx,
+                                        ProtoInstructionEncoding* inst_encoding,
+                                        ProtoInstructionGroup* inst_group,
+                                        ProtoEncodingInfo* encoding_info) {
   if (ctx == nullptr) return;
   auto res = inst_group->GetSetterGroup(ctx->name->getText());
   if (!res.ok()) {
@@ -794,7 +794,7 @@ void ProtoFormatVisitor::VisitSetterRef(SetterRefCtx *ctx,
   }
   auto [iter, end] = res.value();
   while (iter != end) {
-    auto *setter_info = iter->second;
+    auto* setter_info = iter->second;
     auto status = inst_encoding->AddSetter(
         setter_info->ctx, setter_info->name, setter_info->field_desc,
         setter_info->one_of_fields, setter_info->if_not);
@@ -809,20 +809,20 @@ void ProtoFormatVisitor::VisitSetterRef(SetterRefCtx *ctx,
 
 // Process the instruction definition generators.
 void ProtoFormatVisitor::ProcessInstructionDefGenerator(
-    InstructionDefCtx *ctx, ProtoInstructionGroup *inst_group,
-    ProtoEncodingInfo *encoding_info) {
+    InstructionDefCtx* ctx, ProtoInstructionGroup* inst_group,
+    ProtoEncodingInfo* encoding_info) {
   if (ctx == nullptr) return;
   absl::flat_hash_set<std::string> range_variable_names;
-  std::vector<RangeAssignmentInfo *> range_info_vec;
+  std::vector<RangeAssignmentInfo*> range_info_vec;
 
   // Process range assignment lists. The range assignment is either a single
   // value or a structured binding assignment. If it's a binding assignment we
   // need to make sure each tuple has the same number of values as there are
   // idents to assign them to.
-  for (auto *assign_ctx : ctx->range_assignment()) {
-    auto *range_info = new RangeAssignmentInfo();
+  for (auto* assign_ctx : ctx->range_assignment()) {
+    auto* range_info = new RangeAssignmentInfo();
     range_info_vec.push_back(range_info);
-    for (auto *ident_ctx : assign_ctx->IDENT()) {
+    for (auto* ident_ctx : assign_ctx->IDENT()) {
       std::string name = ident_ctx->getText();
       if (range_variable_names.contains(name)) {
         error_listener()->semanticError(
@@ -845,7 +845,7 @@ void ProtoFormatVisitor::ProcessInstructionDefGenerator(
     }
     // See if it's a list of simple values.
     if (!assign_ctx->gen_value().empty()) {
-      for (auto *gen_value_ctx : assign_ctx->gen_value()) {
+      for (auto* gen_value_ctx : assign_ctx->gen_value()) {
         if (gen_value_ctx->IDENT() != nullptr) {
           range_info->range_values[0].push_back(
               gen_value_ctx->IDENT()->getText());
@@ -867,10 +867,10 @@ void ProtoFormatVisitor::ProcessInstructionDefGenerator(
       continue;
     }
     // It's a list of tuples with a structured binding assignment.
-    for (auto *tuple_ctx : assign_ctx->tuple()) {
+    for (auto* tuple_ctx : assign_ctx->tuple()) {
       if (tuple_ctx->gen_value().size() != range_info->range_names.size()) {
         // Clean up.
-        for (auto *info : range_info_vec) delete info;
+        for (auto* info : range_info_vec) delete info;
         error_listener_->semanticError(
             assign_ctx->start,
             "Number of values differs from number of identifiers");
@@ -919,7 +919,7 @@ void ProtoFormatVisitor::ProcessInstructionDefGenerator(
   }
   if (error_listener()->HasError()) {
     // Clean up.
-    for (auto *info : range_info_vec) delete info;
+    for (auto* info : range_info_vec) delete info;
     return;
   }
 
@@ -928,22 +928,22 @@ void ProtoFormatVisitor::ProcessInstructionDefGenerator(
   std::string generated_text =
       GenerateInstructionDefList(range_info_vec, 0, input_text);
   // Parse and process the generated text.
-  auto *parser = new ProtoFmtAntlrParserWrapper(generated_text);
+  auto* parser = new ProtoFmtAntlrParserWrapper(generated_text);
   antlr_parser_wrappers_.push_back(parser);
   // Parse the text starting at the opcode_spec_list rule.
   auto instruction_defs =
       parser->parser()->instruction_group_def()->instruction_def();
   // Process the opcode spec.
-  for (auto *inst_def : instruction_defs) {
+  for (auto* inst_def : instruction_defs) {
     VisitInstructionDef(inst_def, inst_group, encoding_info);
   }
   // Clean up.
-  for (auto *info : range_info_vec) delete info;
+  for (auto* info : range_info_vec) delete info;
 }
 
 std::string ProtoFormatVisitor::GenerateInstructionDefList(
-    const std::vector<RangeAssignmentInfo *> &range_info_vec, int index,
-    const std::string &template_str_in) const {
+    const std::vector<RangeAssignmentInfo*>& range_info_vec, int index,
+    const std::string& template_str_in) const {
   std::string generated;
   // Iterate for the number of values.
   for (int i = 0; i < range_info_vec[index]->range_values[0].size(); ++i) {
@@ -953,7 +953,7 @@ std::string ProtoFormatVisitor::GenerateInstructionDefList(
     // current set of values.
     int var_index = 0;
     int replace_count = 0;
-    for (auto &re : range_info_vec[index]->range_regexes) {
+    for (auto& re : range_info_vec[index]->range_regexes) {
       replace_count += RE2::GlobalReplace(
           &template_str, re,
           range_info_vec[index]->range_values[var_index++][i]);
@@ -977,13 +977,13 @@ std::string ProtoFormatVisitor::GenerateInstructionDefList(
 }
 
 std::unique_ptr<ProtoEncodingInfo> ProtoFormatVisitor::VisitDecoderDef(
-    DecoderDefCtx *ctx) {
+    DecoderDefCtx* ctx) {
   if (ctx == nullptr) return nullptr;
 
   // First get the opcode enum.
   int opcode_count = 0;
   std::string opcode_enum;
-  for (auto *attr_ctx : ctx->decoder_attribute()) {
+  for (auto* attr_ctx : ctx->decoder_attribute()) {
     if (attr_ctx->opcode_enum_decl() != nullptr) {
       auto opcode_enum_literal =
           attr_ctx->opcode_enum_decl()->STRING_LITERAL()->getText();
@@ -1005,15 +1005,15 @@ std::unique_ptr<ProtoEncodingInfo> ProtoFormatVisitor::VisitDecoderDef(
   std::string name = ctx->name->getText();
   auto encoding_info =
       std::make_unique<ProtoEncodingInfo>(opcode_enum, error_listener_.get());
-  auto *decoder = encoding_info->SetProtoDecoder(name);
+  auto* decoder = encoding_info->SetProtoDecoder(name);
   if (decoder == nullptr) return nullptr;
   absl::flat_hash_set<std::string> group_name_set;
   int namespace_count = 0;
   // Iterate over the decoder attributes.
-  for (auto *attr_ctx : ctx->decoder_attribute()) {
+  for (auto* attr_ctx : ctx->decoder_attribute()) {
     // Include files.
     if (attr_ctx->include_files() != nullptr) {
-      for (auto *file_ctx : attr_ctx->include_files()->include_file()) {
+      for (auto* file_ctx : attr_ctx->include_files()->include_file()) {
         auto include_text = file_ctx->STRING_LITERAL()->getText();
         encoding_info->AddIncludeFile(include_text);
       }
@@ -1022,7 +1022,7 @@ std::unique_ptr<ProtoEncodingInfo> ProtoFormatVisitor::VisitDecoderDef(
     // Namespace declaration.
     if (attr_ctx->namespace_decl() != nullptr) {
       auto decl = attr_ctx->namespace_decl();
-      for (auto *namespace_name : decl->namespace_ident()) {
+      for (auto* namespace_name : decl->namespace_ident()) {
         decoder->namespaces().push_back(namespace_name->getText());
       }
       if (namespace_count > 0) {
@@ -1058,8 +1058,8 @@ std::unique_ptr<ProtoEncodingInfo> ProtoFormatVisitor::VisitDecoderDef(
 }
 
 void ProtoFormatVisitor::ProcessSingleGroup(
-    DecoderAttributeCtx *attr_ctx, ProtoEncodingInfo *encoding_info,
-    absl::flat_hash_set<std::string> &group_name_set) {
+    DecoderAttributeCtx* attr_ctx, ProtoEncodingInfo* encoding_info,
+    absl::flat_hash_set<std::string>& group_name_set) {
   if (attr_ctx == nullptr) return;
   std::string group_name = attr_ctx->group_name()->IDENT()->getText();
 
@@ -1072,7 +1072,7 @@ void ProtoFormatVisitor::ProcessSingleGroup(
   }
 
   auto map_iter = encoding_info->instruction_group_map().find(group_name);
-  ProtoInstructionGroup *inst_group = nullptr;
+  ProtoInstructionGroup* inst_group = nullptr;
 
   // Check if the group has been visited before. If so, no need to visit.
   if (map_iter != encoding_info->instruction_group_map().end()) {
@@ -1097,8 +1097,8 @@ void ProtoFormatVisitor::ProcessSingleGroup(
 }
 
 void ProtoFormatVisitor::ProcessParentGroup(
-    DecoderAttributeCtx *attr_ctx, ProtoEncodingInfo *encoding_info,
-    absl::flat_hash_set<std::string> &group_name_set) {
+    DecoderAttributeCtx* attr_ctx, ProtoEncodingInfo* encoding_info,
+    absl::flat_hash_set<std::string>& group_name_set) {
   if (attr_ctx == nullptr) return;
   // Check each of the child groups. Visit any that hasn't been visited
   // yet, and make sure all use the same encoding proto message.
@@ -1110,10 +1110,10 @@ void ProtoFormatVisitor::ProcessParentGroup(
                                       "' listed twice - ignored"));
     return;
   }
-  std::vector<ProtoInstructionGroup *> child_groups;
+  std::vector<ProtoInstructionGroup*> child_groups;
   std::string group_format_name;
   // Iterate through the list of named "child" groups to combine.
-  for (auto *ident : attr_ctx->group_name()->ident_list()->IDENT()) {
+  for (auto* ident : attr_ctx->group_name()->ident_list()->IDENT()) {
     auto child_name = ident->getText();
     // Make sure the child group hasn't been listed already.
     if (group_name_set.contains(child_name)) {
@@ -1122,14 +1122,14 @@ void ProtoFormatVisitor::ProcessParentGroup(
                                         child_name, "' - ignored"));
       return;
     }
-    ProtoInstructionGroup *child_group = nullptr;
+    ProtoInstructionGroup* child_group = nullptr;
     auto map_iter = encoding_info->instruction_group_map().find(child_name);
     if (map_iter != encoding_info->instruction_group_map().end()) {
       // The instruction group has been visited already. Make sure it
       // hasn't bin listed twice in the list of child groups.
       child_group = map_iter->second;
       bool exists = false;
-      for (auto const *group : child_groups) {
+      for (auto const* group : child_groups) {
         if (child_name == group->name()) {
           exists = true;
           break;
@@ -1140,7 +1140,7 @@ void ProtoFormatVisitor::ProcessParentGroup(
             attr_ctx->start,
             absl::StrCat("Instruction group '", child_name, "' listed twice"));
         // Clean up.
-        for (auto *child_group : child_groups) delete child_group;
+        for (auto* child_group : child_groups) delete child_group;
         return;
       }
     } else {
@@ -1155,7 +1155,7 @@ void ProtoFormatVisitor::ProcessParentGroup(
             attr_ctx->start,
             absl::StrCat("Instruction group '", child_name, "' not found"));
         // Clean up.
-        for (auto *child_group : child_groups) delete child_group;
+        for (auto* child_group : child_groups) delete child_group;
         continue;
       }
     }
@@ -1172,7 +1172,7 @@ void ProtoFormatVisitor::ProcessParentGroup(
                        group_format_name, ", to be merged into group '",
                        group_name, "'"));
       // Clean up.
-      for (auto *child_group : child_groups) delete child_group;
+      for (auto* child_group : child_groups) delete child_group;
       return;
     }
     child_groups.push_back(child_group);
@@ -1181,11 +1181,11 @@ void ProtoFormatVisitor::ProcessParentGroup(
   if (child_groups.empty()) {
     error_listener_->semanticError(attr_ctx->start, "No child groups");
     // Clean up.
-    for (auto *child_group : child_groups) delete child_group;
+    for (auto* child_group : child_groups) delete child_group;
     return;
   }
   // Create the "parent" instruction group.
-  const google::protobuf::Descriptor *group_format =
+  const google::protobuf::Descriptor* group_format =
       message_finder_(Expand(group_format_name));
   if (group_format == nullptr) {
     error_listener_->semanticError(
@@ -1193,20 +1193,20 @@ void ProtoFormatVisitor::ProcessParentGroup(
         absl::StrCat("Could not find proto message type '", group_format_name,
                      "' in proto descriptor pool"));
     // Clean up.
-    for (auto *child_group : child_groups) delete child_group;
+    for (auto* child_group : child_groups) delete child_group;
     return;
   }
   auto res = encoding_info->AddInstructionGroup(group_name, group_format);
   if (!res.ok()) {
     error_listener_->semanticError(attr_ctx->start, res.status().message());
     // Clean up.
-    for (auto *child_group : child_groups) delete child_group;
+    for (auto* child_group : child_groups) delete child_group;
     return;
   }
   auto parent_group = res.value();
   // For each child group, add all of it's encodings to the parent group.
-  for (auto *child_group : child_groups) {
-    for (auto *encoding : child_group->encodings()) {
+  for (auto* child_group : child_groups) {
+    for (auto* encoding : child_group->encodings()) {
       parent_group->CopyInstructionEncoding(
           new ProtoInstructionEncoding(*encoding));
     }
@@ -1217,7 +1217,7 @@ void ProtoFormatVisitor::ProcessParentGroup(
   encoding_info->decoder()->AddInstructionGroup(parent_group);
 }
 
-StringPair ProtoFormatVisitor::EmitCode(ProtoEncodingInfo *encoding_info) {
+StringPair ProtoFormatVisitor::EmitCode(ProtoEncodingInfo* encoding_info) {
   return encoding_info->GenerateDecoderClass();
 }
 

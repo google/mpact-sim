@@ -10,13 +10,13 @@
 namespace mpact::sim::util {
 
 // Constructors.
-SimpleUart::SimpleUart(ArchState *state, std::ostream &output)
+SimpleUart::SimpleUart(ArchState* state, std::ostream& output)
     : output_(&output) {}
 
-SimpleUart::SimpleUart(ArchState *state) : SimpleUart(state, std::cerr) {}
+SimpleUart::SimpleUart(ArchState* state) : SimpleUart(state, std::cerr) {}
 
-void SimpleUart::Load(uint64_t address, DataBuffer *db, Instruction *inst,
-                      ReferenceCount *context) {
+void SimpleUart::Load(uint64_t address, DataBuffer* db, Instruction* inst,
+                      ReferenceCount* context) {
   // If the address is unaligned, or the size is not a multiple of 4, it should
   // really be handled before it gets this far. Set the db to zero and finish
   // the load.
@@ -47,13 +47,13 @@ void SimpleUart::Load(uint64_t address, DataBuffer *db, Instruction *inst,
 }
 
 // No support for vector loads.
-void SimpleUart::Load(DataBuffer *address_db, DataBuffer *mask_db, int el_size,
-                      DataBuffer *db, Instruction *inst,
-                      ReferenceCount *context) {
+void SimpleUart::Load(DataBuffer* address_db, DataBuffer* mask_db, int el_size,
+                      DataBuffer* db, Instruction* inst,
+                      ReferenceCount* context) {
   LOG(FATAL) << "SimpleUart does not support vector loads";
 }
 
-void SimpleUart::Store(uint64_t address, DataBuffer *db) {
+void SimpleUart::Store(uint64_t address, DataBuffer* db) {
   // If the address is unaligned, or the size is not a multiple of 4, it should
   // really be handled before it gets this far. Set the db to zero and finish
   // the load.
@@ -156,8 +156,8 @@ void SimpleUart::Write(uint32_t offset, uint32_t value) {
 }
 
 // No support for vector stores.
-void SimpleUart::Store(DataBuffer *address, DataBuffer *mask_db, int el_size,
-                       DataBuffer *db) {
+void SimpleUart::Store(DataBuffer* address, DataBuffer* mask_db, int el_size,
+                       DataBuffer* db) {
   LOG(FATAL) << "SimpleUart does not support vector stores";
 }
 

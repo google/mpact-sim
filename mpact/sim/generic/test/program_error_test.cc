@@ -36,7 +36,7 @@ class ProgramErrorTest : public testing::Test {
 
   ~ProgramErrorTest() override { delete controller_; }
 
-  ProgramErrorController *controller_;
+  ProgramErrorController* controller_;
 };
 
 TEST_F(ProgramErrorTest, ControllerInstantiation) {

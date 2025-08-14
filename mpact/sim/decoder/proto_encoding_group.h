@@ -47,21 +47,21 @@ struct FieldInfo;
 class ProtoEncodingGroup {
  public:
   // Constructor for a top level encoding group with no field differentiator.
-  ProtoEncodingGroup(ProtoInstructionGroup *inst_group, int level,
-                     DecoderErrorListener *error_listener);
+  ProtoEncodingGroup(ProtoInstructionGroup* inst_group, int level,
+                     DecoderErrorListener* error_listener);
   // Constructor for a child encoding group.
-  ProtoEncodingGroup(ProtoEncodingGroup *parent,
-                     ProtoInstructionGroup *inst_group, int level,
-                     DecoderErrorListener *error_listener);
+  ProtoEncodingGroup(ProtoEncodingGroup* parent,
+                     ProtoInstructionGroup* inst_group, int level,
+                     DecoderErrorListener* error_listener);
   // Deleted constructors.
   ProtoEncodingGroup() = delete;
-  ProtoEncodingGroup(const ProtoEncodingGroup &) = delete;
-  ProtoEncodingGroup &operator=(const ProtoEncodingGroup &) = delete;
+  ProtoEncodingGroup(const ProtoEncodingGroup&) = delete;
+  ProtoEncodingGroup& operator=(const ProtoEncodingGroup&) = delete;
   // Destructor.
   ~ProtoEncodingGroup();
 
   // Add encoding to the current group.
-  void AddEncoding(ProtoInstructionEncoding *encoding);
+  void AddEncoding(ProtoInstructionEncoding* encoding);
   // Process the encodings in this group and divide them into subgroups based
   // on their constraint value for the differentiating field.
   void AddSubGroups();
@@ -71,7 +71,7 @@ class ProtoEncodingGroup {
                            absl::string_view message_type_name);
 
   // Getters/Setters.
-  DecoderErrorListener *error_listener() const { return error_listener_; }
+  DecoderErrorListener* error_listener() const { return error_listener_; }
   int64_t value() const { return value_; }
   void set_value(int64_t value) { value_ = value; }
   int level() const { return level_; }
@@ -81,8 +81,8 @@ class ProtoEncodingGroup {
   // there are no encoding ambiguities, such as multiple opcodes with the same
   // encoding, etc.
   void CheckEncodings();
-  bool DoConstraintsOverlap(const std::vector<ProtoConstraintValueSet *> &lhs,
-                            const std::vector<ProtoConstraintValueSet *> &rhs);
+  bool DoConstraintsOverlap(const std::vector<ProtoConstraintValueSet*>& lhs,
+                            const std::vector<ProtoConstraintValueSet*>& rhs);
   // Create C++ code for leaf (encoding group) instruction decoder.
   std::string EmitLeafDecoder(absl::string_view fcn_name,
                               absl::string_view opcode_enum,
@@ -93,18 +93,18 @@ class ProtoEncodingGroup {
                                  absl::string_view opcode_enum,
                                  absl::string_view message_type_name);
 
-  ProtoInstructionGroup *inst_group_ = nullptr;
-  ProtoEncodingGroup *parent_ = nullptr;
-  DecoderErrorListener *error_listener_ = nullptr;
-  FieldInfo *differentiator_ = nullptr;
+  ProtoInstructionGroup* inst_group_ = nullptr;
+  ProtoEncodingGroup* parent_ = nullptr;
+  DecoderErrorListener* error_listener_ = nullptr;
+  FieldInfo* differentiator_ = nullptr;
   int64_t value_;
   int level_;
-  std::vector<ProtoInstructionEncoding *> encoding_vec_;
-  std::vector<ProtoEncodingGroup *> encoding_group_vec_;
-  absl::btree_map<std::string, FieldInfo *> field_map_;
-  absl::flat_hash_set<const google::protobuf::FieldDescriptor *>
+  std::vector<ProtoInstructionEncoding*> encoding_vec_;
+  std::vector<ProtoEncodingGroup*> encoding_group_vec_;
+  absl::btree_map<std::string, FieldInfo*> field_map_;
+  absl::flat_hash_set<const google::protobuf::FieldDescriptor*>
       other_field_set_;
-  absl::flat_hash_set<const google::protobuf::OneofDescriptor *>
+  absl::flat_hash_set<const google::protobuf::OneofDescriptor*>
       other_oneof_set_;
 };
 

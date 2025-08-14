@@ -35,36 +35,36 @@ using ::mpact::sim::generic::operator*;  // NOLINT: used below (clang error).
 using ::mpact::sim::util::MemoryInterface;
 
 // This function must be defined in the library.
-extern ::mpact::sim::util::renode::RenodeDebugInterface *CreateMpactSim(
-    std::string name, std::string cpu_type, MemoryInterface *);
+extern ::mpact::sim::util::renode::RenodeDebugInterface* CreateMpactSim(
+    std::string name, std::string cpu_type, MemoryInterface*);
 
 using ::mpact::sim::util::renode::RenodeAgent;
 using ::mpact::sim::util::renode::RenodeCpuRegister;
 
 // Implementation of the C interface functions. They each forward the call to
 // the corresponding method in RenodeAgent.
-int32_t construct(char *cpu_type, int32_t max_name_length) {
+int32_t construct(char* cpu_type, int32_t max_name_length) {
   return RenodeAgent::Instance()->Construct(cpu_type, max_name_length, nullptr,
                                             nullptr);
 }
 
-int32_t construct_with_sysbus(char *cpu_type, int32_t max_name_length,
-                              int32_t (*read_callback)(uint64_t, char *,
+int32_t construct_with_sysbus(char* cpu_type, int32_t max_name_length,
+                              int32_t (*read_callback)(uint64_t, char*,
                                                        int32_t),
-                              int32_t (*write_callback)(uint64_t, char *,
+                              int32_t (*write_callback)(uint64_t, char*,
                                                         int32_t)) {
   return RenodeAgent::Instance()->Construct(cpu_type, max_name_length,
                                             read_callback, write_callback);
 }
 
-int32_t connect(char *cpu_type, int32_t id, int32_t max_name_length) {
+int32_t connect(char* cpu_type, int32_t id, int32_t max_name_length) {
   return RenodeAgent::Instance()->Connect(cpu_type, id, max_name_length,
                                           nullptr, nullptr);
 }
 
-int32_t connect_with_sysbus(char *cpu_type, int32_t id, int32_t max_name_length,
-                            int32_t (*read_callback)(uint64_t, char *, int32_t),
-                            int32_t (*write_callback)(uint64_t, char *,
+int32_t connect_with_sysbus(char* cpu_type, int32_t id, int32_t max_name_length,
+                            int32_t (*read_callback)(uint64_t, char*, int32_t),
+                            int32_t (*write_callback)(uint64_t, char*,
                                                       int32_t)) {
   return RenodeAgent::Instance()->Connect(cpu_type, id, max_name_length,
                                           read_callback, write_callback);
@@ -78,23 +78,23 @@ int32_t get_reg_info_size(int32_t id) {
   return RenodeAgent::Instance()->GetRegisterInfoSize(id);
 }
 
-int32_t get_reg_info(int32_t id, int32_t index, char *name, void *info) {
+int32_t get_reg_info(int32_t id, int32_t index, char* name, void* info) {
   if (info == nullptr) return -1;
   return RenodeAgent::Instance()->GetRegisterInfo(
-      id, index, name, static_cast<RenodeCpuRegister *>(info));
+      id, index, name, static_cast<RenodeCpuRegister*>(info));
 }
 
-uint64_t load_elf(int32_t id, const char *elf_file_name, bool for_symbols_only,
-                  int32_t *status) {
+uint64_t load_elf(int32_t id, const char* elf_file_name, bool for_symbols_only,
+                  int32_t* status) {
   return RenodeAgent::Instance()->LoadExecutable(id, elf_file_name,
                                                  for_symbols_only, status);
 }
 
-int32_t load_image(int32_t id, const char *file_name, uint64_t address) {
+int32_t load_image(int32_t id, const char* file_name, uint64_t address) {
   return RenodeAgent::Instance()->LoadImage(id, file_name, address);
 }
 
-int32_t read_register(int32_t id, uint32_t reg_id, uint64_t *value) {
+int32_t read_register(int32_t id, uint32_t reg_id, uint64_t* value) {
   return RenodeAgent::Instance()->ReadRegister(id, reg_id, value);
 }
 
@@ -102,22 +102,22 @@ int32_t write_register(int32_t id, uint32_t reg_id, uint64_t value) {
   return RenodeAgent::Instance()->WriteRegister(id, reg_id, value);
 }
 
-uint64_t read_memory(int32_t id, uint64_t address, char *buffer,
+uint64_t read_memory(int32_t id, uint64_t address, char* buffer,
                      uint64_t length) {
   return RenodeAgent::Instance()->ReadMemory(id, address, buffer, length);
 }
 
-uint64_t write_memory(int32_t id, uint64_t address, const char *buffer,
+uint64_t write_memory(int32_t id, uint64_t address, const char* buffer,
                       uint64_t length) {
   return RenodeAgent::Instance()->WriteMemory(id, address, buffer, length);
 }
 
-uint64_t step(int32_t id, uint64_t num_to_step, int32_t *status) {
+uint64_t step(int32_t id, uint64_t num_to_step, int32_t* status) {
   return RenodeAgent::Instance()->Step(id, num_to_step, status);
 }
 
-int32_t set_config(int32_t id, const char *config_names[],
-                   const char *config_values[], int32_t size) {
+int32_t set_config(int32_t id, const char* config_names[],
+                   const char* config_values[], int32_t size) {
   return RenodeAgent::Instance()->SetConfig(id, config_names, config_values,
                                             size);
 }
@@ -133,18 +133,18 @@ namespace renode {
 
 using HaltReason = ::mpact::sim::generic::CoreDebugInterface::HaltReason;
 
-RenodeAgent *RenodeAgent::instance_ = nullptr;
+RenodeAgent* RenodeAgent::instance_ = nullptr;
 int32_t RenodeAgent::count_ = 0;
 
 // Create the debug instance by calling the factory function.
-int32_t RenodeAgent::Construct(char *cpu_type, int32_t max_name_length,
-                               int32_t (*read_callback)(uint64_t, char *,
+int32_t RenodeAgent::Construct(char* cpu_type, int32_t max_name_length,
+                               int32_t (*read_callback)(uint64_t, char*,
                                                         int32_t),
-                               int32_t (*write_callback)(uint64_t, char *,
+                               int32_t (*write_callback)(uint64_t, char*,
                                                          int32_t)) {
   std::string name = absl::StrCat("renode", count_);
-  auto *memory_access = new RenodeMemoryAccess(read_callback, write_callback);
-  auto *dbg = CreateMpactSim(name, cpu_type, memory_access);
+  auto* memory_access = new RenodeMemoryAccess(read_callback, write_callback);
+  auto* dbg = CreateMpactSim(name, cpu_type, memory_access);
   if (dbg == nullptr) {
     delete memory_access;
     return -1;
@@ -160,16 +160,17 @@ int32_t RenodeAgent::Construct(char *cpu_type, int32_t max_name_length,
   return RenodeAgent::count_++;
 }
 
-int32_t RenodeAgent::Connect(
-    char *cpu_type, int32_t id, int32_t max_name_length,
-    int32_t (*read_callback)(uint64_t, char *, int32_t),
-    int32_t (*write_callback)(uint64_t, char *, int32_t)) {
+int32_t RenodeAgent::Connect(char* cpu_type, int32_t id,
+                             int32_t max_name_length,
+                             int32_t (*read_callback)(uint64_t, char*, int32_t),
+                             int32_t (*write_callback)(uint64_t, char*,
+                                                       int32_t)) {
   // First check if the instance already exists.
   auto iter = core_dbg_instances_.find(id);
   if (iter != core_dbg_instances_.end()) {
     // If memory callbacks are provided, don't overwrite any previous non-null
     // callbacks.
-    auto *mem_access = renode_memory_access_.at(id);
+    auto* mem_access = renode_memory_access_.at(id);
     // Replace any null callbacks.
     if (!mem_access->has_read_fcn()) {
       mem_access->set_read_fcn(read_callback);
@@ -182,8 +183,8 @@ int32_t RenodeAgent::Connect(
 
   // The instance does not exist, so create a new debug instance.
   std::string name = absl::StrCat("renode", id);
-  auto *memory_access = new RenodeMemoryAccess(read_callback, write_callback);
-  auto *dbg = CreateMpactSim(name, cpu_type, memory_access);
+  auto* memory_access = new RenodeMemoryAccess(read_callback, write_callback);
+  auto* dbg = CreateMpactSim(name, cpu_type, memory_access);
   if (dbg == nullptr) {
     delete memory_access;
     return -1;
@@ -224,17 +225,17 @@ int32_t RenodeAgent::GetRegisterInfoSize(int32_t id) const {
   // Check for valid instance.
   auto dbg_iter = core_dbg_instances_.find(id);
   if (dbg_iter == core_dbg_instances_.end()) return -1;
-  auto *dbg = dbg_iter->second;
+  auto* dbg = dbg_iter->second;
   return dbg->GetRenodeRegisterInfoSize();
 }
 
-int32_t RenodeAgent::GetRegisterInfo(int32_t id, int32_t index, char *name,
-                                     RenodeCpuRegister *info) {
+int32_t RenodeAgent::GetRegisterInfo(int32_t id, int32_t index, char* name,
+                                     RenodeCpuRegister* info) {
   // Check for valid instance.
   if (info == nullptr) return -1;
   auto dbg_iter = core_dbg_instances_.find(id);
   if (dbg_iter == core_dbg_instances_.end()) return -1;
-  auto *dbg = dbg_iter->second;
+  auto* dbg = dbg_iter->second;
   int32_t max_len = name_length_map_.at(id);
   auto result = dbg->GetRenodeRegisterInfo(index, max_len, name, *info);
   if (!result.ok()) return -1;
@@ -243,13 +244,13 @@ int32_t RenodeAgent::GetRegisterInfo(int32_t id, int32_t index, char *name,
 
 // Read the register given by the id.
 int32_t RenodeAgent::ReadRegister(int32_t id, uint32_t reg_id,
-                                  uint64_t *value) {
+                                  uint64_t* value) {
   // Check for valid instance.
   if (value == nullptr) return -1;
   auto dbg_iter = core_dbg_instances_.find(id);
   if (dbg_iter == core_dbg_instances_.end()) return -1;
   // Read register.
-  auto *dbg = dbg_iter->second;
+  auto* dbg = dbg_iter->second;
   auto result = dbg->ReadRegister(reg_id);
   if (!result.ok()) return -1;
   *value = result.value();
@@ -262,13 +263,13 @@ int32_t RenodeAgent::WriteRegister(int32_t id, uint32_t reg_id,
   auto dbg_iter = core_dbg_instances_.find(id);
   if (dbg_iter == core_dbg_instances_.end()) return -1;
   // Write register.
-  auto *dbg = dbg_iter->second;
+  auto* dbg = dbg_iter->second;
   auto result = dbg->WriteRegister(reg_id, value);
   if (!result.ok()) return -1;
   return 0;
 }
 
-uint64_t RenodeAgent::ReadMemory(int32_t id, uint64_t address, char *buffer,
+uint64_t RenodeAgent::ReadMemory(int32_t id, uint64_t address, char* buffer,
                                  uint64_t length) {
   // Get the debug interface.
   auto dbg_iter = core_dbg_instances_.find(id);
@@ -276,28 +277,28 @@ uint64_t RenodeAgent::ReadMemory(int32_t id, uint64_t address, char *buffer,
     LOG(ERROR) << "No such core dbg instance: " << id;
     return 0;
   }
-  auto *dbg = dbg_iter->second;
+  auto* dbg = dbg_iter->second;
   auto res = dbg->ReadMemory(address, buffer, length);
   if (!res.ok()) return 0;
   return res.value();
 }
 
 uint64_t RenodeAgent::WriteMemory(int32_t id, uint64_t address,
-                                  const char *buffer, uint64_t length) {
+                                  const char* buffer, uint64_t length) {
   // Get the debug interface.
   auto dbg_iter = core_dbg_instances_.find(id);
   if (dbg_iter == core_dbg_instances_.end()) {
     LOG(ERROR) << "No such core dbg instance: " << id;
     return 0;
   }
-  auto *dbg = dbg_iter->second;
+  auto* dbg = dbg_iter->second;
   auto res = dbg->WriteMemory(address, buffer, length);
   if (!res.ok()) return 0;
   return res.value();
 }
 
-uint64_t RenodeAgent::LoadExecutable(int32_t id, const char *file_name,
-                                     bool for_symbols_only, int32_t *status) {
+uint64_t RenodeAgent::LoadExecutable(int32_t id, const char* file_name,
+                                     bool for_symbols_only, int32_t* status) {
   // Get the debug interface.
   auto dbg_iter = core_dbg_instances_.find(id);
   if (dbg_iter == core_dbg_instances_.end()) {
@@ -306,7 +307,7 @@ uint64_t RenodeAgent::LoadExecutable(int32_t id, const char *file_name,
     return 0;
   }
   // Instantiate loader.
-  auto *dbg = dbg_iter->second;
+  auto* dbg = dbg_iter->second;
   auto res = dbg->LoadExecutable(file_name, for_symbols_only);
   if (!res.ok()) {
     LOG(ERROR) << "Failed to load executable: " << res.status().message();
@@ -318,7 +319,7 @@ uint64_t RenodeAgent::LoadExecutable(int32_t id, const char *file_name,
   return entry;
 }
 
-int32_t RenodeAgent::LoadImage(int32_t id, const char *file_name,
+int32_t RenodeAgent::LoadImage(int32_t id, const char* file_name,
                                uint64_t address) {
   // Get the debug interface.
   auto dbg_iter = core_dbg_instances_.find(id);
@@ -326,7 +327,7 @@ int32_t RenodeAgent::LoadImage(int32_t id, const char *file_name,
     LOG(ERROR) << "No such core dbg instance: " << id;
     return -1;
   }
-  auto *dbg = dbg_iter->second;
+  auto* dbg = dbg_iter->second;
   // Open up the image file.
   std::ifstream image_file;
   image_file.open(file_name, std::ios::in | std::ios::binary);
@@ -358,9 +359,9 @@ int32_t RenodeAgent::LoadImage(int32_t id, const char *file_name,
   return 0;
 }
 
-uint64_t RenodeAgent::Step(int32_t id, uint64_t num_to_step, int32_t *status) {
+uint64_t RenodeAgent::Step(int32_t id, uint64_t num_to_step, int32_t* status) {
   // Get the core debug if object.
-  auto *dbg = RenodeAgent::Instance()->core_dbg(id);
+  auto* dbg = RenodeAgent::Instance()->core_dbg(id);
   // Is the debug interface valid?
   if (dbg == nullptr) {
     if (status != nullptr) {
@@ -457,10 +458,10 @@ uint64_t RenodeAgent::Step(int32_t id, uint64_t num_to_step, int32_t *status) {
 }
 
 // Set configuration item.
-int32_t RenodeAgent::SetConfig(int32_t id, const char *config_names[],
-                               const char *config_values[], int size) {
+int32_t RenodeAgent::SetConfig(int32_t id, const char* config_names[],
+                               const char* config_values[], int size) {
   // Get the core debug interface object.
-  auto *dbg = RenodeAgent::Instance()->core_dbg(id);
+  auto* dbg = RenodeAgent::Instance()->core_dbg(id);
   // Is the debug interface valid?
   if (dbg == nullptr) {
     return -1;
@@ -476,7 +477,7 @@ int32_t RenodeAgent::SetConfig(int32_t id, const char *config_names[],
 // Set irq value.
 int32_t RenodeAgent::SetIrqValue(int32_t id, int32_t irq_num, bool irq_value) {
   // Get the core debug interface object.
-  auto *dbg = RenodeAgent::Instance()->core_dbg(id);
+  auto* dbg = RenodeAgent::Instance()->core_dbg(id);
   // Is the debug interface valid?
   if (dbg == nullptr) {
     return -1;

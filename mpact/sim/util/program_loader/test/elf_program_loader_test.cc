@@ -77,12 +77,12 @@ TEST_F(ElfLoaderTest, LoadExecutable) {
   ASSERT_THAT(elf_reader_.validate(), testing::StrEq(""));
   auto result = loader_.LoadProgram(input_file);
   ASSERT_TRUE(result.status().ok());
-  for (auto const &segment : elf_reader_.segments) {
+  for (auto const& segment : elf_reader_.segments) {
     if (segment->get_type() != PT_LOAD) continue;
     if (segment->get_file_size() == 0) continue;
 
     int size = segment->get_file_size();
-    auto *db = db_factory_.Allocate(size);
+    auto* db = db_factory_.Allocate(size);
     memory_.Load(segment->get_virtual_address(), db, nullptr, nullptr);
     EXPECT_EQ(memcmp(db->raw_ptr(), segment->get_data(), size), 0);
     db->DecRef();

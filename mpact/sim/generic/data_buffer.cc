@@ -40,8 +40,8 @@ void DataBufferFactory::Clear() {
 
 // Allocate a DataBuffer and then copy the value of the source DB into
 // the newly allocated buffer.
-DataBuffer *DataBufferFactory::MakeCopyOf(const DataBuffer *src_db) {
-  DataBuffer *db = Allocate(src_db->size<uint8_t>());
+DataBuffer* DataBufferFactory::MakeCopyOf(const DataBuffer* src_db) {
+  DataBuffer* db = Allocate(src_db->size<uint8_t>());
   db->CopyFrom(src_db);
   return db;
 }
@@ -49,10 +49,10 @@ DataBuffer *DataBufferFactory::MakeCopyOf(const DataBuffer *src_db) {
 DataBuffer::DataBuffer(unsigned size) : size_(size) {
   // Allocate using unsigned char to guarantee appropriate alignment according
   // to C++ standard 5.3.4 (11).
-  raw_ptr_ = static_cast<void *>(new unsigned char[size_]);
+  raw_ptr_ = static_cast<void*>(new unsigned char[size_]);
 }
 
-DataBuffer::~DataBuffer() { delete[] static_cast<unsigned char *>(raw_ptr_); }
+DataBuffer::~DataBuffer() { delete[] static_cast<unsigned char*>(raw_ptr_); }
 
 void DataBuffer::Submit(int latency) {
   if (destination_ == nullptr) {

@@ -83,7 +83,7 @@ void ProgramErrorController::Clear(absl::string_view program_error_name) {
 }
 
 void ProgramErrorController::ClearAll() {
-  for (auto &entry : program_error_info_) {
+  for (auto& entry : program_error_info_) {
     entry.error_messages.clear();
   }
   unmasked_program_errors_.clear();
@@ -167,7 +167,7 @@ std::vector<std::string> ProgramErrorController::GetUnmaskedErrorNames() const {
   return names;
 }
 
-const std::vector<std::string> &ProgramErrorController::GetErrorMessages(
+const std::vector<std::string>& ProgramErrorController::GetErrorMessages(
     absl::string_view program_error_name) {
   auto entry = program_error_map_.find(program_error_name);
   if (program_error_map_.end() != entry) {
@@ -202,7 +202,7 @@ void ProgramErrorController::Raise(absl::string_view program_error_name,
 
 // Constructor and method for class ProgramError.
 ProgramError::ProgramError(absl::string_view name,
-                           ProgramErrorController *controller)
+                           ProgramErrorController* controller)
     : name_(name), controller_(controller) {}
 
 void ProgramError::Raise(absl::string_view error_message) {

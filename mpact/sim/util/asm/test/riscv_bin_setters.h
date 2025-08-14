@@ -57,7 +57,7 @@ constexpr std::initializer_list<const std::pair<absl::string_view, uint64_t>>
 
 template <typename T>
 absl::StatusOr<T> SimpleTextToInt(absl::string_view op_text,
-                                  ResolverInterface *resolver) {
+                                  ResolverInterface* resolver) {
   T value;
   static RE2 hex_re("^\\s*0x([0-9a-fA-F]+)\\s*$");
   static RE2 dec_re("^\\s*(-?[0-9]+)\\s*$");
@@ -98,31 +98,31 @@ absl::StatusOr<T> SimpleTextToInt(absl::string_view op_text,
 using ValueMap = absl::flat_hash_map<absl::string_view, uint64_t>;
 
 template <typename Enum, typename Map, typename Encoder>
-void AddRiscvSourceOpBinSetters(Map &map) {
+void AddRiscvSourceOpBinSetters(Map& map) {
   Insert(map, *Enum::kIImm12,
          [](uint64_t address, absl::string_view text,
-            ResolverInterface *resolver) -> absl::StatusOr<uint64_t> {
+            ResolverInterface* resolver) -> absl::StatusOr<uint64_t> {
            auto res = SimpleTextToInt<int32_t>(text, resolver);
            if (!res.ok()) return res.status();
            return Encoder::IType::InsertImm12(res.value(), 0ULL);
          });
   Insert(map, *Enum::kIUimm6,
          [](uint64_t address, absl::string_view text,
-            ResolverInterface *resolver) -> absl::StatusOr<uint64_t> {
+            ResolverInterface* resolver) -> absl::StatusOr<uint64_t> {
            auto res = SimpleTextToInt<uint32_t>(text, resolver);
            if (!res.ok()) return res.status();
            return Encoder::RSType::InsertRUimm6(res.value(), 0ULL);
          });
   Insert(map, *Enum::kJImm12,
          [](uint64_t address, absl::string_view text,
-            ResolverInterface *resolver) -> absl::StatusOr<uint64_t> {
+            ResolverInterface* resolver) -> absl::StatusOr<uint64_t> {
            auto res = SimpleTextToInt<int32_t>(text, resolver);
            if (!res.ok()) return res.status();
            return Encoder::IType::InsertImm12(res.value(), 0ULL);
          });
   Insert(map, *Enum::kJImm20,
          [](uint64_t address, absl::string_view text,
-            ResolverInterface *resolver) -> absl::StatusOr<uint64_t> {
+            ResolverInterface* resolver) -> absl::StatusOr<uint64_t> {
            auto res = SimpleTextToInt<int32_t>(text, resolver);
            if (!res.ok()) return res.status();
            uint32_t delta = res.value() - address;
@@ -131,7 +131,7 @@ void AddRiscvSourceOpBinSetters(Map &map) {
          });
   Insert(map, *Enum::kRs1,
          [](uint64_t address, absl::string_view text,
-            ResolverInterface *resolver) -> absl::StatusOr<uint64_t> {
+            ResolverInterface* resolver) -> absl::StatusOr<uint64_t> {
            static ValueMap map(kRegisterList);
            auto iter = map.find(text);
            if (iter == map.end()) {
@@ -142,7 +142,7 @@ void AddRiscvSourceOpBinSetters(Map &map) {
          });
   Insert(map, *Enum::kRs2,
          [](uint64_t address, absl::string_view text,
-            ResolverInterface *resolver) -> absl::StatusOr<uint64_t> {
+            ResolverInterface* resolver) -> absl::StatusOr<uint64_t> {
            static ValueMap map(kRegisterList);
            auto iter = map.find(text);
            if (iter == map.end()) {
@@ -153,14 +153,14 @@ void AddRiscvSourceOpBinSetters(Map &map) {
          });
   Insert(map, *Enum::kSImm12,
          [](uint64_t address, absl::string_view text,
-            ResolverInterface *resolver) -> absl::StatusOr<uint64_t> {
+            ResolverInterface* resolver) -> absl::StatusOr<uint64_t> {
            auto res = SimpleTextToInt<uint32_t>(text, resolver);
            if (!res.ok()) return res.status();
            return Encoder::SType::InsertSImm(res.value(), 0ULL);
          });
   Insert(map, *Enum::kUImm20,
          [](uint64_t address, absl::string_view text,
-            ResolverInterface *resolver) -> absl::StatusOr<uint64_t> {
+            ResolverInterface* resolver) -> absl::StatusOr<uint64_t> {
            auto res = SimpleTextToInt<uint32_t>(text, resolver);
            if (!res.ok()) return res.status();
            return Encoder::UType::InsertUImm(res.value(), 0ULL);
@@ -168,10 +168,10 @@ void AddRiscvSourceOpBinSetters(Map &map) {
 }
 
 template <typename Enum, typename Map, typename Encoder>
-void AddRiscvDestOpBinSetters(Map &map) {
+void AddRiscvDestOpBinSetters(Map& map) {
   Insert(map, *Enum::kRd,
          [](uint64_t address, absl::string_view text,
-            ResolverInterface *resolver) -> absl::StatusOr<uint64_t> {
+            ResolverInterface* resolver) -> absl::StatusOr<uint64_t> {
            static ValueMap map(kRegisterList);
            auto iter = map.find(text);
            if (iter == map.end()) {
@@ -185,25 +185,25 @@ void AddRiscvDestOpBinSetters(Map &map) {
 namespace internal {
 
 absl::Status RelocateAddiIImm12(uint64_t address, absl::string_view text,
-                                ResolverInterface *resolver,
-                                std::vector<RelocationInfo> &relocations);
+                                ResolverInterface* resolver,
+                                std::vector<RelocationInfo>& relocations);
 absl::Status RelocateJJImm20(uint64_t address, absl::string_view text,
-                             ResolverInterface *resolver,
-                             std::vector<RelocationInfo> &relocations);
+                             ResolverInterface* resolver,
+                             std::vector<RelocationInfo>& relocations);
 absl::Status RelocateJrJImm12(uint64_t address, absl::string_view text,
-                              ResolverInterface *resolver,
-                              std::vector<RelocationInfo> &relocations);
+                              ResolverInterface* resolver,
+                              std::vector<RelocationInfo>& relocations);
 absl::Status RelocateLuiUImm20(uint64_t address, absl::string_view text,
-                               ResolverInterface *resolver,
-                               std::vector<RelocationInfo> &relocations);
+                               ResolverInterface* resolver,
+                               std::vector<RelocationInfo>& relocations);
 absl::Status RelocateSdSImm12(uint64_t address, absl::string_view text,
-                              ResolverInterface *resolver,
-                              std::vector<RelocationInfo> &relocations);
+                              ResolverInterface* resolver,
+                              std::vector<RelocationInfo>& relocations);
 
 }  // namespace internal
 
 template <typename OpcodeEnum, typename SourceOpEnum, typename Map>
-void AddRiscvSourceOpRelocationSetters(Map &map) {
+void AddRiscvSourceOpRelocationSetters(Map& map) {
   Insert(map, OpcodeEnum::kAddi, SourceOpEnum::kIImm12,
          internal::RelocateAddiIImm12);
   Insert(map, OpcodeEnum::kJal, SourceOpEnum::kJImm20,

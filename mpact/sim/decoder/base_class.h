@@ -27,11 +27,11 @@ namespace instruction_set {
 
 template <typename T>
 struct BaseClass {
-  const T *base;
-  TemplateInstantiationArgs *arguments = nullptr;
-  BaseClass(const T *base_, TemplateInstantiationArgs *arguments_)
+  const T* base;
+  TemplateInstantiationArgs* arguments = nullptr;
+  BaseClass(const T* base_, TemplateInstantiationArgs* arguments_)
       : base(base_), arguments(arguments_) {}
-  explicit BaseClass(const T *base_) : base(base_) {}
+  explicit BaseClass(const T* base_) : base(base_) {}
 };
 
 }  // namespace instruction_set

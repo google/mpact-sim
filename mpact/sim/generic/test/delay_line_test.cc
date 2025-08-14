@@ -14,7 +14,7 @@
 
 #include "mpact/sim/generic/delay_line.h"
 
-#include "googlemock/include/gmock/gmock.h"
+#include "googlemock/include/gmock/gmock.h"  // IWYU pragma: keep
 #include "googletest/include/gtest/gtest.h"
 
 namespace mpact {
@@ -28,11 +28,11 @@ class DelayLineTest : public testing::Test {
   class TestRecord {
    public:
     void Apply() { *dest_ = value_; }
-    TestRecord(int value, int *dest) : value_(value), dest_(dest) {}
+    TestRecord(int value, int* dest) : value_(value), dest_(dest) {}
 
    private:
     int value_;
-    int *dest_;
+    int* dest_;
   };
 
   // Delay Line is 8 entries deep.
@@ -40,7 +40,7 @@ class DelayLineTest : public testing::Test {
 
   ~DelayLineTest() override { delete delay_line_; }
 
-  DelayLine<TestRecord> *delay_line_;
+  DelayLine<TestRecord>* delay_line_;
 };
 
 // Test that the value changes after two calls to Advance.

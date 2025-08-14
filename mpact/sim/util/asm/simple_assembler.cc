@@ -91,7 +91,7 @@ struct AtoIType<int8_t> {
 // then it returns an error.
 template <typename T>
 absl::StatusOr<T> SimpleTextToInt(absl::string_view text,
-                                  ResolverInterface *resolver = nullptr) {
+                                  ResolverInterface* resolver = nullptr) {
   T value;
   if (text.substr(0, 2) == "0x") {
     if (absl::SimpleHexAtoi(text.substr(2), &value)) return value;
@@ -174,7 +174,7 @@ std::string ExpandEscapes(absl::string_view text) {
 // interface is optional and is used to resolve any symbol names in the text.
 template <typename T>
 absl::StatusOr<std::vector<T>> GetValues(
-    absl::string_view remainder, ResolverInterface *resolver = nullptr) {
+    absl::string_view remainder, ResolverInterface* resolver = nullptr) {
   std::vector<T> values;
   static RE2 value_re("\\s*(0x[0-9a-fA-F]+|-?[0-9]+)\\s*(?:,|$)");
   std::string match;
@@ -190,7 +190,7 @@ absl::StatusOr<std::vector<T>> GetValues(
 // Specialization of the above that handles char values.
 template <>
 absl::StatusOr<std::vector<char>> GetValues<char>(absl::string_view remainder,
-                                                  ResolverInterface *resolver) {
+                                                  ResolverInterface* resolver) {
   std::vector<char> values;
   static RE2 value_re("\\s*'(.{1,2})'\\s*(?:,|$)");
   std::string match;
@@ -207,7 +207,7 @@ absl::StatusOr<std::vector<char>> GetValues<char>(absl::string_view remainder,
 // Specialization of the above that handles double quoted string values.
 template <>
 absl::StatusOr<std::vector<std::string>> GetValues<std::string>(
-    absl::string_view remainder, ResolverInterface *resolver) {
+    absl::string_view remainder, ResolverInterface* resolver) {
   std::vector<std::string> values;
   std::string match;
   static RE2 value_re("\\s*\"([^\"]*)\"\\s*(?:,|$)");
@@ -232,8 +232,8 @@ absl::StatusOr<std::vector<std::string>> GetLabels(
 
 // Helper that converts a vector of integer values to a vector of bytes.
 template <typename T>
-inline void ConvertToBytes(const std::vector<T> &values,
-                           std::vector<uint8_t> &bytes) {
+inline void ConvertToBytes(const std::vector<T>& values,
+                           std::vector<uint8_t>& bytes) {
   union {
     T i;
     uint8_t b[sizeof(T)];
@@ -249,7 +249,7 @@ inline void ConvertToBytes(const std::vector<T> &values,
 }  // namespace
 
 SimpleAssembler::SimpleAssembler(absl::string_view comment, int elf_file_class,
-                                 OpcodeAssemblerInterface *opcode_assembler_if)
+                                 OpcodeAssemblerInterface* opcode_assembler_if)
     : elf_file_class_(elf_file_class),
       opcode_assembler_if_(opcode_assembler_if),
       comment_re_(absl::StrCat("^(.*?)(?:", comment, ".*?)?(\\\\)?$")),
@@ -298,8 +298,8 @@ SimpleAssembler::~SimpleAssembler() {
   string_accessor_ = nullptr;
 }
 
-absl::Status SimpleAssembler::Parse(std::istream &is,
-                                    ResolverInterface *zero_resolver) {
+absl::Status SimpleAssembler::Parse(std::istream& is,
+                                    ResolverInterface* zero_resolver) {
   // A trivial symbol resolver that always returns 0.
   bool own_zero_resolver = false;
   std::function<void()> cleanup = []() {};
@@ -347,7 +347,7 @@ absl::Status SimpleAssembler::Parse(std::istream &is,
     if (RE2::FullMatch(line, asm_line_re_, &label, &statement)) {
       std::vector<uint8_t> byte_vector;
       std::vector<RelocationInfo> relo_vector;
-      auto *section = current_section_;
+      auto* section = current_section_;
       uint64_t address =
           (section == nullptr) ? 0 : section_address_map_[section];
       if (!statement.empty()) {
@@ -389,7 +389,7 @@ absl::Status SimpleAssembler::Parse(std::istream &is,
   }
 
   // Add undefined symbols to the symbol table.
-  for (auto const &symbol : undefined_symbols_) {
+  for (auto const& symbol : undefined_symbols_) {
     auto status = AddSymbol(symbol, 0, 0, STT_NOTYPE, 0, 0, nullptr);
     if (!status.ok()) {
       cleanup();
@@ -408,7 +408,7 @@ absl::Status SimpleAssembler::Parse(std::istream &is,
 
 absl::Status SimpleAssembler::CreateExecutable(
     uint64_t base_address, uint64_t entry_point,
-    ResolverInterface *symbol_resolver) {
+    ResolverInterface* symbol_resolver) {
   return CreateExecutable(base_address, absl::StrCat(entry_point),
                           symbol_resolver);
 }
@@ -420,10 +420,10 @@ void SimpleAssembler::UpdateSymbolsForExecutable(uint64_t text_segment_start,
                                                  uint64_t bss_segment_start) {
   auto num_symbols = symtab_->get_size() / sizeof(SymbolType);
   auto size = num_symbols * sizeof(SymbolType);
-  auto *symbols = new SymbolType[num_symbols];
+  auto* symbols = new SymbolType[num_symbols];
   std::memcpy(symbols, symtab_->get_data(), size);
   for (int i = 0; i < num_symbols; ++i) {
-    auto &sym = symbols[i];
+    auto& sym = symbols[i];
     auto shndx = sym.st_shndx;
     std::string name = string_accessor_->get_string(sym.st_name);
     if (global_symbols_.contains(name)) {
@@ -439,7 +439,7 @@ void SimpleAssembler::UpdateSymbolsForExecutable(uint64_t text_segment_start,
       sym.st_value += bss_segment_start;
     }
   }
-  symtab_->set_data(reinterpret_cast<char *>(symbols), size);
+  symtab_->set_data(reinterpret_cast<char*>(symbols), size);
   delete[] symbols;
 }
 
@@ -447,28 +447,28 @@ template <typename SymbolType>
 void SimpleAssembler::UpdateSymbolsForRelocatable() {
   auto num_symbols = symtab_->get_size() / sizeof(SymbolType);
   auto size = num_symbols * sizeof(SymbolType);
-  auto *symbols = new SymbolType[num_symbols];
+  auto* symbols = new SymbolType[num_symbols];
   std::memcpy(symbols, symtab_->get_data(), size);
   for (int i = 0; i < num_symbols; ++i) {
-    auto &sym = symbols[i];
+    auto& sym = symbols[i];
     std::string name = string_accessor_->get_string(sym.st_name);
     if (global_symbols_.contains(name)) {
       sym.st_info = ELF_ST_INFO(STB_GLOBAL, ELF_ST_TYPE(sym.st_info));
     }
   }
-  symtab_->set_data(reinterpret_cast<char *>(symbols), size);
+  symtab_->set_data(reinterpret_cast<char*>(symbols), size);
   delete[] symbols;
 }
 
 absl::Status SimpleAssembler::CreateExecutable(
-    uint64_t base_address, const std::string &entry_point,
-    ResolverInterface *symbol_resolver) {
+    uint64_t base_address, const std::string& entry_point,
+    ResolverInterface* symbol_resolver) {
   if (!undefined_symbols_.empty()) {
     std::string message;
     absl::StrAppend(
         &message,
         "Cannot create executable with the following undefined symbols: ");
-    for (auto const &symbol : undefined_symbols_) {
+    for (auto const& symbol : undefined_symbols_) {
       absl::StrAppend(&message, "    ", symbol, "\n");
     }
     return absl::InvalidArgumentError(message);
@@ -481,7 +481,7 @@ absl::Status SimpleAssembler::CreateExecutable(
   //   data segment starting at the end of the text segment + any alignment.
   // The bss section is added to the end of the data segment + any alignment.
 
-  ELFIO::segment *text_segment = nullptr;
+  ELFIO::segment* text_segment = nullptr;
   uint64_t text_segment_start = 0;
   if (text_section_ != nullptr) {
     text_segment_start = base_address & ~4095ULL;
@@ -496,7 +496,7 @@ absl::Status SimpleAssembler::CreateExecutable(
     text_segment->set_align(4096);
   }
 
-  ELFIO::segment *data_segment = nullptr;
+  ELFIO::segment* data_segment = nullptr;
   uint64_t data_segment_start = 0;
   uint64_t bss_segment_start = 0;
   if ((data_section_ != nullptr) || (bss_section_ != nullptr)) {
@@ -588,10 +588,10 @@ namespace {
 // Helper function to add a relocation entry to a relocation section.
 template <typename RelocaType>
 absl::Status AddRelocationEntries(
-    const std::vector<RelocationInfo> &relo_vector,
-    absl::flat_hash_map<std::string, ELFIO::Elf_Word> &symbol_indices,
-    ELFIO::section *reloca_section) {
-  for (auto const &relo : relo_vector) {
+    const std::vector<RelocationInfo>& relo_vector,
+    absl::flat_hash_map<std::string, ELFIO::Elf_Word>& symbol_indices,
+    ELFIO::section* reloca_section) {
+  for (auto const& relo : relo_vector) {
     RelocaType rela;
     rela.r_offset = relo.offset;
     rela.r_addend = relo.addend;
@@ -605,7 +605,7 @@ absl::Status AddRelocationEntries(
     } else {
       rela.r_info = ELF32_R_INFO(iter->second, relo.type);
     }
-    reloca_section->append_data(reinterpret_cast<const char *>(&rela),
+    reloca_section->append_data(reinterpret_cast<const char*>(&rela),
                                 sizeof(RelocaType));
   }
   return absl::OkStatus();
@@ -617,7 +617,7 @@ template <typename SymbolType>
 void SimpleAssembler::UpdateSymtabHeaderInfo() {
   int last_local = 0;
   auto syms =
-      absl::MakeSpan(reinterpret_cast<const SymbolType *>(symtab_->get_data()),
+      absl::MakeSpan(reinterpret_cast<const SymbolType*>(symtab_->get_data()),
                      symtab_->get_size() / sizeof(SymbolType));
   for (int i = 0; i < syms.size(); ++i) {
     auto name = string_accessor_->get_string(syms[i].st_name);
@@ -628,7 +628,7 @@ void SimpleAssembler::UpdateSymtabHeaderInfo() {
 }
 
 absl::Status SimpleAssembler::CreateRelocatable(
-    ResolverInterface *symbol_resolver) {
+    ResolverInterface* symbol_resolver) {
   writer_.set_type(ET_REL);
   // Reset the section address map to zero since we are creating a relocatable
   // file.
@@ -678,10 +678,10 @@ absl::Status SimpleAssembler::CreateRelocatable(
     // First scan through the entries relocation vector and group them by
     // the section in which the relocation is to be applied.
     absl::flat_hash_map<uint16_t, std::vector<RelocationInfo>> relo_map;
-    for (auto const &relo : relo_vector) {
+    for (auto const& relo : relo_vector) {
       relo_map[relo.section_index].push_back(relo);
     }
-    for (auto const &[section_index, relo_vec] : relo_map) {
+    for (auto const& [section_index, relo_vec] : relo_map) {
       if (section_index == 0) {
         cleanup();
         return absl::InternalError(
@@ -695,7 +695,7 @@ absl::Status SimpleAssembler::CreateRelocatable(
       // Now, create a relocation section for each key in the map.
       std::string name =
           absl::StrCat(".rela", section_index_map_[section_index]->get_name());
-      auto *rela_section = writer_.sections.add(name);
+      auto* rela_section = writer_.sections.add(name);
       rela_section->set_type(SHT_RELA);
       rela_section->set_flags(SHF_INFO_LINK);
       rela_section->set_entry_size(elf_file_class_ == ELFCLASS64
@@ -728,14 +728,14 @@ absl::Status SimpleAssembler::CreateRelocatable(
 }
 
 absl::Status SimpleAssembler::ParsePassTwo(
-    std::vector<RelocationInfo> &relo_vector,
-    ResolverInterface *symbol_resolver) {
+    std::vector<RelocationInfo>& relo_vector,
+    ResolverInterface* symbol_resolver) {
   // Now fill in the sections. Parse each of the lines saved in the first
   // pass.
-  for (auto const &line : lines_) {
+  for (auto const& line : lines_) {
     std::vector<uint8_t> byte_vector;
     absl::Status status;
-    auto *section = current_section_;
+    auto* section = current_section_;
     auto relo_size = relo_vector.size();
     auto address = section_address_map_[section];
     if (line[0] == '.') {
@@ -758,7 +758,7 @@ absl::Status SimpleAssembler::ParsePassTwo(
       if (section == nullptr) {
         return absl::InternalError("Data is added to a null section");
       }
-      section->append_data(reinterpret_cast<const char *>(byte_vector.data()),
+      section->append_data(reinterpret_cast<const char*>(byte_vector.data()),
                            byte_vector.size());
     }
   }
@@ -766,7 +766,7 @@ absl::Status SimpleAssembler::ParsePassTwo(
 }
 
 // Top level function that writes the ELF file out to disk.
-absl::Status SimpleAssembler::Write(std::ostream &os) {
+absl::Status SimpleAssembler::Write(std::ostream& os) {
   writer_.save(os);
   return absl::OkStatus();
 }
@@ -777,12 +777,12 @@ absl::Status SimpleAssembler::Write(std::ostream &os) {
 // tokens separated by spaces. The argument is parsed using regular
 // expressions. The byte values are appended to the given vector.
 absl::Status SimpleAssembler::ParseAsmDirective(
-    absl::string_view line, uint64_t address, ResolverInterface *resolver,
-    std::vector<uint8_t> &byte_values,
-    std::vector<RelocationInfo> &relocations) {
+    absl::string_view line, uint64_t address, ResolverInterface* resolver,
+    std::vector<uint8_t>& byte_values,
+    std::vector<RelocationInfo>& relocations) {
   std::string match;
   std::string remainder;
-  ELFIO::section *section = current_section_;
+  ELFIO::section* section = current_section_;
   uint64_t size = 0;
   std::string directive;
   std::string label;
@@ -819,22 +819,22 @@ absl::Status SimpleAssembler::ParseAsmDirective(
     if (!res.ok()) return res.status();
     auto values = res.value();
     size = values.size();
-    for (auto const &value : values) byte_values.push_back(value);
+    for (auto const& value : values) byte_values.push_back(value);
   } else if (match == "char") {
     // .char
     auto res = GetValues<char>(remainder, resolver);
     if (!res.ok()) return res.status();
     auto values = res.value();
     size = values.size();
-    for (auto const &value : values) byte_values.push_back(value);
+    for (auto const& value : values) byte_values.push_back(value);
   } else if (match == "cstring") {
     // .cstring
     auto res = GetValues<std::string>(remainder, resolver);
     if (!res.ok()) return res.status();
     auto values = res.value();
     size = 0;
-    for (auto const &value : values) {
-      for (auto const &c : value) byte_values.push_back(c);
+    for (auto const& value : values) {
+      for (auto const& c : value) byte_values.push_back(c);
       byte_values.push_back('\0');
       size += value.size() + 1;
     }
@@ -846,7 +846,7 @@ absl::Status SimpleAssembler::ParseAsmDirective(
     auto res = GetLabels(remainder);
     if (!res.ok()) return res.status();
     auto values = res.value();
-    for (auto const &value : values) {
+    for (auto const& value : values) {
       global_symbols_.insert(value);
     }
   } else if (match == "long") {
@@ -878,8 +878,8 @@ absl::Status SimpleAssembler::ParseAsmDirective(
     if (!res.ok()) return res.status();
     auto values = res.value();
     size = 0;
-    for (auto const &value : values) {
-      for (auto const &c : value) byte_values.push_back(c);
+    for (auto const& value : values) {
+      for (auto const& c : value) byte_values.push_back(c);
       size += value.size();
     }
   } else if (match == "text") {
@@ -891,7 +891,7 @@ absl::Status SimpleAssembler::ParseAsmDirective(
     if (!res.ok()) return res.status();
     auto values = res.value();
     size = values.size();
-    for (auto const &value : values) byte_values.push_back(value);
+    for (auto const& value : values) byte_values.push_back(value);
   } else if (match == "ulong") {
     // .ulong
     auto res = GetValues<uint64_t>(remainder);
@@ -949,9 +949,9 @@ absl::Status SimpleAssembler::ParseAsmDirective(
 // expected to be a single line of text. The byte values are appended to the
 // given vector.
 absl::Status SimpleAssembler::ParseAsmStatement(
-    absl::string_view line, uint64_t address, ResolverInterface *resolver,
-    std::vector<uint8_t> &byte_values,
-    std::vector<RelocationInfo> &relocations) {
+    absl::string_view line, uint64_t address, ResolverInterface* resolver,
+    std::vector<uint8_t>& byte_values,
+    std::vector<RelocationInfo>& relocations) {
   // Call the target specific assembler to encode the statement.
   auto result = opcode_assembler_if_->Encode(
       address, line,
@@ -962,9 +962,9 @@ absl::Status SimpleAssembler::ParseAsmStatement(
   return absl::OkStatus();
 }
 
-void SimpleAssembler::SetTextSection(const std::string &name) {
+void SimpleAssembler::SetTextSection(const std::string& name) {
   // First check if the section already exists.
-  auto *section = writer_.sections[name];
+  auto* section = writer_.sections[name];
   if (section != nullptr) {
     current_section_ = section;
     return;
@@ -983,9 +983,9 @@ void SimpleAssembler::SetTextSection(const std::string &name) {
   section_index_map_.insert({section->get_index(), text_section_});
 }
 
-void SimpleAssembler::SetDataSection(const std::string &name) {
+void SimpleAssembler::SetDataSection(const std::string& name) {
   // First check if the section already exists.
-  auto *section = writer_.sections[name];
+  auto* section = writer_.sections[name];
   if (section != nullptr) {
     current_section_ = section;
     return;
@@ -1004,9 +1004,9 @@ void SimpleAssembler::SetDataSection(const std::string &name) {
   section_index_map_.insert({section->get_index(), data_section_});
 }
 
-void SimpleAssembler::SetBssSection(const std::string &name) {
+void SimpleAssembler::SetBssSection(const std::string& name) {
   // First check if the section already exists.
-  auto *section = writer_.sections[name];
+  auto* section = writer_.sections[name];
   if (section != nullptr) {
     current_section_ = section;
     return;
@@ -1025,17 +1025,17 @@ void SimpleAssembler::SetBssSection(const std::string &name) {
   section_index_map_.insert({section->get_index(), bss_section_});
 }
 absl::Status SimpleAssembler::AddSymbolToCurrentSection(
-    const std::string &name, ELFIO::Elf64_Addr value, ELFIO::Elf_Xword size,
+    const std::string& name, ELFIO::Elf64_Addr value, ELFIO::Elf_Xword size,
     uint8_t type, uint8_t binding, uint8_t other) {
   return AddSymbol(name, value, size, type, binding, other, current_section_);
 }
 
-absl::Status SimpleAssembler::AddSymbol(const std::string &name,
+absl::Status SimpleAssembler::AddSymbol(const std::string& name,
                                         ELFIO::Elf64_Addr value,
                                         ELFIO::Elf_Xword size, uint8_t type,
                                         uint8_t binding, uint8_t other,
-                                        const std::string &section_name) {
-  ELFIO::section *section = nullptr;
+                                        const std::string& section_name) {
+  ELFIO::section* section = nullptr;
   if (!section_name.empty()) {
     section = writer_.sections[section_name];
     if (section == nullptr) {
@@ -1046,11 +1046,11 @@ absl::Status SimpleAssembler::AddSymbol(const std::string &name,
   return AddSymbol(name, value, size, type, binding, other, section);
 }
 
-absl::Status SimpleAssembler::AddSymbol(const std::string &name,
+absl::Status SimpleAssembler::AddSymbol(const std::string& name,
                                         ELFIO::Elf64_Addr value,
                                         ELFIO::Elf_Xword size, uint8_t type,
                                         uint8_t binding, uint8_t other,
-                                        ELFIO::section *section) {
+                                        ELFIO::section* section) {
   auto iter = symbol_indices_.find(name);
   if (iter != symbol_indices_.end()) {
     return absl::AlreadyExistsError(
@@ -1079,7 +1079,7 @@ void SimpleAssembler::SimpleAddSymbol(absl::string_view name) {
   undefined_symbols_.insert(name_str);
 }
 
-absl::Status SimpleAssembler::AppendData(const char *data, size_t size) {
+absl::Status SimpleAssembler::AppendData(const char* data, size_t size) {
   if (current_section_ == nullptr) {
     return absl::FailedPreconditionError("No current section");
   }

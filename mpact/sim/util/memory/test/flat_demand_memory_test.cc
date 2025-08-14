@@ -42,15 +42,15 @@ class FlatDemandMemoryTest : public testing::Test {
   FlatDemandMemoryTest() { arch_state_ = new MyArchState("TestArchitecture"); }
   ~FlatDemandMemoryTest() override { delete arch_state_; }
 
-  MyArchState *arch_state_;
+  MyArchState* arch_state_;
 };
 
 TEST_F(FlatDemandMemoryTest, BasicLoadStore) {
   auto mem = std::make_unique<FlatDemandMemory>();
-  DataBuffer *st_db1 = arch_state_->db_factory()->Allocate<uint8_t>(1);
-  DataBuffer *st_db2 = arch_state_->db_factory()->Allocate<uint16_t>(1);
-  DataBuffer *st_db4 = arch_state_->db_factory()->Allocate<uint32_t>(1);
-  DataBuffer *st_db8 = arch_state_->db_factory()->Allocate<uint64_t>(1);
+  DataBuffer* st_db1 = arch_state_->db_factory()->Allocate<uint8_t>(1);
+  DataBuffer* st_db2 = arch_state_->db_factory()->Allocate<uint16_t>(1);
+  DataBuffer* st_db4 = arch_state_->db_factory()->Allocate<uint32_t>(1);
+  DataBuffer* st_db8 = arch_state_->db_factory()->Allocate<uint64_t>(1);
 
   st_db1->Set<uint8_t>(0, 0x0F);
   st_db2->Set<uint16_t>(0, 0xA5A5);
@@ -62,10 +62,10 @@ TEST_F(FlatDemandMemoryTest, BasicLoadStore) {
   mem->Store(0x1004, st_db4);
   mem->Store(0x1008, st_db8);
 
-  DataBuffer *ld_db1 = arch_state_->db_factory()->Allocate<uint8_t>(1);
-  DataBuffer *ld_db2 = arch_state_->db_factory()->Allocate<uint16_t>(1);
-  DataBuffer *ld_db4 = arch_state_->db_factory()->Allocate<uint32_t>(1);
-  DataBuffer *ld_db8 = arch_state_->db_factory()->Allocate<uint64_t>(1);
+  DataBuffer* ld_db1 = arch_state_->db_factory()->Allocate<uint8_t>(1);
+  DataBuffer* ld_db2 = arch_state_->db_factory()->Allocate<uint16_t>(1);
+  DataBuffer* ld_db4 = arch_state_->db_factory()->Allocate<uint32_t>(1);
+  DataBuffer* ld_db8 = arch_state_->db_factory()->Allocate<uint64_t>(1);
   ld_db1->set_latency(0);
   ld_db2->set_latency(0);
   ld_db4->set_latency(0);
@@ -95,15 +95,15 @@ TEST_F(FlatDemandMemoryTest, BasicLoadStore) {
 TEST_F(FlatDemandMemoryTest, SpanningLoadStore) {
   auto mem = std::make_unique<FlatDemandMemory>();
 
-  DataBuffer *st_db1 = arch_state_->db_factory()->Allocate<uint8_t>(1);
-  DataBuffer *st_db2 = arch_state_->db_factory()->Allocate<uint16_t>(1);
-  DataBuffer *st_db4 = arch_state_->db_factory()->Allocate<uint32_t>(1);
-  DataBuffer *st_db8 = arch_state_->db_factory()->Allocate<uint64_t>(1);
+  DataBuffer* st_db1 = arch_state_->db_factory()->Allocate<uint8_t>(1);
+  DataBuffer* st_db2 = arch_state_->db_factory()->Allocate<uint16_t>(1);
+  DataBuffer* st_db4 = arch_state_->db_factory()->Allocate<uint32_t>(1);
+  DataBuffer* st_db8 = arch_state_->db_factory()->Allocate<uint64_t>(1);
 
-  DataBuffer *ld_db1 = arch_state_->db_factory()->Allocate<uint8_t>(1);
-  DataBuffer *ld_db2 = arch_state_->db_factory()->Allocate<uint16_t>(1);
-  DataBuffer *ld_db4 = arch_state_->db_factory()->Allocate<uint32_t>(1);
-  DataBuffer *ld_db8 = arch_state_->db_factory()->Allocate<uint64_t>(1);
+  DataBuffer* ld_db1 = arch_state_->db_factory()->Allocate<uint8_t>(1);
+  DataBuffer* ld_db2 = arch_state_->db_factory()->Allocate<uint16_t>(1);
+  DataBuffer* ld_db4 = arch_state_->db_factory()->Allocate<uint32_t>(1);
+  DataBuffer* ld_db8 = arch_state_->db_factory()->Allocate<uint64_t>(1);
   ld_db1->set_latency(0);
   ld_db2->set_latency(0);
   ld_db4->set_latency(0);
@@ -142,11 +142,11 @@ TEST_F(FlatDemandMemoryTest, SpanningLoadStore) {
 TEST_F(FlatDemandMemoryTest, MultiLoadUnitStride) {
   auto mem = std::make_unique<FlatDemandMemory>(1024, 0x1000, 1, 0);
 
-  DataBuffer *address_db = arch_state_->db_factory()->Allocate<uint64_t>(1);
-  DataBuffer *mask_db = arch_state_->db_factory()->Allocate<bool>(4);
-  DataBuffer *ld_db = arch_state_->db_factory()->Allocate<uint32_t>(4);
+  DataBuffer* address_db = arch_state_->db_factory()->Allocate<uint64_t>(1);
+  DataBuffer* mask_db = arch_state_->db_factory()->Allocate<bool>(4);
+  DataBuffer* ld_db = arch_state_->db_factory()->Allocate<uint32_t>(4);
   ld_db->set_latency(0);
-  DataBuffer *st_db = arch_state_->db_factory()->Allocate<uint32_t>(4);
+  DataBuffer* st_db = arch_state_->db_factory()->Allocate<uint32_t>(4);
   auto ld_span = ld_db->Get<uint32_t>();
   auto st_span = st_db->Get<uint32_t>();
   auto mask_span = mask_db->Get<bool>();
@@ -166,9 +166,9 @@ TEST_F(FlatDemandMemoryTest, MultiLoadUnitStride) {
 
 TEST_F(FlatDemandMemoryTest, HalfWordAddressable) {
   auto mem = std::make_unique<FlatDemandMemory>(0x4000, 0x1000, 2, 0);
-  DataBuffer *st_db2 = arch_state_->db_factory()->Allocate<uint16_t>(1);
-  DataBuffer *st_db4 = arch_state_->db_factory()->Allocate<uint32_t>(1);
-  DataBuffer *st_db8 = arch_state_->db_factory()->Allocate<uint64_t>(1);
+  DataBuffer* st_db2 = arch_state_->db_factory()->Allocate<uint16_t>(1);
+  DataBuffer* st_db4 = arch_state_->db_factory()->Allocate<uint32_t>(1);
+  DataBuffer* st_db8 = arch_state_->db_factory()->Allocate<uint64_t>(1);
 
   st_db2->Set<uint16_t>(0, 0xA5A5);
   st_db4->Set<uint32_t>(0, 0xDEADBEEF);
@@ -178,9 +178,9 @@ TEST_F(FlatDemandMemoryTest, HalfWordAddressable) {
   mem->Store(0x1001, st_db4);
   mem->Store(0x1003, st_db8);
 
-  DataBuffer *ld_db2 = arch_state_->db_factory()->Allocate<uint16_t>(1);
-  DataBuffer *ld_db4 = arch_state_->db_factory()->Allocate<uint32_t>(1);
-  DataBuffer *ld_db8 = arch_state_->db_factory()->Allocate<uint64_t>(1);
+  DataBuffer* ld_db2 = arch_state_->db_factory()->Allocate<uint16_t>(1);
+  DataBuffer* ld_db4 = arch_state_->db_factory()->Allocate<uint32_t>(1);
+  DataBuffer* ld_db8 = arch_state_->db_factory()->Allocate<uint64_t>(1);
   ld_db2->set_latency(0);
   ld_db4->set_latency(0);
   ld_db8->set_latency(0);
@@ -204,10 +204,10 @@ TEST_F(FlatDemandMemoryTest, HalfWordAddressable) {
 
 TEST_F(FlatDemandMemoryTest, LargeBlockOfMemory) {
   auto mem = std::make_unique<FlatDemandMemory>();
-  DataBuffer *ld_db = arch_state_->db_factory()->Allocate<uint8_t>(
+  DataBuffer* ld_db = arch_state_->db_factory()->Allocate<uint8_t>(
       FlatDemandMemory::kAllocationSize * 2);
   ld_db->set_latency(0);
-  DataBuffer *st_db = arch_state_->db_factory()->Allocate<uint8_t>(
+  DataBuffer* st_db = arch_state_->db_factory()->Allocate<uint8_t>(
       FlatDemandMemory::kAllocationSize * 2);
   // Set the store data to known value.
   std::memset(st_db->raw_ptr(), 0xbe, FlatDemandMemory::kAllocationSize * 2);

@@ -22,7 +22,6 @@
 #include "mpact/sim/generic/arch_state.h"
 #include "mpact/sim/generic/data_buffer.h"
 #include "mpact/sim/generic/fifo.h"
-#include "mpact/sim/generic/program_error.h"
 #include "mpact/sim/generic/state_item.h"
 #include "mpact/sim/generic/state_item_base.h"
 
@@ -55,20 +54,20 @@ class FifoTokenStore {
 
 class TokenFifoBase : public FifoBase {
  protected:
-  TokenFifoBase(ArchState *arch_state, absl::string_view name,
-                const std::vector<int> &shape, int element_size,
-                unsigned capacity, FifoTokenStore *tokens);
+  TokenFifoBase(ArchState* arch_state, absl::string_view name,
+                const std::vector<int>& shape, int element_size,
+                unsigned capacity, FifoTokenStore* tokens);
   TokenFifoBase() = delete;
-  TokenFifoBase(const TokenFifoBase &) = delete;
+  TokenFifoBase(const TokenFifoBase&) = delete;
 
  public:
   bool IsOverSubscribed() const override;
   bool IsFull() const override;
-  bool Push(DataBuffer *db) override;
+  bool Push(DataBuffer* db) override;
   void Pop() override;
 
  private:
-  FifoTokenStore *token_store_;
+  FifoTokenStore* token_store_;
 };
 
 template <typename ElementType>

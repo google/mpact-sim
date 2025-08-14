@@ -104,7 +104,7 @@ class CounterValueOutputBase : public CounterBaseInterface {
   // to be added a a listener, which means that its SetValue() method will be
   // called whenever value of the counter is updated. The caller retains
   // ownership of the listener.
-  void AddListener(CounterValueSetInterface<T> *listener) {
+  void AddListener(CounterValueSetInterface<T>* listener) {
     listeners_.push_back(listener);
   }
   // Implementation of the pure virtual method from CounterBaseInterface to
@@ -120,7 +120,7 @@ class CounterValueOutputBase : public CounterBaseInterface {
   // for the type specific export, as each different type needs to set
   // a different field in the proto message.
   absl::Status Export(
-      mpact::sim::proto::ComponentValueEntry *entry) const override {
+      mpact::sim::proto::ComponentValueEntry* entry) const override {
     if (entry == nullptr) return absl::InvalidArgumentError("Entry is null");
     entry->set_name(GetName());
     if (!GetAbout().empty()) {
@@ -154,7 +154,7 @@ class CounterValueOutputBase : public CounterBaseInterface {
   // of registered listener objects with the new value.
   void UpdateValue(T value) {
     value_ = std::move(value);
-    for (auto *listener : listeners_) {
+    for (auto* listener : listeners_) {
       listener->SetValue(value_);
     }
   }
@@ -163,10 +163,10 @@ class CounterValueOutputBase : public CounterBaseInterface {
   // This method exports the typed value of the counter to the appropriate
   // field in the proto message. Note, this method is defined at the bottom of
   // this file.
-  void ExportValue(mpact::sim::proto::ComponentValueEntry *entry) const;
+  void ExportValue(mpact::sim::proto::ComponentValueEntry* entry) const;
   // Objects pointed to are owned elsewhere. Their lifetimes must exceed the
   // lifetime of the counter, or at least beyond the last call to UpdateValue.
-  std::vector<CounterValueSetInterface<T> *> listeners_;
+  std::vector<CounterValueSetInterface<T>*> listeners_;
   std::string name_;
   std::string about_;
   bool is_enabled_;
@@ -204,27 +204,27 @@ class SimpleCounter : public CounterValueOutputBase<T>,
 
   // Constructor and destructor.
   SimpleCounter() : CounterValueOutputBase<T>() {}
-  SimpleCounter(std::string name, std::string about, const T &initial)
+  SimpleCounter(std::string name, std::string about, const T& initial)
       : CounterValueOutputBase<T>(std::move(name), std::move(about), initial) {}
-  SimpleCounter(std::string name, const T &initial)
+  SimpleCounter(std::string name, const T& initial)
       : CounterValueOutputBase<T>(std::move(name), initial) {}
   SimpleCounter(std::string name, std::string about)
       : SimpleCounter(std::move(name), std::move(about), T()) {}
   explicit SimpleCounter(std::string name)
       : SimpleCounter(std::move(name), T()) {}
-  SimpleCounter &operator=(const SimpleCounter &) = delete;
+  SimpleCounter& operator=(const SimpleCounter&) = delete;
   ~SimpleCounter() override = default;
 
   // Implementing the methods from the CounterValueIncrementInterface<T>. Note
   // that the methods are declared final to enable de-virtualization
   // optimizations in the compiler.
-  void Increment(const T &val) final {
+  void Increment(const T& val) final {
     if (IsEnabled()) UpdateValue(GetValue() + val);
   }
-  void Decrement(const T &val) final {
+  void Decrement(const T& val) final {
     if (IsEnabled()) UpdateValue(GetValue() - val);
   }
-  void SetValue(const T &val) final {
+  void SetValue(const T& val) final {
     if (IsEnabled()) UpdateValue(val);
   }
 
@@ -259,7 +259,7 @@ class FunctionCounter : public CounterValueOutputBase<Out>,
       "Template argument type Out is not in CounterValue variant.");
 
  public:
-  using ProcessingFunction = std::function<bool(const In &, Out *)>;
+  using ProcessingFunction = std::function<bool(const In&, Out*)>;
   // Since this class derives from templated classes, calls to the base class
   // methods must be qualified or use this->. Electing to do the former with the
   // following using declarations.
@@ -273,7 +273,7 @@ class FunctionCounter : public CounterValueOutputBase<Out>,
   // If not passed in to the constructor it defaults to a function that always
   // returns false and thus never updates the counter value.
   template <typename F>
-  FunctionCounter(std::string name, const Out &initial, F processing_function)
+  FunctionCounter(std::string name, const Out& initial, F processing_function)
       : CounterValueOutputBase<Out>(std::move(name), initial),
         processing_function_(
             std::move(ProcessingFunction(processing_function))) {}
@@ -281,12 +281,12 @@ class FunctionCounter : public CounterValueOutputBase<Out>,
   FunctionCounter(std::string name, F processing_function)
       : FunctionCounter(std::move(name), Out(),
                         std::move(processing_function)) {}
-  FunctionCounter(std::string name, const Out &initial)
+  FunctionCounter(std::string name, const Out& initial)
       : FunctionCounter(std::move(name), initial,
-                        [](const In &, Out *) -> bool { return false; }) {}
+                        [](const In&, Out*) -> bool { return false; }) {}
   explicit FunctionCounter(std::string name)
       : FunctionCounter(std::move(name), Out()) {}
-  FunctionCounter &operator=(const FunctionCounter &) = delete;
+  FunctionCounter& operator=(const FunctionCounter&) = delete;
   ~FunctionCounter() override = default;
 
   // Set the value processing function.
@@ -298,7 +298,7 @@ class FunctionCounter : public CounterValueOutputBase<Out>,
   // The following method is defined final to enable devirtualization
   // optimization in the compiler.
   // Process the input value and update the counter if indicated.
-  void SetValue(const In &in_value) final {
+  void SetValue(const In& in_value) final {
     if (IsEnabled()) {
       Out out_value;
       if (processing_function_(in_value, &out_value)) UpdateValue(out_value);
@@ -319,17 +319,17 @@ class FunctionCounter : public CounterValueOutputBase<Out>,
 // NOTE: add a specialization for every new type added to the variant.
 template <>
 inline void CounterValueOutputBase<uint64_t>::ExportValue(
-    mpact::sim::proto::ComponentValueEntry *entry) const {
+    mpact::sim::proto::ComponentValueEntry* entry) const {
   entry->set_uint64_value(GetValue());
 }
 template <>
 inline void CounterValueOutputBase<int64_t>::ExportValue(
-    mpact::sim::proto::ComponentValueEntry *entry) const {
+    mpact::sim::proto::ComponentValueEntry* entry) const {
   entry->set_sint64_value(GetValue());
 }
 template <>
 inline void CounterValueOutputBase<double>::ExportValue(
-    mpact::sim::proto::ComponentValueEntry *entry) const {
+    mpact::sim::proto::ComponentValueEntry* entry) const {
   entry->set_double_value(GetValue());
 }
 

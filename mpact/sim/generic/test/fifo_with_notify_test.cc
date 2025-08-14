@@ -14,13 +14,12 @@
 
 #include "mpact/sim/generic/fifo_with_notify.h"
 
+#include <cstdint>
 #include <memory>
 
-#include "absl/memory/memory.h"
-#include "googlemock/include/gmock/gmock.h"
+#include "googlemock/include/gmock/gmock.h"  // IWYU pragma: keep
 #include "googletest/include/gtest/gtest.h"
 #include "mpact/sim/generic/data_buffer.h"
-#include "mpact/sim/generic/program_error.h"
 
 namespace {
 
@@ -48,7 +47,7 @@ class FifoWithNotifyTest : public testing::Test {
 
 TEST_F(FifoWithNotifyTest, NoCallbacks) {
   EXPECT_TRUE(fifo_->IsEmpty());
-  auto *db = db_factory_->Allocate(sizeof(uint32_t));
+  auto* db = db_factory_->Allocate(sizeof(uint32_t));
   fifo_->Push(db);
   EXPECT_TRUE(!fifo_->IsEmpty());
   fifo_->Pop();
@@ -59,10 +58,10 @@ TEST_F(FifoWithNotifyTest, OnEmpty) {
   int on_empty_count = 0;
   int on_not_empty_count = 0;
   fifo_->SetOnEmpty(
-      [&on_empty_count](FifoWithNotifyBase *) { on_empty_count++; });
+      [&on_empty_count](FifoWithNotifyBase*) { on_empty_count++; });
   fifo_->SetOnNotEmpty(
-      [&on_not_empty_count](FifoWithNotifyBase *) { on_not_empty_count++; });
-  auto *db = db_factory_->Allocate(sizeof(uint32_t));
+      [&on_not_empty_count](FifoWithNotifyBase*) { on_not_empty_count++; });
+  auto* db = db_factory_->Allocate(sizeof(uint32_t));
   EXPECT_EQ(on_empty_count, 0);
   EXPECT_EQ(on_not_empty_count, 0);
   (void)fifo_->Push(db);

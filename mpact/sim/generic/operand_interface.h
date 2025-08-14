@@ -88,14 +88,14 @@ class DestinationOperandInterface {
  public:
   virtual ~DestinationOperandInterface() = default;
   // Allocates a data buffer with ownership, latency and delay line set up.
-  virtual DataBuffer *AllocateDataBuffer() = 0;
+  virtual DataBuffer* AllocateDataBuffer() = 0;
   // Takes an existing data buffer, and initializes it for the destination
   // as if AllocateDataBuffer had been called.
-  virtual void InitializeDataBuffer(DataBuffer *db) = 0;
+  virtual void InitializeDataBuffer(DataBuffer* db) = 0;
   // Allocates and initializes data buffer as if AllocateDataBuffer had been
   // called, but also copies in the value from the current value of the
   // destination.
-  virtual DataBuffer *CopyDataBuffer() = 0;
+  virtual DataBuffer* CopyDataBuffer() = 0;
   // Returns the latency associated with the destination operand.
   virtual int latency() const = 0;
   // Return a pointer to the object instance that implements the state in

@@ -45,14 +45,13 @@ class SingleInitiatorRouter;
 class MemoryRouter {
  public:
   // Convenient map types shorthand.
-  using InitiatorMap =
-      absl::flat_hash_map<std::string, SingleInitiatorRouter *>;
+  using InitiatorMap = absl::flat_hash_map<std::string, SingleInitiatorRouter*>;
   template <typename Interface>
-  using TargetMap = absl::flat_hash_map<std::string, Interface *>;
+  using TargetMap = absl::flat_hash_map<std::string, Interface*>;
 
   MemoryRouter();
-  MemoryRouter(const MemoryRouter &) = delete;
-  MemoryRouter &operator=(const MemoryRouter &) = delete;
+  MemoryRouter(const MemoryRouter&) = delete;
+  MemoryRouter& operator=(const MemoryRouter&) = delete;
   ~MemoryRouter();
 
   // The following three methods add initiators with a given name. Depending
@@ -62,28 +61,28 @@ class MemoryRouter {
   // SingleInitiatorRouter, but the returned interfaces differ.
 
   // Add an initiator with name 'name', returning pointer to MemoryInterface.
-  MemoryInterface *AddMemoryInitiator(const std::string &name);
+  MemoryInterface* AddMemoryInitiator(const std::string& name);
   // Add an initiator with name 'name', returning pointer to
   // TaggedMemoryInterface.
-  TaggedMemoryInterface *AddTaggedInitiator(const std::string &name);
+  TaggedMemoryInterface* AddTaggedInitiator(const std::string& name);
   // Add an initiator with name 'name', returning pointer to MemoryInterface.
-  AtomicMemoryOpInterface *AddAtomicInitiator(const std::string &name);
+  AtomicMemoryOpInterface* AddAtomicInitiator(const std::string& name);
 
   // The following three methods add target memory interfaces with the given
   // name and type. Two different interfaces may not use the same name.
 
   // Add 'memory' interface with name 'name'.
-  absl::Status AddTarget(const std::string &name, MemoryInterface *memory);
+  absl::Status AddTarget(const std::string& name, MemoryInterface* memory);
   // Add 'tagged_memory' interface with name 'name'.
-  absl::Status AddTarget(const std::string &name,
-                         TaggedMemoryInterface *tagged_memory);
+  absl::Status AddTarget(const std::string& name,
+                         TaggedMemoryInterface* tagged_memory);
   // Add 'atomic_memory' interface with name 'name'.
-  absl::Status AddTarget(const std::string &name,
-                         AtomicMemoryOpInterface *atomic_memory);
+  absl::Status AddTarget(const std::string& name,
+                         AtomicMemoryOpInterface* atomic_memory);
 
   // Map a target to an initiator for the given address range (inclusive).
-  absl::Status AddMapping(const std::string &initiator_name,
-                          const std::string &target_name, uint64_t base,
+  absl::Status AddMapping(const std::string& initiator_name,
+                          const std::string& target_name, uint64_t base,
                           uint64_t top);
 
  private:

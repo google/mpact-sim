@@ -30,9 +30,9 @@ class DecoderInterface {
   // in the instruction decoding, the decoder should still produce an
   // instruction that can be executed, but its semantic action function should
   // set an error condition in the simulation when executed.
-  virtual Instruction *DecodeInstruction(uint64_t address) = 0;
+  virtual Instruction* DecodeInstruction(uint64_t address) = 0;
   virtual int GetNumOpcodes() const = 0;
-  virtual const char *GetOpcodeName(int index) const = 0;
+  virtual const char* GetOpcodeName(int index) const = 0;
   virtual ~DecoderInterface() = default;
 };
 

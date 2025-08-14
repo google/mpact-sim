@@ -17,7 +17,7 @@
 #include <string>
 
 #include "absl/status/status.h"
-#include "googlemock/include/gmock/gmock.h"
+#include "googlemock/include/gmock/gmock.h"  // IWYU pragma: keep
 #include "googletest/include/gtest/gtest.h"
 #include "mpact/sim/decoder/bin_encoding_info.h"
 #include "mpact/sim/decoder/bin_format_visitor.h"
@@ -52,7 +52,7 @@ class InstructionEncodingTest : public ::testing::Test {
     (void)i_type_fmt_->AddField("rd", /*is_signed*/ false, 5);
     (void)i_type_fmt_->AddField("opcode", /*is_signed*/ false, 7);
     (void)i_type_fmt_->AddFieldOverlay("uspecial", /*is_signed*/ false, 10);
-    auto *overlay = i_type_fmt_->GetOverlay("uspecial");
+    auto* overlay = i_type_fmt_->GetOverlay("uspecial");
     (void)overlay->AddFieldReference("rs1");
     (void)overlay->AddFieldReference("rd");
     (void)i_type_fmt_->AddFieldOverlay("sspecial", /*is_signed*/ true, 10);
@@ -75,10 +75,10 @@ class InstructionEncodingTest : public ::testing::Test {
     delete i_type_;
   }
 
-  DecoderErrorListener *error_listener_;
-  BinEncodingInfo *encoding_info_;
-  Format *i_type_fmt_;
-  InstructionEncoding *i_type_;
+  DecoderErrorListener* error_listener_;
+  BinEncodingInfo* encoding_info_;
+  Format* i_type_fmt_;
+  InstructionEncoding* i_type_;
 };
 
 TEST_F(InstructionEncodingTest, Basic) {
@@ -191,7 +191,7 @@ TEST_F(InstructionEncodingTest, AddEqualUnsignedConstraint) {
   EXPECT_EQ(i_type_->GetMask(), kFunc3Mask);
   EXPECT_EQ(i_type_->GetCombinedMask(), kFunc3Mask);
   EXPECT_EQ(i_type_->equal_constraints().size(), 1);
-  auto *constraint = i_type_->equal_constraints()[0];
+  auto* constraint = i_type_->equal_constraints()[0];
   EXPECT_EQ(constraint->type, ConstraintType::kEq);
   EXPECT_EQ(constraint->field, i_type_fmt_->GetField("func3"));
   EXPECT_EQ(constraint->value, kFunc3Value);
@@ -210,7 +210,7 @@ TEST_F(InstructionEncodingTest, AddEqualExtractedConstraints) {
   EXPECT_EQ(i_type_->GetMask(), 0);
   EXPECT_EQ(i_type_->GetCombinedMask(), 0);
   EXPECT_EQ(i_type_->equal_extracted_constraints().size(), 1);
-  auto *constraint = i_type_->equal_extracted_constraints()[0];
+  auto* constraint = i_type_->equal_extracted_constraints()[0];
   EXPECT_EQ(constraint->type, ConstraintType::kEq);
   EXPECT_EQ(constraint->field, i_type_fmt_->GetField("extract"));
   EXPECT_EQ(constraint->value, 0b11011'11'00100);
@@ -226,7 +226,7 @@ TEST_F(InstructionEncodingTest, AddOtherConstraints) {
   EXPECT_EQ(i_type_->GetMask(), 0);
   EXPECT_EQ(i_type_->GetCombinedMask(), kFunc3Mask);
   EXPECT_EQ(i_type_->other_constraints().size(), 1);
-  auto *constraint = i_type_->other_constraints()[0];
+  auto* constraint = i_type_->other_constraints()[0];
   EXPECT_EQ(constraint->type, ConstraintType::kGe);
   EXPECT_EQ(constraint->field, i_type_fmt_->GetField("func3"));
   EXPECT_EQ(constraint->value, kFunc3Value);

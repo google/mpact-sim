@@ -36,7 +36,7 @@ namespace bin_format {
 using ::mpact::sim::machine_description::instruction_set::ToPascalCase;
 using ::mpact::sim::machine_description::instruction_set::ToSnakeCase;
 
-BitsOrField::BitsOrField(Field *field, int high, int low, int width)
+BitsOrField::BitsOrField(Field* field, int high, int low, int width)
     : field_(field), high_(high), low_(low), width_(width), position_(-1) {}
 
 BitsOrField::BitsOrField(BinaryNum bin_num, int width)
@@ -44,14 +44,14 @@ BitsOrField::BitsOrField(BinaryNum bin_num, int width)
   width_ = bin_num_.width;
 }
 
-Overlay::Overlay(std::string name, bool is_signed, int width, Format *format)
+Overlay::Overlay(std::string name, bool is_signed, int width, Format* format)
     : name_(name),
       is_signed_(is_signed),
       declared_width_(width),
       format_(format) {}
 
 Overlay::~Overlay() {
-  for (auto *item : component_vec_) {
+  for (auto* item : component_vec_) {
     delete item;
   }
   component_vec_.clear();
@@ -83,7 +83,7 @@ absl::Status Overlay::AddFieldReference(std::string field_name) {
 
 // Adds a series of bit references to a field.
 absl::Status Overlay::AddFieldReference(std::string field_name,
-                                        const std::vector<BitRange> &ranges) {
+                                        const std::vector<BitRange>& ranges) {
   // Verify that the fields is valid.
   auto field = format_->GetField(field_name);
   if (field == nullptr) {
@@ -92,7 +92,7 @@ absl::Status Overlay::AddFieldReference(std::string field_name,
                      "' does not name a field in '", format_->name(), "'"));
   }
   // Scan the ranges.
-  for (auto &range : ranges) {
+  for (auto& range : ranges) {
     // Verify that the ranges don't refer to bits that don't exist.
     if (range.first < 0 || range.first >= field->width) {
       return absl::InternalError(absl::StrCat("bit index '", range.first,
@@ -117,8 +117,8 @@ absl::Status Overlay::AddFieldReference(std::string field_name,
   return absl::OkStatus();
 }
 
-absl::Status Overlay::AddFormatReference(const std::vector<BitRange> &ranges) {
-  for (auto &range : ranges) {
+absl::Status Overlay::AddFormatReference(const std::vector<BitRange>& ranges) {
+  for (auto& range : ranges) {
     // Check that the range is legal for the format.
     if (range.first < 0 || range.first >= format_->declared_width()) {
       return absl::InternalError(absl::StrCat("bit index '", range.first,
@@ -151,7 +151,7 @@ absl::Status Overlay::ComputeHighLow() {
 
   high_low_computed_ = true;
   int position = declared_width_ - 1;
-  for (auto *component : component_vec_) {
+  for (auto* component : component_vec_) {
     component->set_position(position);
     if (component->high() >= 0) {
       // Field or format reference.
@@ -174,7 +174,7 @@ absl::StatusOr<uint64_t> Overlay::GetValue(uint64_t input) const {
         "Overlay definition incomplete: declared width != computed width");
 
   uint64_t value = 0;
-  for (auto *component : component_vec_) {
+  for (auto* component : component_vec_) {
     if (component->high() < 0) {
       BinaryNum bin_num = component->bin_num();
       // If value == 0, nothing to or in - it just takes space.
@@ -194,7 +194,7 @@ absl::StatusOr<uint64_t> Overlay::GetValue(uint64_t input) const {
 
 absl::StatusOr<uint64_t> Overlay::GetBitField(uint64_t input) {
   uint64_t bitfield = 0;
-  for (auto *component : component_vec_) {
+  for (auto* component : component_vec_) {
     // Constant bits do not map to the instruction word.
     if (component->high() < 0) continue;
     uint64_t mask = ((1ULL << component->width()) - 1);
@@ -205,7 +205,7 @@ absl::StatusOr<uint64_t> Overlay::GetBitField(uint64_t input) {
   return bitfield;
 }
 
-bool Overlay::operator==(const Overlay &rhs) const {
+bool Overlay::operator==(const Overlay& rhs) const {
   if (declared_width_ > 64) {
     return WriteComplexValueExtractor("value", "result", "") ==
            rhs.WriteComplexValueExtractor("value", "result", "");
@@ -215,7 +215,7 @@ bool Overlay::operator==(const Overlay &rhs) const {
   }
 }
 
-bool Overlay::operator!=(const Overlay &rhs) const { return !(*this == rhs); }
+bool Overlay::operator!=(const Overlay& rhs) const { return !(*this == rhs); }
 
 // Return a string with the code (not counting function definition, variable
 // definition or return statement) for extracting the value of the overlay from
@@ -225,7 +225,7 @@ std::string Overlay::WriteSimpleValueExtractor(absl::string_view value,
                                                absl::string_view result) const {
   std::string output;
   std::string assign = " = ";
-  for (auto *component : component_vec_) {
+  for (auto* component : component_vec_) {
     if (component->high() < 0) {
       // Binary literals are added.
       BinaryNum bin_num = component->bin_num();
@@ -289,7 +289,7 @@ std::string Overlay::WritePackedStructValueExtractor(
                   union_type, "*>(",
                   format_->declared_width() > 64 ? "value);\n" : "&value);\n");
   std::string result_type = GetUIntType(declared_width_);
-  for (auto *component : component_vec_) {
+  for (auto* component : component_vec_) {
     if (component->high() < 0) {
       // Binary literals are added.
       BinaryNum bin_num = component->bin_num();
@@ -323,7 +323,7 @@ std::string Overlay::WriteComplexValueExtractor(
     absl::string_view return_type) const {
   std::string output;
   std::string assign = " = ";
-  for (auto *component : component_vec_) {
+  for (auto* component : component_vec_) {
     if (component->high() < 0) {
       BinaryNum bin_num = component->bin_num();
       // If the value is 0, no need to 'or' it in.
