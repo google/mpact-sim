@@ -20,6 +20,7 @@
 #include <cstring>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -40,6 +41,10 @@ constexpr uint64_t kPtGnuStack = 0x6474e551;
 ElfProgramLoader::ElfProgramLoader(util::MemoryInterface* code_memory,
                                    util::MemoryInterface* data_memory)
     : code_memory_(code_memory), data_memory_(data_memory) {}
+
+ElfProgramLoader::ElfProgramLoader(
+    const std::vector<MemoryDescriptor>& memories)
+    : memories_(&memories) {}
 
 ElfProgramLoader::ElfProgramLoader(util::MemoryInterface* memory)
     : code_memory_(memory), data_memory_(memory) {}
@@ -95,7 +100,7 @@ absl::StatusOr<uint64_t> ElfProgramLoader::LoadSymbols(
       if (type == STT_FUNC) {
         fcn_symbol_map_.emplace(value, name);
         function_range_map_.insert(
-            std::make_pair(AddressRange(value, size), name));
+            std::make_pair(AddressRange(value, size / text_size_scale_), name));
       }
     }
   }
@@ -123,14 +128,30 @@ absl::StatusOr<uint64_t> ElfProgramLoader::LoadProgram(
     if (segment->get_file_size() == 0) continue;
     // Read the data from the elf file.
     if (dbg_if_ == nullptr) {  // Use memory interfaces.
-      auto* db = db_factory.Allocate(segment->get_file_size());
-      std::memcpy(db->raw_ptr(), segment->get_data(), segment->get_file_size());
-
-      if (segment->get_flags() &
-          PF_X) {  // Executable, so write to code memory.
-        code_memory_->Store(segment->get_virtual_address(), db);
-      } else {  // Write to data memory.
-        data_memory_->Store(segment->get_virtual_address(), db);
+      auto size = segment->get_file_size();
+      auto* db = db_factory.Allocate(size);
+      std::memcpy(db->raw_ptr(), segment->get_data(), size);
+      if (memories_ == nullptr) {
+        if (segment->get_flags() &
+            PF_X) {  // Executable, so write to code memory.
+          code_memory_->Store(segment->get_virtual_address(), db);
+        } else {  // Write to data memory.
+          data_memory_->Store(segment->get_virtual_address(), db);
+        }
+      } else {
+        int i = 0;
+        for (auto& memory : *memories_) {
+          if (memory.predicate_fcn(*segment)) {
+            if (memory.address_fcn) {
+              memory.memory->Store(
+                  memory.address_fcn(segment->get_virtual_address()), db);
+            } else {
+              memory.memory->Store(segment->get_virtual_address(), db);
+            }
+            break;
+          }
+          i++;
+        }
       }
       db->DecRef();
       continue;

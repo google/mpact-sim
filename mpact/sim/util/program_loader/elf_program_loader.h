@@ -22,8 +22,10 @@
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
+#include "absl/functional/any_invocable.h"
 #include "absl/status/statusor.h"
 #include "elfio/elfio.hpp"
+#include "elfio/elfio_segment.hpp"
 #include "elfio/elfio_symbols.hpp"
 #include "mpact/sim/generic/core_debug_interface.h"
 #include "mpact/sim/util/memory/memory_interface.h"
@@ -51,6 +53,20 @@ struct AddressRangeComp {
   }
 };
 
+// This struct is used to describe a memory to be used by the elf program loader
+// when there is more than one or two memories that have to be loaded.
+struct MemoryDescriptor {
+  // Pointer to the memory interface.
+  util::MemoryInterface* memory;
+  // Predicate function that takes a segment and return true if it should be
+  // loaded into this memory.
+  absl::AnyInvocable<bool(const ELFIO::segment&) const> predicate_fcn;
+  // Function that takes a segment load address and returns the address it
+  // should be loaded at in the memory. If not specified, the load address is
+  // used unmodified.
+  absl::AnyInvocable<uint64_t(uint64_t) const> address_fcn;
+};
+
 // This class wraps the elfio class to provide an easy interface to load the
 // segments of an elf executable file into memory. If both code and data
 // memories are given, then executable segments are loaded into code memory and
@@ -63,6 +79,7 @@ class ElfProgramLoader : public ProgramLoaderInterface {
  public:
   ElfProgramLoader(util::MemoryInterface* code_memory,
                    util::MemoryInterface* data_memory);
+  ElfProgramLoader(const std::vector<MemoryDescriptor>& memories);
   explicit ElfProgramLoader(util::MemoryInterface* memory);
   explicit ElfProgramLoader(generic::CoreDebugInterface* dbg_if);
   ElfProgramLoader() = delete;
@@ -82,9 +99,13 @@ class ElfProgramLoader : public ProgramLoaderInterface {
   // If the GNU stack size program header exists, return the memory size.
   absl::StatusOr<uint64_t> GetStackSize() const;
 
+  void set_text_size_scale(uint64_t scale) { text_size_scale_ = scale; }
+  void set_data_size_scale(uint64_t scale) { data_size_scale_ = scale; }
+
   const ELFIO::elfio* elf_reader() const { return &elf_reader_; }
 
  private:
+  const std::vector<MemoryDescriptor>* memories_ = nullptr;
   bool loaded_ = false;
   ELFIO::elfio elf_reader_;
   util::MemoryInterface* code_memory_ = nullptr;
@@ -95,6 +116,8 @@ class ElfProgramLoader : public ProgramLoaderInterface {
   std::map<AddressRange, std::string, AddressRangeComp> function_range_map_;
   uint64_t has_stack_size_ = false;
   uint64_t stack_size_ = 0;
+  uint64_t text_size_scale_ = 1;
+  uint64_t data_size_scale_ = 1;
 };
 
 }  // namespace util
