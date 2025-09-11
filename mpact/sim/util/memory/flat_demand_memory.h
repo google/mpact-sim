@@ -45,8 +45,8 @@ class FlatDemandMemory : public MemoryInterface {
   FlatDemandMemory(uint64_t memory_size_in_units, uint64_t base_address)
       : FlatDemandMemory(memory_size_in_units, base_address, 1, 0) {}
   explicit FlatDemandMemory(uint64_t base_address)
-      : FlatDemandMemory(0xffff'ffff'ffff'ffff, base_address, 1, 0) {}
-  FlatDemandMemory() : FlatDemandMemory(0xffff'ffff'ffff'ffff, 0, 1, 0) {}
+      : FlatDemandMemory(0xffff'ffff'ffff'ffffULL, base_address, 1, 0) {}
+  FlatDemandMemory() : FlatDemandMemory(0xffff'ffff'ffff'ffffULL, 0, 1, 0) {}
   ~FlatDemandMemory() override;
   // Load data from address into the DataBuffer, then schedule the Instruction
   // inst (if not nullptr) to be executed (using the function delay line) with
