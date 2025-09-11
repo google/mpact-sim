@@ -500,10 +500,13 @@ absl::Status SimpleAssembler::CreateExecutable(
   uint64_t data_segment_start = 0;
   uint64_t bss_segment_start = 0;
   if ((data_section_ != nullptr) || (bss_section_ != nullptr)) {
-    data_segment_start =
-        (text_segment_start + section_address_map_[text_section_] + 4095) &
-        ~4095ULL;
-
+    if (data_segment_start_ != 0) {
+      data_segment_start = data_segment_start_;
+    } else {
+      data_segment_start =
+          (text_segment_start + section_address_map_[text_section_] + 4095) &
+          ~4095ULL;
+    }
     data_segment = writer_.segments.add();
     if (data_segment == nullptr) {
       return absl::InternalError("Failed to create elf segment for data");
