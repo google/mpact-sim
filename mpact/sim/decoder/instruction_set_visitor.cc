@@ -14,6 +14,7 @@
 
 #include "mpact/sim/decoder/instruction_set_visitor.h"
 
+#include <algorithm>
 #include <cctype>
 #include <cstddef>
 #include <filesystem>  // NOLINT: third party.
@@ -108,6 +109,16 @@ absl::Status InstructionSetVisitor::Process(
     include_dir_vec_.push_back(include_root);
   }
 
+  // Add the directory of the input file to the include roots.
+  if (!file_names.empty()) {
+    std::string dir = std::filesystem::path(file_names[0]).stem().string();
+    auto it = std::find(include_dir_vec_.begin(), include_dir_vec_.end(), dir);
+    if (it == include_dir_vec_.end()) {
+      include_dir_vec_.push_back(
+          std::filesystem::path(file_names[0]).stem().string());
+    }
+  }
+
   std::string isa_prefix = prefix;
   std::istream* source_stream = &std::cin;
 
@@ -137,6 +148,13 @@ absl::Status InstructionSetVisitor::Process(
   VisitTopLevel(top_level);
   // Process additional source files.
   for (int i = 1; i < file_names.size(); ++i) {
+    // Add the directory of the input file to the include roots if not already
+    // present.
+    std::string dir = std::filesystem::path(file_names[i]).stem().string();
+    auto it = std::find(include_dir_vec_.begin(), include_dir_vec_.end(), dir);
+    if (it == include_dir_vec_.end()) {
+      include_dir_vec_.push_back(dir);
+    }
     ParseIncludeFile(top_level, file_names[i], {});
   }
   // Now process the parse tree.

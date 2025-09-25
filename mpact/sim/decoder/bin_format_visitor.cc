@@ -14,8 +14,10 @@
 
 #include "mpact/sim/decoder/bin_format_visitor.h"
 
+#include <algorithm>
 #include <cstdint>
 #include <deque>
+#include <filesystem>  // NOLINT: third party.
 #include <fstream>
 #include <iostream>
 #include <istream>
@@ -146,8 +148,20 @@ absl::Status BinFormatVisitor::Process(
   decoder_name_ = decoder_name;
 
   include_dir_vec_.push_back(".");
+
   for (const auto& root : include_roots) {
     include_dir_vec_.push_back(root);
+  }
+
+  // Add the directory of the input file to the include roots if not already
+  // present.
+  if (!file_names.empty()) {
+    std::string dir = std::filesystem::path(file_names[0]).stem().string();
+    auto it = std::find(include_dir_vec_.begin(), include_dir_vec_.end(), dir);
+    if (it == include_dir_vec_.end()) {
+      include_dir_vec_.push_back(
+          std::filesystem::path(file_names[0]).stem().string());
+    }
   }
 
   std::istream* source_stream = &std::cin;
@@ -178,8 +192,16 @@ absl::Status BinFormatVisitor::Process(
   }
   // Visit the parse tree starting at the namespaces declaration.
   PreProcessDeclarations(top_level->declaration_list());
-  // Process additional source files.
+
+  // Process any additional source files.
   for (int i = 1; i < file_names.size(); ++i) {
+    // Add the directory of the input file to the include roots if not already
+    // present.
+    std::string dir = std::filesystem::path(file_names[i]).stem().string();
+    auto it = std::find(include_dir_vec_.begin(), include_dir_vec_.end(), dir);
+    if (it == include_dir_vec_.end()) {
+      include_dir_vec_.push_back(dir);
+    }
     ParseIncludeFile(top_level, file_names[i], {});
   }
   // Process the parse tree.
