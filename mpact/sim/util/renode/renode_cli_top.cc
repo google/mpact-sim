@@ -38,7 +38,7 @@ using ::mpact::sim::generic::operator*;  // NOLINT: used below (clang error).
 
 RenodeCLITop::RenodeCLITop(CoreDebugInterface* top, bool wait_for_cli)
     : top_(top), wait_for_cli_(wait_for_cli) {
-  absl::MutexLock lock(run_control_mutex_);
+  absl::MutexLock lock(&run_control_mutex_);
   cli_status_ = wait_for_cli_ ? RunStatus::kHalted : RunStatus::kRunning;
   cli_steps_taken_ = 0;
   cli_steps_to_take_ = 0;
@@ -50,12 +50,12 @@ void RenodeCLITop::SetConnected(bool connected) {
   // Only act upon changes in connectivity.
   if (connected == cli_connected_) return;
   cli_connected_ = connected;
-  absl::MutexLock lock(run_control_mutex_);
+  absl::MutexLock lock(&run_control_mutex_);
   cli_status_ = cli_connected_ ? RunStatus::kHalted : RunStatus::kRunning;
 }
 
 absl::StatusOr<int> RenodeCLITop::RenodeStep(int num) {
-  run_control_mutex_.lock();
+  run_control_mutex_.Lock();
   renode_steps_taken_ = 0;
   renode_steps_to_take_ = num;
   auto renode_take_control = [this]() -> bool {
@@ -105,7 +105,7 @@ absl::StatusOr<int> RenodeCLITop::RenodeStep(int num) {
       break;
     }
   }
-  run_control_mutex_.unlock();
+  run_control_mutex_.Unlock();
   if (!status.ok()) return status;
   return renode_steps_taken_;
 }
@@ -143,7 +143,7 @@ absl::Status RenodeCLITop::CLIHalt() {
   // Halt the simulator and claim run control.
   auto status = top_->Halt();
   {
-    absl::MutexLock lock(run_control_mutex_);
+    absl::MutexLock lock(&run_control_mutex_);
     cli_status_ = RunStatus::kHalted;
   }
   return status;
@@ -157,14 +157,14 @@ absl::Status RenodeCLITop::CLIRun() {
   };
   run_control_mutex_.LockWhen(absl::Condition(&cli_is_not_running));
   if (top_->GetLastHaltReason().value() == *HaltReason::kProgramDone) {
-    run_control_mutex_.unlock();
+    run_control_mutex_.Unlock();
     return absl::UnavailableError("Program terminated");
   }
   cli_status_ = RunStatus::kRunning;
   // Wait for cli to be back in control.
   run_control_mutex_.Await(absl::Condition(&cli_is_not_running));
   // Unlock and return to CLI.
-  run_control_mutex_.unlock();
+  run_control_mutex_.Unlock();
   return absl::OkStatus();
 }
 
@@ -174,9 +174,9 @@ absl::Status RenodeCLITop::CLIWait() {
 }
 
 absl::StatusOr<int> RenodeCLITop::CLIStep(int num) {
-  run_control_mutex_.lock();
+  run_control_mutex_.Lock();
   if (top_->GetLastHaltReason().value() == *HaltReason::kProgramDone) {
-    run_control_mutex_.unlock();
+    run_control_mutex_.Unlock();
     return absl::UnavailableError("Program terminated");
   }
   // Lambda used in Await below.
@@ -227,7 +227,7 @@ absl::StatusOr<int> RenodeCLITop::CLIStep(int num) {
     cli_status_ = RunStatus::kHalted;
     break;
   }
-  run_control_mutex_.unlock();
+  run_control_mutex_.Unlock();
   if (!status.ok()) return status;
   return cli_steps_taken_;
 }
