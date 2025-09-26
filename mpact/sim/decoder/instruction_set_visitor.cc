@@ -111,11 +111,11 @@ absl::Status InstructionSetVisitor::Process(
 
   // Add the directory of the input file to the include roots.
   if (!file_names.empty()) {
-    std::string dir = std::filesystem::path(file_names[0]).stem().string();
+    std::string dir =
+        std::filesystem::path(file_names[0]).parent_path().string();
     auto it = std::find(include_dir_vec_.begin(), include_dir_vec_.end(), dir);
     if (it == include_dir_vec_.end()) {
-      include_dir_vec_.push_back(
-          std::filesystem::path(file_names[0]).stem().string());
+      include_dir_vec_.push_back(dir);
     }
   }
 
@@ -150,7 +150,8 @@ absl::Status InstructionSetVisitor::Process(
   for (int i = 1; i < file_names.size(); ++i) {
     // Add the directory of the input file to the include roots if not already
     // present.
-    std::string dir = std::filesystem::path(file_names[i]).stem().string();
+    std::string dir =
+        std::filesystem::path(file_names[i]).parent_path().string();
     auto it = std::find(include_dir_vec_.begin(), include_dir_vec_.end(), dir);
     if (it == include_dir_vec_.end()) {
       include_dir_vec_.push_back(dir);
@@ -551,10 +552,11 @@ void InstructionSetVisitor::ParseIncludeFile(
   std::fstream include_file;
   // Open include file.
   include_file.open(file_name, std::fstream::in);
+  std::string include_name;
   if (!include_file.is_open()) {
     // Try each of the include file directories.
     for (auto const& dir : dirs) {
-      std::string include_name = dir + "/" + file_name;
+      include_name = dir + "/" + file_name;
       include_file.open(include_name, std::fstream::in);
       if (include_file.is_open()) break;
     }
@@ -564,6 +566,13 @@ void InstructionSetVisitor::ParseIncludeFile(
           absl::StrCat("Failed to open '", file_name, "'", " ", dirs.size()));
       return;
     }
+  }
+  // Add the directory of the include file to the include roots if not already
+  // present.
+  std::string dir = std::filesystem::path(include_name).parent_path().string();
+  auto it = std::find(include_dir_vec_.begin(), include_dir_vec_.end(), dir);
+  if (it == include_dir_vec_.end()) {
+    include_dir_vec_.push_back(dir);
   }
   std::string previous_file_name = error_listener()->file_name();
   int previous_file_index_ = current_file_index_;
