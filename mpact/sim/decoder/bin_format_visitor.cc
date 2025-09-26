@@ -448,7 +448,6 @@ std::tuple<std::string, std::string> BinFormatVisitor::EmitEncoderCode(
     absl::StrAppend(&h_string, functions);
   }
   absl::StrAppend(&h_string, "};  // struct Encoder\n\n");
-  absl::flat_hash_set<std::string> groups;
   auto* decoder = encoding->decoder();
   // Generate the code for decoders.
   absl::btree_map<std::string, std::tuple<uint64_t, int>> encodings;
