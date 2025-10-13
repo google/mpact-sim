@@ -94,7 +94,7 @@ class ProtoEncodingGroup {
                                  absl::string_view message_type_name);
 
   ProtoInstructionGroup* inst_group_ = nullptr;
-  ProtoEncodingGroup* parent_ = nullptr;
+  [[maybe_unused]] ProtoEncodingGroup* parent_ = nullptr;
   DecoderErrorListener* error_listener_ = nullptr;
   FieldInfo* differentiator_ = nullptr;
   int64_t value_;

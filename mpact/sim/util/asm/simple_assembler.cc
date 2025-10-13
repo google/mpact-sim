@@ -301,12 +301,10 @@ SimpleAssembler::~SimpleAssembler() {
 absl::Status SimpleAssembler::Parse(std::istream& is,
                                     ResolverInterface* zero_resolver) {
   // A trivial symbol resolver that always returns 0.
-  bool own_zero_resolver = false;
   std::function<void()> cleanup = []() {};
   if (zero_resolver == nullptr) {
     zero_resolver = new ZeroResolver(
         absl::bind_front(&SimpleAssembler::SimpleAddSymbol, this));
-    own_zero_resolver = true;
     cleanup = [zero_resolver]() { delete zero_resolver; };
   }
   // First pass of parsing the input stream. This will add symbols to the symbol

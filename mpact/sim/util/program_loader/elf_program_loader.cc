@@ -126,6 +126,12 @@ absl::StatusOr<uint64_t> ElfProgramLoader::LoadProgram(
     // If the section isn 't loadable, continue.
     if (segment->get_type() != PT_LOAD) continue;
     if (segment->get_file_size() == 0) continue;
+    // Compute the destination address - use paddr if available, else use
+    // vaddr.
+    uint64_t dest_addr = segment->get_physical_address();
+    if (dest_addr == 0) {
+      dest_addr = segment->get_virtual_address();
+    }
     // Read the data from the elf file.
     if (dbg_if_ == nullptr) {  // Use memory interfaces.
       auto size = segment->get_file_size();
@@ -134,32 +140,28 @@ absl::StatusOr<uint64_t> ElfProgramLoader::LoadProgram(
       if (memories_ == nullptr) {
         if (segment->get_flags() &
             PF_X) {  // Executable, so write to code memory.
-          code_memory_->Store(segment->get_virtual_address(), db);
+          code_memory_->Store(dest_addr, db);
         } else {  // Write to data memory.
-          data_memory_->Store(segment->get_virtual_address(), db);
+          data_memory_->Store(dest_addr, db);
         }
       } else {
-        int i = 0;
         for (auto& memory : *memories_) {
           if (memory.predicate_fcn(*segment)) {
             if (memory.address_fcn) {
-              memory.memory->Store(
-                  memory.address_fcn(segment->get_virtual_address()), db);
+              memory.memory->Store(memory.address_fcn(dest_addr), db);
             } else {
-              memory.memory->Store(segment->get_virtual_address(), db);
+              memory.memory->Store(dest_addr, db);
             }
             break;
           }
-          i++;
         }
       }
       db->DecRef();
       continue;
     }
     // Use debug interface.
-    auto res =
-        dbg_if_->WriteMemory(segment->get_virtual_address(),
-                             segment->get_data(), segment->get_file_size());
+    auto res = dbg_if_->WriteMemory(dest_addr, segment->get_data(),
+                                    segment->get_file_size());
     if (!res.ok() || (res.value() != segment->get_file_size())) {
       return absl::InternalError("Write error while loading elf segment");
     }
