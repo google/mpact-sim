@@ -43,7 +43,7 @@
 #include "mpact/sim/decoder/opcode.h"
 #include "mpact/sim/decoder/slot.h"
 #include "mpact/sim/decoder/template_expression.h"
-#include "re2/re2.h"
+#include "util/regexp/re2/re2.h"
 
 // This file declares the classes that interact with the antlr4 library
 // to parse an input stream and generate the parse tree, then visiting the

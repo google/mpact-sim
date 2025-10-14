@@ -74,12 +74,12 @@ cc_library(
         ":riscv64x_isa",
         "//mpact/sim/generic:type_helpers",
         "//mpact/sim/util/asm",
+        "//util/regexp/re2",
         "@com_google_absl//absl/base:no_destructor",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
-        "@com_googlesource_code_re2//:re2",
     ],
 )
 
@@ -92,6 +92,7 @@ cc_test(
         ":riscv64x_isa",
         "//mpact/sim/util/asm",
         "//mpact/sim/util/asm:simple_assembler",
+        "//util/regexp/re2",
         "@com_github_serge1_elfio//:elfio",
         "@com_google_absl//absl/base:no_destructor",
         "@com_google_absl//absl/container:flat_hash_map",
@@ -100,6 +101,5 @@ cc_test(
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:span",
         "@com_google_googletest//:gtest_main",
-        "@com_googlesource_code_re2//:re2",
     ],
 )

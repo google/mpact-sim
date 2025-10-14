@@ -34,7 +34,7 @@
 #include "mpact/sim/decoder/bin_encoding_info.h"
 #include "mpact/sim/decoder/bin_format_contexts.h"
 #include "mpact/sim/decoder/decoder_error_listener.h"
-#include "re2/re2.h"
+#include "util/regexp/re2/re2.h"
 
 namespace mpact {
 namespace sim {

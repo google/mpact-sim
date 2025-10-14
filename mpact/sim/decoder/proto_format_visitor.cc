@@ -44,9 +44,9 @@
 #include "mpact/sim/decoder/proto_instruction_decoder.h"
 #include "mpact/sim/decoder/proto_instruction_encoding.h"
 #include "mpact/sim/decoder/proto_instruction_group.h"
-#include "re2/re2.h"
 #include "src/google/protobuf/compiler/importer.h"
 #include "src/google/protobuf/descriptor.h"
+#include "util/regexp/re2/re2.h"
 
 namespace mpact {
 namespace sim {

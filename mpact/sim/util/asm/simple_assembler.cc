@@ -41,7 +41,7 @@
 #include "mpact/sim/util/asm/opcode_assembler_interface.h"
 #include "mpact/sim/util/asm/resolver.h"
 #include "mpact/sim/util/asm/resolver_interface.h"
-#include "re2/re2.h"
+#include "util/regexp/re2/re2.h"
 
 namespace mpact {
 namespace sim {

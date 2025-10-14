@@ -25,7 +25,7 @@
 #include "absl/strings/str_cat.h"
 #include "googletest/include/gtest/gtest.h"
 #include "mpact/sim/decoder/test/log_sink.h"
-#include "re2/re2.h"
+#include "util/regexp/re2/re2.h"
 
 namespace {
 
