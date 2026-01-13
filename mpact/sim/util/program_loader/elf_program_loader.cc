@@ -80,9 +80,9 @@ absl::StatusOr<uint64_t> ElfProgramLoader::LoadSymbols(
   loaded_ = true;
   // Now look up any symbol sections.
   for (auto const& section : elf_reader_.sections) {
-    if (section->get_type() == SHT_SYMTAB) {
+    if (section->get_type() == ELFIO::SHT_SYMTAB) {
       symbol_accessors_.push_back(
-          new ELFIO::symbol_section_accessor(elf_reader_, section));
+          new ELFIO::symbol_section_accessor(elf_reader_, section.get()));
     }
   }
   std::string name;
@@ -97,7 +97,7 @@ absl::StatusOr<uint64_t> ElfProgramLoader::LoadSymbols(
     for (unsigned i = 0; i < symtab->get_symbols_num(); i++) {
       symtab->get_symbol(i, name, value, size, bind, type, section_index,
                          other);
-      if (type == STT_FUNC) {
+      if (type == ELFIO::STT_FUNC) {
         fcn_symbol_map_.emplace(value, name);
         function_range_map_.insert(
             std::make_pair(AddressRange(value, size / text_size_scale_), name));
@@ -124,7 +124,7 @@ absl::StatusOr<uint64_t> ElfProgramLoader::LoadProgram(
       continue;
     }
     // If the section isn 't loadable, continue.
-    if (segment->get_type() != PT_LOAD) continue;
+    if (segment->get_type() != ELFIO::PT_LOAD) continue;
     if (segment->get_file_size() == 0) continue;
     // Compute the destination address - use paddr if available, else use
     // vaddr.
@@ -139,7 +139,7 @@ absl::StatusOr<uint64_t> ElfProgramLoader::LoadProgram(
       std::memcpy(db->raw_ptr(), segment->get_data(), size);
       if (memories_ == nullptr) {
         if (segment->get_flags() &
-            PF_X) {  // Executable, so write to code memory.
+            ELFIO::PF_X) {  // Executable, so write to code memory.
           code_memory_->Store(dest_addr, db);
         } else {  // Write to data memory.
           data_memory_->Store(dest_addr, db);

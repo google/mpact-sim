@@ -39,10 +39,10 @@ absl::StatusOr<uint64_t> SymbolResolver::Resolve(absl::string_view text) {
         absl::StrCat("SymbolResolver: Symbol '", text, "' not found"));
   }
   auto index = iter->second;
-  if (elf_file_class_ == ELFCLASS64) {
+  if (elf_file_class_ == ELFIO::ELFCLASS64) {
     auto* sym = reinterpret_cast<const ELFIO::Elf64_Sym*>(symtab_->get_data());
     return sym[index].st_value;
-  } else if (elf_file_class_ == ELFCLASS32) {
+  } else if (elf_file_class_ == ELFIO::ELFCLASS32) {
     auto* sym = reinterpret_cast<const ELFIO::Elf32_Sym*>(symtab_->get_data());
     return sym[index].st_value;
   }

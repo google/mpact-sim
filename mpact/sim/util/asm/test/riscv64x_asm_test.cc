@@ -64,7 +64,8 @@ class RiscV64XAssembler : public OpcodeAssemblerInterface {
     // with the current address.
     std::string label;
     if (RE2::Consume(&text, label_re_, &label)) {
-      auto status = add_symbol_callback(label, address, 0, STT_NOTYPE, 0, 0);
+      auto status =
+          add_symbol_callback(label, address, 0, ELFIO::STT_NOTYPE, 0, 0);
       if (!status.ok()) return status;
     }
     // Call the slot matcher to get the encoded value.
@@ -145,9 +146,10 @@ class RiscV64XAssemblerTest : public ::testing::Test {
       : matcher_(&bin_encoder_interface_), riscv_64x_assembler_(&matcher_) {
     CHECK_OK(matcher_.Initialize());
     // Create the assembler.
-    assembler_ = new SimpleAssembler(";", ELFCLASS64, &riscv_64x_assembler_);
-    assembler_->writer().set_os_abi(ELFOSABI_LINUX);
-    assembler_->writer().set_machine(EM_RISCV);
+    assembler_ =
+        new SimpleAssembler(";", ELFIO::ELFCLASS64, &riscv_64x_assembler_);
+    assembler_->writer().set_os_abi(ELFIO::ELFOSABI_LINUX);
+    assembler_->writer().set_machine(ELFIO::EM_RISCV);
     std::istringstream source(*kTestAssembly);
     // Parse the assembly code.
     auto status = assembler_->Parse(source);
@@ -185,9 +187,9 @@ TEST_F(RiscV64XAssemblerTest, Text) {
   auto status = assembler()->CreateExecutable(0x1000, "main");
   CHECK_OK(status) << status.message();
   auto* text = elf().sections[".text"];
-  EXPECT_EQ(text->get_type(), SHT_PROGBITS);
-  EXPECT_EQ(text->get_flags(), SHF_ALLOC | SHF_EXECINSTR);
-  EXPECT_EQ(text->get_link(), SHN_UNDEF);
+  EXPECT_EQ(text->get_type(), ELFIO::SHT_PROGBITS);
+  EXPECT_EQ(text->get_flags(), ELFIO::SHF_ALLOC | ELFIO::SHF_EXECINSTR);
+  EXPECT_EQ(text->get_link(), ELFIO::SHN_UNDEF);
   EXPECT_EQ(text->get_size(), /*num inst*/ 21 * /*bytes per inst*/ 4);
 }
 
@@ -195,9 +197,9 @@ TEST_F(RiscV64XAssemblerTest, Data) {
   auto status = assembler()->CreateExecutable(0x1000, "main");
   CHECK_OK(status) << status.message();
   auto* data = elf().sections[".data"];
-  EXPECT_EQ(data->get_type(), SHT_PROGBITS);
-  EXPECT_EQ(data->get_flags(), SHF_ALLOC | SHF_WRITE);
-  EXPECT_EQ(data->get_link(), SHN_UNDEF);
+  EXPECT_EQ(data->get_type(), ELFIO::SHT_PROGBITS);
+  EXPECT_EQ(data->get_flags(), ELFIO::SHF_ALLOC | ELFIO::SHF_WRITE);
+  EXPECT_EQ(data->get_link(), ELFIO::SHN_UNDEF);
   // Hello world is 12 bytes, plus the null terminator.
   // Add one .char declaration.
   EXPECT_EQ(data->get_size(), 14);
@@ -207,9 +209,9 @@ TEST_F(RiscV64XAssemblerTest, Bss) {
   auto status = assembler()->CreateExecutable(0x1000, "main");
   CHECK_OK(status) << status.message();
   auto* bss = elf().sections[".bss"];
-  EXPECT_EQ(bss->get_type(), SHT_NOBITS);
-  EXPECT_EQ(bss->get_flags(), SHF_ALLOC | SHF_WRITE);
-  EXPECT_EQ(bss->get_link(), SHN_UNDEF);
+  EXPECT_EQ(bss->get_type(), ELFIO::SHT_NOBITS);
+  EXPECT_EQ(bss->get_flags(), ELFIO::SHF_ALLOC | ELFIO::SHF_WRITE);
+  EXPECT_EQ(bss->get_link(), ELFIO::SHN_UNDEF);
   // Two .space declarations, each 16 bytes.
   EXPECT_EQ(bss->get_size(), 32);
 }
@@ -240,30 +242,30 @@ TEST_F(RiscV64XAssemblerTest, RelocatableSymbols) {
   symbols.get_symbol("main", value, size, bind, type, section_index, other);
   auto* sym = &symspan[symbol_map["main"]];
   EXPECT_EQ(sym->st_value, 0x0);
-  EXPECT_EQ(ELF_ST_BIND(sym->st_info), STB_GLOBAL);
+  EXPECT_EQ(ELF_ST_BIND(sym->st_info), ELFIO::STB_GLOBAL);
   EXPECT_EQ(sym->st_shndx, elf().sections[".text"]->get_index());
-  EXPECT_EQ(ELF_ST_TYPE(sym->st_info), STT_NOTYPE);
+  EXPECT_EQ(ELF_ST_TYPE(sym->st_info), ELFIO::STT_NOTYPE);
   // Verify that exit is valued 16 * 4, local and located in the text
   // section.
   sym = &symspan[symbol_map["exit"]];
   EXPECT_EQ(sym->st_value, 16 * 4);
-  EXPECT_EQ(ELF_ST_BIND(sym->st_info), STB_LOCAL);
+  EXPECT_EQ(ELF_ST_BIND(sym->st_info), ELFIO::STB_LOCAL);
   EXPECT_EQ(sym->st_shndx, elf().sections[".text"]->get_index());
-  EXPECT_EQ(ELF_ST_TYPE(sym->st_info), STT_NOTYPE);
+  EXPECT_EQ(ELF_ST_TYPE(sym->st_info), ELFIO::STT_NOTYPE);
   // Verify that hello is global and located in the data section at 0x2000.
   symbols.get_symbol("hello", value, size, bind, type, section_index, other);
   sym = &symspan[symbol_map["hello"]];
   EXPECT_EQ(sym->st_value, 0);
   EXPECT_EQ(sym->st_shndx, elf().sections[".data"]->get_index());
-  EXPECT_EQ(ELF_ST_BIND(sym->st_info), STB_GLOBAL);
-  EXPECT_EQ(ELF_ST_TYPE(sym->st_info), STT_NOTYPE);
+  EXPECT_EQ(ELF_ST_BIND(sym->st_info), ELFIO::STB_GLOBAL);
+  EXPECT_EQ(ELF_ST_TYPE(sym->st_info), ELFIO::STT_NOTYPE);
   // Verify that semihost_param is global and located in the bss section at
   // 16 bytes.
   sym = &symspan[symbol_map["semihost_param"]];
   EXPECT_EQ(sym->st_value, 16);
   EXPECT_EQ(sym->st_shndx, elf().sections[".bss"]->get_index());
-  EXPECT_EQ(ELF_ST_BIND(sym->st_info), STB_LOCAL);
-  EXPECT_EQ(ELF_ST_TYPE(sym->st_info), STT_NOTYPE);
+  EXPECT_EQ(ELF_ST_BIND(sym->st_info), ELFIO::STB_LOCAL);
+  EXPECT_EQ(ELF_ST_TYPE(sym->st_info), ELFIO::STT_NOTYPE);
   delete string_accessor;
 }
 
@@ -282,28 +284,28 @@ TEST_F(RiscV64XAssemblerTest, ExecutableSymbols) {
   symbols.get_symbol("main", value, size, bind, type, section_index, other);
   EXPECT_EQ(value, 0x1000);
   EXPECT_EQ(section_index, elf().sections[".text"]->get_index());
-  EXPECT_EQ(type, STT_NOTYPE);
+  EXPECT_EQ(type, ELFIO::STT_NOTYPE);
   // Verify that exit is valued 0x1000 + 16 * 4, local and located in the text
   // section.
   symbols.get_symbol("exit", value, size, bind, type, section_index, other);
   EXPECT_EQ(value, 0x1000 + 16 * 4);
-  EXPECT_EQ(bind, STB_LOCAL);
+  EXPECT_EQ(bind, ELFIO::STB_LOCAL);
   EXPECT_EQ(section_index, elf().sections[".text"]->get_index());
-  EXPECT_EQ(type, STT_NOTYPE);
+  EXPECT_EQ(type, ELFIO::STT_NOTYPE);
   // Verify that hello is global and located in the data section at 0x2000.
   symbols.get_symbol("hello", value, size, bind, type, section_index, other);
   EXPECT_EQ(value, 0x2000);
   EXPECT_EQ(section_index, elf().sections[".data"]->get_index());
-  EXPECT_EQ(bind, STB_GLOBAL);
-  EXPECT_EQ(type, STT_NOTYPE);
+  EXPECT_EQ(bind, ELFIO::STB_GLOBAL);
+  EXPECT_EQ(type, ELFIO::STT_NOTYPE);
   // Verify that semihost_param is global and located in the bss section at
   // 0x2000 + 14 + alignment to 16 byte boundary, plus 16 bytes.
   symbols.get_symbol("semihost_param", value, size, bind, type, section_index,
                      other);
   EXPECT_EQ(value, 0x2000 + 16 + 16);
   EXPECT_EQ(section_index, elf().sections[".bss"]->get_index());
-  EXPECT_EQ(bind, STB_LOCAL);
-  EXPECT_EQ(type, STT_NOTYPE);
+  EXPECT_EQ(bind, ELFIO::STB_LOCAL);
+  EXPECT_EQ(type, ELFIO::STT_NOTYPE);
 }
 
 // Verify that the first 16 instructions were assembled correctly.

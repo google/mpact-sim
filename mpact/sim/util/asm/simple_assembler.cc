@@ -261,21 +261,21 @@ SimpleAssembler::SimpleAssembler(absl::string_view comment, int elf_file_class,
           ")?\\s*"
           "$") {
   // Configure the ELF file writer.
-  writer_.create(elf_file_class_, ELFDATA2LSB);
-  writer_.set_os_abi(ELFOSABI_NONE);
-  writer_.set_machine(EM_NONE);
+  writer_.create(elf_file_class_, ELFIO::ELFDATA2LSB);
+  writer_.set_os_abi(ELFIO::ELFOSABI_NONE);
+  writer_.set_machine(ELFIO::EM_NONE);
   // Create the symbol table section.
   symtab_ = writer_.sections.add(".symtab");
   section_index_map_.insert({symtab_->get_index(), symtab_});
-  symtab_->set_type(SHT_SYMTAB);
+  symtab_->set_type(ELFIO::SHT_SYMTAB);
   symtab_->set_addr_align(0x8);
-  symtab_->set_entry_size(elf_file_class_ == ELFCLASS64
+  symtab_->set_entry_size(elf_file_class_ == ELFIO::ELFCLASS64
                               ? sizeof(ELFIO::Elf64_Sym)
                               : sizeof(ELFIO::Elf32_Sym));
   // Create the string table section.
   strtab_ = writer_.sections.add(".strtab");
   section_index_map_.insert({strtab_->get_index(), strtab_});
-  strtab_->set_type(SHT_STRTAB);
+  strtab_->set_type(ELFIO::SHT_STRTAB);
   strtab_->set_addr_align(0x1);
   // Link the symbol table to the string table.
   symtab_->set_link(strtab_->get_index());
@@ -371,7 +371,7 @@ absl::Status SimpleAssembler::Parse(std::istream& is,
           symbol_address = address / data_address_unit_;
         }
         auto status = AddSymbolToCurrentSection(label, symbol_address, 0,
-                                                STT_NOTYPE, 0, 0);
+                                                ELFIO::STT_NOTYPE, 0, 0);
         if (!status.ok()) return status;
       }
       continue;
@@ -388,7 +388,7 @@ absl::Status SimpleAssembler::Parse(std::istream& is,
 
   // Add undefined symbols to the symbol table.
   for (auto const& symbol : undefined_symbols_) {
-    auto status = AddSymbol(symbol, 0, 0, STT_NOTYPE, 0, 0, nullptr);
+    auto status = AddSymbol(symbol, 0, 0, ELFIO::STT_NOTYPE, 0, 0, nullptr);
     if (!status.ok()) {
       cleanup();
       return absl::InternalError(absl::StrCat(
@@ -425,7 +425,7 @@ void SimpleAssembler::UpdateSymbolsForExecutable(uint64_t text_segment_start,
     auto shndx = sym.st_shndx;
     std::string name = string_accessor_->get_string(sym.st_name);
     if (global_symbols_.contains(name)) {
-      sym.st_info = ELF_ST_INFO(STB_GLOBAL, ELF_ST_TYPE(sym.st_info));
+      sym.st_info = ELF_ST_INFO(ELFIO::STB_GLOBAL, ELF_ST_TYPE(sym.st_info));
     }
     if ((text_section_ != nullptr) && (shndx == text_section_->get_index())) {
       sym.st_value += text_segment_start;
@@ -451,7 +451,7 @@ void SimpleAssembler::UpdateSymbolsForRelocatable() {
     auto& sym = symbols[i];
     std::string name = string_accessor_->get_string(sym.st_name);
     if (global_symbols_.contains(name)) {
-      sym.st_info = ELF_ST_INFO(STB_GLOBAL, ELF_ST_TYPE(sym.st_info));
+      sym.st_info = ELF_ST_INFO(ELFIO::STB_GLOBAL, ELF_ST_TYPE(sym.st_info));
     }
   }
   symtab_->set_data(reinterpret_cast<char*>(symbols), size);
@@ -471,7 +471,7 @@ absl::Status SimpleAssembler::CreateExecutable(
     }
     return absl::InvalidArgumentError(message);
   }
-  writer_.set_type(ET_EXEC);
+  writer_.set_type(ELFIO::ET_EXEC);
   // Section sizes are now known. So let's compute the layout and update all
   // the symbol values/addresses before the next pass.
   // The layout is:
@@ -487,10 +487,10 @@ absl::Status SimpleAssembler::CreateExecutable(
     if (text_segment == nullptr) {
       return absl::InternalError("Failed to create elf segment for text");
     }
-    text_segment->set_type(PT_LOAD);
+    text_segment->set_type(ELFIO::PT_LOAD);
     text_segment->set_virtual_address(text_segment_start);
     text_segment->set_physical_address(text_segment_start);
-    text_segment->set_flags(PF_X | PF_R);
+    text_segment->set_flags(ELFIO::PF_X | ELFIO::PF_R);
     text_segment->set_align(4096);
   }
 
@@ -509,10 +509,10 @@ absl::Status SimpleAssembler::CreateExecutable(
     if (data_segment == nullptr) {
       return absl::InternalError("Failed to create elf segment for data");
     }
-    data_segment->set_type(PT_LOAD);
+    data_segment->set_type(ELFIO::PT_LOAD);
     data_segment->set_virtual_address(data_segment_start);
     data_segment->set_physical_address(data_segment_start);
-    data_segment->set_flags(PF_W | PF_R);
+    data_segment->set_flags(ELFIO::PF_W | ELFIO::PF_R);
     data_segment->set_align(4096);
 
     uint64_t bss_align = bss_section_->get_addr_align() - 1;
@@ -524,10 +524,10 @@ absl::Status SimpleAssembler::CreateExecutable(
   // Now we can update the symbol table based on the new section sizes.
 
   // Different size symbol table entries for 32 and 64 bit ELF files.
-  if (elf_file_class_ == ELFCLASS64) {
+  if (elf_file_class_ == ELFIO::ELFCLASS64) {
     UpdateSymbolsForExecutable<ELFIO::Elf64_Sym>(
         text_segment_start, data_segment_start, bss_segment_start);
-  } else if (elf_file_class_ == ELFCLASS32) {
+  } else if (elf_file_class_ == ELFIO::ELFCLASS32) {
     UpdateSymbolsForExecutable<ELFIO::Elf32_Sym>(
         text_segment_start, data_segment_start, bss_segment_start);
   } else {
@@ -623,14 +623,14 @@ void SimpleAssembler::UpdateSymtabHeaderInfo() {
   for (int i = 0; i < syms.size(); ++i) {
     auto name = string_accessor_->get_string(syms[i].st_name);
     symbol_indices_.insert({name, i});
-    if (ELF_ST_BIND(syms[i].st_info) == STB_LOCAL) last_local = i;
+    if (ELF_ST_BIND(syms[i].st_info) == ELFIO::STB_LOCAL) last_local = i;
   }
   symtab_->set_info(last_local + 1);
 }
 
 absl::Status SimpleAssembler::CreateRelocatable(
     ResolverInterface* symbol_resolver) {
-  writer_.set_type(ET_REL);
+  writer_.set_type(ELFIO::ET_REL);
   // Reset the section address map to zero since we are creating a relocatable
   // file.
   section_address_map_[text_section_] = 0;
@@ -640,9 +640,9 @@ absl::Status SimpleAssembler::CreateRelocatable(
   // Since the symbols now are rearranged, we need to set global symbols flag
   // for those in the global_symbols_ set.
   // Different size symbol table entries for 32 and 64 bit ELF files.
-  if (elf_file_class_ == ELFCLASS64) {
+  if (elf_file_class_ == ELFIO::ELFCLASS64) {
     UpdateSymbolsForRelocatable<ELFIO::Elf64_Sym>();
-  } else if (elf_file_class_ == ELFCLASS32) {
+  } else if (elf_file_class_ == ELFIO::ELFCLASS32) {
     UpdateSymbolsForRelocatable<ELFIO::Elf32_Sym>();
   } else {
     return absl::InternalError(
@@ -654,7 +654,7 @@ absl::Status SimpleAssembler::CreateRelocatable(
   // Find the last local symbol and set the section header info for symbtab
   // to point to 1 past that. Update the symbol_indices_ map.
   symbol_indices_.clear();
-  if (elf_file_class_ == ELFCLASS64) {
+  if (elf_file_class_ == ELFIO::ELFCLASS64) {
     UpdateSymtabHeaderInfo<ELFIO::Elf64_Sym>();
   } else {
     UpdateSymtabHeaderInfo<ELFIO::Elf32_Sym>();
@@ -697,9 +697,9 @@ absl::Status SimpleAssembler::CreateRelocatable(
       std::string name =
           absl::StrCat(".rela", section_index_map_[section_index]->get_name());
       auto* rela_section = writer_.sections.add(name);
-      rela_section->set_type(SHT_RELA);
-      rela_section->set_flags(SHF_INFO_LINK);
-      rela_section->set_entry_size(elf_file_class_ == ELFCLASS64
+      rela_section->set_type(ELFIO::SHT_RELA);
+      rela_section->set_flags(ELFIO::SHF_INFO_LINK);
+      rela_section->set_entry_size(elf_file_class_ == ELFIO::ELFCLASS64
                                        ? sizeof(ELFIO::Elf64_Rela)
                                        : sizeof(ELFIO::Elf32_Rela));
       rela_section->set_link(symtab_->get_index());
@@ -707,10 +707,10 @@ absl::Status SimpleAssembler::CreateRelocatable(
       rela_section->set_addr_align(8);
       // Process the relocation vector entries.
       absl::Status status;
-      if (elf_file_class_ == ELFCLASS64) {
+      if (elf_file_class_ == ELFIO::ELFCLASS64) {
         status = AddRelocationEntries<ELFIO::Elf64_Rela>(
             relo_vec, symbol_indices_, rela_section);
-      } else if (elf_file_class_ == ELFCLASS32) {
+      } else if (elf_file_class_ == ELFIO::ELFCLASS32) {
         status = AddRelocationEntries<ELFIO::Elf32_Rela>(
             relo_vec, symbol_indices_, rela_section);
       } else {
@@ -940,8 +940,8 @@ absl::Status SimpleAssembler::ParseAsmDirective(
       return absl::InvalidArgumentError(
           absl::StrCat("Label: '", label, "' defined outside of a section"));
     }
-    auto status =
-        AddSymbol(label, address, size, STT_NOTYPE, STB_LOCAL, 0, section);
+    auto status = AddSymbol(label, address, size, ELFIO::STT_NOTYPE,
+                            ELFIO::STB_LOCAL, 0, section);
   }
   return absl::OkStatus();
 }
@@ -971,12 +971,13 @@ void SimpleAssembler::SetTextSection(const std::string& name) {
     return;
   }
   section = writer_.sections.add(name);
-  auto status = AddSymbol(name, 0, 0, STT_SECTION, STB_LOCAL, 0, section);
+  auto status =
+      AddSymbol(name, 0, 0, ELFIO::STT_SECTION, ELFIO::STB_LOCAL, 0, section);
   if (!status.ok()) {
     LOG(ERROR) << "Failed to add symbol for data section: " << status.message();
   }
-  section->set_type(SHT_PROGBITS);
-  section->set_flags(SHF_ALLOC | SHF_EXECINSTR);
+  section->set_type(ELFIO::SHT_PROGBITS);
+  section->set_flags(ELFIO::SHF_ALLOC | ELFIO::SHF_EXECINSTR);
   section->set_addr_align(0x10);
   // Should probably add the section symbol to the symbol table.
   current_section_ = section;
@@ -992,12 +993,13 @@ void SimpleAssembler::SetDataSection(const std::string& name) {
     return;
   }
   section = writer_.sections.add(name);
-  auto status = AddSymbol(name, 0, 0, STT_SECTION, STB_LOCAL, 0, section);
+  auto status =
+      AddSymbol(name, 0, 0, ELFIO::STT_SECTION, ELFIO::STB_LOCAL, 0, section);
   if (!status.ok()) {
     LOG(ERROR) << "Failed to add symbol for data section: " << status.message();
   }
-  section->set_type(SHT_PROGBITS);
-  section->set_flags(SHF_ALLOC | SHF_WRITE);
+  section->set_type(ELFIO::SHT_PROGBITS);
+  section->set_flags(ELFIO::SHF_ALLOC | ELFIO::SHF_WRITE);
   section->set_addr_align(0x10);
   // Should probably add the section symbol to the symbol table.
   current_section_ = section;
@@ -1013,12 +1015,13 @@ void SimpleAssembler::SetBssSection(const std::string& name) {
     return;
   }
   section = writer_.sections.add(name);
-  auto status = AddSymbol(name, 0, 0, STT_SECTION, STB_LOCAL, 0, section);
+  auto status =
+      AddSymbol(name, 0, 0, ELFIO::STT_SECTION, ELFIO::STB_LOCAL, 0, section);
   if (!status.ok()) {
     LOG(ERROR) << "Failed to add symbol for bss section: " << status.message();
   }
-  section->set_type(SHT_NOBITS);
-  section->set_flags(SHF_ALLOC | SHF_WRITE);
+  section->set_type(ELFIO::SHT_NOBITS);
+  section->set_flags(ELFIO::SHF_ALLOC | ELFIO::SHF_WRITE);
   section->set_addr_align(0x10);
   // Should probably add the section symbol to the symbol table.
   current_section_ = section;
@@ -1059,7 +1062,7 @@ absl::Status SimpleAssembler::AddSymbol(const std::string& name,
   }
   auto index = symbol_accessor_->add_symbol(
       *string_accessor_, name.c_str(), value, size, binding, type, other,
-      section == nullptr ? SHN_UNDEF : section->get_index());
+      section == nullptr ? ELFIO::SHN_UNDEF : section->get_index());
   symbol_indices_.insert({name, index});
   // If this is not an undefined symbol reference, then see if the symbol name
   // is part of the "current" undefined symbols, and if so, remove it.

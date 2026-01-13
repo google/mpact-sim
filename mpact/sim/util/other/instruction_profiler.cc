@@ -94,8 +94,8 @@ void InstructionProfiler::SetElfLoader(ElfProgramLoader* elf_loader) {
   // during simulation.
   for (auto const& segment : elf_loader_->elf_reader()->segments) {
     // Only consider segments that are loaded, executable, and with size > 0.
-    if (segment->get_type() != PT_LOAD) continue;
-    if ((segment->get_flags() & PF_X) == 0) continue;
+    if (segment->get_type() != ELFIO::PT_LOAD) continue;
+    if ((segment->get_flags() & ELFIO::PF_X) == 0) continue;
     uint64_t size = segment->get_memory_size() >> shift_;
     if (size == 0) continue;
 
