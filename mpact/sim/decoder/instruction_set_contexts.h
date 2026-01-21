@@ -56,7 +56,7 @@ using ResourceDetailsCtx = InstructionSetParser::Resource_detailsContext;
 using GeneratorOpcodeSpecListCtx =
     InstructionSetParser::Generator_opcode_spec_listContext;
 using RangeAssignmentCtx = InstructionSetParser::Range_assignmentContext;
-using TupleCtx = InstructionSetParser::TupleContext;
+using ValueListCtx = InstructionSetParser::Value_listContext;
 using GenValueCtxt = InstructionSetParser::Gen_valueContext;
 
 }  // namespace instruction_set

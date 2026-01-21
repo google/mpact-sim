@@ -1836,7 +1836,7 @@ absl::Status InstructionSetVisitor::ProcessOpcodeGenerator(
       continue;
     }
     // It's a list of tuples with a structured binding assignment.
-    for (auto* tuple_ctx : assign_ctx->tuple()) {
+    for (auto* tuple_ctx : assign_ctx->value_list()) {
       if (tuple_ctx->gen_value().size() != range_info->range_names.size()) {
         for (auto* info : range_info_vec) delete info;
         return absl::InternalError(

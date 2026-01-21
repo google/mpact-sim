@@ -948,7 +948,7 @@ InstructionGroup* BinFormatVisitor::VisitInstructionGroupDef(
   // format definitions.
   if (ctx->number() != nullptr) {
     int width = ConvertToInt(ctx->number());
-    std::string format_name = ctx->format->getText();
+    std::string format_name = ctx->inst_format->getText();
     auto iter = format_decl_map_.find(format_name);
     if (iter == format_decl_map_.end()) {
       error_listener_->semanticError(
@@ -1107,7 +1107,7 @@ void BinFormatVisitor::ProcessInstructionDefGenerator(
       continue;
     }
     // It's a list of tuples with a structured binding assignment.
-    for (auto* tuple_ctx : assign_ctx->tuple()) {
+    for (auto* tuple_ctx : assign_ctx->value_list()) {
       if (tuple_ctx->gen_value().size() != range_info->range_names.size()) {
         // Clean up.
         for (auto* info : range_info_vec) delete info;

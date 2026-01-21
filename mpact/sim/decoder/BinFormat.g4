@@ -129,7 +129,7 @@ bit_index_range
 // An instruction group lists the encodings of a set of instructions that all
 // derive from the same format.
 instruction_group_def
-  : INSTRUCTION GROUP name=IDENT '[' number ']' ':' format=IDENT
+  : INSTRUCTION GROUP name=IDENT '[' number ']' ':' inst_format=IDENT
     '{' instruction_def_list '}' ';'?
   | INSTRUCTION GROUP name=IDENT '=' '{' group_name_list '}' ';'?
   ;
@@ -150,10 +150,10 @@ instruction_def
 
 range_assignment
   : IDENT '=' '[' gen_value (',' gen_value)* ']'
-  | '[' IDENT (',' IDENT)* ']' '=' '[' tuple (',' tuple)* ']'
+  | '[' IDENT (',' IDENT)* ']' '=' '[' value_list (',' value_list)* ']'
   ;
 
-tuple
+value_list
   : '{' gen_value (',' gen_value)* '}'
   ;
 
