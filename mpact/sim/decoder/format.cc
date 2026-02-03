@@ -634,7 +634,7 @@ std::string Format::GeneratePackedStructFormatInserter(
   std::string format_type_name = GetUIntType(format->declared_width());
   std::string union_type =
       absl::StrCat(ToSnakeCase(name()), "::Union", ToPascalCase(name()));
-  absl::StrAppend(&h_output, "static inline ", inst_word_type_name, "Insert",
+  absl::StrAppend(&h_output, "static inline ", inst_word_type_name, " Insert",
                   ToPascalCase(format_alias), "(", format_type_name, " value, ",
                   inst_word_type_name,
                   " inst_word) {\n"
