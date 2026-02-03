@@ -1314,7 +1314,7 @@ void InstructionSetVisitor::VisitInstructionAttributeList(
           absl::StrCat("Duplicate attribute name '", name, "' in list"));
       continue;
     }
-    InstructionSet::AddAttributeName(name);
+    slot->AddAttributeName(name);
     if (attribute->expression() != nullptr) {
       context_file_map_.insert(
           {attribute->expression(), context_file_map_.at(slot->ctx())});
@@ -1322,7 +1322,7 @@ void InstructionSetVisitor::VisitInstructionAttributeList(
       attributes.emplace(name, expr);
       continue;
     }
-    attributes.emplace(name, new TemplateConstant(1));
+    attributes.emplace(name, new TemplateConstant(0));
   }
   // Are we parsing attributes for an instruction?
   if (inst != nullptr) {

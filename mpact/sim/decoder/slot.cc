@@ -252,33 +252,35 @@ std::string Slot::GenerateAttributeSetterFcn(absl::string_view name,
                                              const Instruction* inst) const {
   std::string output;
   absl::StrAppend(&output, "void ", name, "(Instruction *inst) {\n");
-  if (!attribute_map_.empty()) {
+  int size = attribute_names_.size();
+  if (size > 0) {
     // Allocate the array and initialize to zero.
-    absl::StrAppend(&output, "  int *attrs = new int[", attribute_map_.size(),
+    absl::StrAppend(&output, "  int *attrs = new int[", size,
                     "];\n"
-                    "  attrs = {");
-    std::string sep = "";
-    for (auto const& [name, expr] : inst->attribute_map()) {
-      auto result = expr->GetValue();
+                    "  *attrs = {");
+    for (auto const& attribute_name : attribute_names_) {
+      auto it = inst->attribute_map().find(attribute_name);
+      if (it == inst->attribute_map().end()) {
+        absl::StrAppend(&output, "0, ");
+        continue;
+      }
+      auto result = it->second->GetValue();
       if (!result.ok()) {
-        absl::StrAppend(&output, "    #error Expression for '", name,
-                        "' has no constant value\n");
+        absl::StrAppend(&output, "0, ");
         continue;
       }
       int* value = std::get_if<int>(&result.value());
       if (value == nullptr) {
-        absl::StrAppend(&output, "    #error Expression for '", name,
-                        "' does not have type int\n");
+        absl::StrAppend(&output, "0, ");
         continue;
       }
-      absl::StrAppend(&output, sep, "*value");
-      sep = ", ";
+      absl::StrAppend(&output, *value, ", ");
     }
     absl::StrAppend(&output, "};\n");
-    absl::StrAppend(&output,
-                    "  inst->SetAttributes(absl::Span<int>(attrs, size));\n");
+    absl::StrAppend(&output, "  inst->SetAttributes(absl::Span<int>(attrs,",
+                    size, "));\n");
   }
-  absl::StrAppend(&output, "}\n");
+  absl::StrAppend(&output, "}\n\n");
   return output;
 }
 
@@ -1488,6 +1490,12 @@ TemplateFormal* Slot::GetTemplateFormal(const std::string& name) const {
 void Slot::AddInstructionAttribute(const std::string& name,
                                    TemplateExpression* expr) {
   attribute_map_.emplace(name, expr);
+}
+
+void Slot::AddAttributeName(const std::string& name) {
+  if (!attribute_names_.contains(name)) {
+    attribute_names_.insert(name);
+  }
 }
 
 }  // namespace instruction_set

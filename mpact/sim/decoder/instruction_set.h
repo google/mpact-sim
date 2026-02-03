@@ -80,8 +80,6 @@ class InstructionSet {
   // defined.
   StringPair GenerateEnums(absl::string_view file_name);
 
-  static void AddAttributeName(const std::string& name);
-
   void AddInstruction(Instruction* inst) {
     if (instruction_map_.contains(inst->opcode()->name())) return;
     instruction_map_.emplace(inst->opcode()->name(), inst);
@@ -95,10 +93,7 @@ class InstructionSet {
   Bundle* bundle() { return bundle_; }
   OpcodeFactory* opcode_factory() const { return opcode_factory_.get(); }
   ResourceFactory* resource_factory() const { return resource_factory_.get(); }
-  // Attribute names are shared across the isa's.
-  static const absl::btree_set<std::string>* attribute_names() {
-    return attribute_names_;
-  }
+
   absl::flat_hash_map<std::string, Bundle*>& bundle_map() {
     return bundle_map_;
   }
@@ -141,8 +136,6 @@ class InstructionSet {
   // Maps from names to bundle/slot pointers.
   absl::flat_hash_map<std::string, Bundle*> bundle_map_;
   absl::flat_hash_map<std::string, Slot*> slot_map_;
-  // Attribute name list - shared across all the isas.
-  static absl::btree_set<std::string>* attribute_names_;
   // Maps from operand names to enum values.
   absl::flat_hash_map<std::string, int> pred_op_map_;
   absl::flat_hash_map<std::string, int> source_op_map_;

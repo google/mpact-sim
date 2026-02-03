@@ -38,8 +38,6 @@ namespace sim {
 namespace machine_description {
 namespace instruction_set {
 
-absl::btree_set<std::string>* InstructionSet::attribute_names_ = nullptr;
-
 static void EmitEnumNames(const absl::btree_set<std::string>& names,
                           absl::string_view namespace_name,
                           absl::string_view op_name, std::string& h_output,
@@ -157,16 +155,6 @@ void InstructionSet::AddToSlotOrder(Slot* slot) {
   }
   slot->set_is_marked(true);
   slot_order_.push_back(slot);
-}
-
-void InstructionSet::AddAttributeName(const std::string& name) {
-  if (attribute_names_ == nullptr) {
-    attribute_names_ = new absl::btree_set<std::string>();
-  }
-  auto iter = attribute_names_->find(name);
-  if (iter == attribute_names_->end()) {
-    attribute_names_->insert(name);
-  }
 }
 
 // Return a string containing class header file, for all bundles and slots.
@@ -751,16 +739,22 @@ InstructionSet::StringPair InstructionSet::GenerateEnums(
   EmitEnumNames(name_set, "list_complex_resource_names", "ListComplexResource",
                 h_output, cc_output);
   // Emit instruction attribute types.
-  absl::StrAppend(&h_output, "  enum class AttributeEnum {\n");
-  int attribute_count = 0;
-  if (InstructionSet::attribute_names_ != nullptr) {
-    for (auto const& name : *InstructionSet::attribute_names_) {
-      absl::StrAppend(&h_output, "    k", ToPascalCase(name), " = ",
-                      attribute_count++, ",\n");
+
+  for (auto const& [name, slot_ptr] : slots_by_name) {
+    if (slot_ptr->attribute_names().empty()) continue;
+    absl::StrAppend(&h_output, "namespace ", ToSnakeCase(name), " {\n\n");
+    absl::StrAppend(&h_output, "  enum class AttributeEnum {\n");
+    int attribute_count = 0;
+    if (!slot_ptr->attribute_names().empty()) {
+      for (auto const& attribute_name : slot_ptr->attribute_names()) {
+        absl::StrAppend(&h_output, "    k", ToPascalCase(attribute_name), " = ",
+                        attribute_count++, ",\n");
+      }
     }
+    absl::StrAppend(&h_output, "    kPastMaxValue = ", attribute_count,
+                    "\n  };\n\n");
+    absl::StrAppend(&h_output, "}  // namespace ", name, "\n\n");
   }
-  absl::StrAppend(&h_output, "    kPastMaxValue = ", attribute_count,
-                  "\n  };\n\n");
 
   return {h_output, cc_output};
 }

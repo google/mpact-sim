@@ -22,6 +22,7 @@
 
 #include "absl/base/no_destructor.h"
 #include "absl/container/btree_map.h"
+#include "absl/container/btree_set.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
 #include "absl/status/status.h"
@@ -112,6 +113,9 @@ class Slot {
   // Resources
   Resource* GetOrInsertResource(const std::string& name);
 
+  // Attributes
+  void AddAttributeName(const std::string& name);
+
   // Getters and setters.
   InstructionSet* instruction_set() const { return instruction_set_; }
   const SlotDeclCtx* ctx() const { return ctx_; }
@@ -157,6 +161,10 @@ class Slot {
   }
   const absl::btree_map<std::string, TemplateExpression*>& attribute_map() {
     return attribute_map_;
+  }
+
+  const absl::btree_set<std::string>& attribute_names() const {
+    return attribute_names_;
   }
 
  private:
@@ -251,6 +259,7 @@ class Slot {
   absl::btree_map<std::string, IdentListCtx*> resource_array_ref_map_;
   // Default instruction attributes.
   absl::btree_map<std::string, TemplateExpression*> attribute_map_;
+  absl::btree_set<std::string> attribute_names_;
 };
 
 }  // namespace instruction_set

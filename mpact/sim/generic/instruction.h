@@ -219,7 +219,7 @@ class Instruction : public ReferenceCount {
       absl::MakeConstSpan(static_cast<int*>(nullptr), 0);
   // Architecture state object.
   ArchState* state_;
-  // Instruction execution context (this is usuall nullptr).
+  // Instruction execution context (this is usually nullptr).
   ReferenceCount* context_;
   // Semantic function that implements the instruction semantics.
   SemanticFunction semantic_fcn_;
