@@ -91,7 +91,12 @@ class RegisterDestinationOperand : public DestinationOperandInterface {
   // Constructor and Destructor
   RegisterDestinationOperand(RegisterBase* reg, int latency);
   RegisterDestinationOperand(RegisterBase* reg, int latency,
+                             DataBufferDelayLine* delay_line);
+  RegisterDestinationOperand(RegisterBase* reg, int latency,
                              std::string op_name);
+  RegisterDestinationOperand(RegisterBase* reg, int latency,
+                             std::string op_name,
+                             DataBufferDelayLine* delay_line);
   RegisterDestinationOperand() = delete;
 
   // Initializes the DataBuffer instance so that when Submit is called, it can
@@ -280,18 +285,31 @@ std::vector<int> RegisterSourceOperand<T>::shape() const {
 
 template <typename T>
 RegisterDestinationOperand<T>::RegisterDestinationOperand(RegisterBase* reg,
-                                                          int latency,
-                                                          std::string op_name)
-    : register_(reg),
-      db_factory_(reg->arch_state()->db_factory()),
-      latency_(latency),
-      delay_line_(reg->arch_state()->data_buffer_delay_line()),
-      op_name_(op_name) {}
+                                                          int latency)
+    : RegisterDestinationOperand(reg, latency, reg->name(),
+                                 reg->arch_state()->data_buffer_delay_line()) {}
+
+template <typename T>
+RegisterDestinationOperand<T>::RegisterDestinationOperand(
+    RegisterBase* reg, int latency, DataBufferDelayLine* delay_line)
+    : RegisterDestinationOperand(reg, latency, reg->name(), delay_line) {}
 
 template <typename T>
 RegisterDestinationOperand<T>::RegisterDestinationOperand(RegisterBase* reg,
-                                                          int latency)
-    : RegisterDestinationOperand(reg, latency, reg->name()) {}
+                                                          int latency,
+                                                          std::string op_name)
+    : RegisterDestinationOperand(reg, latency, op_name,
+                                 reg->arch_state()->data_buffer_delay_line()) {}
+
+template <typename T>
+RegisterDestinationOperand<T>::RegisterDestinationOperand(
+    RegisterBase* reg, int latency, std::string op_name,
+    DataBufferDelayLine* delay_line)
+    : register_(reg),
+      db_factory_(reg->arch_state()->db_factory()),
+      latency_(latency),
+      delay_line_(delay_line),
+      op_name_(op_name) {}
 
 template <typename T>
 void RegisterDestinationOperand<T>::InitializeDataBuffer(DataBuffer* db) {
