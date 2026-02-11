@@ -23,7 +23,7 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "mpact/sim/generic/type_helpers.h"
-#include "util/regexp/re2/re2.h"
+#include "re2/re2.h"
 
 namespace mpact {
 namespace sim {

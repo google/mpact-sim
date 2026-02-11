@@ -76,9 +76,9 @@ def mpact_sim_repos():
     http_archive(
         name = "com_github_serge1_elfio",
         build_file = "@com_google_mpact-sim//:external/BUILD.elfio",
-        sha256 = "767b269063fc35aba6d361139f830aa91c45dc6b77942f082666876c1aa0be0f",
-        strip_prefix = "elfio-3.9",
-        urls = ["https://github.com/serge1/ELFIO/releases/download/Release_3.9/elfio-3.9.tar.gz"],
+        sha256 = "caf49f3bf55a9c99c98ebea4b05c79281875783802e892729eea0415505f68c4",
+        strip_prefix = "elfio-3.12",
+        urls = ["https://github.com/serge1/ELFIO/releases/download/Release_3.12/elfio-3.12.tar.gz"],
     )
 
     # Antlr4 tool (java).

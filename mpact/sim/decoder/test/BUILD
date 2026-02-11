@@ -153,7 +153,6 @@ mpact_cc_test(
     deps = [
         ":log_sink",
         "//mpact/sim/decoder:isa_parser",
-        "//util/regexp/re2",
         "@com_google_absl//absl/flags:flag",
         "@com_google_absl//absl/log:check",
         "@com_google_absl//absl/log:log_sink_registry",
@@ -163,6 +162,7 @@ mpact_cc_test(
         "@com_google_absl//absl/strings",
         "@com_google_googletest//:gtest",
         "@com_google_googletest//:gtest_main",
+        "@com_googlesource_code_re2//:re2",
     ],
 )
 
@@ -373,7 +373,6 @@ mpact_cc_test(
     deps = [
         ":log_sink",
         "//mpact/sim/decoder:bin_format_visitor",
-        "//util/regexp/re2",
         "@com_google_absl//absl/flags:flag",
         "@com_google_absl//absl/log:check",
         "@com_google_absl//absl/log:log_sink_registry",
@@ -382,6 +381,7 @@ mpact_cc_test(
         "@com_google_absl//absl/strings",
         "@com_google_googletest//:gtest",
         "@com_google_googletest//:gtest_main",
+        "@com_googlesource_code_re2//:re2",
     ],
 )
 
@@ -400,7 +400,6 @@ mpact_cc_test(
     deps = [
         ":log_sink",
         "//mpact/sim/decoder:proto_format_visitor",
-        "//util/regexp/re2",
         "@com_google_absl//absl/flags:flag",
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/log:check",
@@ -410,6 +409,7 @@ mpact_cc_test(
         "@com_google_absl//absl/strings",
         "@com_google_googletest//:gtest",
         "@com_google_googletest//:gtest_main",
+        "@com_googlesource_code_re2//:re2",
     ],
 )
 

@@ -45,7 +45,7 @@
 #include "mpact/sim/decoder/instruction_encoding.h"
 #include "mpact/sim/decoder/instruction_group.h"
 #include "mpact/sim/decoder/overlay.h"
-#include "util/regexp/re2/re2.h"
+#include "re2/re2.h"
 
 namespace mpact {
 namespace sim {

@@ -126,10 +126,8 @@ def mpact_isa_decoder(name, includes, src = "", srcs = [], deps = [], isa_name =
         lib_deps.append("@com_google_mpact-sim//mpact/sim/generic:instruction")
     if "@com_google_mpact-sim//mpact/sim/util/asm" not in deps:
         lib_deps.append("@com_google_mpact-sim//mpact/sim/util/asm")
-    if "//util/regexp/re2" not in deps:
-        lib_deps.append("//util/regexp/re2")
-    if "//util/regexp/re2:set" not in deps:
-        lib_deps.append("//util/regexp/re2:set")
+    if "@com_googlesource_code_re2//:re2" not in deps:
+        lib_deps.append("@com_googlesource_code_re2//:re2")
     if "@com_google_absl//absl/status" not in deps:
         lib_deps.append("@com_google_absl//absl/status")
     if "@com_google_absl//absl/status:statusor" not in deps:

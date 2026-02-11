@@ -33,7 +33,7 @@
 #include "elfio/elfio_symbols.hpp"
 #include "mpact/sim/util/asm/opcode_assembler_interface.h"
 #include "mpact/sim/util/asm/resolver_interface.h"
-#include "util/regexp/re2/re2.h"
+#include "re2/re2.h"
 
 // This file declares the SimpleAssembler class, which provides simple handling
 // of assembly source, including a number of assembly directives. It currently

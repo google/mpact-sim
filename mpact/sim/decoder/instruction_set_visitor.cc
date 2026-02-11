@@ -45,7 +45,7 @@
 #include "mpact/sim/decoder/opcode.h"
 #include "mpact/sim/decoder/slot.h"
 #include "mpact/sim/decoder/template_expression.h"
-#include "util/regexp/re2/re2.h"
+#include "re2/re2.h"
 
 // This flag is used to set the version of the generated code. Version 1 is
 // the default version. Version 2 adds an instruction pointer to the resource
@@ -2451,8 +2451,8 @@ InstructionSetVisitor::GenerateEncFilePrologs(
                   "#include "
                   "\"mpact/sim/util/asm/opcode_assembler_interface.h\"\n"
                   "#include \"mpact/sim/util/asm/resolver_interface.h\"\n"
-                  "#include \"util/regexp/re2/re2.h\"\n"
-                  "#include \"util/regexp/re2/set.h\"\n"
+                  "#include \"re2/re2.h\"\n"
+                  "#include \"re2/set.h\"\n"
                   "#include \"",
                   opcode_file_name,
                   "\"\n"
@@ -2471,8 +2471,8 @@ InstructionSetVisitor::GenerateEncFilePrologs(
                   "#include "
                   "\"mpact/sim/util/asm/opcode_assembler_interface.h\"\n"
                   "#include \"mpact/sim/util/asm/resolver_interface.h\"\n"
-                  "#include \"util/regexp/re2/re2.h\"\n"
-                  "#include \"util/regexp/re2/set.h\"\n"
+                  "#include \"re2/re2.h\"\n"
+                  "#include \"re2/set.h\"\n"
                   "#include \"",
                   opcode_file_name,
                   "\"\n"

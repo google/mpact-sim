@@ -37,8 +37,8 @@
 #include "mpact/sim/decoder/proto_encoding_info.h"
 #include "mpact/sim/decoder/proto_format_contexts.h"
 #include "mpact/sim/decoder/proto_instruction_group.h"
+#include "re2/re2.h"
 #include "src/google/protobuf/descriptor.h"
-#include "util/regexp/re2/re2.h"
 
 // This file defines the visitor class used to generate C++ code for decoding
 // instructions encoded in protobufs.

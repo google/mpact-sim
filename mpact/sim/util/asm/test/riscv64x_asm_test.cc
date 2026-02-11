@@ -35,7 +35,7 @@
 #include "mpact/sim/util/asm/simple_assembler.h"
 #include "mpact/sim/util/asm/test/riscv64x_bin_encoder_interface.h"
 #include "mpact/sim/util/asm/test/riscv64x_encoder.h"
-#include "util/regexp/re2/re2.h"
+#include "re2/re2.h"
 
 // This file contains tests for the simple assembler using a very reduced
 // subset of the RISC-V ISA.
