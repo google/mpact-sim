@@ -168,6 +168,11 @@ class Slot {
   }
 
  private:
+  // Returns the name of the instruction array used for this slot. The
+  // instruction array is a constexpr global array of instruction information,
+  // keyed by the opcode.
+  std::string GetInstructionArrayName() const;
+
   // These functions generate the functions that are called by the decoder to
   // set the instruction operands.
   std::string CreateOperandLookupKey(const Opcode* opcode) const;
@@ -194,13 +199,10 @@ class Slot {
   std::string GenerateAttributeSetterFcn(absl::string_view name,
                                          const Instruction* inst) const;
   std::string CreateAttributeLookupKey(const Instruction* inst) const;
-  // Generates a string that is a unique key for the operands to determine which
-  // instructions can share operand getter functions.
-  // Build up a string containing the function getter initializers that are
-  // stored in two flat hash maps with the opcode as the key. These functions
-  // are lambda's that call the getters for the semantic functions as well as
-  // operand getters for each instruction opcode.
-  std::string ListFuncGetterInitializations(absl::string_view encoding_type);
+  // Generates a string that defines a global constexpr array of instruction
+  // opcodes and instruction info structs. Also populates the setter function
+  // string 'setter_functions_' with the setters.
+  std::string CreateFuncGetterGlobalArray(absl::string_view encoding_type);
   // Transitively check if base slot is in the predecessor set of the current
   // slot or any of its inheritance predecessors. Returns AlreadyExistsError
   // if the current slot or its predecessors already inherit from base or its
@@ -242,6 +244,10 @@ class Slot {
       resource_setter_name_map_;
   static absl::NoDestructor<absl::flat_hash_map<std::string, std::string>>
       attribute_setter_name_map_;
+
+  // Stores a string representation of the instruction array for this slot. This
+  // is an array that is used to initialize the map within the decoder.
+  std::string instruction_array_str_;
   std::string setter_functions_;
   // Used to list the unique getters for the operands.
   absl::flat_hash_set<std::string> pred_operand_getters_;

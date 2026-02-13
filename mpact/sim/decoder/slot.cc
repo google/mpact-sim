@@ -34,6 +34,7 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/numbers.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/str_format.h"
 #include "absl/strings/string_view.h"
 #include "mpact/sim/decoder/format_name.h"
 #include "mpact/sim/decoder/instruction.h"
@@ -1101,6 +1102,10 @@ std::string Slot::GenerateResourceSetterFcn(
   return output;
 }
 
+std::string Slot::GetInstructionArrayName() const {
+  return absl::StrCat("k", pascal_name(), "SlotInstructionArray");
+}
+
 // Generates a string that is a unique identifier from the operands to
 // determine which instructions can share operand getter functions.
 std::string Slot::CreateOperandLookupKey(const Opcode* opcode) const {
@@ -1251,25 +1256,22 @@ std::string Slot::GenerateOperandSetterFcn(absl::string_view getter_name,
   return output;
 }
 
-std::string Slot::ListFuncGetterInitializations(
-    absl::string_view encoding_type) {
-  std::string output;
-  if (instruction_map_.empty()) return output;
-  std::string class_name = pascal_name() + "Slot";
-  // For each instruction create two lambda functions. One that is used to
-  // obtain the semantic function object for the instruction, the other a
-  // lambda that sets the predicate, source and target operands. Both lambdas
-  // use calls to virtual functions declared in the current class or a base
-  // class thereof.
-  std::string signature =
-      absl::StrCat("(Instruction *inst, ", encoding_type,
-                   " *enc, OpcodeEnum opcode, SlotEnum slot, int entry)");
+std::string Slot::CreateFuncGetterGlobalArray(absl::string_view encoding_type) {
+  const std::string class_name = pascal_name() + "Slot";
+  std::string output = absl::StrFormat(
+      "const std::array<std::pair<OpcodeEnum, InstructionInfo>, %d>\n"
+      "%s {\n",
+      instruction_map_.size() + 1, GetInstructionArrayName());
+
   absl::StrAppend(&setter_functions_,
                   GenerateOperandSetterFcn(
                       absl::StrCat(pascal_name(), "SlotSetOperandsNull"),
                       encoding_type, default_instruction_->opcode()));
+
   absl::StrAppend(
-      &output, "    {static_cast<int>(OpcodeEnum::kNone), {OperandSetter{",
+      &output,
+      "    std::make_pair(OpcodeEnum::kNone, "
+      "InstructionInfo{OperandSetter{",
       pascal_name(),
       "SlotSetOperandsNull},\n"
       "    ",
@@ -1277,7 +1279,7 @@ std::string Slot::ListFuncGetterInitializations(
       GenerateResourceSetter(default_instruction_, encoding_type), ",\n",
       "    ", GenerateAttributeSetter(default_instruction_), ",\n",
       "    SemFuncSetter{", default_instruction_->semfunc_code_string(), "}, ",
-      default_instruction_->opcode()->instruction_size(), "}},\n");
+      default_instruction_->opcode()->instruction_size(), "}),\n");
   for (auto const& [unused, inst_ptr] : instruction_map_) {
     auto* instruction = inst_ptr;
     std::string opcode_name = instruction->opcode()->pascal_name();
@@ -1316,14 +1318,16 @@ std::string Slot::ListFuncGetterInitializations(
       }
       sep = ", ";
     }
-    absl::StrAppend(&output, "    {static_cast<int>(OpcodeEnum::k", opcode_name,
-                    "), {OperandSetter{", operands_str, "},\n", "    ",
-                    GenerateDisassemblySetter(instruction), ",\n", "    ",
-                    GenerateResourceSetter(instruction, encoding_type), ",\n",
-                    "    ", GenerateAttributeSetter(instruction), ",\n",
+    absl::StrAppend(&output, "    std::make_pair(OpcodeEnum::k", opcode_name,
+                    ", InstructionInfo{OperandSetter{", operands_str, "},\n",
+                    "    ", GenerateDisassemblySetter(instruction), ",\n",
+                    "    ", GenerateResourceSetter(instruction, encoding_type),
+                    ",\n", "    ", GenerateAttributeSetter(instruction), ",\n",
                     "    SemFuncSetter{", code_str, "}, ",
-                    instruction->opcode()->instruction_size(), "}},\n");
+                    instruction->opcode()->instruction_size(), "}),\n");
   }
+  absl::StrAppend(&output, "};\n\n");
+
   return output;
 }
 
@@ -1346,10 +1350,8 @@ std::string Slot::GenerateClassDeclaration(
       "* isa_encoding, SlotEnum, int entry);\n",
       "\n"
       " private:\n"
-      "  ArchState *arch_state_;\n"
+      "  ArchState *arch_state_;\n",
       "  absl::flat_hash_map<int, InstructionInfo> instruction_info_;\n",
-      //"  std::array<InstructionInfo, ",
-      // instruction_map_.size() + 1, "> instruction_info_", ";\n",
       "  static constexpr SlotEnum slot_ = SlotEnum::k", pascal_name(),
       ";\n"
       "};\n"
@@ -1367,9 +1369,14 @@ std::string Slot::GenerateClassDefinition(absl::string_view encoding_type) {
   absl::StrAppend(
       &output, class_name, "::", class_name,
       "(ArchState *arch_state) :\n"
-      "  arch_state_(arch_state),\n",
-      "  instruction_info_{{\n", ListFuncGetterInitializations(encoding_type),
-      "}} {}\n",
+      "  arch_state_(arch_state) {\n"
+      "  for (const auto& inst_info : ",
+      GetInstructionArrayName(),
+      ") {\n"
+      "    instruction_info_[static_cast<int>(inst_info.first)] =\n"
+      "        inst_info.second;\n"
+      "  }\n"
+      "}\n"
       "\n"
       "Instruction *",
       class_name, "::Decode(uint64_t address, ", encoding_type,
@@ -1398,9 +1405,12 @@ std::string Slot::GenerateClassDefinition(absl::string_view encoding_type) {
       "  inst_info.attribute_setter(inst);\n"
       "  return inst;\n"
       "}\n");
-  // Prepend the setter functions.
-  std::string combined_output = absl::StrCat(
-      "namespace {\n\n", setter_functions_, "}  // namespace\n\n", output);
+  // Prepend the setter functions and global instruction map.
+  const std::string instruction_map_string =
+      CreateFuncGetterGlobalArray(encoding_type);
+  std::string combined_output =
+      absl::StrCat("namespace {\n\n", setter_functions_, instruction_map_string,
+                   "}  // namespace\n\n", output);
   return combined_output;
 }
 
