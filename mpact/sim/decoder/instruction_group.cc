@@ -67,7 +67,7 @@ InstructionGroup::~InstructionGroup() {
 // has the correct width, and that the format the encoding is defined in, or
 // derives from the format associated with the instruction group.
 InstructionEncoding* InstructionGroup::AddInstructionEncoding(
-    antlr4::Token* token, std::string name, Format* format) {
+    antlr4::Token* token, std::string name, Format* format, bool is_duplicate) {
   if ((format != nullptr) &&
       ((format_ == nullptr) || (!format->IsDerivedFrom(format_)))) {
     encoding_info_->error_listener()->semanticError(
@@ -83,19 +83,20 @@ InstructionEncoding* InstructionGroup::AddInstructionEncoding(
   // Warn if the instruction name has been seen before. It might be fully valid
   // that an instruction name has multiple encodings, but warn about it, in
   // case it is an error.
-  if (encoding_name_map_.contains(name)) {
+  if (encoding_name_map_.contains(name) && !is_duplicate) {
     encoding_info_->error_listener()->semanticWarning(
         token, absl::StrCat("Duplicate instruction opcode name '", name,
                             "' in group '", this->name(), "'."));
   }
-  auto* encoding = new InstructionEncoding(name, format);
+  auto* encoding = new InstructionEncoding(name, format, is_duplicate);
   encoding_vec_.push_back(encoding);
   encoding_name_map_.insert(std::make_pair(name, encoding));
   return encoding;
 }
 
 void InstructionGroup::AddInstructionEncoding(InstructionEncoding* encoding) {
-  if (encoding_name_map_.contains(encoding->name())) {
+  if (encoding_name_map_.contains(encoding->name()) &&
+      !encoding->is_duplicate()) {
     encoding_info_->error_listener()->semanticWarning(
         nullptr, absl::StrCat("Duplicate instruction opcode name '",
                               encoding->name(), "' in group '", name(), "'."));

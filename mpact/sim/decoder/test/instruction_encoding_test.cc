@@ -60,7 +60,8 @@ class InstructionEncodingTest : public ::testing::Test {
     (void)overlay->AddFieldReference("rs1");
     (void)overlay->AddFieldReference("rd");
     (void)i_type_fmt_->ComputeAndCheckFormatWidth();
-    i_type_ = new InstructionEncoding(kITypeEncodingName, i_type_fmt_);
+    i_type_ = new InstructionEncoding(kITypeEncodingName, i_type_fmt_,
+                                      /*is_duplicate*/ false);
     (void)i_type_fmt_->AddFieldOverlay("extract", /*is_signed*/ false, 12);
     overlay = i_type_fmt_->GetOverlay("extract");
     (void)overlay->AddFieldReference("rs1");

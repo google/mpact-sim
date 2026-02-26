@@ -50,7 +50,7 @@ class InstructionEncoding {
  public:
   // Disable default constructor and assignment operator.
   InstructionEncoding() = delete;
-  InstructionEncoding(std::string name, Format* format);
+  InstructionEncoding(std::string name, Format* format, bool is_duplicate);
   InstructionEncoding(const InstructionEncoding& encoding);
   InstructionEncoding& operator=(const InstructionEncoding&) = delete;
   ~InstructionEncoding();
@@ -111,6 +111,9 @@ class InstructionEncoding {
 
   Format* format() const { return format_; }
 
+  void set_is_duplicate(bool is_duplicate) { is_duplicate_ = is_duplicate; }
+  bool is_duplicate() const { return is_duplicate_; }
+
  private:
   // Internal helper to create and check a constraint.
   absl::StatusOr<Constraint*> CreateConstraint(ConstraintType type,
@@ -135,6 +138,10 @@ class InstructionEncoding {
   uint64_t extracted_mask_ = 0;
   uint64_t value_ = 0;
   absl::btree_map<std::string, InstructionEncoding*> specializations_;
+  // True if this encoding is declared as using a duplicate of another opcode
+  // name. This is used to suppress warning messages for encodings which
+  // purposefully have the same opcode name as another encoding.
+  bool is_duplicate_ = false;
 };
 
 }  // namespace bin_format

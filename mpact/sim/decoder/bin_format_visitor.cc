@@ -1044,8 +1044,9 @@ void BinFormatVisitor::VisitInstructionDef(InstructionDefCtx* ctx,
             ") differs from the declared width of the instruction group (",
             inst_group->width(), ")"));
   }
-  auto* inst_encoding =
-      inst_group->AddInstructionEncoding(ctx->format_name, name, format);
+  bool is_duplicate = ctx->duplicate() != nullptr;
+  auto* inst_encoding = inst_group->AddInstructionEncoding(
+      ctx->format_name, name, format, is_duplicate);
   if (format == nullptr) return;
   // Add constraints to the instruction encoding.
   for (auto* constraint : ctx->field_constraint_list()->field_constraint()) {
@@ -1467,7 +1468,8 @@ void BinFormatVisitor::ProcessSpecializations(BinEncodingInfo* encoding_info) {
       if (iter != grp_ptr->encoding_name_map().end()) {
         auto* parent_encoding = iter->second;
         auto* format = parent_encoding->format();
-        auto* inst_encoding = new InstructionEncoding(name, format);
+        auto* inst_encoding =
+            new InstructionEncoding(name, format, /*is_duplicate=*/false);
         for (auto* constraint :
              ctx->field_constraint_list()->field_constraint()) {
           context_file_map_.insert({constraint, file_index});

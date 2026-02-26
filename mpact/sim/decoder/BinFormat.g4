@@ -141,12 +141,15 @@ instruction_def_list
 // An instruction encoding contains a name, the format it refers to, and a list
 // of binary field constraints.
 instruction_def
-  : name=IDENT ':' format_name=IDENT ':' field_constraint_list ';'
+  : duplicate? name=IDENT ':' format_name=IDENT ':' field_constraint_list ';'
   | generate=GENERATE '(' range_assignment (',' range_assignment)* ')'
     '{' generator_instruction_def_list '}' ';'
   | name=IDENT ':' SPECIALIZES parent=IDENT ':' field_constraint_list ';'
   ;
 
+duplicate
+  : '!'
+  ;
 
 range_assignment
   : IDENT '=' '[' gen_value (',' gen_value)* ']'

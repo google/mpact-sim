@@ -29,8 +29,9 @@ namespace sim {
 namespace decoder {
 namespace bin_format {
 
-InstructionEncoding::InstructionEncoding(std::string name, Format* format)
-    : name_(name), format_(format) {
+InstructionEncoding::InstructionEncoding(std::string name, Format* format,
+                                         bool is_duplicate)
+    : name_(name), format_(format), is_duplicate_(is_duplicate) {
   if (format) format_name_ = format->name();
 }
 
@@ -43,7 +44,8 @@ InstructionEncoding::InstructionEncoding(const InstructionEncoding& encoding)
       mask_(encoding.mask_),
       other_mask_(encoding.other_mask_),
       extracted_mask_(encoding.extracted_mask_),
-      value_(encoding.value_) {
+      value_(encoding.value_),
+      is_duplicate_(encoding.is_duplicate_) {
   // Copy construct each of the constraints.
   for (auto* constraint : encoding.equal_constraints_) {
     equal_constraints_.push_back(new Constraint(*constraint));

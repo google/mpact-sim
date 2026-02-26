@@ -47,7 +47,8 @@ class InstructionGroup {
   ~InstructionGroup();
 
   InstructionEncoding* AddInstructionEncoding(antlr4::Token* token,
-                                              std::string name, Format* format);
+                                              std::string name, Format* format,
+                                              bool is_duplicate = false);
   void AddInstructionEncoding(InstructionEncoding* encoding);
   // Process the encodings in the group, partitioning them into subgroups
   // according to their opcode bits to make it easy to generate a hierarchical
