@@ -120,7 +120,8 @@ bool BreakpointManager::IsBreakpoint(uint64_t address) const {
   return action_point_manager_->IsActionEnabled(address, iter->second->id);
 }
 
-void BreakpointManager::DoBreakpointAction(uint64_t, int) {
+void BreakpointManager::DoBreakpointAction(uint64_t address, int) {
+  last_breakpoint_address_ = address;
   req_halt_function_();
 }
 

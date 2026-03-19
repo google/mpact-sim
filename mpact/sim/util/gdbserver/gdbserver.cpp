@@ -30,6 +30,7 @@
 
 #include "third_party/absl/container/flat_hash_map.h"
 #include "third_party/absl/log/log.h"
+#include "third_party/absl/status/status.h"
 #include "third_party/absl/strings/numbers.h"
 #include "third_party/absl/strings/str_cat.h"
 #include "third_party/absl/strings/str_format.h"
@@ -40,6 +41,9 @@
 #include "third_party/mpact_sim/generic/type_helpers.h"
 
 namespace {
+
+constexpr std::string_view kGDBServerVersion =
+    "name:mpact-sim-gdbserver;version:1.0";
 
 // Some binary data may be escaped in the GDB command. This removes such
 // escapes after the command has been "unwrapped".
@@ -61,11 +65,22 @@ std::string UnescapeCommand(std::string_view escaped_command) {
 namespace mpact::sim::util::gdbserver {
 
 using ::mpact::sim::generic::operator*;  // NOLINT
+using HaltReason = ::mpact::sim::generic::CoreDebugInterface::HaltReason;
 
 GdbServer::GdbServer(
     absl::Span<generic::CoreDebugInterface*> core_debug_interfaces,
     const DebugInfo& debug_info)
-    : core_debug_interfaces_(core_debug_interfaces), debug_info_(debug_info) {}
+    : core_debug_interfaces_(core_debug_interfaces), debug_info_(debug_info) {
+  if (core_debug_interfaces.size() > 1) {
+    LOG(WARNING) << "MPACT GdbServer only supports one core for now - "
+                    "ignoring extra cores.";
+  }
+  // Remove the extra cores from the core_debug_interfaces_.
+  core_debug_interfaces_.remove_suffix(core_debug_interfaces.size() - 1);
+  for (int i = 0; i < core_debug_interfaces_.size(); ++i) {
+    halt_reasons_.push_back(*generic::CoreDebugInterface::HaltReason::kNone);
+  }
+}
 
 GdbServer::~GdbServer() {
   Terminate();
@@ -223,15 +238,18 @@ void GdbServer::Respond(std::string_view response) {
   for (int i = 0; i < 5; ++i) {
     os_->write(response_str.data(), response_str.size());
     os_->flush();
+    if (no_ack_mode_) break;
+    LOG(INFO) << "Waiting for ACK";
     ack = is_->get();
     if (ack == '+') break;
     LOG(WARNING) << absl::StrFormat("Response not acknowledged ('%c' received)",
                                     ack);
   }
-  if (ack != '+') {
+  if (!no_ack_mode_ && (ack != '+')) {
     LOG(ERROR) << "Failed to send response after 5 attempts";
     Terminate();
   }
+  no_ack_mode_ = no_ack_mode_latch_;
 }
 
 void GdbServer::SendError(std::string_view error) {
@@ -245,8 +263,13 @@ void GdbServer::AcceptGdbCommand(std::string_view command) {
   if ((command.front() != '$') || (pos == std::string_view::npos) ||
       (pos != command.size() - 3)) {
     LOG(ERROR) << "Invalid GDB command syntax";
-    os_->put('-');
-    os_->flush();
+    if (!no_ack_mode_) {
+      LOG(INFO) << "Sending NACK";
+      os_->put('-');
+      os_->flush();
+    } else {
+      SendError("invalid syntax");
+    }
     return;
   }
   // Verify the checksum.
@@ -264,8 +287,13 @@ void GdbServer::AcceptGdbCommand(std::string_view command) {
     LOG(ERROR) << absl::StrFormat("Invalid original checksum: '%s'",
                                   checksum_str);
     // Request a retransmission.
-    os_->put('-');
-    os_->flush();
+    if (!no_ack_mode_) {
+      LOG(INFO) << "Sending NACK";
+      os_->put('-');
+      os_->flush();
+    } else {
+      SendError("invalid checksum");
+    }
     return;
   }
   if (checksum != orig_checksum) {
@@ -273,13 +301,21 @@ void GdbServer::AcceptGdbCommand(std::string_view command) {
                                   static_cast<int>(checksum), orig_checksum);
 
     // Request a retransmission.
-    os_->put('-');
-    os_->flush();
+    if (!no_ack_mode_) {
+      LOG(INFO) << "Sending NACK";
+      os_->put('-');
+      os_->flush();
+    } else {
+      SendError("invalid checksum");
+    }
     return;
   }
   // Acknowledge the command.
-  os_->put('+');
-  os_->flush();
+  if (!no_ack_mode_) {
+    LOG(INFO) << "Sending ACK";
+    os_->put('+');
+    os_->flush();
+  }
   std::string clean_command = UnescapeCommand(command);
   ParseGdbCommand(command);
 }
@@ -289,38 +325,29 @@ void GdbServer::ParseGdbCommand(std::string_view command) {
     default:
       // The command is not handled, so respond with an empty string which will
       // indicate that the command is not supported.
-      Respond("");
-      break;
+      return Respond("");
     case '?':  // Inquire about the halt reason.
-      GdbHaltReason();
-      break;
+      return GdbHaltReason();
     case 'c':  // Continue packet.
       command.remove_prefix(1);
-      GdbContinue(command);
-      break;
+      return GdbContinue(command);
     case 'D':  // Detach packet.
-      GdbDetach();
-      break;
+      return GdbDetach();
     case 'g':  // Read registers.
-      GdbReadGprRegisters();
-      break;
+      return GdbReadGprRegisters();
     case 'H':  // Select thread
       command.remove_prefix(1);
-      GdbSelectThread(command);
-      break;
+      return GdbSelectThread(command);
     case 'k':  // Kill packet.
-      Terminate();
-      break;
+      return Terminate();
     case 'm': {  // Read memory.
       command.remove_prefix(1);
       size_t pos = command.find(',');
       if (pos == std::string_view::npos) {
         if (error_message_supported_) {
-          SendError("invalid memory read format");
-        } else {
-          Respond("E01");
+          return SendError("invalid memory read format");
         }
-        return;
+        return Respond("E01");
       }
       std::string_view address = command.substr(0, pos);
       std::string_view length = command.substr(pos + 1);
@@ -332,163 +359,313 @@ void GdbServer::ParseGdbCommand(std::string_view command) {
       size_t comma_pos = command.find(',');
       if (comma_pos == std::string_view::npos) {
         if (error_message_supported_) {
-          SendError("invalid memory write format");
-        } else {
-          Respond("E01");
+          return SendError("invalid memory write format");
         }
-        return;
+        return Respond("E01");
       }
       size_t colon_pos = command.find(':');
       if (colon_pos == std::string_view::npos) {
-        SendError("invalid memory write format");
-        return;
+        return SendError("invalid memory write format");
       }
       std::string_view address = command.substr(0, comma_pos);
       std::string_view length =
           command.substr(comma_pos + 1, colon_pos - comma_pos - 1);
       std::string_view data = command.substr(colon_pos + 1);
-      GdbWriteMemory(address, length, data);
-      break;
+      return GdbWriteMemory(address, length, data);
     }
     case 'p': {  // Read register.
       command.remove_prefix(1);
-      GdbReadRegister(command);
-      break;
+      return GdbReadRegister(command);
     }
     case 'P': {  // Write register.
       command.remove_prefix(1);
       size_t pos = command.find('=');
       if (pos == std::string_view::npos) {
-        SendError("invalid register write format");
-        return;
+        return SendError("invalid register write format");
       }
       std::string_view register_name = command.substr(0, pos);
       std::string_view value = command.substr(pos + 1);
-      GdbWriteRegister(register_name, value);
-      break;
+      return GdbWriteRegister(register_name, value);
     }
     case 'q': {  // Query.
       command.remove_prefix(1);
-      GdbQuery(command);
-      break;
+      return GdbQuery(command);
     }
     case 'Q': {  // Set.
       command.remove_prefix(1);
-      GdbSet(command);
-      break;
+      return GdbSet(command);
     }
     case 's':  // Step.
       command.remove_prefix(1);
-      GdbStep(command);
-      break;
+      return GdbStep(command);
+    case 'v':  // Verbose commands.
+      if (command.starts_with("vCont")) {
+        command.remove_prefix(5);
+        return GdbVContinue(command);
+      }
+      if (command == "vMustReplyEmpty") {
+        return Respond("");
+      }
+      return SendError("invalid verbose command");
+
     case 'z':
     case 'Z': {  // Add or remove breakpoint or watchpoint.
-      // First make sure it's not a conditional breakpoint.
+      // First make sure it's not a conditional breakpoint/watchpoint.
       if (command.find(';')) {
         Respond("");
         return;
       }
-      char type = command.front();
       command.remove_prefix(1);
+      char type = command.front();
       size_t address_pos = command.find_first_of(',');
       if (address_pos == std::string_view::npos) {
-        SendError("invalid remove breakpoint format");
-        return;
+        return SendError("invalid remove breakpoint format");
       }
       size_t kind_pos = command.find_last_of(',');
       if (kind_pos == std::string_view::npos) {
-        SendError("invalid remove breakpoint format");
-        return;
+        return SendError("invalid remove breakpoint format");
       }
       std::string_view address =
           command.substr(address_pos + 1, kind_pos - address_pos - 1);
       std::string_view kind = command.substr(kind_pos + 1);
       if (type == 'z') {
-        GdbRemoveBreakpoint(type, address, kind);
-      } else {
-        GdbAddBreakpoint(type, address, kind);
+        return GdbRemoveBreakpoint(type, address, kind);
       }
-      break;
+      return GdbAddBreakpoint(type, address, kind);
     }
   }
+}
+
+std::string GdbServer::HexEncodeNumberInTargetEndianness(uint64_t number) {
+  std::string encoded_number;
+  // Encode the number into a hex string in little endian format.
+  do {
+    absl::StrAppend(&encoded_number, absl::Hex(number & 0xff, absl::kZeroPad2));
+    number >>= 8;
+  } while (number > 0);
+  return encoded_number;
 }
 
 void GdbServer::GdbHalt() {
   auto status = core_debug_interfaces_[0]->Halt(
       generic::CoreDebugInterface::HaltReason::kUserRequest);
   if (!status.ok()) {
-    SendError(status.message());
-    return;
+    return SendError(status.message());
   }
   status = core_debug_interfaces_[0]->Wait();
   if (!status.ok()) {
-    SendError(status.message());
-    return;
+    return SendError(status.message());
   }
   Respond(absl::StrCat("T03"));
 }
 
-void GdbServer::GdbHaltReason() {
-  auto result = core_debug_interfaces_[0]->GetRunStatus();
+std::string GdbServer::GetHaltReason(int thread_id) {
+  auto result = core_debug_interfaces_[thread_id]->GetLastHaltReason();
   if (!result.ok()) {
-    SendError(result.status().message());
-    return;
+    return "E01";
   }
-  if (result.value() == generic::CoreDebugInterface::RunStatus::kHalted) {
-    auto result = core_debug_interfaces_[0]->GetLastHaltReason();
-    if (!result.ok()) {
-      SendError(result.status().message());
-      return;
-    }
-    switch (result.value()) {
-      default:
-        Respond("T05");
-        return;
-      case *generic::CoreDebugInterface::HaltReason::kSoftwareBreakpoint:
-      case *generic::CoreDebugInterface::HaltReason::kHardwareBreakpoint:
-      case *generic::CoreDebugInterface::HaltReason::kDataWatchPoint:
-      case *generic::CoreDebugInterface::HaltReason::kActionPoint:
-        Respond("T02");
-        return;
-      case *generic::CoreDebugInterface::HaltReason::kSimulatorError:
-        Respond("T06");
-        return;
-      case *generic::CoreDebugInterface::HaltReason::kUserRequest:
-        Respond("T03");
-        return;
-      case *generic::CoreDebugInterface::HaltReason::kProgramDone:
-        Respond("W00");
-        return;
-    }
+  halt_reasons_[0] = result.value();
+  switch (result.value()) {
+    default:
+      return "T05";
+    case *HaltReason::kSoftwareBreakpoint:
+    case *HaltReason::kHardwareBreakpoint:
+    case *HaltReason::kDataWatchPoint:
+    case *HaltReason::kActionPoint:
+      return "T02";
+    case *HaltReason::kSimulatorError:
+      return "T06";
+    case *HaltReason::kUserRequest:
+      return "T03";
+    case *HaltReason::kProgramDone:
+      return "W00";
   }
-  Respond("E01");
 }
 
+void GdbServer::GdbHaltReason() { Respond(GetHaltReason(0)); }
+
 void GdbServer::GdbContinue(std::string_view command) {
+  // If the core is halted due to program done, then just respond with W00.
+  if (halt_reasons_[0] == *HaltReason::kProgramDone) {
+    Respond("W00");
+    return;
+  }
   auto result = core_debug_interfaces_[0]->GetRunStatus();
   if (!result.ok()) {
-    SendError(result.status().message());
-    return;
+    return SendError(result.status().message());
   }
   if (result.value() == generic::CoreDebugInterface::RunStatus::kHalted) {
     if (!command.empty()) {
       uint64_t address;
       bool success = absl::SimpleHexAtoi(command, &address);
       if (!success) {
-        SendError("invalid address");
-        return;
+        return SendError("invalid address");
       }
       auto status = core_debug_interfaces_[0]->WriteRegister("pc", address);
       if (!status.ok()) {
-        SendError(status.message());
-        return;
+        return SendError(status.message());
       }
     }
     result = core_debug_interfaces_[0]->Run();
     if (!result.ok()) {
-      SendError(result.status().message());
+      return SendError(result.status().message());
+    }
+    // Now wait for the core to halt.
+    result = core_debug_interfaces_[0]->Wait();
+    if (!result.ok()) {
+      return SendError(result.status().message());
+    }
+    // Get the halt reason.
+    Respond(GetHaltReason(0));
+  }
+}
+
+void GdbServer::ContinueThread(int thread_id) {
+  // If the program is done, do nothing.
+  if (halt_reasons_[thread_id] == *HaltReason::kProgramDone) {
+    return;
+  }
+  auto result = core_debug_interfaces_[0]->GetRunStatus();
+  if (!result.ok()) {
+    LOG(ERROR) << "Failed to get run status for thread " << thread_id << ": "
+               << result.status().message();
+    return;
+  }
+  if (result.value() == generic::CoreDebugInterface::RunStatus::kHalted) {
+    auto status = core_debug_interfaces_[0]->Run();
+    if (!status.ok()) {
+      LOG(ERROR) << "Continue on thread " << thread_id
+                 << " failed: " << result.status().message();
       return;
     }
+  }
+}
+
+void GdbServer::StepThread(int thread_id) {
+  // If the program is done, do nothing.
+  if (halt_reasons_[thread_id] == *HaltReason::kProgramDone) {
+    return;
+  }
+  auto result = core_debug_interfaces_[0]->GetRunStatus();
+  if (!result.ok()) {
+    LOG(ERROR) << "Failed to get run status for thread " << thread_id << ": "
+               << result.status().message();
+    return;
+  }
+  if (result.value() == generic::CoreDebugInterface::RunStatus::kHalted) {
+    auto result = core_debug_interfaces_[0]->Step(1);
+    if (!result.ok()) {
+      LOG(ERROR) << "Step on thread " << thread_id
+                 << " failed: " << result.status().message();
+      return;
+    }
+  }
+}
+
+void GdbServer::GdbVContinue(std::string_view command) {
+  if (command == "?") {
+    return Respond("vCont;c;s;");
+  }
+  if (command.front() != ';') {
+    return SendError("invalid vCont command");
+  }
+  command.remove_prefix(1);
+  std::vector<std::string> parts = absl::StrSplit(command, ';');
+  for (std::string& part : parts) {
+    std::string_view part_view = part;
+    std::string_view action = part_view.substr(0, 1);
+    // Get the thread id.
+    std::string_view tid_str = part_view.substr(part.find(':') + 1);
+    // If the tread id is -1, then apply the action to all threads.
+    if (tid_str == "-1") {  // all threads
+      if (action == "c") {  // continue
+        for (int tid = 0; tid < core_debug_interfaces_.size(); ++tid) {
+          ContinueThread(tid);
+        }
+      } else if (action == "s") {  // step
+        for (int tid = 0; tid < core_debug_interfaces_.size(); ++tid) {
+          StepThread(tid);
+        }
+      }
+      continue;
+    }
+    // Otherwise, apply the action to the specified thread.
+    int tid;
+    bool success = absl::SimpleHexAtoi(tid_str, &tid);
+    if (!success || (tid >= core_debug_interfaces_.size())) {
+      SendError("invalid thread id");
+      return;
+    }
+    if (action == "c") {
+      ContinueThread(tid);
+    } else if (action == "s") {
+      StepThread(tid);
+    }
+  }
+  // Wait for all threads that haven't already finished to halt.
+  for (int tid = 0; tid < core_debug_interfaces_.size(); ++tid) {
+    if (halt_reasons_[tid] == *HaltReason::kProgramDone) {
+      continue;
+    }
+    (void)core_debug_interfaces_[tid]->Wait();
+    auto result = core_debug_interfaces_[tid]->GetLastHaltReason();
+    if (!result.ok()) continue;
+    halt_reasons_[tid] = result.value();
+  }
+  // If the program is done we respond with W00, otherwise T05 and add the
+  // halt reason for each thread. We only respond with W00 if all threads are
+  // done.
+  bool all_done = true;
+  for (int tid = 0; tid < core_debug_interfaces_.size(); ++tid) {
+    all_done &= (halt_reasons_[tid] == *HaltReason::kProgramDone);
+  }
+  if (all_done) {
+    return Respond("W00");
+  }
+  // TODO(torerik): Add support for multiple threads in the response. For now,
+  // knowing we only support one core, we just use the halt reason from core
+  // 0.
+  auto result = core_debug_interfaces_[0]->GetLastHaltReason();
+  if (!result.ok()) {
+    return Respond("T05");
+  }
+  halt_reasons_[0] = result.value();
+  uint64_t address = 0;
+  generic::AccessType access_type = generic::AccessType::kNone;
+  switch (halt_reasons_[0]) {
+    default:
+      return Respond("T05");
+    case *HaltReason::kSoftwareBreakpoint:
+      address = core_debug_interfaces_[0]->GetSwBreakpointInfo();
+      return Respond(absl::StrCat("T05thread:0;swbreak:",
+                                  HexEncodeNumberInTargetEndianness(address)));
+    case *HaltReason::kHardwareBreakpoint:
+      return Respond("T05thread:0;hwbreak:");
+    case *HaltReason::kDataWatchPoint: {
+      core_debug_interfaces_[0]->GetWatchpointInfo(address, access_type);
+      std::string encoded_address = HexEncodeNumberInTargetEndianness(address);
+      // Need to differentiate between write (watch), read (rwatch), and
+      // read/write (awatch) watch points.
+      switch (access_type) {
+        case generic::AccessType::kLoad:
+          return Respond(absl::StrCat("T05thread:0;rwatch:", encoded_address));
+        case generic::AccessType::kStore:
+          return Respond(absl::StrCat("T05thread:0;watch:", encoded_address));
+        case generic::AccessType::kLoadStore:
+          return Respond(absl::StrCat("T05thread:0;awatch:", encoded_address));
+        default:
+          LOG(ERROR) << "Invalid access type: "
+                     << static_cast<int>(access_type);
+          return Respond("T05thread:0;");
+      }
+    }
+    case *HaltReason::kActionPoint:
+    case *HaltReason::kSimulatorError:
+      return Respond("T06thread:0;");
+    case *HaltReason::kUserRequest:
+      return Respond("T03");
+    case *HaltReason::kProgramDone:
+      return Respond("W00");
   }
 }
 
@@ -506,8 +683,7 @@ void GdbServer::GdbSelectThread(std::string_view command) {
   } else {
     bool success = absl::SimpleHexAtoi(command, &thread_id);
     if (!success) {
-      SendError("invalid thread id");
-      return;
+      return SendError("invalid thread id");
     }
   }
   thread_select_[op] = thread_id;
@@ -529,38 +705,30 @@ void GdbServer::GdbReadMemory(std::string_view address_str,
   bool success = absl::SimpleHexAtoi(address_str, &address);
   if (!success) {
     if (error_message_supported_) {
-      SendError("invalid memory read format");
-    } else {
-      Respond("E01");
+      return SendError("invalid memory read format");
     }
-    return;
+    return Respond("E01");
   }
   uint64_t length;
   success = absl::SimpleHexAtoi(length_str, &length);
   if (!success) {
     if (error_message_supported_) {
-      SendError("invalid memory read format");
-    } else {
-      Respond("E01");
+      return SendError("invalid memory read format");
     }
-    return;
+    return Respond("E01");
   }
   if (length > sizeof(buffer_)) {
     if (error_message_supported_) {
-      SendError("length exceeds buffer size of 4096");
-    } else {
-      Respond("E01");
+      return SendError("length exceeds buffer size of 4096");
     }
-    return;
+    return Respond("E01");
   }
   auto result = core_debug_interfaces_[0]->ReadMemory(address, buffer_, length);
   if (!result.ok()) {
     if (error_message_supported_) {
-      SendError(result.status().message());
-    } else {
-      Respond("E01");
+      return SendError(result.status().message());
     }
-    return;
+    return Respond("E01");
   }
   std::string response;
   for (int i = 0; i < result.value(); ++i) {
@@ -576,29 +744,23 @@ void GdbServer::GdbWriteMemory(std::string_view address_str,
   bool success = absl::SimpleHexAtoi(address_str, &address);
   if (!success) {
     if (error_message_supported_) {
-      SendError("invalid memory read format");
-    } else {
-      Respond("E01");
+      return SendError("invalid memory read format");
     }
-    return;
+    return Respond("E01");
   }
   uint64_t length;
   success = absl::SimpleHexAtoi(length_str, &length);
   if (!success) {
     if (error_message_supported_) {
-      SendError("invalid memory read format");
-    } else {
-      Respond("E01");
+      return SendError("invalid memory read format");
     }
-    return;
+    return Respond("E01");
   }
   if (length > sizeof(buffer_)) {
     if (error_message_supported_) {
-      SendError("length exceeds buffer size of 4096");
-    } else {
-      Respond("E01");
+      return SendError("length exceeds buffer size of 4096");
     }
-    return;
+    return Respond("E01");
   }
   int num_bytes = 0;
   for (int i = 0; (i < length) && (data.size() >= 2); ++i) {
@@ -611,29 +773,23 @@ void GdbServer::GdbWriteMemory(std::string_view address_str,
   }
   if (num_bytes != length) {
     if (error_message_supported_) {
-      SendError("length does not match data size");
-    } else {
-      Respond("E01");
+      return SendError("length does not match data size");
     }
-    return;
+    return Respond("E01");
   }
   auto result =
       core_debug_interfaces_[0]->WriteMemory(address, buffer_, num_bytes);
   if (!result.ok()) {
     if (error_message_supported_) {
-      SendError(result.status().message());
-    } else {
-      Respond("E01");
+      return SendError(result.status().message());
     }
-    return;
+    return Respond("E01");
   }
   if (result.value() != length) {
     if (error_message_supported_) {
-      SendError("length does not match number of bytes written");
-    } else {
-      Respond("E01");
+      return SendError("length does not match number of bytes written");
     }
-    return;
+    return Respond("E01");
   }
   Respond("OK");
 }
@@ -642,15 +798,13 @@ void GdbServer::GdbReadGprRegisters() {
   std::string response;
   for (int i = debug_info_.GetFirstGpr(); i <= debug_info_.GetLastGpr(); ++i) {
     auto it = debug_info_.debug_register_map().find(i);
-    if (it == debug_info_.debug_register_map().end()) {
-      SendError("Internal error - failed to find register");
-      return;
-    }
+    // If the register is not found, go to the next one (assume there is a
+    // gap in the register numbers).
+    if (it == debug_info_.debug_register_map().end()) continue;
     const std::string& register_name = it->second;
     auto result = core_debug_interfaces_[0]->ReadRegister(register_name);
     if (!result.ok()) {
-      SendError(result.status().message());
-      return;
+      return SendError(result.status().message());
     }
     LOG(INFO) << absl::StrFormat("Register %s = %x", register_name,
                                  result.value());
@@ -668,8 +822,7 @@ void GdbServer::GdbWriteGprRegisters(std::string_view data) {
   for (int i = debug_info_.GetFirstGpr(); i <= debug_info_.GetLastGpr(); ++i) {
     auto it = debug_info_.debug_register_map().find(i);
     if (it == debug_info_.debug_register_map().end()) {
-      SendError("Internal error - failed to find register");
-      return;
+      return SendError("Internal error - failed to find register");
     }
     const std::string& register_name = it->second;
     uint64_t value = 0;
@@ -684,8 +837,7 @@ void GdbServer::GdbWriteGprRegisters(std::string_view data) {
     auto status =
         core_debug_interfaces_[0]->WriteRegister(register_name, value);
     if (!status.ok()) {
-      SendError(status.message());
-      return;
+      return SendError(status.message());
     }
   }
   Respond("OK");
@@ -695,19 +847,16 @@ void GdbServer::GdbReadRegister(std::string_view register_number_str) {
   uint64_t register_number;
   bool success = absl::SimpleHexAtoi(register_number_str, &register_number);
   if (!success) {
-    SendError("invalid register number");
-    return;
+    return SendError("invalid register number");
   }
   auto it = debug_info_.debug_register_map().find(register_number);
   if (it == debug_info_.debug_register_map().end()) {
-    SendError("invalid register number");
-    return;
+    return SendError("invalid register number");
   }
   const std::string& register_name = it->second;
   auto result = core_debug_interfaces_[0]->ReadRegister(register_name);
   if (!result.ok()) {
-    SendError(result.status().message());
-    return;
+    return SendError(result.status().message());
   }
   std::string response;
   uint64_t value = result.value();
@@ -734,7 +883,7 @@ void GdbServer::GdbWriteRegister(std::string_view register_number_str,
   const std::string& register_name = it->second;
   uint64_t value = 0;
   int count = 0;
-  while (register_value_str.size() > 0) {
+  while (!register_value_str.empty()) {
     std::string_view byte = register_value_str.substr(0, 2);
     register_value_str.remove_prefix(2);
     uint8_t byte_value;
@@ -744,8 +893,7 @@ void GdbServer::GdbWriteRegister(std::string_view register_number_str,
   }
   auto status = core_debug_interfaces_[0]->WriteRegister(register_name, value);
   if (!status.ok()) {
-    SendError(status.message());
-    return;
+    return SendError(status.message());
   }
   Respond("OK");
 }
@@ -756,33 +904,38 @@ void GdbServer::GdbQuery(std::string_view command) {
       break;
     case 'A':  // Attached?
       if (command.starts_with("Attached")) {
-        Respond("0");
-        return;
+        return Respond("0");
       }
       break;
     case 'C':  // Current thread ID.
       if (command == "C") {
-        Respond(absl::StrCat("QC", current_thread_id_));
-        return;
+        return Respond(absl::StrCat("QC", current_thread_id_));
       }
       break;
     case 'E':  // ExecAndArgs?
       if (command.starts_with("ExecAndArgs")) {
         command.remove_prefix(11);
-        GdbExecAndArgs(command);
-        return;
+        return GdbExecAndArgs(command);
       }
       break;
     case 'f':
       if (command.starts_with("fThreadInfo")) {
-        GdbThreadInfo();
-        return;
+        return GdbThreadInfo();
+      }
+      break;
+    case 'G':
+      if (command.starts_with("GDBServerVersion")) {
+        return Respond(kGDBServerVersion);
+      }
+      break;
+    case 'H':
+      if (command.starts_with("HostInfo")) {
+        return GdbHostInfo();
       }
       break;
     case 's':
       if (command.starts_with("sThreadInfo")) {
-        Respond("l");
-        return;
+        return Respond("l");
       }
       break;
     case 'S': {  // Search, Supported, or Symbol.
@@ -790,8 +943,7 @@ void GdbServer::GdbQuery(std::string_view command) {
       if (command.starts_with("Symbol")) break;
       if (command.starts_with("Supported")) {
         command.remove_prefix(9);
-        GdbSupported(command);
-        return;
+        return GdbSupported(command);
       }
     }
   }
@@ -799,6 +951,11 @@ void GdbServer::GdbQuery(std::string_view command) {
 }
 
 void GdbServer::GdbSet(std::string_view command) {
+  LOG(INFO) << "GdbSet: " << command;
+  if (command == "StartNoAckMode") {
+    no_ack_mode_latch_ = true;
+    return Respond("OK");
+  }
   Respond("");
   // TODO(torerik): Implement.
 }
@@ -823,46 +980,47 @@ void GdbServer::GdbAddBreakpoint(char type, std::string_view address_str,
   size_t kind;
   switch (type) {
     default:
-      SendError("invalid breakpoint type");
-      return;
+      return SendError("invalid breakpoint type");
     case '0': {  // Software breakpoint.
       auto status = core_debug_interfaces_[0]->SetSwBreakpoint(address);
       if (!status.ok()) {
-        SendError(status.message());
-        return;
+        if (absl::IsUnimplemented(status)) {
+          return Respond("");
+        }
+        return SendError(status.message());
       }
-      Respond("OK");
-      return;
+      return Respond("OK");
     }
     case '2': {  // Data watchpoint write only.
       bool success = absl::SimpleHexAtoi(kind_str, &kind);
       if (!success) {
-        SendError("invalid watchpoint kind");
-        return;
+        return SendError("invalid watchpoint kind");
       }
       auto status = core_debug_interfaces_[0]->SetDataWatchpoint(
           address, kind, generic::AccessType::kStore);
       if (!status.ok()) {
-        SendError(status.message());
-        return;
+        if (absl::IsUnimplemented(status)) {
+          return Respond("");
+        }
+        return SendError(status.message());
       }
-      Respond("OK");
-      return;
+      return Respond("OK");
     }
     case '3': {  // Data watchpoint read-only.
       bool success = absl::SimpleHexAtoi(kind_str, &kind);
       if (!success) {
-        SendError("invalid watchpoint kind");
-        return;
+        return SendError("invalid watchpoint kind");
       }
       auto status = core_debug_interfaces_[0]->SetDataWatchpoint(
           address, kind, generic::AccessType::kLoad);
       if (!status.ok()) {
+        if (absl::IsUnimplemented(status)) {
+          return Respond("");
+        }
         SendError(status.message());
         return;
       }
-      Respond("OK");
-      return;
+      return Respond("OK");
     }
     case '4': {  // Data watchpoint read or write.
       bool success = absl::SimpleHexAtoi(kind_str, &kind);
@@ -873,6 +1031,9 @@ void GdbServer::GdbAddBreakpoint(char type, std::string_view address_str,
       auto status = core_debug_interfaces_[0]->SetDataWatchpoint(
           address, kind, generic::AccessType::kLoadStore);
       if (!status.ok()) {
+        if (absl::IsUnimplemented(status)) {
+          return Respond("");
+        }
         SendError(status.message());
         return;
       }
@@ -880,7 +1041,6 @@ void GdbServer::GdbAddBreakpoint(char type, std::string_view address_str,
       break;
     }
   }
-  // TODO(torerik): Implement.
   Respond("");
 }
 
@@ -894,49 +1054,51 @@ void GdbServer::GdbRemoveBreakpoint(char type, std::string_view address_str,
   }
   switch (type) {
     default:
-      SendError("invalid breakpoint type");
-      return;
+      return SendError("invalid breakpoint type");
     case '0': {  // Software breakpoint.
       auto status = core_debug_interfaces_[0]->ClearSwBreakpoint(address);
       if (!status.ok()) {
-        SendError(status.message());
-        return;
+        if (absl::IsUnimplemented(status)) {
+          return Respond("");
+        }
+        return SendError(status.message());
       }
-      Respond("OK");
-      break;
+      return Respond("OK");
     }
     case 2: {  // Data watchpoint write only.
       auto status = core_debug_interfaces_[0]->ClearDataWatchpoint(
           address, generic::AccessType::kStore);
       if (!status.ok()) {
-        SendError(status.message());
-        return;
+        if (absl::IsUnimplemented(status)) {
+          return Respond("");
+        }
+        return SendError(status.message());
       }
-      Respond("OK");
-      return;
+      return Respond("OK");
     }
     case 3: {  // Data watchpoint read-only.
       auto status = core_debug_interfaces_[0]->ClearDataWatchpoint(
           address, generic::AccessType::kLoad);
       if (!status.ok()) {
-        SendError(status.message());
-        return;
+        if (absl::IsUnimplemented(status)) {
+          return Respond("");
+        }
+        return SendError(status.message());
       }
-      Respond("OK");
-      return;
+      return Respond("OK");
     }
     case 4: {  // Data watchpoint read or write.
       auto status = core_debug_interfaces_[0]->ClearDataWatchpoint(
           address, generic::AccessType::kLoadStore);
       if (!status.ok()) {
-        SendError(status.message());
-        return;
+        if (absl::IsUnimplemented(status)) {
+          return Respond("");
+        }
+        return SendError(status.message());
       }
-      Respond("OK");
-      return;
+      return Respond("OK");
     }
   }
-  Respond("");
 }
 
 void GdbServer::GdbSupported(std::string_view command) {
@@ -955,7 +1117,7 @@ void GdbServer::GdbSupported(std::string_view command) {
       &response, "PacketSize=8192;multi-wp-addr-",
       ";multiprocess-;hwbreak-;qRelocInsn-;fork-events-;exec-events-"
       ";vContSupported-;QThreadEvents-;QThreadOptions-;no-resumed-"
-      ";memory-tagging-;vfork-events-");
+      ";memory-tagging-;vfork-events-;QStartNoAckMode+;swbreak+;watch+");
   Respond(response);
 }
 
@@ -963,5 +1125,7 @@ void GdbServer::GdbExecAndArgs(std::string_view command) {
   std::string file_name = core_debug_interfaces_[0]->GetExecutableFileName();
   Respond(file_name);
 }
+
+void GdbServer::GdbHostInfo() { Respond(debug_info_.GetLLDBHostInfo()); }
 
 }  // namespace mpact::sim::util::gdbserver

@@ -30,6 +30,7 @@ namespace sim {
 namespace generic {
 
 enum class AccessType {
+  kNone = 0,
   kLoad = 1,
   kStore = 2,
   kLoadStore = 3,
@@ -119,6 +120,10 @@ class CoreDebugInterface {
   // Set/Clear software breakpoints at the given addresses.
   virtual absl::Status SetSwBreakpoint(uint64_t address) = 0;
   virtual absl::Status ClearSwBreakpoint(uint64_t address) = 0;
+  // Return the address of the most recently triggered software breakpoint.
+  // This method is used by the GdbServer to determine the address of the
+  // breakpoint that triggered the halt.
+  virtual uint64_t GetSwBreakpointInfo() const { return 0xffff'ffff'ffff'ffff; }
   // Remove all software breakpoints.
   virtual absl::Status ClearAllSwBreakpoints() = 0;
 
@@ -134,6 +139,12 @@ class CoreDebugInterface {
                                            AccessType access_type) {
     return absl::UnimplementedError("Not implemented");
   }
+  // Set the address and the configured access type for the most recently
+  // triggered watchpoint. If there has been no watchpoint triggered, this
+  // method will not change the given arguments.
+  // This method is used by the GdbServer to determine the address and access
+  // type of the watchpoint that triggered the halt.
+  virtual void GetWatchpointInfo(uint64_t& address, AccessType& access_type) {}
 
   // Return the instruction object for the instruction at the given address.
   virtual absl::StatusOr<Instruction*> GetInstruction(uint64_t address) = 0;

@@ -22,7 +22,9 @@
 #include <cstdint>
 #include <istream>
 #include <ostream>
+#include <string>
 #include <string_view>
+#include <vector>
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/types/span.h"
@@ -41,6 +43,11 @@ class GdbServer {
   // top objects), and a debug info object to provide information about the
   // registers. Programs should already be loaded onto the core debug
   // interfaces before the Gdb server is connected.
+
+  // For now, only one core is supported (core 0) - the others are ignored.
+  // Multiple cores will be supported in the future, but that requires that
+  // the cores can be set to operate in stop mode. Then, after that we can
+  // add support for non-stop mode with multiple cores.
 
   explicit GdbServer(
       absl::Span<generic::CoreDebugInterface*> core_debug_interfaces,
@@ -66,14 +73,18 @@ class GdbServer {
   // Parses the given GDB command and calls the appropriate command handler.
   void ParseGdbCommand(std::string_view command);
 
+  std::string HexEncodeNumberInTargetEndianness(uint64_t number);
   // GDB command handlers.
 
   // Halt the simulator.
   void GdbHalt();
   // Return the halt reason.
+  std::string GetHaltReason(int thread_id);
   void GdbHaltReason();
   // Continue the simulation.
   void GdbContinue(std::string_view command);
+  void ContinueThread(int thread_id);
+  void GdbVContinue(std::string_view command);
   // Detach from the simulator.
   void GdbDetach();
   // Select the thread to operate on.
@@ -100,6 +111,7 @@ class GdbServer {
   void GdbSet(std::string_view command);
   // Step the simulator.
   void GdbStep(std::string_view command);
+  void StepThread(int thread_id);
   // Add a breakpoint to the simulator.
   void GdbAddBreakpoint(char type, std::string_view address_str,
                         std::string_view kind_str);
@@ -110,13 +122,16 @@ class GdbServer {
   void GdbSupported(std::string_view command);
   // Get the executable file name and program arguments.
   void GdbExecAndArgs(std::string_view command);
+  // Get the host info.
+  void GdbHostInfo();
 
   SocketStreambuf* out_buf_ = nullptr;
   SocketStreambuf* in_buf_ = nullptr;
   std::ostream* os_ = nullptr;
   std::istream* is_ = nullptr;
 
-  bool connection_active_ = false;
+  bool no_ack_mode_ = false;
+  bool no_ack_mode_latch_ = false;
   bool error_message_supported_ = false;
   uint8_t buffer_[16 * 1024];
   bool good_ = false;
@@ -125,6 +140,7 @@ class GdbServer {
   int current_thread_id_ = 0;
   absl::flat_hash_map<char, int> thread_select_;
   absl::Span<generic::CoreDebugInterface*> core_debug_interfaces_;
+  std::vector<int> halt_reasons_;
   const DebugInfo& debug_info_;
 };
 

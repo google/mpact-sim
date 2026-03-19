@@ -19,6 +19,7 @@
 
 #include <cstdint>
 #include <string>
+#include <string_view>
 
 #include "absl/container/flat_hash_map.h"
 
@@ -35,6 +36,7 @@ class DebugInfo {
   virtual int GetFirstGpr() const = 0;
   virtual int GetLastGpr() const = 0;
   virtual int GetGprWidth() const = 0;
+  virtual std::string_view GetLLDBHostInfo() const = 0;
 };
 
 }  // namespace mpact::sim::generic

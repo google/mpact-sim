@@ -58,6 +58,8 @@ class BreakpointManager {
   ActionPointManagerBase* action_point_manager() const {
     return action_point_manager_;
   }
+  // Return the address of the most recently triggered breakpoint.
+  uint64_t last_breakpoint_address() const { return last_breakpoint_address_; }
 
  private:
   // Structure keeping track of breakpoint information.
@@ -71,6 +73,7 @@ class BreakpointManager {
   RequestHaltFunction req_halt_function_;
   void DoBreakpointAction(uint64_t, int);
 
+  uint64_t last_breakpoint_address_ = 0xffff'ffff'ffff'ffff;
   ActionPointManagerBase* action_point_manager_;
   absl::btree_map<uint64_t, BreakpointInfo*> breakpoint_map_;
 };
