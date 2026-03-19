@@ -24,7 +24,7 @@
 #include <iostream>
 #include <istream>
 #include <ostream>
-#include <thread>
+#include <thread>  // NOLINT
 #include <utility>
 
 #include "absl/functional/any_invocable.h"

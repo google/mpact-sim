@@ -122,10 +122,26 @@ class CoreDebugInterface {
   // Remove all software breakpoints.
   virtual absl::Status ClearAllSwBreakpoints() = 0;
 
+  // Set a data watchpoint for the given memory range. Any access matching the
+  // given access type (load/store) will halt execution following the completion
+  // of that access.
+  virtual absl::Status SetDataWatchpoint(uint64_t address, size_t length,
+                                         AccessType access_type) {
+    return absl::UnimplementedError("Not implemented");
+  }
+  // Clear data watchpoint for the given memory address and access type.
+  virtual absl::Status ClearDataWatchpoint(uint64_t address,
+                                           AccessType access_type) {
+    return absl::UnimplementedError("Not implemented");
+  }
+
   // Return the instruction object for the instruction at the given address.
   virtual absl::StatusOr<Instruction*> GetInstruction(uint64_t address) = 0;
   // Return the string representation for the instruction at the given address.
   virtual absl::StatusOr<std::string> GetDisassembly(uint64_t address) = 0;
+
+  // Returns the executable file name.
+  virtual std::string GetExecutableFileName() { return ""; };
 };
 
 }  // namespace generic

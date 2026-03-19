@@ -5,7 +5,7 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 
-#include <thread>
+#include <thread>  // NOLINT
 
 #include "absl/functional/any_invocable.h"
 #include "mpact/sim/generic/debug_command_shell_interface.h"

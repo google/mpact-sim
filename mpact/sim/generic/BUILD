@@ -127,10 +127,12 @@ cc_library(
     srcs = [],
     hdrs = [
         "core_debug_interface.h",
+        "debug_info.h",
     ],
     deps = [
         ":core",
         ":instruction",
+        "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
     ],
@@ -216,7 +218,6 @@ cc_library(
         "//mpact/sim/proto:component_data_cc_proto",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
-        "@com_google_absl//absl/types:variant",
     ],
 )
 
