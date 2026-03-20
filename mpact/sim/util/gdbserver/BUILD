@@ -23,7 +23,7 @@ package(
 
 cc_library(
     name = "gdbserver",
-    srcs = ["gdbserver.cpp"],
+    srcs = ["gdbserver.cc"],
     hdrs = ["gdbserver.h"],
     deps = [
         "//mpact/sim/generic:core_debug_interface",

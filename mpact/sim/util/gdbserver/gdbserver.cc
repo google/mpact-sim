@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "third_party/mpact_sim/util/gdbserver/gdbserver.h"
+#include "mpact/sim/util/gdbserver/gdbserver.h"
 
 #include <fcntl.h>
 #include <netinet/in.h>
@@ -28,17 +28,18 @@
 #include <string>
 #include <vector>
 
-#include "third_party/absl/container/flat_hash_map.h"
-#include "third_party/absl/log/log.h"
-#include "third_party/absl/status/status.h"
-#include "third_party/absl/strings/numbers.h"
-#include "third_party/absl/strings/str_cat.h"
-#include "third_party/absl/strings/str_format.h"
-#include "third_party/absl/strings/str_split.h"
-#include "third_party/absl/strings/string_view.h"
-#include "third_party/absl/types/span.h"
-#include "third_party/mpact_sim/generic/core_debug_interface.h"
-#include "third_party/mpact_sim/generic/type_helpers.h"
+#include "absl/container/flat_hash_map.h"
+#include "absl/log/log.h"
+#include "absl/status/status.h"
+#include "absl/strings/match.h"
+#include "absl/strings/numbers.h"
+#include "absl/strings/str_cat.h"
+#include "absl/strings/str_format.h"
+#include "absl/strings/str_split.h"
+#include "absl/strings/string_view.h"
+#include "absl/types/span.h"
+#include "mpact/sim/generic/core_debug_interface.h"
+#include "mpact/sim/generic/type_helpers.h"
 
 namespace {
 
@@ -399,7 +400,7 @@ void GdbServer::ParseGdbCommand(std::string_view command) {
       command.remove_prefix(1);
       return GdbStep(command);
     case 'v':  // Verbose commands.
-      if (command.starts_with("vCont")) {
+      if (absl::StartsWith(command, "vCont")) {
         command.remove_prefix(5);
         return GdbVContinue(command);
       }
@@ -767,8 +768,9 @@ void GdbServer::GdbWriteMemory(std::string_view address_str,
     num_bytes++;
     std::string_view byte = data.substr(0, 2);
     data.remove_prefix(2);
-    uint8_t value;
-    (void)absl::SimpleHexAtoi(byte, &value);
+    uint32_t value_tmp;
+    (void)absl::SimpleHexAtoi(byte, &value_tmp);
+    uint8_t value = static_cast<uint8_t>(value_tmp);
     buffer_[i] = value;
   }
   if (num_bytes != length) {
@@ -829,8 +831,9 @@ void GdbServer::GdbWriteGprRegisters(std::string_view data) {
     for (int j = 0; j < debug_info_.GetGprWidth(); j += 8) {
       std::string_view byte = data.substr(0, 2);
       data.remove_prefix(2);
-      uint8_t byte_value;
-      (void)absl::SimpleHexAtoi(byte, &byte_value);
+      uint32_t byte_value_tmp;
+      (void)absl::SimpleHexAtoi(byte, &byte_value_tmp);
+      uint8_t byte_value = static_cast<uint8_t>(byte_value_tmp);
       value |= byte_value << (j * 8);
       num_bytes++;
     }
@@ -886,8 +889,9 @@ void GdbServer::GdbWriteRegister(std::string_view register_number_str,
   while (!register_value_str.empty()) {
     std::string_view byte = register_value_str.substr(0, 2);
     register_value_str.remove_prefix(2);
-    uint8_t byte_value;
-    (void)absl::SimpleHexAtoi(byte, &byte_value);
+    uint32_t byte_value_tmp;
+    (void)absl::SimpleHexAtoi(byte, &byte_value_tmp);
+    uint8_t byte_value = static_cast<uint8_t>(byte_value_tmp);
     value |= byte_value << (count * 8);
     count++;
   }
@@ -903,7 +907,7 @@ void GdbServer::GdbQuery(std::string_view command) {
     default:
       break;
     case 'A':  // Attached?
-      if (command.starts_with("Attached")) {
+      if (absl::StartsWith(command, "Attached")) {
         return Respond("0");
       }
       break;
@@ -913,35 +917,35 @@ void GdbServer::GdbQuery(std::string_view command) {
       }
       break;
     case 'E':  // ExecAndArgs?
-      if (command.starts_with("ExecAndArgs")) {
+      if (absl::StartsWith(command, "ExecAndArgs")) {
         command.remove_prefix(11);
         return GdbExecAndArgs(command);
       }
       break;
     case 'f':
-      if (command.starts_with("fThreadInfo")) {
+      if (absl::StartsWith(command, "fThreadInfo")) {
         return GdbThreadInfo();
       }
       break;
     case 'G':
-      if (command.starts_with("GDBServerVersion")) {
+      if (absl::StartsWith(command, "GDBServerVersion")) {
         return Respond(kGDBServerVersion);
       }
       break;
     case 'H':
-      if (command.starts_with("HostInfo")) {
+      if (absl::StartsWith(command, "HostInfo")) {
         return GdbHostInfo();
       }
       break;
     case 's':
-      if (command.starts_with("sThreadInfo")) {
+      if (absl::StartsWith(command, "sThreadInfo")) {
         return Respond("l");
       }
       break;
     case 'S': {  // Search, Supported, or Symbol.
-      if (command.starts_with("Search")) break;
-      if (command.starts_with("Symbol")) break;
-      if (command.starts_with("Supported")) {
+      if (absl::StartsWith(command, "Search")) break;
+      if (absl::StartsWith(command, "Symbol")) break;
+      if (absl::StartsWith(command, "Supported")) {
         command.remove_prefix(9);
         return GdbSupported(command);
       }
