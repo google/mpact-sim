@@ -20,7 +20,9 @@
 #include <utility>
 
 #include "absl/base/macros.h"
+#include "absl/log/log.h"
 #include "absl/numeric/bits.h"
+#include "absl/strings/str_format.h"
 
 namespace mpact {
 namespace sim {
@@ -47,8 +49,17 @@ void FlatDemandMemory::Load(uint64_t address, DataBuffer* db, Instruction* inst,
                             ReferenceCount* context) {
   int size_in_units = db->size<uint8_t>() >> addressable_unit_shift_;
   uint64_t high = address + size_in_units;
-  ABSL_HARDENING_ASSERT((address >= base_address_) && (high <= max_address_));
-  ABSL_HARDENING_ASSERT(size_in_units > 0);
+  if (address < base_address_ || high > max_address_) [[unlikely]] {
+    LOG(ERROR) << absl::StrFormat(
+        "Load access [%x, %x] out of bounds [%x, %x]\n", address, high,
+        base_address_, max_address_);
+    ABSL_HARDENING_ASSERT(false);
+  }
+  if (size_in_units <= 0) [[unlikely]] {
+    LOG(ERROR) << absl::StrFormat("Size in units %d is not positive\n",
+                                  size_in_units);
+    ABSL_HARDENING_ASSERT(false);
+  }
   uint8_t* byte_ptr = static_cast<uint8_t*>(db->raw_ptr());
   // Load the data into the data buffer.
   LoadStoreHelper(address, byte_ptr, size_in_units, true);
@@ -77,7 +88,11 @@ void FlatDemandMemory::Load(DataBuffer* address_db, DataBuffer* mask_db,
   auto address_span = address_db->Get<uint64_t>();
   uint8_t* byte_ptr = static_cast<uint8_t*>(db->raw_ptr());
   int size_in_units = el_size >> addressable_unit_shift_;
-  ABSL_HARDENING_ASSERT(size_in_units > 0);
+  if (size_in_units <= 0) {
+    LOG(ERROR) << absl::StrFormat("Size in units %d is not positive\n",
+                                  size_in_units);
+    ABSL_HARDENING_ASSERT(false);
+  }
   // This is either a gather load, or a unit stride load depending on size of
   // the address span.
   bool gather = address_span.size() > 1;
@@ -85,7 +100,12 @@ void FlatDemandMemory::Load(DataBuffer* address_db, DataBuffer* mask_db,
     if (!mask_span[i]) continue;
     uint64_t address = gather ? address_span[i] : address_span[0] + i * el_size;
     uint64_t high = address + size_in_units;
-    ABSL_HARDENING_ASSERT((address >= base_address_) && (high <= max_address_));
+    if (address < base_address_ || high > max_address_) [[unlikely]] {
+      LOG(ERROR) << absl::StrFormat(
+          "Load access [%x, %x] out of bounds [%x, %x]\n", address, high,
+          base_address_, max_address_);
+      ABSL_HARDENING_ASSERT(false);
+    }
     LoadStoreHelper(address, &byte_ptr[el_size * i], size_in_units, true);
   }
   // Execute the instruction to process and write back the load data.
@@ -109,8 +129,17 @@ void FlatDemandMemory::Load(DataBuffer* address_db, DataBuffer* mask_db,
 void FlatDemandMemory::Store(uint64_t address, DataBuffer* db) {
   int size_in_units = db->size<uint8_t>() >> addressable_unit_shift_;
   uint64_t high = address + size_in_units;
-  ABSL_HARDENING_ASSERT((address >= base_address_) && (high <= max_address_));
-  ABSL_HARDENING_ASSERT(size_in_units > 0);
+  if (address < base_address_ || high > max_address_) [[unlikely]] {
+    LOG(ERROR) << absl::StrFormat(
+        "Store access [%x, %x] out of bounds [%x, %x]\n", address, high,
+        base_address_, max_address_);
+    ABSL_HARDENING_ASSERT(false);
+  }
+  if (size_in_units <= 0) [[unlikely]] {
+    LOG(ERROR) << absl::StrFormat("Size in units %d is not positive\n",
+                                  size_in_units);
+    ABSL_HARDENING_ASSERT(false);
+  }
   uint8_t* byte_ptr = static_cast<uint8_t*>(db->raw_ptr());
   LoadStoreHelper(address, byte_ptr, size_in_units, /*is_load*/ false);
 }
@@ -121,7 +150,11 @@ void FlatDemandMemory::Store(DataBuffer* address_db, DataBuffer* mask_db,
   auto address_span = address_db->Get<uint64_t>();
   uint8_t* byte_ptr = static_cast<uint8_t*>(db->raw_ptr());
   int size_in_units = el_size >> addressable_unit_shift_;
-  ABSL_HARDENING_ASSERT(size_in_units > 0);
+  if (size_in_units <= 0) [[unlikely]] {
+    LOG(ERROR) << absl::StrFormat("Size in units %d is not positive\n",
+                                  size_in_units);
+    ABSL_HARDENING_ASSERT(false);
+  }
   // If the address_span.size() > 1, then this is a scatter store, otherwise
   // it's a unit stride store.
   bool scatter = address_span.size() > 1;
@@ -130,7 +163,12 @@ void FlatDemandMemory::Store(DataBuffer* address_db, DataBuffer* mask_db,
     uint64_t address =
         scatter ? address_span[i] : address_span[0] + i * el_size;
     uint64_t high = address + size_in_units;
-    ABSL_HARDENING_ASSERT((address >= base_address_) && (high <= max_address_));
+    if (address < base_address_ || high > max_address_) [[unlikely]] {
+      LOG(ERROR) << absl::StrFormat(
+          "Store access [%x, %x] out of bounds [%x, %x]\n", address, high,
+          base_address_, max_address_);
+      ABSL_HARDENING_ASSERT(false);
+    }
     LoadStoreHelper(address, &byte_ptr[el_size * i], size_in_units,
                     /*is_load*/ false);
   }
