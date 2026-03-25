@@ -29,6 +29,7 @@
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
+#include "absl/flags/flag.h"
 #include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/strings/match.h"
@@ -40,6 +41,9 @@
 #include "absl/types/span.h"
 #include "mpact/sim/generic/core_debug_interface.h"
 #include "mpact/sim/generic/type_helpers.h"
+#include "re2/re2.h"
+
+ABSL_FLAG(bool, log_packets, false, "Enables logging of GDB server packets.");
 
 namespace {
 
@@ -61,6 +65,20 @@ std::string UnescapeCommand(std::string_view escaped_command) {
   return command;
 }
 
+std::string EscapeString(std::string_view str) {
+  std::string escaped_string;
+  escaped_string.reserve(str.size() * 2);
+  for (char c : str) {
+    if ((c == '$') || (c == '#') || (c == '*') || (c == '}')) {
+      escaped_string.push_back('}');
+      escaped_string.push_back(c ^ 0x20);
+    } else {
+      escaped_string.push_back(c);
+    }
+  }
+  return escaped_string;
+}
+
 }  // namespace
 
 namespace mpact::sim::util::gdbserver {
@@ -71,7 +89,14 @@ using HaltReason = ::mpact::sim::generic::CoreDebugInterface::HaltReason;
 GdbServer::GdbServer(
     absl::Span<generic::CoreDebugInterface*> core_debug_interfaces,
     const DebugInfo& debug_info)
-    : core_debug_interfaces_(core_debug_interfaces), debug_info_(debug_info) {
+    : core_debug_interfaces_(core_debug_interfaces),
+      debug_info_(debug_info),
+      gdb_command_re_(R"(\$([^#]*)#([0-9a-fA-F]{2}))"),
+      thread_re_(R"(;?thread\:(\d+);?)"),
+      xfer_read_target_re_(
+          R"(Xfer\:features\:read\:target\.xml\:([0-9a-fA-F]+),([0-9a-fA-F]+))"),
+      swbreak_set_re_(R"(Z0,([0-9a-fA-F]+),(.+))"),
+      swbreak_clear_re_(R"(z0,([0-9a-fA-F]+),(.+))") {
   if (core_debug_interfaces.size() > 1) {
     LOG(WARNING) << "MPACT GdbServer only supports one core for now - "
                     "ignoring extra cores.";
@@ -167,7 +192,6 @@ bool GdbServer::Connect(int port) {
         Terminate();
         return false;
       }
-      good_ = false;
       LOG(ERROR) << absl::StrFormat(
           "Failed to receive command on port %d (expected '$', but received "
           "'%c' - 0x%x)",
@@ -180,7 +204,6 @@ bool GdbServer::Connect(int port) {
     do {
       val = is_->get();
       if (!is_->good()) {
-        good_ = false;
         LOG(ERROR) << absl::StrFormat(
             "Failed to receive complete command on port %d received: '%s'",
             port,
@@ -233,14 +256,15 @@ void GdbServer::Respond(std::string_view response) {
   // Format the response string.
   std::string response_str = absl::StrCat(
       "$", response, "#", absl::StrFormat("%02x", static_cast<int>(checksum)));
-  LOG(INFO) << absl::StrFormat("Response: '%s'", response_str);
+  if (log_packets_) {
+    LOG(INFO) << absl::StrFormat("Response: '%s'", response_str);
+  }
   uint8_t ack = 0;
   // Send the response to the GDB client.
   for (int i = 0; i < 5; ++i) {
     os_->write(response_str.data(), response_str.size());
     os_->flush();
     if (no_ack_mode_) break;
-    LOG(INFO) << "Waiting for ACK";
     ack = is_->get();
     if (ack == '+') break;
     LOG(WARNING) << absl::StrFormat("Response not acknowledged ('%c' received)",
@@ -257,15 +281,40 @@ void GdbServer::SendError(std::string_view error) {
   Respond(absl::StrCat("E.", error));
 }
 
+int GdbServer::GetThreadId(char command_type, std::string_view command) {
+  if (!thread_suffix_ || command.empty()) {
+    auto iter = thread_select_.find(command_type);
+    if (iter == thread_select_.end()) {
+      // If it hasn't been set, default to thread id 1.
+      return 1;
+    }
+    return iter->second;
+  } else {
+    std::string thread_id_str;
+    if (RE2::FullMatch(command, *thread_re_, &thread_id_str)) {
+      int thread_id;
+      bool success = absl::SimpleAtoi(thread_id_str, &thread_id);
+      if (!success) {
+        LOG(ERROR) << absl::StrFormat("Invalid thread id: '%s'", thread_id_str);
+        return 1;
+      }
+      return thread_id;
+    }
+    LOG(ERROR) << absl::StrFormat("Invalid thread id: '%s'", command);
+    return 1;
+  }
+}
+
 void GdbServer::AcceptGdbCommand(std::string_view command) {
-  LOG(INFO) << absl::StrFormat("Received: '%s'", command);
+  if (log_packets_) {
+    LOG(INFO) << absl::StrFormat("Received: '%s'", command);
+  }
   // The command is on the form "$<command>#<2 digit checksum>".
-  size_t pos = command.find_last_of('#');
-  if ((command.front() != '$') || (pos == std::string_view::npos) ||
-      (pos != command.size() - 3)) {
+  std::string command_str;
+  std::string checksum_str;
+  if (!RE2::FullMatch(command, *gdb_command_re_, &command_str, &checksum_str)) {
     LOG(ERROR) << "Invalid GDB command syntax";
     if (!no_ack_mode_) {
-      LOG(INFO) << "Sending NACK";
       os_->put('-');
       os_->flush();
     } else {
@@ -274,12 +323,8 @@ void GdbServer::AcceptGdbCommand(std::string_view command) {
     return;
   }
   // Verify the checksum.
-  std::string_view checksum_str = command.substr(pos + 1, 2);
-  // Trim the command string.
-  command.remove_prefix(1);
-  command.remove_suffix(3);
   uint8_t checksum = 0;
-  for (char c : command) {
+  for (char c : command_str) {
     checksum += c;
   }
   int orig_checksum;
@@ -289,7 +334,6 @@ void GdbServer::AcceptGdbCommand(std::string_view command) {
                                   checksum_str);
     // Request a retransmission.
     if (!no_ack_mode_) {
-      LOG(INFO) << "Sending NACK";
       os_->put('-');
       os_->flush();
     } else {
@@ -303,7 +347,6 @@ void GdbServer::AcceptGdbCommand(std::string_view command) {
 
     // Request a retransmission.
     if (!no_ack_mode_) {
-      LOG(INFO) << "Sending NACK";
       os_->put('-');
       os_->flush();
     } else {
@@ -313,12 +356,11 @@ void GdbServer::AcceptGdbCommand(std::string_view command) {
   }
   // Acknowledge the command.
   if (!no_ack_mode_) {
-    LOG(INFO) << "Sending ACK";
     os_->put('+');
     os_->flush();
   }
-  std::string clean_command = UnescapeCommand(command);
-  ParseGdbCommand(command);
+  std::string clean_command = UnescapeCommand(command_str);
+  ParseGdbCommand(clean_command);
 }
 
 void GdbServer::ParseGdbCommand(std::string_view command) {
@@ -329,13 +371,30 @@ void GdbServer::ParseGdbCommand(std::string_view command) {
       return Respond("");
     case '?':  // Inquire about the halt reason.
       return GdbHaltReason();
-    case 'c':  // Continue packet.
+    case 'c': {  // Continue packet.
       command.remove_prefix(1);
-      return GdbContinue(command);
+      size_t pos = command.find(";thread:");
+      if (pos == std::string_view::npos) {
+        return GdbContinue(GetThreadId('c', ""), command);
+      }
+      std::string_view thread_str = command.substr(pos);
+      return GdbContinue(GetThreadId('c', thread_str), command.substr(0, pos));
+    }
     case 'D':  // Detach packet.
       return GdbDetach();
-    case 'g':  // Read registers.
-      return GdbReadGprRegisters();
+    case 'g':  // Read gp registers.
+      command.remove_prefix(1);
+      return GdbReadGprRegisters(GetThreadId('g', command));
+    case 'G': {  // Write gp registers.
+      command.remove_prefix(1);
+      size_t pos = command.find(";thread:");
+      if (pos == std::string_view::npos) {
+        return GdbWriteGprRegisters(GetThreadId('g', ""), command);
+      }
+      std::string_view thread_str = command.substr(pos);
+      return GdbWriteGprRegisters(GetThreadId('g', thread_str),
+                                  command.substr(0, pos));
+    }
     case 'H':  // Select thread
       command.remove_prefix(1);
       return GdbSelectThread(command);
@@ -376,17 +435,30 @@ void GdbServer::ParseGdbCommand(std::string_view command) {
     }
     case 'p': {  // Read register.
       command.remove_prefix(1);
-      return GdbReadRegister(command);
+      size_t pos = command.find(";thread:");
+      absl::string_view thread_str = "";
+      if (pos != std::string_view::npos) {
+        thread_str = command.substr(pos);
+        command.remove_suffix(command.size() - pos);
+      }
+      return GdbReadRegister(GetThreadId('g', thread_str), command);
     }
     case 'P': {  // Write register.
       command.remove_prefix(1);
-      size_t pos = command.find('=');
+      size_t pos = command.find(";thread:");
+      absl::string_view thread_str = "";
+      if (pos != std::string_view::npos) {
+        thread_str = command.substr(pos);
+        command.remove_suffix(command.size() - pos);
+      }
+      pos = command.find('=');
       if (pos == std::string_view::npos) {
         return SendError("invalid register write format");
       }
       std::string_view register_name = command.substr(0, pos);
       std::string_view value = command.substr(pos + 1);
-      return GdbWriteRegister(register_name, value);
+      return GdbWriteRegister(GetThreadId('g', thread_str), register_name,
+                              value);
     }
     case 'q': {  // Query.
       command.remove_prefix(1);
@@ -398,7 +470,7 @@ void GdbServer::ParseGdbCommand(std::string_view command) {
     }
     case 's':  // Step.
       command.remove_prefix(1);
-      return GdbStep(command);
+      return GdbStep(GetThreadId('c', command));
     case 'v':  // Verbose commands.
       if (absl::StartsWith(command, "vCont")) {
         command.remove_prefix(5);
@@ -412,29 +484,26 @@ void GdbServer::ParseGdbCommand(std::string_view command) {
     case 'z':
     case 'Z': {  // Add or remove breakpoint or watchpoint.
       // First make sure it's not a conditional breakpoint/watchpoint.
-      if (command.find(';')) {
-        Respond("");
-        return;
+      std::string_view address_str;
+      std::string_view kind_str;
+      if (RE2::FullMatch(command, *swbreak_set_re_, &address_str, &kind_str)) {
+        return GdbAddBreakpoint('0', address_str, kind_str);
       }
-      command.remove_prefix(1);
-      char type = command.front();
-      size_t address_pos = command.find_first_of(',');
-      if (address_pos == std::string_view::npos) {
-        return SendError("invalid remove breakpoint format");
+      if (RE2::FullMatch(command, *swbreak_clear_re_, &address_str,
+                         &kind_str)) {
+        return GdbRemoveBreakpoint('0', address_str, kind_str);
       }
-      size_t kind_pos = command.find_last_of(',');
-      if (kind_pos == std::string_view::npos) {
-        return SendError("invalid remove breakpoint format");
-      }
-      std::string_view address =
-          command.substr(address_pos + 1, kind_pos - address_pos - 1);
-      std::string_view kind = command.substr(kind_pos + 1);
-      if (type == 'z') {
-        return GdbRemoveBreakpoint(type, address, kind);
-      }
-      return GdbAddBreakpoint(type, address, kind);
+      return Respond("");
     }
   }
+}
+
+std::string GdbServer::HexEncodeString(std::string_view str) {
+  std::string encoded_str;
+  for (char c : str) {
+    absl::StrAppend(&encoded_str, absl::Hex(c, absl::kZeroPad2));
+  }
+  return encoded_str;
 }
 
 std::string GdbServer::HexEncodeNumberInTargetEndianness(uint64_t number) {
@@ -468,72 +537,76 @@ std::string GdbServer::GetHaltReason(int thread_id) {
   halt_reasons_[0] = result.value();
   switch (result.value()) {
     default:
-      return "T05";
+      return "T05thread:1";
     case *HaltReason::kSoftwareBreakpoint:
     case *HaltReason::kHardwareBreakpoint:
     case *HaltReason::kDataWatchPoint:
     case *HaltReason::kActionPoint:
-      return "T02";
+      return "T02thread:1";
     case *HaltReason::kSimulatorError:
-      return "T06";
+      return "T06thread:1";
     case *HaltReason::kUserRequest:
-      return "T03";
+      return "T03thread:1";
     case *HaltReason::kProgramDone:
-      return "W00";
+      return "W00thread:1";
   }
 }
 
 void GdbServer::GdbHaltReason() { Respond(GetHaltReason(0)); }
 
-void GdbServer::GdbContinue(std::string_view command) {
+void GdbServer::GdbContinue(int thread_id, std::string_view command) {
+  int thread_index = thread_id - 1;
   // If the core is halted due to program done, then just respond with W00.
-  if (halt_reasons_[0] == *HaltReason::kProgramDone) {
+  if (halt_reasons_[thread_index] == *HaltReason::kProgramDone) {
     Respond("W00");
     return;
   }
-  auto result = core_debug_interfaces_[0]->GetRunStatus();
-  if (!result.ok()) {
-    return SendError(result.status().message());
+  auto run_status_res = core_debug_interfaces_[thread_index]->GetRunStatus();
+  if (!run_status_res.ok()) {
+    return SendError(run_status_res.status().message());
   }
-  if (result.value() == generic::CoreDebugInterface::RunStatus::kHalted) {
+  if (run_status_res.value() ==
+      generic::CoreDebugInterface::RunStatus::kHalted) {
     if (!command.empty()) {
       uint64_t address;
       bool success = absl::SimpleHexAtoi(command, &address);
       if (!success) {
         return SendError("invalid address");
       }
-      auto status = core_debug_interfaces_[0]->WriteRegister("pc", address);
+      auto status =
+          core_debug_interfaces_[thread_index]->WriteRegister("pc", address);
       if (!status.ok()) {
         return SendError(status.message());
       }
     }
-    result = core_debug_interfaces_[0]->Run();
-    if (!result.ok()) {
-      return SendError(result.status().message());
+    auto status = core_debug_interfaces_[thread_index]->Run();
+    if (!status.ok()) {
+      return SendError(status.message());
     }
     // Now wait for the core to halt.
-    result = core_debug_interfaces_[0]->Wait();
-    if (!result.ok()) {
-      return SendError(result.status().message());
+    status = core_debug_interfaces_[thread_index]->Wait();
+    if (!status.ok()) {
+      return SendError(status.message());
     }
     // Get the halt reason.
-    Respond(GetHaltReason(0));
+    Respond(GetHaltReason(thread_index));
   }
 }
 
 void GdbServer::ContinueThread(int thread_id) {
+  int thread_index = thread_id - 1;
   // If the program is done, do nothing.
-  if (halt_reasons_[thread_id] == *HaltReason::kProgramDone) {
+  if (halt_reasons_[thread_index] == *HaltReason::kProgramDone) {
     return;
   }
-  auto result = core_debug_interfaces_[0]->GetRunStatus();
+  auto result = core_debug_interfaces_[thread_index]->GetRunStatus();
   if (!result.ok()) {
     LOG(ERROR) << "Failed to get run status for thread " << thread_id << ": "
                << result.status().message();
     return;
   }
   if (result.value() == generic::CoreDebugInterface::RunStatus::kHalted) {
-    auto status = core_debug_interfaces_[0]->Run();
+    auto status = core_debug_interfaces_[thread_index]->Run();
     if (!status.ok()) {
       LOG(ERROR) << "Continue on thread " << thread_id
                  << " failed: " << result.status().message();
@@ -543,18 +616,19 @@ void GdbServer::ContinueThread(int thread_id) {
 }
 
 void GdbServer::StepThread(int thread_id) {
+  int thread_index = thread_id - 1;
   // If the program is done, do nothing.
-  if (halt_reasons_[thread_id] == *HaltReason::kProgramDone) {
+  if (halt_reasons_[thread_index] == *HaltReason::kProgramDone) {
     return;
   }
-  auto result = core_debug_interfaces_[0]->GetRunStatus();
+  auto result = core_debug_interfaces_[thread_index]->GetRunStatus();
   if (!result.ok()) {
     LOG(ERROR) << "Failed to get run status for thread " << thread_id << ": "
                << result.status().message();
     return;
   }
   if (result.value() == generic::CoreDebugInterface::RunStatus::kHalted) {
-    auto result = core_debug_interfaces_[0]->Step(1);
+    auto result = core_debug_interfaces_[thread_index]->Step(1);
     if (!result.ok()) {
       LOG(ERROR) << "Step on thread " << thread_id
                  << " failed: " << result.status().message();
@@ -580,11 +654,11 @@ void GdbServer::GdbVContinue(std::string_view command) {
     // If the tread id is -1, then apply the action to all threads.
     if (tid_str == "-1") {  // all threads
       if (action == "c") {  // continue
-        for (int tid = 0; tid < core_debug_interfaces_.size(); ++tid) {
+        for (int tid = 1; tid <= core_debug_interfaces_.size(); ++tid) {
           ContinueThread(tid);
         }
       } else if (action == "s") {  // step
-        for (int tid = 0; tid < core_debug_interfaces_.size(); ++tid) {
+        for (int tid = 1; tid <= core_debug_interfaces_.size(); ++tid) {
           StepThread(tid);
         }
       }
@@ -593,7 +667,7 @@ void GdbServer::GdbVContinue(std::string_view command) {
     // Otherwise, apply the action to the specified thread.
     int tid;
     bool success = absl::SimpleHexAtoi(tid_str, &tid);
-    if (!success || (tid >= core_debug_interfaces_.size())) {
+    if (!success || (tid > core_debug_interfaces_.size())) {
       SendError("invalid thread id");
       return;
     }
@@ -604,21 +678,21 @@ void GdbServer::GdbVContinue(std::string_view command) {
     }
   }
   // Wait for all threads that haven't already finished to halt.
-  for (int tid = 0; tid < core_debug_interfaces_.size(); ++tid) {
-    if (halt_reasons_[tid] == *HaltReason::kProgramDone) {
+  for (int tid = 1; tid <= core_debug_interfaces_.size(); ++tid) {
+    if (halt_reasons_[tid - 1] == *HaltReason::kProgramDone) {
       continue;
     }
-    (void)core_debug_interfaces_[tid]->Wait();
-    auto result = core_debug_interfaces_[tid]->GetLastHaltReason();
+    (void)core_debug_interfaces_[tid - 1]->Wait();
+    auto result = core_debug_interfaces_[tid - 1]->GetLastHaltReason();
     if (!result.ok()) continue;
-    halt_reasons_[tid] = result.value();
+    halt_reasons_[tid - 1] = result.value();
   }
   // If the program is done we respond with W00, otherwise T05 and add the
   // halt reason for each thread. We only respond with W00 if all threads are
   // done.
   bool all_done = true;
-  for (int tid = 0; tid < core_debug_interfaces_.size(); ++tid) {
-    all_done &= (halt_reasons_[tid] == *HaltReason::kProgramDone);
+  for (int tid = 1; tid <= core_debug_interfaces_.size(); ++tid) {
+    all_done &= (halt_reasons_[tid - 1] == *HaltReason::kProgramDone);
   }
   if (all_done) {
     return Respond("W00");
@@ -628,20 +702,20 @@ void GdbServer::GdbVContinue(std::string_view command) {
   // 0.
   auto result = core_debug_interfaces_[0]->GetLastHaltReason();
   if (!result.ok()) {
-    return Respond("T05");
+    return Respond("T05thread:1");
   }
   halt_reasons_[0] = result.value();
   uint64_t address = 0;
   generic::AccessType access_type = generic::AccessType::kNone;
   switch (halt_reasons_[0]) {
     default:
-      return Respond("T05");
+      return Respond("T05thread:1");
     case *HaltReason::kSoftwareBreakpoint:
       address = core_debug_interfaces_[0]->GetSwBreakpointInfo();
-      return Respond(absl::StrCat("T05thread:0;swbreak:",
+      return Respond(absl::StrCat("T05thread:1;swbreak:",
                                   HexEncodeNumberInTargetEndianness(address)));
     case *HaltReason::kHardwareBreakpoint:
-      return Respond("T05thread:0;hwbreak:");
+      return Respond("T05thread:1;hwbreak:");
     case *HaltReason::kDataWatchPoint: {
       core_debug_interfaces_[0]->GetWatchpointInfo(address, access_type);
       std::string encoded_address = HexEncodeNumberInTargetEndianness(address);
@@ -649,22 +723,22 @@ void GdbServer::GdbVContinue(std::string_view command) {
       // read/write (awatch) watch points.
       switch (access_type) {
         case generic::AccessType::kLoad:
-          return Respond(absl::StrCat("T05thread:0;rwatch:", encoded_address));
+          return Respond(absl::StrCat("T05thread:1;rwatch:", encoded_address));
         case generic::AccessType::kStore:
-          return Respond(absl::StrCat("T05thread:0;watch:", encoded_address));
+          return Respond(absl::StrCat("T05thread:1;watch:", encoded_address));
         case generic::AccessType::kLoadStore:
-          return Respond(absl::StrCat("T05thread:0;awatch:", encoded_address));
+          return Respond(absl::StrCat("T05thread:1;awatch:", encoded_address));
         default:
           LOG(ERROR) << "Invalid access type: "
                      << static_cast<int>(access_type);
-          return Respond("T05thread:0;");
+          return Respond("T05thread:1;");
       }
     }
     case *HaltReason::kActionPoint:
     case *HaltReason::kSimulatorError:
-      return Respond("T06thread:0;");
+      return Respond("T06thread:1;");
     case *HaltReason::kUserRequest:
-      return Respond("T03");
+      return Respond("T03thread:1");
     case *HaltReason::kProgramDone:
       return Respond("W00");
   }
@@ -692,9 +766,9 @@ void GdbServer::GdbSelectThread(std::string_view command) {
 }
 
 void GdbServer::GdbThreadInfo() {
-  std::string response = "m0";
+  std::string response = "m1";
 
-  for (int i = 1; i < core_debug_interfaces_.size(); ++i) {
+  for (int i = 2; i <= core_debug_interfaces_.size(); ++i) {
     absl::StrAppend(&response, ",", absl::Hex(i));
   }
   Respond(response);
@@ -796,7 +870,8 @@ void GdbServer::GdbWriteMemory(std::string_view address_str,
   Respond("OK");
 }
 
-void GdbServer::GdbReadGprRegisters() {
+void GdbServer::GdbReadGprRegisters(int thread_id) {
+  int thread_index = thread_id - 1;
   std::string response;
   for (int i = debug_info_.GetFirstGpr(); i <= debug_info_.GetLastGpr(); ++i) {
     auto it = debug_info_.debug_register_map().find(i);
@@ -804,12 +879,11 @@ void GdbServer::GdbReadGprRegisters() {
     // gap in the register numbers).
     if (it == debug_info_.debug_register_map().end()) continue;
     const std::string& register_name = it->second;
-    auto result = core_debug_interfaces_[0]->ReadRegister(register_name);
+    auto result =
+        core_debug_interfaces_[thread_index]->ReadRegister(register_name);
     if (!result.ok()) {
       return SendError(result.status().message());
     }
-    LOG(INFO) << absl::StrFormat("Register %s = %x", register_name,
-                                 result.value());
     uint64_t value = result.value();
     for (int j = 0; j < debug_info_.GetGprWidth(); j += 8) {
       absl::StrAppend(&response, absl::Hex(value & 0xff, absl::kZeroPad2));
@@ -819,7 +893,8 @@ void GdbServer::GdbReadGprRegisters() {
   Respond(response);
 }
 
-void GdbServer::GdbWriteGprRegisters(std::string_view data) {
+void GdbServer::GdbWriteGprRegisters(int thread_id, std::string_view data) {
+  int thread_index = thread_id - 1;
   int num_bytes = 0;
   for (int i = debug_info_.GetFirstGpr(); i <= debug_info_.GetLastGpr(); ++i) {
     auto it = debug_info_.debug_register_map().find(i);
@@ -837,8 +912,8 @@ void GdbServer::GdbWriteGprRegisters(std::string_view data) {
       value |= byte_value << (j * 8);
       num_bytes++;
     }
-    auto status =
-        core_debug_interfaces_[0]->WriteRegister(register_name, value);
+    auto status = core_debug_interfaces_[thread_index]->WriteRegister(
+        register_name, value);
     if (!status.ok()) {
       return SendError(status.message());
     }
@@ -846,42 +921,48 @@ void GdbServer::GdbWriteGprRegisters(std::string_view data) {
   Respond("OK");
 }
 
-void GdbServer::GdbReadRegister(std::string_view register_number_str) {
+void GdbServer::GdbReadRegister(int thread_id,
+                                std::string_view register_number_str) {
+  int thread_index = thread_id - 1;
   uint64_t register_number;
   bool success = absl::SimpleHexAtoi(register_number_str, &register_number);
   if (!success) {
-    return SendError("invalid register number");
+    return SendError(
+        absl::StrCat("invalid register number: ", register_number_str));
   }
   auto it = debug_info_.debug_register_map().find(register_number);
   if (it == debug_info_.debug_register_map().end()) {
-    return SendError("invalid register number");
+    return SendError(absl::StrCat("Register not found: ", register_number));
   }
   const std::string& register_name = it->second;
-  auto result = core_debug_interfaces_[0]->ReadRegister(register_name);
+  auto result =
+      core_debug_interfaces_[thread_index]->ReadRegister(register_name);
   if (!result.ok()) {
     return SendError(result.status().message());
   }
   std::string response;
   uint64_t value = result.value();
-  while (value > 0) {
+  for (int i = 0; i < debug_info_.GetRegisterByteWidth(register_number); i++) {
     absl::StrAppend(&response, absl::Hex(value & 0xff, absl::kZeroPad2));
     value >>= 8;
   }
   Respond(response);
 }
 
-void GdbServer::GdbWriteRegister(std::string_view register_number_str,
+void GdbServer::GdbWriteRegister(int thread_id,
+                                 std::string_view register_number_str,
                                  std::string_view register_value_str) {
+  int thread_index = thread_id - 1;
   uint64_t register_number;
   bool success = absl::SimpleHexAtoi(register_number_str, &register_number);
   if (!success) {
-    SendError("invalid register number");
+    return SendError(
+        absl::StrCat("invalid register number: ", register_number_str));
     return;
   }
   auto it = debug_info_.debug_register_map().find(register_number);
   if (it == debug_info_.debug_register_map().end()) {
-    SendError("invalid register number");
-    return;
+    return SendError(absl::StrCat("Register not found: ", register_number));
   }
   const std::string& register_name = it->second;
   uint64_t value = 0;
@@ -895,7 +976,8 @@ void GdbServer::GdbWriteRegister(std::string_view register_number_str,
     value |= byte_value << (count * 8);
     count++;
   }
-  auto status = core_debug_interfaces_[0]->WriteRegister(register_name, value);
+  auto status =
+      core_debug_interfaces_[thread_index]->WriteRegister(register_name, value);
   if (!status.ok()) {
     return SendError(status.message());
   }
@@ -949,23 +1031,42 @@ void GdbServer::GdbQuery(std::string_view command) {
         command.remove_prefix(9);
         return GdbSupported(command);
       }
+      break;
+    }
+    case 'X': {
+      std::string offset_str, length_str;
+      if (RE2::FullMatch(command, *xfer_read_target_re_, &offset_str,
+                         &length_str)) {
+        return GdbXferReadTarget(offset_str, length_str);
+      }
+      break;
     }
   }
   Respond("");  // Not supported for now.
 }
 
 void GdbServer::GdbSet(std::string_view command) {
-  LOG(INFO) << "GdbSet: " << command;
   if (command == "StartNoAckMode") {
     no_ack_mode_latch_ = true;
+    return Respond("OK");
+  }
+  if (command == "ThreadSuffixSupported") {
+    thread_suffix_ = true;
+    return Respond("OK");
+  }
+  if (command == "EnableErrorStrings") {
+    return Respond("OK");
+  }
+  if (command == "ListThreadsInStopReply") {
     return Respond("OK");
   }
   Respond("");
   // TODO(torerik): Implement.
 }
 
-void GdbServer::GdbStep(std::string_view command) {
-  auto result = core_debug_interfaces_[0]->Step(1);
+void GdbServer::GdbStep(int thread_id) {
+  int thread_index = thread_id - 1;
+  auto result = core_debug_interfaces_[thread_index]->Step(1);
   if (!result.ok()) {
     SendError(result.status().message());
     return;
@@ -1118,10 +1219,11 @@ void GdbServer::GdbSupported(std::string_view command) {
   }
   std::string response;
   absl::StrAppend(
-      &response, "PacketSize=8192;multi-wp-addr-",
+      &response, "PacketSize=2000;multi-wp-addr-",
       ";multiprocess-;hwbreak-;qRelocInsn-;fork-events-;exec-events-"
-      ";vContSupported-;QThreadEvents-;QThreadOptions-;no-resumed-"
-      ";memory-tagging-;vfork-events-;QStartNoAckMode+;swbreak+;watch+");
+      ";vContSupported+;QThreadEvents-;QThreadOptions-;no-resumed-"
+      ";memory-tagging-;vfork-events-;QStartNoAckMode+;swbreak+;watch+"
+      ";qXfer:features:read+");
   Respond(response);
 }
 
@@ -1130,6 +1232,57 @@ void GdbServer::GdbExecAndArgs(std::string_view command) {
   Respond(file_name);
 }
 
-void GdbServer::GdbHostInfo() { Respond(debug_info_.GetLLDBHostInfo()); }
+void GdbServer::GdbHostInfo() {
+  // The host info has to be recoded, as some fields have to be hex encoded,
+  // and not left as plan strings.
+  std::string host_info = std::string(debug_info_.GetLLDBHostInfo());
+  std::vector<std::string> parts = absl::StrSplit(host_info, ';');
+  std::string response;
+  for (const std::string& part : parts) {
+    if (part.empty()) continue;
+    std::vector<std::string> key_value = absl::StrSplit(part, ':');
+    std::string_view key = key_value[0];
+    std::string_view value = key_value[1];
+    if (key == "triple") {
+      absl::StrAppend(&response, key, ":", HexEncodeString(value), ";");
+    } else if (key == "distribution_id") {
+      absl::StrAppend(&response, key, ":", HexEncodeString(value), ";");
+    } else if (key == "os_build") {
+      absl::StrAppend(&response, key, ":", HexEncodeString(value), ";");
+    } else if (key == "hostname") {
+      absl::StrAppend(&response, key, ":", HexEncodeString(value), ";");
+    } else if (key == "os_kernel") {
+      absl::StrAppend(&response, key, ":", HexEncodeString(value), ";");
+    } else {
+      absl::StrAppend(&response, key, ":", value, ";");
+    }
+  }
+  Respond(response);
+}
+
+void GdbServer::GdbXferReadTarget(std::string_view offset_str,
+                                  std::string_view length_str) {
+  uint64_t offset;
+  bool success = absl::SimpleHexAtoi(offset_str, &offset);
+  if (!success) {
+    return SendError("invalid offset");
+  }
+  uint64_t length;
+  success = absl::SimpleHexAtoi(length_str, &length);
+  if (!success) {
+    return SendError("invalid length");
+  }
+  if (offset >= debug_info_.GetGdbTargetXml().size()) {
+    return Respond("l");
+  }
+  std::string packet_type = "m";
+  if (offset + length > debug_info_.GetGdbTargetXml().size()) {
+    length = debug_info_.GetGdbTargetXml().size() - offset;
+    packet_type = "l";
+  }
+  std::string_view response =
+      debug_info_.GetGdbTargetXml().substr(offset, length);
+  Respond(absl::StrCat(packet_type, EscapeString(response)));
+}
 
 }  // namespace mpact::sim::util::gdbserver

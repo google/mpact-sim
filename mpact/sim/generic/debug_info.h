@@ -12,7 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// This file contains the definition of the DebugInfo base class.
+// This file contains the definition of the DebugInfo base class. The DebugInfo
+// class is used to provide information about the registers and target XML to
+// gdbserver.
 
 #ifndef MPACT_SIM_GENERIC_DEBUG_INFO_H_
 #define MPACT_SIM_GENERIC_DEBUG_INFO_H_
@@ -31,11 +33,21 @@ class DebugInfo {
 
   virtual ~DebugInfo() = default;
 
+  // Returns the map of register numbers to register names. This is used so that
+  // gdbserver can convert from the register numbers used by the debugger to
+  // the register names used by the simulator.
   virtual const DebugRegisterMap& debug_register_map() const = 0;
 
+  // Returns the first and last general purpose register numbers.
   virtual int GetFirstGpr() const = 0;
   virtual int GetLastGpr() const = 0;
+  // Returns the byte width of the general purpose registers.
   virtual int GetGprWidth() const = 0;
+  // Returns the byte width of the register with the given number.
+  virtual int GetRegisterByteWidth(int) const = 0;
+  // Returns the XML file describing the target for gdb (or lldb).
+  virtual std::string_view GetGdbTargetXml() const = 0;
+  // Returns the host info string for gdb/lldb.
   virtual std::string_view GetLLDBHostInfo() const = 0;
 };
 

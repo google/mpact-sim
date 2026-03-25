@@ -31,6 +31,7 @@
 #include "mpact/sim/generic/core_debug_interface.h"
 #include "mpact/sim/generic/debug_info.h"
 #include "mpact/sim/util/renode/socket_streambuf.h"
+#include "re2/re2.h"
 
 namespace mpact::sim::util::gdbserver {
 
@@ -67,12 +68,14 @@ class GdbServer {
   // Sends the given error message to the GDB client in an error packet.
   void SendError(std::string_view error);
 
+  int GetThreadId(char command_type, std::string_view command);
   // Takes a GDB command string, verifies the checksum, and if it is valid,
   // then submits the command to be parsed.
   void AcceptGdbCommand(std::string_view command);
   // Parses the given GDB command and calls the appropriate command handler.
   void ParseGdbCommand(std::string_view command);
 
+  std::string HexEncodeString(std::string_view str);
   std::string HexEncodeNumberInTargetEndianness(uint64_t number);
   // GDB command handlers.
 
@@ -82,7 +85,7 @@ class GdbServer {
   std::string GetHaltReason(int thread_id);
   void GdbHaltReason();
   // Continue the simulation.
-  void GdbContinue(std::string_view command);
+  void GdbContinue(int thread_id, std::string_view command);
   void ContinueThread(int thread_id);
   void GdbVContinue(std::string_view command);
   // Detach from the simulator.
@@ -97,20 +100,20 @@ class GdbServer {
   void GdbWriteMemory(std::string_view address, std::string_view length,
                       std::string_view data);
   // Read GPR registers from the simulator.
-  void GdbReadGprRegisters();
+  void GdbReadGprRegisters(int thread_id);
   // Write GPR registers to the simulator.
-  void GdbWriteGprRegisters(std::string_view data);
+  void GdbWriteGprRegisters(int thread_id, std::string_view data);
   // Read a register from the simulator.
-  void GdbReadRegister(std::string_view register_number_str);
+  void GdbReadRegister(int thread_id, std::string_view register_number_str);
   // Write a register to the simulator.
-  void GdbWriteRegister(std::string_view register_number_str,
+  void GdbWriteRegister(int thread_id, std::string_view register_number_str,
                         std::string_view register_value_str);
   // Query gdbserver features.
   void GdbQuery(std::string_view command);
   // Set gdbserver features.
   void GdbSet(std::string_view command);
   // Step the simulator.
-  void GdbStep(std::string_view command);
+  void GdbStep(int thread_id);
   void StepThread(int thread_id);
   // Add a breakpoint to the simulator.
   void GdbAddBreakpoint(char type, std::string_view address_str,
@@ -124,24 +127,33 @@ class GdbServer {
   void GdbExecAndArgs(std::string_view command);
   // Get the host info.
   void GdbHostInfo();
+  void GdbXferReadTarget(std::string_view offset_str,
+                         std::string_view length_str);
 
   SocketStreambuf* out_buf_ = nullptr;
   SocketStreambuf* in_buf_ = nullptr;
   std::ostream* os_ = nullptr;
   std::istream* is_ = nullptr;
 
+  bool log_packets_ = false;
   bool no_ack_mode_ = false;
   bool no_ack_mode_latch_ = false;
   bool error_message_supported_ = false;
+  bool thread_suffix_ = false;
   uint8_t buffer_[16 * 1024];
   bool good_ = false;
   int server_socket_ = -1;
   int cli_fd_ = -1;
-  int current_thread_id_ = 0;
+  int current_thread_id_ = 1;
   absl::flat_hash_map<char, int> thread_select_;
   absl::Span<generic::CoreDebugInterface*> core_debug_interfaces_;
   std::vector<int> halt_reasons_;
   const DebugInfo& debug_info_;
+  LazyRE2 gdb_command_re_;
+  LazyRE2 thread_re_;
+  LazyRE2 xfer_read_target_re_;
+  LazyRE2 swbreak_set_re_;
+  LazyRE2 swbreak_clear_re_;
 };
 
 }  // namespace mpact::sim::util::gdbserver
