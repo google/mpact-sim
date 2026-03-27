@@ -526,18 +526,18 @@ std::string GdbServer::GetHaltReason(int thread_id) {
   halt_reasons_[0] = result.value();
   switch (result.value()) {
     default:
-      return "T05thread:1";
+      return "T05thread:1;";
     case *HaltReason::kSoftwareBreakpoint:
     case *HaltReason::kHardwareBreakpoint:
     case *HaltReason::kDataWatchPoint:
     case *HaltReason::kActionPoint:
-      return "T02thread:1";
+      return "T02thread:1;";
     case *HaltReason::kSimulatorError:
-      return "T06thread:1";
+      return "T06thread:1;";
     case *HaltReason::kUserRequest:
-      return "T03thread:1";
+      return "T03thread:1;";
     case *HaltReason::kProgramDone:
-      return "W00thread:1";
+      return "W00thread:1;";
   }
 }
 
@@ -691,20 +691,20 @@ void GdbServer::GdbVContinue(std::string_view command) {
   // 0.
   auto result = core_debug_interfaces_[0]->GetLastHaltReason();
   if (!result.ok()) {
-    return Respond("T05thread:1");
+    return Respond("T05thread:1;");
   }
   halt_reasons_[0] = result.value();
   uint64_t address = 0;
   generic::AccessType access_type = generic::AccessType::kNone;
   switch (halt_reasons_[0]) {
     default:
-      return Respond("T05thread:1");
+      return Respond("T05thread:1;");
     case *HaltReason::kSoftwareBreakpoint:
       address = core_debug_interfaces_[0]->GetSwBreakpointInfo();
-      return Respond(absl::StrCat("T05thread:1;swbreak:",
+      return Respond(absl::StrCat("T05thread:1;swbreak:;",
                                   HexEncodeNumberInTargetEndianness(address)));
     case *HaltReason::kHardwareBreakpoint:
-      return Respond("T05thread:1;hwbreak:");
+      return Respond("T05thread:1;hwbreak:;");
     case *HaltReason::kDataWatchPoint: {
       core_debug_interfaces_[0]->GetWatchpointInfo(address, access_type);
       std::string encoded_address = HexEncodeNumberInTargetEndianness(address);
@@ -712,22 +712,22 @@ void GdbServer::GdbVContinue(std::string_view command) {
       // read/write (awatch) watch points.
       switch (access_type) {
         case generic::AccessType::kLoad:
-          return Respond(absl::StrCat("T05thread:1;rwatch:", encoded_address));
+          return Respond(absl::StrCat("T05thread:1;rwatch:;", encoded_address));
         case generic::AccessType::kStore:
-          return Respond(absl::StrCat("T05thread:1;watch:", encoded_address));
+          return Respond(absl::StrCat("T05thread:1;watch:;", encoded_address));
         case generic::AccessType::kLoadStore:
-          return Respond(absl::StrCat("T05thread:1;awatch:", encoded_address));
+          return Respond(absl::StrCat("T05thread:1;awatch:;", encoded_address));
         default:
           LOG(ERROR) << "Invalid access type: "
                      << static_cast<int>(access_type);
-          return Respond("T05thread:1;");
+          return Respond("T05thread:1;;");
       }
     }
     case *HaltReason::kActionPoint:
     case *HaltReason::kSimulatorError:
       return Respond("T06thread:1;");
     case *HaltReason::kUserRequest:
-      return Respond("T03thread:1");
+      return Respond("T03thread:1;");
     case *HaltReason::kProgramDone:
       return Respond("W00");
   }
@@ -743,13 +743,14 @@ void GdbServer::GdbSelectThread(std::string_view command) {
   char op = command.front();
   command.remove_prefix(1);
   if (command == "-1") {
-    thread_id = -1;
+    thread_id = 1;  // TODO(torerik): Add support for multiple threads.
   } else {
     bool success = absl::SimpleHexAtoi(command, &thread_id);
     if (!success) {
       return SendError("invalid thread id");
     }
   }
+  if (thread_id == 0) thread_id = 1;
   thread_select_[op] = thread_id;
   Respond("OK");
 }
