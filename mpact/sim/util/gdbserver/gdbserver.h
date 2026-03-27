@@ -20,8 +20,10 @@
 #define MPACT_SIM_UTIL_GDBSERVER_GDBSERVER_H_
 
 #include <cstdint>
+#include <cstdio>
 #include <istream>
 #include <ostream>
+#include <streambuf>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -30,13 +32,44 @@
 #include "absl/types/span.h"
 #include "mpact/sim/generic/core_debug_interface.h"
 #include "mpact/sim/generic/debug_info.h"
-#include "mpact/sim/util/renode/socket_streambuf.h"
 #include "re2/re2.h"
 
 namespace mpact::sim::util::gdbserver {
 
 using ::mpact::sim::generic::DebugInfo;
-using ::mpact::sim::util::renode::SocketStreambuf;
+
+// This class is used to provide a streambuf interface to a socket file
+// descriptor, so that it can be used to access a socket as an istream/ostream.
+// The overflow and underflow methods are the bare minimum that's required to
+// implement to make this happen. No buffering is performed. This streambuf
+// does not expand \n to \r\n or vice versa.
+class GdbSocketStreambuf : public std::streambuf {
+ public:
+  explicit GdbSocketStreambuf(int fd) : fd_(fd) {}
+  ~GdbSocketStreambuf() override { close(fd_); }
+
+  // On overflow write character to the socket fd.
+  int overflow(int c) override {
+    if (c == EOF) {
+      close(fd_);
+      return c;
+    }
+    write(fd_, &c, 1);
+    return c;
+  }
+
+  // On underflow read character from the socket fd.
+  std::streambuf::int_type underflow() override {
+    int count = read(fd_, &ch_, 1);
+    if (count == 0) return traits_type::eof();
+    setg(&ch_, &ch_, &ch_ + 1);
+    return traits_type::to_int_type(ch_);
+  }
+
+ private:
+  char ch_;
+  int fd_;
+};
 
 class GdbServer {
  public:
@@ -130,8 +163,8 @@ class GdbServer {
   void GdbXferReadTarget(std::string_view offset_str,
                          std::string_view length_str);
 
-  SocketStreambuf* out_buf_ = nullptr;
-  SocketStreambuf* in_buf_ = nullptr;
+  GdbSocketStreambuf* out_buf_ = nullptr;
+  GdbSocketStreambuf* in_buf_ = nullptr;
   std::ostream* os_ = nullptr;
   std::istream* is_ = nullptr;
 

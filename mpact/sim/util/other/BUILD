@@ -28,9 +28,9 @@ cc_library(
         "log_sink.h",
     ],
     deps = [
-        "@com_google_absl//absl/base:log_severity",
-        "@com_google_absl//absl/log:log_entry",
-        "@com_google_absl//absl/log:log_sink",
+        "@abseil-cpp//absl/base:log_severity",
+        "@abseil-cpp//absl/log:log_entry",
+        "@abseil-cpp//absl/log:log_sink",
     ],
 )
 
@@ -43,7 +43,7 @@ cc_library(
         "//mpact/sim/generic:core",
         "//mpact/sim/generic:instruction",
         "//mpact/sim/util/memory",
-        "@com_google_absl//absl/log",
+        "@abseil-cpp//absl/log",
     ],
 )
 
@@ -55,11 +55,11 @@ cc_library(
         "//mpact/sim/generic:counters",
         "//mpact/sim/util/memory",
         "//mpact/sim/util/program_loader:elf_loader",
+        "@abseil-cpp//absl/container:btree",
+        "@abseil-cpp//absl/log",
+        "@abseil-cpp//absl/numeric:bits",
+        "@abseil-cpp//absl/strings",
+        "@abseil-cpp//absl/strings:str_format",
         "@com_github_serge1_elfio//:elfio",
-        "@com_google_absl//absl/container:btree",
-        "@com_google_absl//absl/log",
-        "@com_google_absl//absl/numeric:bits",
-        "@com_google_absl//absl/strings",
-        "@com_google_absl//absl/strings:str_format",
     ],
 )

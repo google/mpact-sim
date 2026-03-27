@@ -116,10 +116,10 @@ def mpact_isa_decoder(name, includes, src = "", srcs = [], deps = [], isa_name =
 
     # The rule for the lib that is built from the generated sources.
     lib_deps = []
-    if "@com_google_absl//absl/container:flat_hash_map" not in deps:
-        lib_deps.append("@com_google_absl//absl/container:flat_hash_map")
-    if "@com_google_absl//absl/strings:str_format" not in deps:
-        lib_deps.append("@com_google_absl//absl/strings:str_format")
+    if "@abseil-cpp//absl/container:flat_hash_map" not in deps:
+        lib_deps.append("@abseil-cpp//absl/container:flat_hash_map")
+    if "@abseil-cpp//absl/strings:str_format" not in deps:
+        lib_deps.append("@abseil-cpp//absl/strings:str_format")
     if "@com_google_mpact-sim//mpact/sim/generic:arch_state" not in deps:
         lib_deps.append("@com_google_mpact-sim//mpact/sim/generic:arch_state")
     if "@com_google_mpact-sim//mpact/sim/generic:instruction" not in deps:
@@ -128,12 +128,12 @@ def mpact_isa_decoder(name, includes, src = "", srcs = [], deps = [], isa_name =
         lib_deps.append("@com_google_mpact-sim//mpact/sim/util/asm")
     if "@com_googlesource_code_re2//:re2" not in deps:
         lib_deps.append("@com_googlesource_code_re2//:re2")
-    if "@com_google_absl//absl/status" not in deps:
-        lib_deps.append("@com_google_absl//absl/status")
-    if "@com_google_absl//absl/status:statusor" not in deps:
-        lib_deps.append("@com_google_absl//absl/status:statusor")
-    if "@com_google_absl//absl/strings" not in deps:
-        lib_deps.append("@com_google_absl//absl/strings")
+    if "@abseil-cpp//absl/status" not in deps:
+        lib_deps.append("@abseil-cpp//absl/status")
+    if "@abseil-cpp//absl/status:statusor" not in deps:
+        lib_deps.append("@abseil-cpp//absl/status:statusor")
+    if "@abseil-cpp//absl/strings" not in deps:
+        lib_deps.append("@abseil-cpp//absl/strings")
     cc_library(
         name = name,
         srcs = [f for f in out_files if f.endswith(".cc")],
@@ -199,16 +199,16 @@ def mpact_bin_fmt_decoder(name, includes, src = "", srcs = [], deps = [], decode
 
     # The rule for the lib that is built from the generated sources.
     lib_deps = []
-    if "@com_google_absl//absl/base:no_destructor" not in deps:
-        lib_deps.append("@com_google_absl//absl/base:no_destructor")
-    if "@com_google_absl//absl/container:flat_hash_map" not in deps:
-        lib_deps.append("@com_google_absl//absl/container:flat_hash_map")
-    if "@com_google_absl//absl/functional:any_invocable" not in deps:
-        lib_deps.append("@com_google_absl//absl/functional:any_invocable")
-    if "@com_google_absl//absl/log" not in deps:
-        lib_deps.append("@com_google_absl//absl/log")
-    if "@com_google_absl//absl/strings:str_format" not in deps:
-        lib_deps.append("@com_google_absl//absl/strings:str_format")
+    if "@abseil-cpp//absl/base:no_destructor" not in deps:
+        lib_deps.append("@abseil-cpp//absl/base:no_destructor")
+    if "@abseil-cpp//absl/container:flat_hash_map" not in deps:
+        lib_deps.append("@abseil-cpp//absl/container:flat_hash_map")
+    if "@abseil-cpp//absl/functional:any_invocable" not in deps:
+        lib_deps.append("@abseil-cpp//absl/functional:any_invocable")
+    if "@abseil-cpp//absl/log" not in deps:
+        lib_deps.append("@abseil-cpp//absl/log")
+    if "@abseil-cpp//absl/strings:str_format" not in deps:
+        lib_deps.append("@abseil-cpp//absl/strings:str_format")
     if "@com_google_mpact-sim//mpact/sim/generic:arch_state" not in deps:
         lib_deps.append("@com_google_mpact-sim//mpact/sim/generic:arch_state")
     if "@com_google_mpact-sim//mpact/sim/generic:instruction" not in deps:
@@ -279,9 +279,9 @@ def mpact_proto_fmt_decoder(name, includes, src = "", srcs = [], proto_files = [
         srcs = [f for f in out_files if f.endswith(".cc")],
         hdrs = [f for f in out_files if f.endswith(".h")],
         deps = [
-            "@com_google_absl//absl/container:flat_hash_map",
-            "@com_google_absl//absl/functional:any_invocable",
-            "@com_google_absl//absl/strings:str_format",
+            "@abseil-cpp//absl/container:flat_hash_map",
+            "@abseil-cpp//absl/functional:any_invocable",
+            "@abseil-cpp//absl/strings:str_format",
         ] + deps,
         testonly = testonly,
     )

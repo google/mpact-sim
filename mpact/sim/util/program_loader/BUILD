@@ -28,7 +28,7 @@ cc_library(
         "program_loader_interface.h",
     ],
     deps = [
-        "@com_google_absl//absl/status:statusor",
+        "@abseil-cpp//absl/status:statusor",
     ],
 )
 
@@ -45,11 +45,11 @@ cc_library(
         "//mpact/sim/generic:core",
         "//mpact/sim/generic:core_debug_interface",
         "//mpact/sim/util/memory",
+        "@abseil-cpp//absl/container:flat_hash_map",
+        "@abseil-cpp//absl/functional:any_invocable",
+        "@abseil-cpp//absl/status",
+        "@abseil-cpp//absl/status:statusor",
+        "@abseil-cpp//absl/strings",
         "@com_github_serge1_elfio//:elfio",
-        "@com_google_absl//absl/container:flat_hash_map",
-        "@com_google_absl//absl/functional:any_invocable",
-        "@com_google_absl//absl/status",
-        "@com_google_absl//absl/status:statusor",
-        "@com_google_absl//absl/strings",
     ],
 )

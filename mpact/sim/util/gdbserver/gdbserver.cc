@@ -22,6 +22,7 @@
 #include <cerrno>
 #include <cstddef>
 #include <cstdint>
+#include <cstdio>
 #include <cstring>
 #include <istream>
 #include <ostream>
@@ -65,20 +66,6 @@ std::string UnescapeCommand(std::string_view escaped_command) {
   return command;
 }
 
-std::string EscapeString(std::string_view str) {
-  std::string escaped_string;
-  escaped_string.reserve(str.size() * 2);
-  for (char c : str) {
-    if ((c == '$') || (c == '#') || (c == '*') || (c == '}')) {
-      escaped_string.push_back('}');
-      escaped_string.push_back(c ^ 0x20);
-    } else {
-      escaped_string.push_back(c);
-    }
-  }
-  return escaped_string;
-}
-
 }  // namespace
 
 namespace mpact::sim::util::gdbserver {
@@ -89,7 +76,8 @@ using HaltReason = ::mpact::sim::generic::CoreDebugInterface::HaltReason;
 GdbServer::GdbServer(
     absl::Span<generic::CoreDebugInterface*> core_debug_interfaces,
     const DebugInfo& debug_info)
-    : core_debug_interfaces_(core_debug_interfaces),
+    : log_packets_(absl::GetFlag(FLAGS_log_packets)),
+      core_debug_interfaces_(core_debug_interfaces),
       debug_info_(debug_info),
       gdb_command_re_(R"(\$([^#]*)#([0-9a-fA-F]{2}))"),
       thread_re_(R"(;?thread\:(\d+);?)"),
@@ -167,8 +155,8 @@ bool GdbServer::Connect(int port) {
   good_ = true;
   // Create the input and output buffers and streams to handle reads and writes
   // to the socket.
-  out_buf_ = new SocketStreambuf(cli_fd_);
-  in_buf_ = new SocketStreambuf(cli_fd_);
+  out_buf_ = new GdbSocketStreambuf(cli_fd_);
+  in_buf_ = new GdbSocketStreambuf(cli_fd_);
   os_ = new std::ostream(out_buf_);
   is_ = new std::istream(in_buf_);
 
@@ -1269,6 +1257,7 @@ void GdbServer::GdbXferReadTarget(std::string_view offset_str,
   }
   uint64_t length;
   success = absl::SimpleHexAtoi(length_str, &length);
+  // Subtract 5 from the length to account for the packet framing.
   if (!success) {
     return SendError("invalid length");
   }
@@ -1282,7 +1271,8 @@ void GdbServer::GdbXferReadTarget(std::string_view offset_str,
   }
   std::string_view response =
       debug_info_.GetGdbTargetXml().substr(offset, length);
-  Respond(absl::StrCat(packet_type, EscapeString(response)));
+  LOG(INFO) << "response length: " << response.size();
+  Respond(absl::StrCat(packet_type, response));
 }
 
 }  // namespace mpact::sim::util::gdbserver
