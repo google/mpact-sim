@@ -182,11 +182,13 @@ class GdbServer {
   absl::Span<generic::CoreDebugInterface*> core_debug_interfaces_;
   std::vector<int> halt_reasons_;
   const DebugInfo& debug_info_;
-  LazyRE2 gdb_command_re_;
-  LazyRE2 thread_re_;
-  LazyRE2 xfer_read_target_re_;
-  LazyRE2 swbreak_set_re_;
-  LazyRE2 swbreak_clear_re_;
+  // Regular expressions used to parse GDB commands.
+  // These are static since they are immutable once initialized.
+  static LazyRE2 gdb_command_re_;
+  static LazyRE2 thread_re_;
+  static LazyRE2 xfer_read_target_re_;
+  static LazyRE2 swbreak_set_re_;
+  static LazyRE2 swbreak_clear_re_;
 };
 
 }  // namespace mpact::sim::util::gdbserver

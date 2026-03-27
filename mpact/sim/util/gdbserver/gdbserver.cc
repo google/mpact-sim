@@ -70,6 +70,13 @@ std::string UnescapeCommand(std::string_view escaped_command) {
 
 namespace mpact::sim::util::gdbserver {
 
+LazyRE2 GdbServer::gdb_command_re_(R"(\$([^#]*)#([0-9a-fA-F]{2}))");
+LazyRE2 GdbServer::thread_re_(R"(;?thread\:(\d+);?)");
+LazyRE2 GdbServer::xfer_read_target_re_(
+    R"(Xfer\:features\:read\:target\.xml\:([0-9a-fA-F]+),([0-9a-fA-F]+))");
+LazyRE2 GdbServer::swbreak_set_re_(R"(Z0,([0-9a-fA-F]+),(.+))");
+LazyRE2 GdbServer::swbreak_clear_re_(R"(z0,([0-9a-fA-F]+),(.+))");
+
 using ::mpact::sim::generic::operator*;  // NOLINT
 using HaltReason = ::mpact::sim::generic::CoreDebugInterface::HaltReason;
 
@@ -78,13 +85,7 @@ GdbServer::GdbServer(
     const DebugInfo& debug_info)
     : log_packets_(absl::GetFlag(FLAGS_log_packets)),
       core_debug_interfaces_(core_debug_interfaces),
-      debug_info_(debug_info),
-      gdb_command_re_(R"(\$([^#]*)#([0-9a-fA-F]{2}))"),
-      thread_re_(R"(;?thread\:(\d+);?)"),
-      xfer_read_target_re_(
-          R"(Xfer\:features\:read\:target\.xml\:([0-9a-fA-F]+),([0-9a-fA-F]+))"),
-      swbreak_set_re_(R"(Z0,([0-9a-fA-F]+),(.+))"),
-      swbreak_clear_re_(R"(z0,([0-9a-fA-F]+),(.+))") {
+      debug_info_(debug_info) {
   if (core_debug_interfaces.size() > 1) {
     LOG(WARNING) << "MPACT GdbServer only supports one core for now - "
                     "ignoring extra cores.";
@@ -867,15 +868,13 @@ void GdbServer::GdbReadGprRegisters(int thread_id) {
     // gap in the register numbers).
     if (it == debug_info_.debug_register_map().end()) continue;
     const std::string& register_name = it->second;
-    auto result =
-        core_debug_interfaces_[thread_index]->ReadRegister(register_name);
+    auto result = core_debug_interfaces_[thread_index]->GetRegisterDataBuffer(
+        register_name);
     if (!result.ok()) {
       return SendError(result.status().message());
     }
-    uint64_t value = result.value();
-    for (int j = 0; j < debug_info_.GetGprWidth(); j += 8) {
-      absl::StrAppend(&response, absl::Hex(value & 0xff, absl::kZeroPad2));
-      value >>= 8;
+    for (const auto& byte : result.value()->Get<uint8_t>()) {
+      absl::StrAppend(&response, absl::Hex(byte, absl::kZeroPad2));
     }
   }
   Respond(response);
@@ -883,27 +882,23 @@ void GdbServer::GdbReadGprRegisters(int thread_id) {
 
 void GdbServer::GdbWriteGprRegisters(int thread_id, std::string_view data) {
   int thread_index = thread_id - 1;
-  int num_bytes = 0;
   for (int i = debug_info_.GetFirstGpr(); i <= debug_info_.GetLastGpr(); ++i) {
     auto it = debug_info_.debug_register_map().find(i);
     if (it == debug_info_.debug_register_map().end()) {
       return SendError("Internal error - failed to find register");
     }
     const std::string& register_name = it->second;
-    uint64_t value = 0;
-    for (int j = 0; j < debug_info_.GetGprWidth(); j += 8) {
-      std::string_view byte = data.substr(0, 2);
+    auto result = core_debug_interfaces_[thread_index]->GetRegisterDataBuffer(
+        register_name);
+    for (auto& byte : result.value()->Get<uint8_t>()) {
+      if (data.empty()) {
+        return SendError("Invalid data format");
+      }
+      std::string_view byte_str = data.substr(0, 2);
       data.remove_prefix(2);
       uint32_t byte_value_tmp;
-      (void)absl::SimpleHexAtoi(byte, &byte_value_tmp);
-      uint8_t byte_value = static_cast<uint8_t>(byte_value_tmp);
-      value |= byte_value << (j * 8);
-      num_bytes++;
-    }
-    auto status = core_debug_interfaces_[thread_index]->WriteRegister(
-        register_name, value);
-    if (!status.ok()) {
-      return SendError(status.message());
+      (void)absl::SimpleHexAtoi(byte_str, &byte_value_tmp);
+      byte = static_cast<uint8_t>(byte_value_tmp);
     }
   }
   Respond("OK");
@@ -923,16 +918,14 @@ void GdbServer::GdbReadRegister(int thread_id,
     return SendError(absl::StrCat("Register not found: ", register_number));
   }
   const std::string& register_name = it->second;
-  auto result =
-      core_debug_interfaces_[thread_index]->ReadRegister(register_name);
+  auto result = core_debug_interfaces_[thread_index]->GetRegisterDataBuffer(
+      register_name);
   if (!result.ok()) {
     return SendError(result.status().message());
   }
   std::string response;
-  uint64_t value = result.value();
-  for (int i = 0; i < debug_info_.GetRegisterByteWidth(register_number); i++) {
-    absl::StrAppend(&response, absl::Hex(value & 0xff, absl::kZeroPad2));
-    value >>= 8;
+  for (const auto& byte : result.value()->Get<uint8_t>()) {
+    absl::StrAppend(&response, absl::Hex(byte, absl::kZeroPad2));
   }
   Respond(response);
 }
@@ -953,21 +946,18 @@ void GdbServer::GdbWriteRegister(int thread_id,
     return SendError(absl::StrCat("Register not found: ", register_number));
   }
   const std::string& register_name = it->second;
-  uint64_t value = 0;
-  int count = 0;
-  while (!register_value_str.empty()) {
-    std::string_view byte = register_value_str.substr(0, 2);
+  auto result = core_debug_interfaces_[thread_index]->GetRegisterDataBuffer(
+      register_name);
+  if (!result.ok()) {
+    return SendError(result.status().message());
+  }
+  for (auto& byte : result.value()->Get<uint8_t>()) {
+    if (register_value_str.empty()) break;
+    std::string_view byte_str = register_value_str.substr(0, 2);
     register_value_str.remove_prefix(2);
     uint32_t byte_value_tmp;
-    (void)absl::SimpleHexAtoi(byte, &byte_value_tmp);
-    uint8_t byte_value = static_cast<uint8_t>(byte_value_tmp);
-    value |= byte_value << (count * 8);
-    count++;
-  }
-  auto status =
-      core_debug_interfaces_[thread_index]->WriteRegister(register_name, value);
-  if (!status.ok()) {
-    return SendError(status.message());
+    (void)absl::SimpleHexAtoi(byte_str, &byte_value_tmp);
+    byte = static_cast<uint8_t>(byte_value_tmp);
   }
   Respond("OK");
 }
