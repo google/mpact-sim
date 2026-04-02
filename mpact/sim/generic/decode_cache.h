@@ -45,9 +45,10 @@ struct DecodeCacheProperties {
 
 // Instructions are decoded into an internal representation for the simulator.
 // Because the decode process can be slow (at least there's no requirement that
-// it be fast), the decoded internal represenations are cached in a DecodeCache.
-// The organization of the decode cache is specified by a DecodeCacheProperties
-// struct which is passed in to the DecodeCache constructor.
+// it be fast), the decoded internal representations are cached in a
+// DecodeCache. The organization of the decode cache is specified by a
+// DecodeCacheProperties struct which is passed in to the DecodeCache
+// constructor.
 //
 // Instruction decode invalidation is supported, for the whole decode cache,
 // an address range in the decode cache, or for a single instruction address.

@@ -25,10 +25,12 @@
 #include <cstdint>
 #include <cstring>
 #include <string>
+#include <thread>  // NOLINT
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/log/log.h"
+#include "absl/random/random.h"
 #include "absl/status/status.h"
 #include "absl/strings/numbers.h"
 #include "absl/strings/str_cat.h"
@@ -43,8 +45,6 @@
 #include "mpact/sim/generic/data_buffer.h"
 #include "mpact/sim/generic/debug_info.h"
 #include "mpact/sim/generic/instruction.h"
-#include "net/util/ports.h"
-#include "thread/fiber/fiber.h"
 
 namespace mpact::sim::util::gdbserver {
 namespace {
@@ -60,6 +60,8 @@ using HaltReasonValueType =
 using ::mpact::sim::generic::Instruction;
 using ::testing::_;
 using ::testing::Return;
+
+constexpr int kNumPortsToTry = 100;
 
 // Mock debug interface for testing.
 class MockCoreDebugInterface : public CoreDebugInterface {
@@ -118,6 +120,7 @@ class TestDebugInfo : public DebugInfo {
   int GetFirstGpr() const override { return 0; }
   int GetLastGpr() const override { return 31; }
   int GetGprWidth() const override { return 64; }
+  int GetPcRegister() const override { return 32; }
   int GetRegisterByteWidth(int register_number) const override {
     return 64 / 8;
   }
@@ -241,17 +244,52 @@ class GdbServerTest : public ::testing::Test {
     delete debug_info_;
   }
 
+  bool isPortFree(int port) {
+    int sock_fd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sock_fd < 0) {
+      return false;
+    }
+    int one = 1;
+    if (setsockopt(sock_fd, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one)) < 0) {
+      return false;
+    }
+    sockaddr_in server_addr;
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_addr.s_addr = INADDR_ANY;
+    server_addr.sin_port = htons(port);
+    std::memset(&server_addr.sin_zero, 0, sizeof(server_addr.sin_zero));
+    if (bind(sock_fd, (struct sockaddr*)&server_addr, sizeof(server_addr)) <
+        0) {
+      return false;
+    }
+    close(sock_fd);
+    return true;
+  }
+
+  int PickUnusedPortOrDie() {
+    for (int i = 0; i < kNumPortsToTry; ++i) {
+      int port = absl::Uniform(bitgen_, 32768, 65535);
+      if (isPortFree(port)) {
+        absl::SleepFor(absl::Milliseconds(100));
+        return port;
+      }
+    }
+    LOG(FATAL) << "No unused port found";
+    return -1;
+  }
+
   MockCoreDebugInterface mock_core_;
   std::vector<CoreDebugInterface*> core_debug_interfaces_;
   DebugInfo* debug_info_;
   GdbServer* gdb_server_;
   DataBufferFactory db_factory_;
+  absl::BitGen bitgen_;
 };
 
 TEST_F(GdbServerTest, Detach) {
-  int port = net_util::PickUnusedPortOrDie();
+  int port = PickUnusedPortOrDie();
 
-  thread::Fiber server_fiber([&]() { gdb_server_->Connect(port); });
+  std::thread server_fiber([&]() { gdb_server_->Connect(port); });
 
   // Give server time to start up and listen.
   absl::SleepFor(absl::Milliseconds(100));
@@ -270,16 +308,19 @@ TEST_F(GdbServerTest, Detach) {
   // Client should ack response.
   client.SendAck();
 
-  server_fiber.Join();
+  server_fiber.join();
 }
 
 TEST_F(GdbServerTest, HaltReason) {
-  int port = net_util::PickUnusedPortOrDie();
+  int port = PickUnusedPortOrDie();
   EXPECT_CALL(mock_core_, GetLastHaltReason())
       .WillOnce(Return(
           static_cast<HaltReasonValueType>(HaltReason::kSoftwareBreakpoint)));
 
-  thread::Fiber server_fiber([&]() { gdb_server_->Connect(port); });
+  // Reading register 32 ('pc', hex '20').
+  EXPECT_CALL(mock_core_, ReadRegister("pc")).WillOnce(Return(0x1234));
+
+  std::thread server_fiber([&]() { gdb_server_->Connect(port); });
 
   // Give server time to start up and listen.
   absl::SleepFor(absl::Milliseconds(100));
@@ -293,8 +334,8 @@ TEST_F(GdbServerTest, HaltReason) {
   client.SendCommand("?");
   // Server should ack command.
   EXPECT_TRUE(client.ExpectAck());
-  // Server should respond with T02thread:1;.
-  EXPECT_EQ("T02thread:1;", client.ReceiveResponse());
+  // Server should respond with T02thread:1;20:3421000000000000.
+  EXPECT_EQ("T02thread:1;20:3412000000000000;", client.ReceiveResponse());
   // Client should ack response.
   client.SendAck();
 
@@ -304,11 +345,11 @@ TEST_F(GdbServerTest, HaltReason) {
   EXPECT_EQ("OK", client.ReceiveResponse());
   client.SendAck();
 
-  server_fiber.Join();
+  server_fiber.join();
 }
 
 TEST_F(GdbServerTest, ReadGpr) {
-  int port = net_util::PickUnusedPortOrDie();
+  int port = PickUnusedPortOrDie();
 
   std::vector<std::array<uint8_t, 8>> reg_storage(32);
   std::vector<generic::DataBuffer*> dbs;
@@ -324,7 +365,7 @@ TEST_F(GdbServerTest, ReadGpr) {
         .WillOnce(Return(dbs[i]));
   }
 
-  thread::Fiber server_fiber([&]() { gdb_server_->Connect(port); });
+  std::thread server_fiber([&]() { gdb_server_->Connect(port); });
 
   absl::SleepFor(absl::Milliseconds(100));
 
@@ -349,11 +390,11 @@ TEST_F(GdbServerTest, ReadGpr) {
   EXPECT_TRUE(client.ExpectAck());
   EXPECT_EQ("OK", client.ReceiveResponse());
   client.SendAck();
-  server_fiber.Join();
+  server_fiber.join();
 }
 
 TEST_F(GdbServerTest, ReadRegister) {
-  int port = net_util::PickUnusedPortOrDie();
+  int port = PickUnusedPortOrDie();
 
   uint64_t reg_val = 0x1234;
   generic::DataBuffer* db = db_factory_.Allocate<uint8_t>(8);
@@ -362,7 +403,7 @@ TEST_F(GdbServerTest, ReadRegister) {
   // Reading register 32 ('pc', hex '20').
   EXPECT_CALL(mock_core_, GetRegisterDataBuffer("pc")).WillOnce(Return(db));
 
-  thread::Fiber server_fiber([&]() { gdb_server_->Connect(port); });
+  std::thread server_fiber([&]() { gdb_server_->Connect(port); });
 
   absl::SleepFor(absl::Milliseconds(100));
 
@@ -383,11 +424,11 @@ TEST_F(GdbServerTest, ReadRegister) {
   EXPECT_TRUE(client.ExpectAck());
   EXPECT_EQ("OK", client.ReceiveResponse());
   client.SendAck();
-  server_fiber.Join();
+  server_fiber.join();
 }
 
 TEST_F(GdbServerTest, ReadMemory) {
-  int port = net_util::PickUnusedPortOrDie();
+  int port = PickUnusedPortOrDie();
 
   // Read 4 bytes from 0x1000.
   EXPECT_CALL(mock_core_, ReadMemory(0x1000, _, 4))
@@ -397,7 +438,7 @@ TEST_F(GdbServerTest, ReadMemory) {
         return 4;
       });
 
-  thread::Fiber server_fiber([&]() { gdb_server_->Connect(port); });
+  std::thread server_fiber([&]() { gdb_server_->Connect(port); });
 
   absl::SleepFor(absl::Milliseconds(100));
 
@@ -416,11 +457,11 @@ TEST_F(GdbServerTest, ReadMemory) {
   EXPECT_EQ("OK", client.ReceiveResponse());
   client.SendAck();
 
-  server_fiber.Join();
+  server_fiber.join();
 }
 
 TEST_F(GdbServerTest, Continue) {
-  int port = net_util::PickUnusedPortOrDie();
+  int port = PickUnusedPortOrDie();
 
   EXPECT_CALL(mock_core_, GetRunStatus()).WillOnce(Return(RunStatus::kHalted));
   EXPECT_CALL(mock_core_, Run()).WillOnce(Return(absl::OkStatus()));
@@ -428,8 +469,10 @@ TEST_F(GdbServerTest, Continue) {
   EXPECT_CALL(mock_core_, GetLastHaltReason())
       .WillOnce(Return(
           static_cast<HaltReasonValueType>(HaltReason::kHardwareBreakpoint)));
+  // Reading register 32 ('pc', hex '20').
+  EXPECT_CALL(mock_core_, ReadRegister("pc")).WillOnce(Return(0x1234));
 
-  thread::Fiber server_fiber([&]() { gdb_server_->Connect(port); });
+  std::thread server_fiber([&]() { gdb_server_->Connect(port); });
 
   absl::SleepFor(absl::Milliseconds(100));
 
@@ -439,7 +482,7 @@ TEST_F(GdbServerTest, Continue) {
   client.SendAck();
   client.SendCommand("c");
   EXPECT_TRUE(client.ExpectAck());
-  EXPECT_EQ("T02thread:1;", client.ReceiveResponse());
+  EXPECT_EQ("T02thread:1;20:3412000000000000;", client.ReceiveResponse());
   client.SendAck();
 
   client.SendCommand("D");
@@ -447,15 +490,15 @@ TEST_F(GdbServerTest, Continue) {
   EXPECT_EQ("OK", client.ReceiveResponse());
   client.SendAck();
 
-  server_fiber.Join();
+  server_fiber.join();
 }
 
 TEST_F(GdbServerTest, Step) {
-  int port = net_util::PickUnusedPortOrDie();
+  int port = PickUnusedPortOrDie();
 
   EXPECT_CALL(mock_core_, Step(1)).WillOnce(Return(1));
 
-  thread::Fiber server_fiber([&]() { gdb_server_->Connect(port); });
+  std::thread server_fiber([&]() { gdb_server_->Connect(port); });
 
   absl::SleepFor(absl::Milliseconds(100));
 
@@ -473,11 +516,11 @@ TEST_F(GdbServerTest, Step) {
   EXPECT_EQ("OK", client.ReceiveResponse());
   client.SendAck();
 
-  server_fiber.Join();
+  server_fiber.join();
 }
 
 TEST_F(GdbServerTest, WriteGpr) {
-  int port = net_util::PickUnusedPortOrDie();
+  int port = PickUnusedPortOrDie();
 
   std::vector<generic::DataBuffer*> dbs;
   for (int i = 0; i < 32; ++i) {
@@ -490,7 +533,7 @@ TEST_F(GdbServerTest, WriteGpr) {
         .WillOnce(Return(dbs[i]));
   }
 
-  thread::Fiber server_fiber([&]() { gdb_server_->Connect(port); });
+  std::thread server_fiber([&]() { gdb_server_->Connect(port); });
 
   absl::SleepFor(absl::Milliseconds(100));
 
@@ -517,18 +560,18 @@ TEST_F(GdbServerTest, WriteGpr) {
   EXPECT_EQ("OK", client.ReceiveResponse());
   client.SendAck();
 
-  server_fiber.Join();
+  server_fiber.join();
 }
 
 TEST_F(GdbServerTest, WriteRegister) {
-  int port = net_util::PickUnusedPortOrDie();
+  int port = PickUnusedPortOrDie();
 
   generic::DataBuffer* db = db_factory_.Allocate<uint8_t>(8);
 
   // Writing register 32 ('pc', hex '20').
   EXPECT_CALL(mock_core_, GetRegisterDataBuffer("pc")).WillOnce(Return(db));
 
-  thread::Fiber server_fiber([&]() { gdb_server_->Connect(port); });
+  std::thread server_fiber([&]() { gdb_server_->Connect(port); });
 
   absl::SleepFor(absl::Milliseconds(100));
 
@@ -551,11 +594,11 @@ TEST_F(GdbServerTest, WriteRegister) {
   EXPECT_EQ("OK", client.ReceiveResponse());
   client.SendAck();
 
-  server_fiber.Join();
+  server_fiber.join();
 }
 
 TEST_F(GdbServerTest, WriteMemory) {
-  int port = net_util::PickUnusedPortOrDie();
+  int port = PickUnusedPortOrDie();
 
   // Write 4 bytes to 0x1000 with value 01020304.
   EXPECT_CALL(mock_core_, WriteMemory(0x1000, _, 4))
@@ -566,7 +609,7 @@ TEST_F(GdbServerTest, WriteMemory) {
         return absl::InternalError("Memory content mismatch");
       });
 
-  thread::Fiber server_fiber([&]() { gdb_server_->Connect(port); });
+  std::thread server_fiber([&]() { gdb_server_->Connect(port); });
 
   absl::SleepFor(absl::Milliseconds(100));
 
@@ -585,16 +628,16 @@ TEST_F(GdbServerTest, WriteMemory) {
   EXPECT_EQ("OK", client.ReceiveResponse());
   client.SendAck();
 
-  server_fiber.Join();
+  server_fiber.join();
 }
 
 TEST_F(GdbServerTest, SetSwBreakpoint) {
-  int port = net_util::PickUnusedPortOrDie();
+  int port = PickUnusedPortOrDie();
 
   EXPECT_CALL(mock_core_, SetSwBreakpoint(0x1000))
       .WillOnce(Return(absl::OkStatus()));
 
-  thread::Fiber server_fiber([&]() { gdb_server_->Connect(port); });
+  std::thread server_fiber([&]() { gdb_server_->Connect(port); });
 
   absl::SleepFor(absl::Milliseconds(100));
   GdbTestClient client;
@@ -612,16 +655,16 @@ TEST_F(GdbServerTest, SetSwBreakpoint) {
   EXPECT_EQ("OK", client.ReceiveResponse());
   client.SendAck();
 
-  server_fiber.Join();
+  server_fiber.join();
 }
 
 TEST_F(GdbServerTest, ClearSwBreakpoint) {
-  int port = net_util::PickUnusedPortOrDie();
+  int port = PickUnusedPortOrDie();
 
   EXPECT_CALL(mock_core_, ClearSwBreakpoint(0x1000))
       .WillOnce(Return(absl::OkStatus()));
 
-  thread::Fiber server_fiber([&]() { gdb_server_->Connect(port); });
+  std::thread server_fiber([&]() { gdb_server_->Connect(port); });
 
   absl::SleepFor(absl::Milliseconds(100));
   GdbTestClient client;
@@ -639,7 +682,7 @@ TEST_F(GdbServerTest, ClearSwBreakpoint) {
   EXPECT_EQ("OK", client.ReceiveResponse());
   client.SendAck();
 
-  server_fiber.Join();
+  server_fiber.join();
 }
 
 }  // namespace

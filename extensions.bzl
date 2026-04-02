@@ -1,4 +1,4 @@
-# Copyright 2023 Google LLC
+# Copyright 2026 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,14 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Load dependent repositories"""
+"""Extensions for mpact-sim that are not handled by MODULE.bazel."""
 
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive", "http_file")
 
-def mpact_sim_repos():
-    """ Load dependencies needed to use mpact-sim as a 3rd-party consumer"""
-
-    # ELFIO header based library.
+def _non_module_deps_impl(ctx):  # @unused
+    # ELFIO header based library
     http_archive(
         name = "com_github_serge1_elfio",
         build_file = "@com_google_mpact-sim//:external/BUILD.elfio",
@@ -28,14 +26,14 @@ def mpact_sim_repos():
         urls = ["https://github.com/serge1/ELFIO/releases/download/Release_3.12/elfio-3.12.tar.gz"],
     )
 
-    # Antlr4 tool (java).
+    # Antlr4 tool (java)
     http_file(
         name = "org_antlr_tool",
         sha256 = "bc13a9c57a8dd7d5196888211e5ede657cb64a3ce968608697e4f668251a8487",
         url = "https://www.antlr.org/download/antlr-4.13.1-complete.jar",
     )
 
-    # Antlr4 c++ runtime.
+    # Antlr4 c++ runtime
     http_archive(
         name = "org_antlr4_cpp_runtime",
         add_prefix = "antlr4-runtime",
@@ -44,3 +42,5 @@ def mpact_sim_repos():
         strip_prefix = "runtime/src",
         urls = ["https://www.antlr.org/download/antlr4-cpp-runtime-4.13.1-source.zip"],
     )
+
+non_module_deps = module_extension(implementation = _non_module_deps_impl)

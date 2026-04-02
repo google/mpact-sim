@@ -41,6 +41,8 @@ class DebugInfo {
   // Returns the first and last general purpose register numbers.
   virtual int GetFirstGpr() const = 0;
   virtual int GetLastGpr() const = 0;
+  // Get the pc register number.
+  virtual int GetPcRegister() const = 0;
   // Returns the byte width of the general purpose registers.
   virtual int GetGprWidth() const = 0;
   // Returns the byte width of the register with the given number.

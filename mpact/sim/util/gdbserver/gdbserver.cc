@@ -70,12 +70,12 @@ std::string UnescapeCommand(std::string_view escaped_command) {
 
 namespace mpact::sim::util::gdbserver {
 
-LazyRE2 GdbServer::gdb_command_re_(R"(\$([^#]*)#([0-9a-fA-F]{2}))");
-LazyRE2 GdbServer::thread_re_(R"(;?thread\:(\d+);?)");
-LazyRE2 GdbServer::xfer_read_target_re_(
-    R"(Xfer\:features\:read\:target\.xml\:([0-9a-fA-F]+),([0-9a-fA-F]+))");
-LazyRE2 GdbServer::swbreak_set_re_(R"(Z0,([0-9a-fA-F]+),(.+))");
-LazyRE2 GdbServer::swbreak_clear_re_(R"(z0,([0-9a-fA-F]+),(.+))");
+LazyRE2 GdbServer::gdb_command_re_{R"(\$([^#]*)#([0-9a-fA-F]{2}))"};
+LazyRE2 GdbServer::thread_re_{R"(;?thread\:(\d+);?)"};
+LazyRE2 GdbServer::xfer_read_target_re_{
+    R"(Xfer\:features\:read\:target\.xml\:([0-9a-fA-F]+),([0-9a-fA-F]+))"};
+LazyRE2 GdbServer::swbreak_set_re_{R"(Z0,([0-9a-fA-F]+),(.+))"};
+LazyRE2 GdbServer::swbreak_clear_re_{R"(z0,([0-9a-fA-F]+),(.+))"};
 
 using ::mpact::sim::generic::operator*;  // NOLINT
 using HaltReason = ::mpact::sim::generic::CoreDebugInterface::HaltReason;
@@ -495,13 +495,14 @@ std::string GdbServer::HexEncodeString(std::string_view str) {
   return encoded_str;
 }
 
-std::string GdbServer::HexEncodeNumberInTargetEndianness(uint64_t number) {
+std::string GdbServer::HexEncodeNumberInTargetEndianness(int bit_width,
+                                                         uint64_t number) {
   std::string encoded_number;
   // Encode the number into a hex string in little endian format.
-  do {
+  for (int i = 0; i < bit_width; i += 8) {
     absl::StrAppend(&encoded_number, absl::Hex(number & 0xff, absl::kZeroPad2));
     number >>= 8;
-  } while (number > 0);
+  }
   return encoded_number;
 }
 
@@ -519,26 +520,42 @@ void GdbServer::GdbHalt() {
 }
 
 std::string GdbServer::GetHaltReason(int thread_id) {
+  auto pc_result = core_debug_interfaces_[thread_id]->ReadRegister("pc");
+  if (!pc_result.ok()) {
+    return "E01";
+  }
+  std::string encoded_pc =
+      absl::StrCat(absl::Hex(debug_info_.GetPcRegister()), ":",
+                   HexEncodeNumberInTargetEndianness(debug_info_.GetGprWidth(),
+                                                     pc_result.value()),
+                   ";");
   auto result = core_debug_interfaces_[thread_id]->GetLastHaltReason();
   if (!result.ok()) {
     return "E01";
   }
   halt_reasons_[0] = result.value();
+  std::string halt_reason_str;
   switch (result.value()) {
     default:
-      return "T05thread:1;";
+      halt_reason_str = "T05thread:1;";
+      break;
     case *HaltReason::kSoftwareBreakpoint:
     case *HaltReason::kHardwareBreakpoint:
     case *HaltReason::kDataWatchPoint:
     case *HaltReason::kActionPoint:
-      return "T02thread:1;";
+      halt_reason_str = "T02thread:1;";
+      break;
     case *HaltReason::kSimulatorError:
-      return "T06thread:1;";
+      halt_reason_str = "T06thread:1;";
+      break;
     case *HaltReason::kUserRequest:
-      return "T03thread:1;";
+      halt_reason_str = "T03thread:1;";
+      break;
     case *HaltReason::kProgramDone:
-      return "W00thread:1;";
+      halt_reason_str = "W00thread:1;";
+      break;
   }
+  return absl::StrCat(halt_reason_str, encoded_pc);
 }
 
 void GdbServer::GdbHaltReason() { Respond(GetHaltReason(0)); }
@@ -702,12 +719,14 @@ void GdbServer::GdbVContinue(std::string_view command) {
     case *HaltReason::kSoftwareBreakpoint:
       address = core_debug_interfaces_[0]->GetSwBreakpointInfo();
       return Respond(absl::StrCat("T05thread:1;swbreak:;",
-                                  HexEncodeNumberInTargetEndianness(address)));
+                                  HexEncodeNumberInTargetEndianness(
+                                      debug_info_.GetGprWidth(), address)));
     case *HaltReason::kHardwareBreakpoint:
       return Respond("T05thread:1;hwbreak:;");
     case *HaltReason::kDataWatchPoint: {
       core_debug_interfaces_[0]->GetWatchpointInfo(address, access_type);
-      std::string encoded_address = HexEncodeNumberInTargetEndianness(address);
+      std::string encoded_address =
+          HexEncodeNumberInTargetEndianness(debug_info_.GetGprWidth(), address);
       // Need to differentiate between write (watch), read (rwatch), and
       // read/write (awatch) watch points.
       switch (access_type) {

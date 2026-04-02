@@ -21,6 +21,8 @@ build --action_env=CC="clang"
 
 build --copt=-Wno-unused-function --cxxopt="-std=c++17"
 build --host_copt=-Wno-unused-function --host_cxxopt="-std=c++17"
-# TODO: migrate all dependencies from WORKSPACE to MODULE.bazel
-# https://github.com/protocolbuffers/protobuf/issues/14313
-common --noenable_bzlmod
+
+# Force include cstdint to provide uintptr_t for Abseil and other deps
+build --cxxopt=-include --cxxopt=cstdint
+build --host_cxxopt=-include --host_cxxopt=cstdint
+

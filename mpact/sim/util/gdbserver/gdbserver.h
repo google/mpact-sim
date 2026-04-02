@@ -109,7 +109,7 @@ class GdbServer {
   void ParseGdbCommand(std::string_view command);
 
   std::string HexEncodeString(std::string_view str);
-  std::string HexEncodeNumberInTargetEndianness(uint64_t number);
+  std::string HexEncodeNumberInTargetEndianness(int bit_width, uint64_t number);
   // GDB command handlers.
 
   // Halt the simulator.

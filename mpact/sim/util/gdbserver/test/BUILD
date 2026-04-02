@@ -21,16 +21,16 @@ package(
 
 cc_test(
     name = "gdbserver_test",
+    size = "small",
     srcs = ["gdbserver_test.cc"],
     deps = [
         "//mpact/sim/generic:core",
         "//mpact/sim/generic:core_debug_interface",
         "//mpact/sim/generic:instruction",
         "//mpact/sim/util/gdbserver",
-        "//net/util:ports",
-        "//thread/fiber",
         "@abseil-cpp//absl/container:flat_hash_map",
         "@abseil-cpp//absl/log",
+        "@abseil-cpp//absl/random",
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/strings",
         "@abseil-cpp//absl/strings:str_format",
