@@ -13,7 +13,7 @@
 # limitations under the License.
 
 module(
-    name = "com_google_mpact-sim",
+    name = "mpact-sim",
     version = "1.0.0",
 )
 

@@ -25,4 +25,3 @@ build --host_copt=-Wno-unused-function --host_cxxopt="-std=c++17"
 # Force include cstdint to provide uintptr_t for Abseil and other deps
 build --cxxopt=-include --cxxopt=cstdint
 build --host_cxxopt=-include --host_cxxopt=cstdint
-
