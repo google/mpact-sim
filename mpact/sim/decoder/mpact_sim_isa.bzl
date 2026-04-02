@@ -110,7 +110,7 @@ def mpact_isa_decoder(name, includes, src = "", srcs = [], deps = [], isa_name =
         outs = out_files,
         cmd = command,
         heuristic_label_expansion = 0,
-        tools = ["@com_google_mpact-sim//mpact/sim/decoder:decoder_gen"],
+        tools = ["@mpact-sim//mpact/sim/decoder:decoder_gen"],
         testonly = testonly,
     )
 
@@ -120,12 +120,12 @@ def mpact_isa_decoder(name, includes, src = "", srcs = [], deps = [], isa_name =
         lib_deps.append("@abseil-cpp//absl/container:flat_hash_map")
     if "@abseil-cpp//absl/strings:str_format" not in deps:
         lib_deps.append("@abseil-cpp//absl/strings:str_format")
-    if "@com_google_mpact-sim//mpact/sim/generic:arch_state" not in deps:
-        lib_deps.append("@com_google_mpact-sim//mpact/sim/generic:arch_state")
-    if "@com_google_mpact-sim//mpact/sim/generic:instruction" not in deps:
-        lib_deps.append("@com_google_mpact-sim//mpact/sim/generic:instruction")
-    if "@com_google_mpact-sim//mpact/sim/util/asm" not in deps:
-        lib_deps.append("@com_google_mpact-sim//mpact/sim/util/asm")
+    if "@mpact-sim//mpact/sim/generic:arch_state" not in deps:
+        lib_deps.append("@mpact-sim//mpact/sim/generic:arch_state")
+    if "@mpact-sim//mpact/sim/generic:instruction" not in deps:
+        lib_deps.append("@mpact-sim//mpact/sim/generic:instruction")
+    if "@mpact-sim//mpact/sim/util/asm" not in deps:
+        lib_deps.append("@mpact-sim//mpact/sim/util/asm")
     if "@com_googlesource_code_re2//:re2" not in deps:
         lib_deps.append("@com_googlesource_code_re2//:re2")
     if "@abseil-cpp//absl/status" not in deps:
@@ -193,7 +193,7 @@ def mpact_bin_fmt_decoder(name, includes, src = "", srcs = [], deps = [], decode
         outs = out_files,
         cmd = command,
         heuristic_label_expansion = 0,
-        tools = ["@com_google_mpact-sim//mpact/sim/decoder:bin_format_gen"],
+        tools = ["@mpact-sim//mpact/sim/decoder:bin_format_gen"],
         testonly = testonly,
     )
 
@@ -209,10 +209,10 @@ def mpact_bin_fmt_decoder(name, includes, src = "", srcs = [], deps = [], decode
         lib_deps.append("@abseil-cpp//absl/log")
     if "@abseil-cpp//absl/strings:str_format" not in deps:
         lib_deps.append("@abseil-cpp//absl/strings:str_format")
-    if "@com_google_mpact-sim//mpact/sim/generic:arch_state" not in deps:
-        lib_deps.append("@com_google_mpact-sim//mpact/sim/generic:arch_state")
-    if "@com_google_mpact-sim//mpact/sim/generic:instruction" not in deps:
-        lib_deps.append("@com_google_mpact-sim//mpact/sim/generic:instruction")
+    if "@mpact-sim//mpact/sim/generic:arch_state" not in deps:
+        lib_deps.append("@mpact-sim//mpact/sim/generic:arch_state")
+    if "@mpact-sim//mpact/sim/generic:instruction" not in deps:
+        lib_deps.append("@mpact-sim//mpact/sim/generic:instruction")
     cc_library(
         name = name,
         srcs = [f for f in out_files if f.endswith(".cc")],
@@ -270,7 +270,7 @@ def mpact_proto_fmt_decoder(name, includes, src = "", srcs = [], proto_files = [
         outs = out_files,
         cmd = command,
         heuristic_label_expansion = 0,
-        tools = ["@com_google_mpact-sim//mpact/sim/decoder:proto_format_gen"],
+        tools = ["@mpact-sim//mpact/sim/decoder:proto_format_gen"],
     )
 
     # The rule for the lib that is built from the generated sources.
@@ -298,7 +298,7 @@ def _strip_path(text):
 # a bash array from $(SRCS), then instead of using $(SRCS) in the command, it
 # uses only the first element of that array.
 def _make_isa_tool_invocation_command(num_srcs, prefix, isa_name, generator):
-    cmd = "ARR=($(SRCS)); $(location @com_google_mpact-sim//mpact/sim/decoder:decoder_gen) "
+    cmd = "ARR=($(SRCS)); $(location @mpact-sim//mpact/sim/decoder:decoder_gen) "
 
     # Add the sources that are not in includes.
     for i in range(0, num_srcs):
@@ -313,7 +313,7 @@ def _make_isa_tool_invocation_command(num_srcs, prefix, isa_name, generator):
 # those that will be included, the command includes creating a bash array from $(SRCS), then
 # instead of using $(SRCS) in the command, it uses only the first element of that array.
 def _make_bin_tool_invocation_command(num_srcs, prefix, decoder_name):
-    cmd = "ARR=($(SRCS)); $(location @com_google_mpact-sim//mpact/sim/decoder:bin_format_gen) "
+    cmd = "ARR=($(SRCS)); $(location @mpact-sim//mpact/sim/decoder:bin_format_gen) "
 
     # Add the sources that are not in includes.
     for i in range(0, num_srcs):
@@ -327,7 +327,7 @@ def _make_bin_tool_invocation_command(num_srcs, prefix, decoder_name):
 # those that will be included, the command includes creating a bash array from $(SRCS), then
 # instead of using $(SRCS) in the command, it uses only the first element of that array.
 def _make_proto_tool_invocation_command(num_srcs, prefix, decoder_name, proto_files):
-    cmd = "ARR=($(SRCS)); $(location @com_google_mpact-sim//mpact/sim/decoder:proto_format_gen) "
+    cmd = "ARR=($(SRCS)); $(location @mpact-sim//mpact/sim/decoder:proto_format_gen) "
 
     # Add the sources that are not in includes.
     for i in range(0, num_srcs):

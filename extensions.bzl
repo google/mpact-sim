@@ -20,7 +20,7 @@ def _non_module_deps_impl(ctx):  # @unused
     # ELFIO header based library
     http_archive(
         name = "com_github_serge1_elfio",
-        build_file = "@com_google_mpact-sim//:external/BUILD.elfio",
+        build_file = "@mpact-sim//:external/BUILD.elfio",
         sha256 = "caf49f3bf55a9c99c98ebea4b05c79281875783802e892729eea0415505f68c4",
         strip_prefix = "elfio-3.12",
         urls = ["https://github.com/serge1/ELFIO/releases/download/Release_3.12/elfio-3.12.tar.gz"],
@@ -37,7 +37,7 @@ def _non_module_deps_impl(ctx):  # @unused
     http_archive(
         name = "org_antlr4_cpp_runtime",
         add_prefix = "antlr4-runtime",
-        build_file = "@com_google_mpact-sim//:external/BUILD.antlr4",
+        build_file = "@mpact-sim//:external/BUILD.antlr4",
         sha256 = "d350e09917a633b738c68e1d6dc7d7710e91f4d6543e154a78bb964cfd8eb4de",
         strip_prefix = "runtime/src",
         urls = ["https://www.antlr.org/download/antlr4-cpp-runtime-4.13.1-source.zip"],
