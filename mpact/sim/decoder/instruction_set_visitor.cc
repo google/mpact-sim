@@ -1328,16 +1328,24 @@ void InstructionSetVisitor::VisitInstructionAttributeList(
   if (inst != nullptr) {
     for (auto* child = inst; child != nullptr; child = child->child()) {
       for (auto& [name, expr] : attributes) {
-        child->AddInstructionAttribute(name, expr);
+        child->AddInstructionAttribute(
+            name, expr == nullptr ? nullptr : expr->DeepCopy());
       }
     }
     // Ownership of expr objects transferred to opcode.
+    for (auto& [unused, expr] : attributes) {
+      delete expr;
+    }
     attributes.clear();
     return;
   }
   // Attributes are default attributes for the current slot.
   for (auto& [name, expr] : attributes) {
-    slot->AddInstructionAttribute(name, expr);
+    slot->AddInstructionAttribute(name,
+                                  expr == nullptr ? nullptr : expr->DeepCopy());
+  }
+  for (auto& [unused, expr] : attributes) {
+    delete expr;
   }
   attributes.clear();
 }

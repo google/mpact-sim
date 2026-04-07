@@ -98,7 +98,7 @@ void Instruction::AppendDisasmFormat(DisasmFormat* disasm_format) {
 // Creating a derived instruction involves copying attributes and re-evaluating
 // any expressions that depend on any slot template instantiation values.
 absl::StatusOr<Instruction*> Instruction::CreateDerivedInstruction(
-    TemplateInstantiationArgs* args) const {
+    TemplateInstantiationArgs* args, Slot* new_slot) const {
   // First try to create a derived opcode object. Fail if it fails.
   auto op_result =
       slot_->instruction_set()->opcode_factory()->CreateDerivedOpcode(opcode(),
@@ -139,6 +139,7 @@ absl::StatusOr<Instruction*> Instruction::CreateDerivedInstruction(
   for (auto const& [attr_name, expr_ptr] : attribute_map_) {
     auto result = expr_ptr->Evaluate(args);
     if (result.ok()) {
+      new_slot->AddAttributeName(attr_name);
       new_inst->AddInstructionAttribute(attr_name, result.value());
     } else {
       delete new_inst;
@@ -150,7 +151,7 @@ absl::StatusOr<Instruction*> Instruction::CreateDerivedInstruction(
   // Recursively hande child instructions.
   if (child() == nullptr) return new_inst;
 
-  auto result = child()->CreateDerivedInstruction(args);
+  auto result = child()->CreateDerivedInstruction(args, new_slot);
   if (result.ok()) {
     new_inst->AppendChild(result.value());
     return new_inst;

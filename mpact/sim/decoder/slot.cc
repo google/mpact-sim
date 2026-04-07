@@ -200,7 +200,7 @@ absl::Status Slot::AppendInheritedInstruction(Instruction* inst,
                                               TemplateInstantiationArgs* args) {
   std::string name = inst->opcode()->name();
   if (!instruction_map_.contains(name)) {
-    auto derived = inst->CreateDerivedInstruction(args);
+    auto derived = inst->CreateDerivedInstruction(args, this);
 
     if (derived.ok()) {
       if (!is_templated()) {
@@ -256,9 +256,7 @@ std::string Slot::GenerateAttributeSetterFcn(absl::string_view name,
   int size = attribute_names_.size();
   if (size > 0) {
     // Allocate the array and initialize to zero.
-    absl::StrAppend(&output, "  int *attrs = new int[", size,
-                    "];\n"
-                    "  *attrs = {");
+    absl::StrAppend(&output, "  int *attrs = new int[", size, "]{");
     for (auto const& attribute_name : attribute_names_) {
       auto it = inst->attribute_map().find(attribute_name);
       if (it == inst->attribute_map().end()) {

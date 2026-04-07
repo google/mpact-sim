@@ -51,7 +51,7 @@ class Instruction {
   // evaluation of expressions within the instruction/opcode that rely on
   // template instantiation arguments.
   absl::StatusOr<Instruction*> CreateDerivedInstruction(
-      TemplateInstantiationArgs* args) const;
+      TemplateInstantiationArgs* args, Slot* new_slot) const;
   // Resources used and acquired/released.
   void AppendResourceUse(const ResourceReference* resource_ref);
   void AppendResourceAcquire(const ResourceReference* resource_ref);
