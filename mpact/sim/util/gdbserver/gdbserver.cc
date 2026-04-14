@@ -95,6 +95,29 @@ GdbServer::GdbServer(
   for (int i = 0; i < core_debug_interfaces_.size(); ++i) {
     halt_reasons_.push_back(*generic::CoreDebugInterface::HaltReason::kNone);
   }
+  // Get register widths for each register number.
+  auto xml_data = absl::StrSplit(debug_info_.GetGdbTargetXml(), '\n');
+  RE2 bitsize_re{R"re2(<reg\s.*bitsize\s*=\s*"(\d+)")re2"};
+  RE2 regnum_re{R"re2(<reg\s.*regnum\s*=\s*"(\d+)")re2"};
+  for (const auto& line : xml_data) {
+    std::string regnum_str;
+    int reg_num;
+    if (RE2::PartialMatch(line, regnum_re, &regnum_str)) {
+      if (!absl::SimpleAtoi(regnum_str, &reg_num)) {
+        continue;  // Skip line if no valid register number is found in the
+                   // line.
+      }
+    } else {
+      continue;  // Skip line if no register number is found in the line.
+    }
+    std::string bitsize_str;
+    int reg_bitsize;
+    if (RE2::PartialMatch(line, bitsize_re, &bitsize_str)) {
+      if (absl::SimpleAtoi(bitsize_str, &reg_bitsize)) {
+        reg_bitsize_map_[reg_num] = reg_bitsize;
+      }
+    }
+  }
 }
 
 GdbServer::~GdbServer() {
@@ -944,8 +967,15 @@ void GdbServer::GdbReadRegister(int thread_id,
     return SendError(result.status().message());
   }
   std::string response;
+  int bitsize = result.value()->size<uint8_t>() * 8;
   for (const auto& byte : result.value()->Get<uint8_t>()) {
     absl::StrAppend(&response, absl::Hex(byte, absl::kZeroPad2));
+  }
+  if (reg_bitsize_map_.contains(register_number) &&
+      reg_bitsize_map_[register_number] > bitsize) {
+    for (int i = 0; i < (reg_bitsize_map_[register_number] - bitsize); i += 8) {
+      absl::StrAppend(&response, "00");
+    }
   }
   Respond(response);
 }

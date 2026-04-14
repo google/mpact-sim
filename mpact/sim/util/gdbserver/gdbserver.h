@@ -181,6 +181,7 @@ class GdbServer {
   absl::flat_hash_map<char, int> thread_select_;
   absl::Span<generic::CoreDebugInterface*> core_debug_interfaces_;
   std::vector<int> halt_reasons_;
+  absl::flat_hash_map<int, int> reg_bitsize_map_;
   const DebugInfo& debug_info_;
   // Regular expressions used to parse GDB commands.
   // These are static since they are immutable once initialized.
