@@ -125,7 +125,82 @@ class TestDebugInfo : public DebugInfo {
     return 64 / 8;
   }
   std::string_view GetLLDBHostInfo() const override { return ""; }
-  std::string_view GetGdbTargetXml() const override { return ""; }
+  std::string_view GetGdbTargetXml() const override {
+    return "<?xml version=\"1.0\"?>\n"
+           "<!DOCTYPE target SYSTEM \"gdb-target.dtd\">\n"
+           "<target version=\"1.0\">\n"
+           "  <architecture>testarch</architecture>\n"
+           "  <reg bitsize=\"64\" name=\"pc\" regnum=\"32\" />\n"
+           "  <feature name=\"org.gnu.gdb.testarch.cpu\">\n"
+           "    <reg bitsize=\"64\" name=\"x0\" regnum=\"0\" "
+           "type=\"uint64\"/>\n"
+           "    <reg bitsize=\"64\" name=\"x1\" regnum=\"1\" "
+           "type=\"uint64\"/>\n"
+           "    <reg bitsize=\"64\" name=\"x2\" regnum=\"2\" "
+           "type=\"uint64\"/>\n"
+           "    <reg bitsize=\"64\" name=\"x3\" regnum=\"3\" "
+           "type=\"uint64\"/>\n"
+           "    <reg bitsize=\"64\" name=\"x4\" regnum=\"4\" "
+           "type=\"uint64\"/>\n"
+           "    <reg bitsize=\"64\" name=\"x5\" regnum=\"5\" "
+           "type=\"uint64\"/>\n"
+           "    <reg bitsize=\"64\" name=\"x6\" regnum=\"6\" "
+           "type=\"uint64\"/>\n"
+           "    <reg bitsize=\"64\" name=\"x7\" regnum=\"7\" "
+           "type=\"uint64\"/>\n"
+           "    <reg bitsize=\"64\" name=\"x8\" regnum=\"8\" "
+           "type=\"uint64\"/>\n"
+           "    <reg bitsize=\"64\" name=\"x9\" regnum=\"9\" "
+           "type=\"uint64\"/>\n"
+           "    <reg bitsize=\"64\" name=\"x10\" regnum=\"10\" "
+           "type=\"uint64\"/>\n"
+           "    <reg bitsize=\"64\" name=\"x11\" regnum=\"11\" "
+           "type=\"uint64\"/>\n"
+           "    <reg bitsize=\"64\" name=\"x12\" regnum=\"12\" "
+           "type=\"uint64\"/>\n"
+           "    <reg bitsize=\"64\" name=\"x13\" regnum=\"13\" "
+           "type=\"uint64\"/>\n"
+           "    <reg bitsize=\"64\" name=\"x14\" regnum=\"14\" "
+           "type=\"uint64\"/>\n"
+           "    <reg bitsize=\"64\" name=\"x15\" regnum=\"15\" "
+           "type=\"uint64\"/>\n"
+           "    <reg bitsize=\"64\" name=\"x16\" regnum=\"16\" "
+           "type=\"uint64\"/>\n"
+           "    <reg bitsize=\"64\" name=\"x17\" regnum=\"17\" "
+           "type=\"uint64\"/>\n"
+           "    <reg bitsize=\"64\" name=\"x18\" regnum=\"18\" "
+           "type=\"uint64\"/>\n"
+           "    <reg bitsize=\"64\" name=\"x19\" regnum=\"19\" "
+           "type=\"uint64\"/>\n"
+           "    <reg bitsize=\"64\" name=\"x20\" regnum=\"20\" "
+           "type=\"uint64\"/>\n"
+           "    <reg bitsize=\"64\" name=\"x21\" regnum=\"21\" "
+           "type=\"uint64\"/>\n"
+           "    <reg bitsize=\"64\" name=\"x22\" regnum=\"22\" "
+           "type=\"uint64\"/>\n"
+           "    <reg bitsize=\"64\" name=\"x23\" regnum=\"23\" "
+           "type=\"uint64\"/>\n"
+           "    <reg bitsize=\"64\" name=\"x24\" regnum=\"24\" "
+           "type=\"uint64\"/>\n"
+           "    <reg bitsize=\"64\" name=\"x25\" regnum=\"25\" "
+           "type=\"uint64\"/>\n"
+           "    <reg bitsize=\"64\" name=\"x26\" regnum=\"26\" "
+           "type=\"uint64\"/>\n"
+           "    <reg bitsize=\"64\" name=\"x27\" regnum=\"27\" "
+           "type=\"uint64\"/>\n"
+           "    <reg bitsize=\"64\" name=\"x28\" regnum=\"28\" "
+           "type=\"uint64\"/>\n"
+           "    <reg bitsize=\"64\" name=\"x29\" regnum=\"29\" "
+           "type=\"uint64\"/>\n"
+           "    <reg bitsize=\"64\" name=\"x30\" regnum=\"30\" "
+           "type=\"uint64\"/>\n"
+           "    <reg bitsize=\"64\" name=\"x31\" regnum=\"31\" "
+           "type=\"uint64\"/>\n"
+           "    <reg bitsize=\"64\" name=\"pc\" regnum=\"32\" "
+           "type=\"code_ptr\"/>\n"
+           "  </feature>\n"
+           "</target>\n";
+  }
 
  private:
   DebugRegisterMap debug_register_map_;
@@ -401,7 +476,7 @@ TEST_F(GdbServerTest, ReadRegister) {
   memcpy(db->raw_ptr(), &reg_val, 8);
 
   // Reading register 32 ('pc', hex '20').
-  EXPECT_CALL(mock_core_, GetRegisterDataBuffer("pc")).WillOnce(Return(db));
+  EXPECT_CALL(mock_core_, ReadRegister("pc")).WillOnce(Return(0x1234));
 
   std::thread server_fiber([&]() { gdb_server_->Connect(port); });
 

@@ -961,23 +961,41 @@ void GdbServer::GdbReadRegister(int thread_id,
     return SendError(absl::StrCat("Register not found: ", register_number));
   }
   const std::string& register_name = it->second;
-  auto result = core_debug_interfaces_[thread_index]->GetRegisterDataBuffer(
-      register_name);
-  if (!result.ok()) {
-    return SendError(result.status().message());
+  auto reg_bitsize_it = reg_bitsize_map_.find(register_number);
+  int byte_size = 0;
+  if (reg_bitsize_it != reg_bitsize_map_.end()) {
+    byte_size = reg_bitsize_it->second / 8;
   }
-  std::string response;
-  int bitsize = result.value()->size<uint8_t>() * 8;
-  for (const auto& byte : result.value()->Get<uint8_t>()) {
-    absl::StrAppend(&response, absl::Hex(byte, absl::kZeroPad2));
-  }
-  if (reg_bitsize_map_.contains(register_number) &&
-      reg_bitsize_map_[register_number] > bitsize) {
-    for (int i = 0; i < (reg_bitsize_map_[register_number] - bitsize); i += 8) {
+  if ((byte_size != 0) && (byte_size <= sizeof(uint64_t))) {
+    // Read using the standard read register function.
+    auto result =
+        core_debug_interfaces_[thread_index]->ReadRegister(register_name);
+    if (!result.ok()) {
+      return SendError(result.status().message());
+    }
+    uint64_t value = result.value();
+    uint8_t* bytes = reinterpret_cast<uint8_t*>(&value);
+    std::string response;
+    for (int i = 0; i < byte_size; ++i) {
+      absl::StrAppend(&response, absl::Hex(bytes[i], absl::kZeroPad2));
+    }
+    Respond(response);
+  } else {
+    auto result = core_debug_interfaces_[thread_index]->GetRegisterDataBuffer(
+        register_name);
+    if (!result.ok()) {
+      return SendError(result.status().message());
+    }
+    std::string response;
+    int db_size = result.value()->size<uint8_t>();
+    for (const auto& byte : result.value()->Get<uint8_t>()) {
+      absl::StrAppend(&response, absl::Hex(byte, absl::kZeroPad2));
+    }
+    for (int i = db_size; i < byte_size; ++i) {
       absl::StrAppend(&response, "00");
     }
+    Respond(response);
   }
-  Respond(response);
 }
 
 void GdbServer::GdbWriteRegister(int thread_id,

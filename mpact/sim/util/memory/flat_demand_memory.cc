@@ -50,10 +50,9 @@ void FlatDemandMemory::Load(uint64_t address, DataBuffer* db, Instruction* inst,
   int size_in_units = db->size<uint8_t>() >> addressable_unit_shift_;
   uint64_t high = address + size_in_units;
   if (address < base_address_ || high > max_address_) [[unlikely]] {
-    LOG(ERROR) << absl::StrFormat(
+    LOG(WARNING) << absl::StrFormat(
         "Load access [%x, %x] out of bounds [%x, %x]\n", address, high,
         base_address_, max_address_);
-    ABSL_HARDENING_ASSERT(false);
   }
   if (size_in_units <= 0) [[unlikely]] {
     LOG(ERROR) << absl::StrFormat("Size in units %d is not positive\n",
