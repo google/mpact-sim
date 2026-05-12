@@ -120,6 +120,7 @@ class TestDebugInfo : public DebugInfo {
   int GetFirstGpr() const override { return 0; }
   int GetLastGpr() const override { return 31; }
   int GetGprWidth() const override { return 64; }
+  int GetPcWidth() const override { return 64; }
   int GetPcRegister() const override { return 32; }
   int GetRegisterByteWidth(int register_number) const override {
     return 64 / 8;

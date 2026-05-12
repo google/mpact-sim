@@ -45,6 +45,8 @@ class DebugInfo {
   virtual int GetPcRegister() const = 0;
   // Returns the byte width of the general purpose registers.
   virtual int GetGprWidth() const = 0;
+  // Returns the byte width of the program counter register.
+  virtual int GetPcWidth() const = 0;
   // Returns the byte width of the register with the given number.
   virtual int GetRegisterByteWidth(int) const = 0;
   // Returns the XML file describing the target for gdb (or lldb).

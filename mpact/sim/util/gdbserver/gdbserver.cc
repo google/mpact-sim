@@ -549,7 +549,7 @@ std::string GdbServer::GetHaltReason(int thread_id) {
   }
   std::string encoded_pc =
       absl::StrCat(absl::Hex(debug_info_.GetPcRegister()), ":",
-                   HexEncodeNumberInTargetEndianness(debug_info_.GetGprWidth(),
+                   HexEncodeNumberInTargetEndianness(debug_info_.GetPcWidth(),
                                                      pc_result.value()),
                    ";");
   auto result = core_debug_interfaces_[thread_id]->GetLastHaltReason();
@@ -734,16 +734,22 @@ void GdbServer::GdbVContinue(std::string_view command) {
     return Respond("T05thread:1;");
   }
   halt_reasons_[0] = result.value();
-  uint64_t address = 0;
+  auto pc_result = core_debug_interfaces_[0]->ReadRegister("pc");
+  if (!pc_result.ok()) {
+    return Respond("E01");
+  }
+  uint64_t address = pc_result.value();
+  std::string encoded_pc = absl::StrCat(
+      absl::Hex(debug_info_.GetPcRegister()), ":",
+      HexEncodeNumberInTargetEndianness(debug_info_.GetPcWidth(), address),
+      ";");
   generic::AccessType access_type = generic::AccessType::kNone;
   switch (halt_reasons_[0]) {
     default:
-      return Respond("T05thread:1;");
+      return Respond(absl::StrCat("T05thread:1;", encoded_pc));
     case *HaltReason::kSoftwareBreakpoint:
       address = core_debug_interfaces_[0]->GetSwBreakpointInfo();
-      return Respond(absl::StrCat("T05thread:1;swbreak:;",
-                                  HexEncodeNumberInTargetEndianness(
-                                      debug_info_.GetGprWidth(), address)));
+      return Respond(absl::StrCat("T05thread:1;swbreak:;", encoded_pc));
     case *HaltReason::kHardwareBreakpoint:
       return Respond("T05thread:1;hwbreak:;");
     case *HaltReason::kDataWatchPoint: {
@@ -754,22 +760,22 @@ void GdbServer::GdbVContinue(std::string_view command) {
       // read/write (awatch) watch points.
       switch (access_type) {
         case generic::AccessType::kLoad:
-          return Respond(absl::StrCat("T05thread:1;rwatch:;", encoded_address));
+          return Respond(absl::StrCat("T05thread:1;rwatch:;", encoded_pc));
         case generic::AccessType::kStore:
-          return Respond(absl::StrCat("T05thread:1;watch:;", encoded_address));
+          return Respond(absl::StrCat("T05thread:1;watch:;", encoded_pc));
         case generic::AccessType::kLoadStore:
-          return Respond(absl::StrCat("T05thread:1;awatch:;", encoded_address));
+          return Respond(absl::StrCat("T05thread:1;awatch:;", encoded_pc));
         default:
           LOG(ERROR) << "Invalid access type: "
                      << static_cast<int>(access_type);
-          return Respond("T05thread:1;;");
+          return Respond(absl::StrCat("T05thread:1;", encoded_pc));
       }
     }
     case *HaltReason::kActionPoint:
     case *HaltReason::kSimulatorError:
-      return Respond("T06thread:1;");
+      return Respond(absl::StrCat("T06thread:1;", encoded_pc));
     case *HaltReason::kUserRequest:
-      return Respond("T03thread:1;");
+      return Respond(absl::StrCat("T03thread:1;", encoded_pc));
     case *HaltReason::kProgramDone:
       return Respond("W00");
   }
