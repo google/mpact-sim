@@ -575,6 +575,7 @@ std::string GdbServer::GetHaltReason(int thread_id) {
       halt_reason_str = "T03thread:1;";
       break;
     case *HaltReason::kProgramDone:
+    case *HaltReason::kSemihostHaltRequest:
       halt_reason_str = "W00thread:1;";
       break;
   }
@@ -721,7 +722,8 @@ void GdbServer::GdbVContinue(std::string_view command) {
   // done.
   bool all_done = true;
   for (int tid = 1; tid <= core_debug_interfaces_.size(); ++tid) {
-    all_done &= (halt_reasons_[tid - 1] == *HaltReason::kProgramDone);
+    all_done &= ((halt_reasons_[tid - 1] == *HaltReason::kProgramDone) ||
+                 (halt_reasons_[tid - 1] == *HaltReason::kSemihostHaltRequest));
   }
   if (all_done) {
     return Respond("W00");
@@ -777,6 +779,7 @@ void GdbServer::GdbVContinue(std::string_view command) {
     case *HaltReason::kUserRequest:
       return Respond(absl::StrCat("T03thread:1;", encoded_pc));
     case *HaltReason::kProgramDone:
+    case *HaltReason::kSemihostHaltRequest:
       return Respond("W00");
   }
 }

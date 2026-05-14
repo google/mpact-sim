@@ -230,7 +230,9 @@ static std::string indent_string(int n) { return std::string(n, ' '); }
 // instructions can share attribute setter functions.
 std::string Slot::CreateAttributeLookupKey(const Instruction* inst) const {
   std::string key;
+  int count = attribute_names_.size();
   for (auto const& [name, expr] : inst->attribute_map()) {
+    count--;
     std::string value;
     auto result = expr->GetValue();
     if (!result.ok()) {
@@ -243,6 +245,9 @@ std::string Slot::CreateAttributeLookupKey(const Instruction* inst) const {
       continue;
     }
     absl::StrAppend(&key, name, "[", *value_ptr, "]:");
+  }
+  for (int i = 0; i < count; ++i) {
+    absl::StrAppend(&key, "[]:");
   }
   return key;
 }

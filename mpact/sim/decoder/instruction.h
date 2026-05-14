@@ -18,7 +18,7 @@
 #include <string>
 #include <vector>
 
-#include "absl/container/flat_hash_map.h"
+#include "absl/container/btree_map.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "mpact/sim/decoder/opcode.h"
@@ -97,7 +97,7 @@ class Instruction {
     return disasm_format_vec_;
   }
 
-  const absl::flat_hash_map<std::string, TemplateExpression*>& attribute_map()
+  const absl::btree_map<std::string, TemplateExpression*>& attribute_map()
       const {
     return attribute_map_;
   }
@@ -112,7 +112,7 @@ class Instruction {
   std::vector<const ResourceReference*> resource_acquire_vec_;
   std::string semfunc_code_string_;
   std::vector<DisasmFormat*> disasm_format_vec_;
-  absl::flat_hash_map<std::string, TemplateExpression*> attribute_map_;
+  absl::btree_map<std::string, TemplateExpression*> attribute_map_;
 };
 
 }  // namespace instruction_set
