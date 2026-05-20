@@ -349,6 +349,7 @@ void GdbServer::AcceptGdbCommand(std::string_view command) {
       os_->put('-');
       os_->flush();
     } else {
+      LOG(ERROR) << "Invalid original checksum: " << checksum_str;
       SendError("invalid checksum");
     }
     return;
@@ -362,6 +363,8 @@ void GdbServer::AcceptGdbCommand(std::string_view command) {
       os_->put('-');
       os_->flush();
     } else {
+      LOG(ERROR) << "Invalid checksum: " << checksum
+                 << " expected: " << orig_checksum;
       SendError("invalid checksum");
     }
     return;
@@ -416,6 +419,7 @@ void GdbServer::ParseGdbCommand(std::string_view command) {
       command.remove_prefix(1);
       size_t pos = command.find(',');
       if (pos == std::string_view::npos) {
+        LOG(ERROR) << "Invalid memory read format";
         if (error_message_supported_) {
           return SendError("invalid memory read format");
         }
@@ -430,6 +434,7 @@ void GdbServer::ParseGdbCommand(std::string_view command) {
       command.remove_prefix(1);
       size_t comma_pos = command.find(',');
       if (comma_pos == std::string_view::npos) {
+        LOG(ERROR) << "Invalid memory write format";
         if (error_message_supported_) {
           return SendError("invalid memory write format");
         }
@@ -437,6 +442,7 @@ void GdbServer::ParseGdbCommand(std::string_view command) {
       }
       size_t colon_pos = command.find(':');
       if (colon_pos == std::string_view::npos) {
+        LOG(ERROR) << "Invalid memory write format";
         return SendError("invalid memory write format");
       }
       std::string_view address = command.substr(0, comma_pos);
@@ -465,6 +471,7 @@ void GdbServer::ParseGdbCommand(std::string_view command) {
       }
       pos = command.find('=');
       if (pos == std::string_view::npos) {
+        LOG(ERROR) << "Invalid register write format";
         return SendError("invalid register write format");
       }
       std::string_view register_name = command.substr(0, pos);
@@ -491,6 +498,7 @@ void GdbServer::ParseGdbCommand(std::string_view command) {
       if (command == "vMustReplyEmpty") {
         return Respond("");
       }
+      LOG(ERROR) << "Invalid verbose command";
       return SendError("invalid verbose command");
 
     case 'z':
@@ -533,10 +541,12 @@ void GdbServer::GdbHalt() {
   auto status = core_debug_interfaces_[0]->Halt(
       generic::CoreDebugInterface::HaltReason::kUserRequest);
   if (!status.ok()) {
+    LOG(ERROR) << "Failed to halt core: " << status.message();
     return SendError(status.message());
   }
   status = core_debug_interfaces_[0]->Wait();
   if (!status.ok()) {
+    LOG(ERROR) << "Failed to wait for core to halt: " << status.message();
     return SendError(status.message());
   }
   Respond(absl::StrCat("T03"));
@@ -593,6 +603,8 @@ void GdbServer::GdbContinue(int thread_id, std::string_view command) {
   }
   auto run_status_res = core_debug_interfaces_[thread_index]->GetRunStatus();
   if (!run_status_res.ok()) {
+    LOG(ERROR) << "Failed to get run status for thread " << thread_id << ": "
+               << run_status_res.status().message();
     return SendError(run_status_res.status().message());
   }
   if (run_status_res.value() ==
@@ -601,21 +613,25 @@ void GdbServer::GdbContinue(int thread_id, std::string_view command) {
       uint64_t address;
       bool success = absl::SimpleHexAtoi(command, &address);
       if (!success) {
+        LOG(ERROR) << "Invalid address: " << command;
         return SendError("invalid address");
       }
       auto status =
           core_debug_interfaces_[thread_index]->WriteRegister("pc", address);
       if (!status.ok()) {
+        LOG(ERROR) << "Failed to write register pc: " << status.message();
         return SendError(status.message());
       }
     }
     auto status = core_debug_interfaces_[thread_index]->Run();
     if (!status.ok()) {
+      LOG(ERROR) << "Failed to run core: " << status.message();
       return SendError(status.message());
     }
     // Now wait for the core to halt.
     status = core_debug_interfaces_[thread_index]->Wait();
     if (!status.ok()) {
+      LOG(ERROR) << "Failed to wait for core to halt: " << status.message();
       return SendError(status.message());
     }
     // Get the halt reason.
@@ -820,6 +836,7 @@ void GdbServer::GdbReadMemory(std::string_view address_str,
   uint64_t address;
   bool success = absl::SimpleHexAtoi(address_str, &address);
   if (!success) {
+    LOG(ERROR) << "Invalid memory read format";
     if (error_message_supported_) {
       return SendError("invalid memory read format");
     }
@@ -828,12 +845,14 @@ void GdbServer::GdbReadMemory(std::string_view address_str,
   uint64_t length;
   success = absl::SimpleHexAtoi(length_str, &length);
   if (!success) {
+    LOG(ERROR) << "Invalid memory read format";
     if (error_message_supported_) {
       return SendError("invalid memory read format");
     }
     return Respond("E01");
   }
   if (length > sizeof(buffer_)) {
+    LOG(ERROR) << "Length exceeds buffer size of 4096";
     if (error_message_supported_) {
       return SendError("length exceeds buffer size of 4096");
     }
@@ -841,6 +860,7 @@ void GdbServer::GdbReadMemory(std::string_view address_str,
   }
   auto result = core_debug_interfaces_[0]->ReadMemory(address, buffer_, length);
   if (!result.ok()) {
+    LOG(ERROR) << "Failed to read memory: " << result.status().message();
     if (error_message_supported_) {
       return SendError(result.status().message());
     }
@@ -859,6 +879,7 @@ void GdbServer::GdbWriteMemory(std::string_view address_str,
   uint64_t address;
   bool success = absl::SimpleHexAtoi(address_str, &address);
   if (!success) {
+    LOG(ERROR) << "Invalid memory write format";
     if (error_message_supported_) {
       return SendError("invalid memory read format");
     }
@@ -867,12 +888,14 @@ void GdbServer::GdbWriteMemory(std::string_view address_str,
   uint64_t length;
   success = absl::SimpleHexAtoi(length_str, &length);
   if (!success) {
+    LOG(ERROR) << "Invalid memory write format";
     if (error_message_supported_) {
       return SendError("invalid memory read format");
     }
     return Respond("E01");
   }
   if (length > sizeof(buffer_)) {
+    LOG(ERROR) << "Length exceeds buffer size of 4096";
     if (error_message_supported_) {
       return SendError("length exceeds buffer size of 4096");
     }
@@ -889,6 +912,7 @@ void GdbServer::GdbWriteMemory(std::string_view address_str,
     buffer_[i] = value;
   }
   if (num_bytes != length) {
+    LOG(ERROR) << "Length does not match data size";
     if (error_message_supported_) {
       return SendError("length does not match data size");
     }
@@ -897,12 +921,14 @@ void GdbServer::GdbWriteMemory(std::string_view address_str,
   auto result =
       core_debug_interfaces_[0]->WriteMemory(address, buffer_, num_bytes);
   if (!result.ok()) {
+    LOG(ERROR) << "Failed to write memory: " << result.status().message();
     if (error_message_supported_) {
       return SendError(result.status().message());
     }
     return Respond("E01");
   }
   if (result.value() != length) {
+    LOG(ERROR) << "Length does not match number of bytes written";
     if (error_message_supported_) {
       return SendError("length does not match number of bytes written");
     }
@@ -923,6 +949,7 @@ void GdbServer::GdbReadGprRegisters(int thread_id) {
     auto result = core_debug_interfaces_[thread_index]->GetRegisterDataBuffer(
         register_name);
     if (!result.ok()) {
+      LOG(ERROR) << "Failed to read register: " << result.status().message();
       return SendError(result.status().message());
     }
     for (const auto& byte : result.value()->Get<uint8_t>()) {
@@ -937,6 +964,7 @@ void GdbServer::GdbWriteGprRegisters(int thread_id, std::string_view data) {
   for (int i = debug_info_.GetFirstGpr(); i <= debug_info_.GetLastGpr(); ++i) {
     auto it = debug_info_.debug_register_map().find(i);
     if (it == debug_info_.debug_register_map().end()) {
+      LOG(ERROR) << "Internal error - failed to find register";
       return SendError("Internal error - failed to find register");
     }
     const std::string& register_name = it->second;
@@ -944,6 +972,7 @@ void GdbServer::GdbWriteGprRegisters(int thread_id, std::string_view data) {
         register_name);
     for (auto& byte : result.value()->Get<uint8_t>()) {
       if (data.empty()) {
+        LOG(ERROR) << "Invalid data format";
         return SendError("Invalid data format");
       }
       std::string_view byte_str = data.substr(0, 2);
@@ -962,11 +991,13 @@ void GdbServer::GdbReadRegister(int thread_id,
   uint64_t register_number;
   bool success = absl::SimpleHexAtoi(register_number_str, &register_number);
   if (!success) {
+    LOG(ERROR) << "Invalid register number: " << register_number_str;
     return SendError(
         absl::StrCat("invalid register number: ", register_number_str));
   }
   auto it = debug_info_.debug_register_map().find(register_number);
   if (it == debug_info_.debug_register_map().end()) {
+    LOG(ERROR) << "Register not found: " << register_number;
     return SendError(absl::StrCat("Register not found: ", register_number));
   }
   const std::string& register_name = it->second;
@@ -980,6 +1011,7 @@ void GdbServer::GdbReadRegister(int thread_id,
     auto result =
         core_debug_interfaces_[thread_index]->ReadRegister(register_name);
     if (!result.ok()) {
+      LOG(ERROR) << "Failed to read register: " << result.status().message();
       return SendError(result.status().message());
     }
     uint64_t value = result.value();
@@ -993,6 +1025,7 @@ void GdbServer::GdbReadRegister(int thread_id,
     auto result = core_debug_interfaces_[thread_index]->GetRegisterDataBuffer(
         register_name);
     if (!result.ok()) {
+      LOG(ERROR) << "Failed to read register: " << result.status().message();
       return SendError(result.status().message());
     }
     std::string response;
@@ -1014,18 +1047,22 @@ void GdbServer::GdbWriteRegister(int thread_id,
   uint64_t register_number;
   bool success = absl::SimpleHexAtoi(register_number_str, &register_number);
   if (!success) {
+    LOG(ERROR) << "Invalid register number: " << register_number_str;
     return SendError(
         absl::StrCat("invalid register number: ", register_number_str));
     return;
   }
   auto it = debug_info_.debug_register_map().find(register_number);
   if (it == debug_info_.debug_register_map().end()) {
+    LOG(ERROR) << "Register not found: " << register_number;
     return SendError(absl::StrCat("Register not found: ", register_number));
   }
   const std::string& register_name = it->second;
   auto result = core_debug_interfaces_[thread_index]->GetRegisterDataBuffer(
       register_name);
   if (!result.ok()) {
+    LOG(ERROR) << "Failed to get register data buffer: "
+               << result.status().message();
     return SendError(result.status().message());
   }
   for (auto& byte : result.value()->Get<uint8_t>()) {
@@ -1134,13 +1171,15 @@ void GdbServer::GdbAddBreakpoint(char type, std::string_view address_str,
   uint64_t address;
   bool success = absl::SimpleHexAtoi(address_str, &address);
   if (!success) {
+    LOG(ERROR) << "Invalid breakpoint address: " << address_str;
     SendError("invalid breakpoint address");
     return;
   }
   size_t kind;
   switch (type) {
     default:
-      return SendError("invalid breakpoint type");
+      LOG(ERROR) << "Invalid breakpoint type: " << type;
+      return SendError(absl::StrFormat("invalid breakpoint type: %c", type));
     case '0': {  // Software breakpoint.
       auto status = core_debug_interfaces_[0]->SetSwBreakpoint(address);
       if (!status.ok()) {
@@ -1154,6 +1193,7 @@ void GdbServer::GdbAddBreakpoint(char type, std::string_view address_str,
     case '2': {  // Data watchpoint write only.
       bool success = absl::SimpleHexAtoi(kind_str, &kind);
       if (!success) {
+        LOG(ERROR) << "Invalid watchpoint kind: " << kind_str;
         return SendError("invalid watchpoint kind");
       }
       auto status = core_debug_interfaces_[0]->SetDataWatchpoint(
@@ -1169,6 +1209,7 @@ void GdbServer::GdbAddBreakpoint(char type, std::string_view address_str,
     case '3': {  // Data watchpoint read-only.
       bool success = absl::SimpleHexAtoi(kind_str, &kind);
       if (!success) {
+        LOG(ERROR) << "Invalid watchpoint kind: " << kind_str;
         return SendError("invalid watchpoint kind");
       }
       auto status = core_debug_interfaces_[0]->SetDataWatchpoint(
@@ -1185,6 +1226,7 @@ void GdbServer::GdbAddBreakpoint(char type, std::string_view address_str,
     case '4': {  // Data watchpoint read or write.
       bool success = absl::SimpleHexAtoi(kind_str, &kind);
       if (!success) {
+        LOG(ERROR) << "Invalid watchpoint kind: " << kind_str;
         SendError("invalid watchpoint kind");
         return;
       }
@@ -1209,18 +1251,22 @@ void GdbServer::GdbRemoveBreakpoint(char type, std::string_view address_str,
   uint64_t address;
   bool success = absl::SimpleHexAtoi(address_str, &address);
   if (!success) {
+    LOG(ERROR) << "Invalid breakpoint address: " << address_str;
     SendError("invalid breakpoint address");
     return;
   }
   switch (type) {
     default:
-      return SendError("invalid breakpoint type");
+      LOG(ERROR) << "Invalid breakpoint type: " << type;
+      return SendError(absl::StrFormat("invalid breakpoint type: %c", type));
     case '0': {  // Software breakpoint.
       auto status = core_debug_interfaces_[0]->ClearSwBreakpoint(address);
       if (!status.ok()) {
         if (absl::IsUnimplemented(status)) {
           return Respond("");
         }
+        LOG(ERROR) << "Failed to clear software breakpoint: "
+                   << status.message();
         return SendError(status.message());
       }
       return Respond("OK");
@@ -1229,6 +1275,7 @@ void GdbServer::GdbRemoveBreakpoint(char type, std::string_view address_str,
       auto status = core_debug_interfaces_[0]->ClearDataWatchpoint(
           address, generic::AccessType::kStore);
       if (!status.ok()) {
+        LOG(ERROR) << "Failed to clear data watchpoint: " << status.message();
         if (absl::IsUnimplemented(status)) {
           return Respond("");
         }
@@ -1240,6 +1287,7 @@ void GdbServer::GdbRemoveBreakpoint(char type, std::string_view address_str,
       auto status = core_debug_interfaces_[0]->ClearDataWatchpoint(
           address, generic::AccessType::kLoad);
       if (!status.ok()) {
+        LOG(ERROR) << "Failed to clear data watchpoint: " << status.message();
         if (absl::IsUnimplemented(status)) {
           return Respond("");
         }
@@ -1251,6 +1299,7 @@ void GdbServer::GdbRemoveBreakpoint(char type, std::string_view address_str,
       auto status = core_debug_interfaces_[0]->ClearDataWatchpoint(
           address, generic::AccessType::kLoadStore);
       if (!status.ok()) {
+        LOG(ERROR) << "Failed to clear data watchpoint: " << status.message();
         if (absl::IsUnimplemented(status)) {
           return Respond("");
         }
@@ -1320,12 +1369,14 @@ void GdbServer::GdbXferReadTarget(std::string_view offset_str,
   uint64_t offset;
   bool success = absl::SimpleHexAtoi(offset_str, &offset);
   if (!success) {
+    LOG(ERROR) << "Invalid offset: " << offset_str;
     return SendError("invalid offset");
   }
   uint64_t length;
   success = absl::SimpleHexAtoi(length_str, &length);
   // Subtract 5 from the length to account for the packet framing.
   if (!success) {
+    LOG(ERROR) << "Invalid length: " << length_str;
     return SendError("invalid length");
   }
   if (offset >= debug_info_.GetGdbTargetXml().size()) {
