@@ -26,6 +26,7 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "elfio/elf_types.hpp"
+#include "elfio/elfio_section.hpp"
 #include "elfio/elfio_segment.hpp"
 #include "elfio/elfio_symbols.hpp"
 #include "mpact/sim/generic/core_debug_interface.h"
@@ -42,9 +43,8 @@ ElfProgramLoader::ElfProgramLoader(util::MemoryInterface* code_memory,
                                    util::MemoryInterface* data_memory)
     : code_memory_(code_memory), data_memory_(data_memory) {}
 
-ElfProgramLoader::ElfProgramLoader(
-    const std::vector<MemoryDescriptor>& memories)
-    : memories_(&memories) {}
+ElfProgramLoader::ElfProgramLoader(std::vector<MemoryDescriptor> memories)
+    : memories_(std::move(memories)) {}
 
 ElfProgramLoader::ElfProgramLoader(util::MemoryInterface* memory)
     : code_memory_(memory), data_memory_(memory) {}
@@ -57,6 +57,25 @@ ElfProgramLoader::~ElfProgramLoader() {
     delete symtab;
   }
   symbol_accessors_.clear();
+}
+
+int ElfProgramLoader::GetSegmentIndex(int section_index) const {
+  if (section_index < 0 || section_index >= elf_reader_.sections.size()) {
+    return -1;
+  }
+  const ELFIO::section* section = elf_reader_.sections[section_index];
+  auto section_address = section->get_address();
+  for (int i = 0; i < elf_reader_.segments.size(); ++i) {
+    auto const& segment = elf_reader_.segments[i];
+    if (segment->get_type() == ELFIO::PT_LOAD) {
+      if (section_address >= segment->get_virtual_address() &&
+          section_address <
+              segment->get_virtual_address() + segment->get_memory_size()) {
+        return i;
+      }
+    }
+  }
+  return -1;
 }
 
 // Only load the program into the elf reader so that symbols can be looked up.
@@ -97,6 +116,21 @@ absl::StatusOr<uint64_t> ElfProgramLoader::LoadSymbols(
     for (unsigned i = 0; i < symtab->get_symbols_num(); i++) {
       symtab->get_symbol(i, name, value, size, bind, type, section_index,
                          other);
+      if (!memories_.empty()) {
+        // If there are memory descriptors, we need to figure out how to modify
+        // the symbol address before we store it.
+        int segment_index = GetSegmentIndex(section_index);
+        if (segment_index >= 0) {
+          for (auto& memory : memories_) {
+            if (memory.predicate_fcn(*elf_reader_.segments[segment_index])) {
+              if (memory.address_fcn) {
+                value = memory.address_fcn(value);
+              }
+              break;
+            }
+          }
+        }
+      }
       if (type == ELFIO::STT_FUNC) {
         fcn_symbol_map_.emplace(value, name);
         function_range_map_.insert(
@@ -137,7 +171,7 @@ absl::StatusOr<uint64_t> ElfProgramLoader::LoadProgram(
       auto size = segment->get_file_size();
       auto* db = db_factory.Allocate(size);
       std::memcpy(db->raw_ptr(), segment->get_data(), size);
-      if (memories_ == nullptr) {
+      if (memories_.empty()) {
         if (segment->get_flags() &
             ELFIO::PF_X) {  // Executable, so write to code memory.
           code_memory_->Store(dest_addr, db);
@@ -145,7 +179,7 @@ absl::StatusOr<uint64_t> ElfProgramLoader::LoadProgram(
           data_memory_->Store(dest_addr, db);
         }
       } else {
-        for (auto& memory : *memories_) {
+        for (auto& memory : memories_) {
           if (memory.predicate_fcn(*segment)) {
             if (memory.address_fcn) {
               memory.memory->Store(memory.address_fcn(dest_addr), db);
@@ -185,6 +219,23 @@ absl::StatusOr<std::pair<uint64_t, uint64_t>> ElfProgramLoader::GetSymbol(
   for (auto* symtab : symbol_accessors_) {
     if (symtab->get_symbol(name, value, size, bind, type, section_index,
                            other)) {
+      if (!memories_.empty()) {
+        // If there are memory descriptors, we need to figure out how to modify
+        // the symbol address before we store it.
+        int segment_index = GetSegmentIndex(section_index);
+        if (segment_index >= 0) {
+          for (auto& memory : memories_) {
+            auto const& segment = elf_reader_.segments[segment_index];
+            if (memory.predicate_fcn && memory.predicate_fcn(*segment)) {
+              if (memory.address_fcn) {
+                value = memory.address_fcn(value);
+                size = memory.address_fcn(size);
+              }
+              break;
+            }
+          }
+        }
+      }
       return std::make_pair(static_cast<uint64_t>(value),
                             static_cast<uint64_t>(size));
     }

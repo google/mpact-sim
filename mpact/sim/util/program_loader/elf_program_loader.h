@@ -79,7 +79,7 @@ class ElfProgramLoader : public ProgramLoaderInterface {
  public:
   ElfProgramLoader(util::MemoryInterface* code_memory,
                    util::MemoryInterface* data_memory);
-  ElfProgramLoader(const std::vector<MemoryDescriptor>& memories);
+  ElfProgramLoader(std::vector<MemoryDescriptor> memories);
   explicit ElfProgramLoader(util::MemoryInterface* memory);
   explicit ElfProgramLoader(generic::CoreDebugInterface* dbg_if);
   ElfProgramLoader() = delete;
@@ -105,7 +105,8 @@ class ElfProgramLoader : public ProgramLoaderInterface {
   const ELFIO::elfio* elf_reader() const { return &elf_reader_; }
 
  private:
-  const std::vector<MemoryDescriptor>* memories_ = nullptr;
+  int GetSegmentIndex(int section_index) const;
+  const std::vector<MemoryDescriptor> memories_;
   bool loaded_ = false;
   ELFIO::elfio elf_reader_;
   util::MemoryInterface* code_memory_ = nullptr;
