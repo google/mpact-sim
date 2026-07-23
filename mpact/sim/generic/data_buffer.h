@@ -151,14 +151,14 @@ class DataBuffer : public ReferenceCount {
   // Set entry index in the DataBuffer instance to the given value assuming
   // it contains entries of type ElementType.
   template <typename ElementType>
-  inline void Set(int index, ElementType value) {
+  void Set(int index, ElementType value) {
     ABSL_HARDENING_ASSERT((index + 1) * sizeof(ElementType) <= size_);
     reinterpret_cast<ElementType*>(raw_ptr_)[index] = value;
   }
 
   // Set entry using a span.
   template <typename ElementType>
-  inline void Set(absl::Span<const ElementType> values) {
+  void Set(absl::Span<const ElementType> values) {
     ABSL_HARDENING_ASSERT(values.size() * sizeof(ElementType) <= size_);
     auto* data_ptr = reinterpret_cast<ElementType*>(raw_ptr_);
     for (auto const& value : values) {
@@ -168,7 +168,7 @@ class DataBuffer : public ReferenceCount {
 
   // Combined Set element and Submit.
   template <typename ElementType>
-  inline void SetSubmit(int index, ElementType value) {
+  void SetSubmit(int index, ElementType value) {
     ABSL_HARDENING_ASSERT((index + 1) * sizeof(ElementType) <= size_);
     reinterpret_cast<ElementType*>(raw_ptr_)[index] = value;
     Submit(latency_);
@@ -176,7 +176,7 @@ class DataBuffer : public ReferenceCount {
 
   // Combined Set span and Submit.
   template <typename ElementType>
-  inline void SetSubmit(absl::Span<const ElementType> values) {
+  void SetSubmit(absl::Span<const ElementType> values) {
     ABSL_HARDENING_ASSERT(values.size() * sizeof(ElementType) <= size_);
     auto* data_ptr = reinterpret_cast<ElementType*>(raw_ptr_);
     for (auto const& value : values) {
@@ -188,20 +188,19 @@ class DataBuffer : public ReferenceCount {
   // Get the value of entry index in the DataBuffer instance assuming
   // it contains entries of type ElementType.
   template <typename ElementType>
-  inline ElementType Get(unsigned index) const {
+  ElementType Get(unsigned index) const {
     ABSL_HARDENING_ASSERT((index + 1) * sizeof(ElementType) <= size_);
     return reinterpret_cast<ElementType*>(raw_ptr_)[index];
   }
 
   template <int N>
-  inline absl::Span<typename internal::ElementTypeSelector<N>::type> Get()
-      const {
+  absl::Span<typename internal::ElementTypeSelector<N>::type> Get() const {
     return Get<internal::ElementTypeSelector<N>::type>();
   }
 
   // Return the data buffer as a span of elements of type ElementType.
   template <typename ElementType>
-  inline absl::Span<ElementType> Get() const {
+  absl::Span<ElementType> Get() const {
     return absl::MakeSpan(reinterpret_cast<ElementType*>(raw_ptr_),
                           size<ElementType>());
   }
@@ -209,27 +208,23 @@ class DataBuffer : public ReferenceCount {
   // Copies the content of the data buffer to the buffer stored at the
   // given location. The caller is responsible for ensuring that the
   // target buffer is of sufficient size.
-  inline void CopyTo(uint8_t* data) const {
-    std::memcpy(data, raw_ptr_, size_);
-  }
+  void CopyTo(uint8_t* data) const { std::memcpy(data, raw_ptr_, size_); }
 
   // Copies the content of the data stored at the given location into
   // the data buffer. The caller is responsible for ensuring that the
   // source buffer is of sufficient size.
-  inline void CopyFrom(const uint8_t* data) {
-    std::memcpy(raw_ptr_, data, size_);
-  }
+  void CopyFrom(const uint8_t* data) { std::memcpy(raw_ptr_, data, size_); }
 
   // Copies the data from the given data buffer. The sizes have to be
   // identical.
-  inline void CopyFrom(const DataBuffer* src_db) {
+  void CopyFrom(const DataBuffer* src_db) {
     ABSL_HARDENING_ASSERT(size_ == src_db->size_);
     std::memcpy(raw_ptr_, src_db->raw_ptr_, size_);
   }
 
   // Return the size as number of elements of type ElementType.
   template <typename ElementType>
-  inline int size() const {
+  int size() const {
     return size_ / sizeof(ElementType);
   }
 
@@ -244,24 +239,22 @@ class DataBuffer : public ReferenceCount {
   // cycles.
   void Submit(int latency);
 
-  inline void Submit() { Submit(latency_); }
+  void Submit() { Submit(latency_); }
 
   // Sets the latency for the update of the DataBufferDestination object
   // with this DataBuffer instance.
-  inline void set_latency(int latency) { latency_ = latency; }
+  void set_latency(int latency) { latency_ = latency; }
 
   // Returns the latency value
-  inline int latency() { return latency_; }
+  int latency() { return latency_; }
 
   // Sets the destination state object that will receive the data buffer upon
   // Submit(0)/0 latency, or after latency cycles from a "delay line".
-  inline void set_destination(DataBufferDestination* dest) {
-    destination_ = dest;
-  }
+  void set_destination(DataBufferDestination* dest) { destination_ = dest; }
 
   // Sets the delay line to use for this data buffer when it's submitted with
   // a non-zero latency.
-  inline void set_delay_line(DataBufferDelayLine* delay_line) {
+  void set_delay_line(DataBufferDelayLine* delay_line) {
     delay_line_ = delay_line;
   }
   // Returns the raw byte pointer to the data buffer storage.

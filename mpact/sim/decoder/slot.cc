@@ -1367,6 +1367,7 @@ std::string Slot::GenerateClassDeclaration(
 std::string Slot::GenerateClassDefinition(absl::string_view encoding_type) {
   if (!is_referenced()) return "";
   std::string class_name = pascal_name() + "Slot";
+  std::string slot_enum_name = absl::StrCat("SlotEnum::k", pascal_name());
   std::string output;
   // Constructor.
   absl::StrAppend(
@@ -1388,6 +1389,9 @@ std::string Slot::GenerateClassDefinition(absl::string_view encoding_type) {
       "  int indx = static_cast<int>(opcode);\n"
       "  auto &inst_info = instruction_info_.at(indx);\n"
       "  Instruction *inst = new Instruction(address, arch_state_);\n"
+      "  inst->set_slot(static_cast<int>(",
+      slot_enum_name,
+      "));\n"
       "  inst->set_size(inst_info.instruction_size);\n"
       "  inst->set_opcode(static_cast<int>(opcode));\n"
       "  inst->set_semantic_function(inst_info.semfunc[0]);\n"

@@ -141,6 +141,8 @@ class Instruction : public ReferenceCount {
   void set_semantic_function(F callable) {
     semantic_fcn_ = SemanticFunction(callable);
   }
+  int slot() const { return slot_; }
+  void set_slot(int slot) { slot_ = slot; }
 
   // PredicateOperand interface used for those ISAs that implement
   // instruction predicates.
@@ -158,18 +160,18 @@ class Instruction : public ReferenceCount {
   int DestinationsSize() const;
 
   // Hold ResourceOperand interfaces for the instruction.
-  inline std::vector<ResourceOperandInterface*>& ResourceHold() {
+  std::vector<ResourceOperandInterface*>& ResourceHold() {
     return resource_hold_;
   }
-  inline void AppendResourceHold(ResourceOperandInterface* op) {
+  void AppendResourceHold(ResourceOperandInterface* op) {
     resource_hold_.push_back(op);
   }
 
   // Acquire ResourceOperand interfaces for the instruction.
-  inline std::vector<ResourceOperandInterface*>& ResourceAcquire() {
+  std::vector<ResourceOperandInterface*>& ResourceAcquire() {
     return resource_acquire_;
   }
-  inline void AppendResourceAcquire(ResourceOperandInterface* op) {
+  void AppendResourceAcquire(ResourceOperandInterface* op) {
     resource_acquire_.push_back(op);
   }
 
@@ -205,6 +207,8 @@ class Instruction : public ReferenceCount {
   uint64_t address_;
   // Integer value of the opcode enum.
   int opcode_;
+  // Integer value of slot enum.
+  int slot_ = -1;
   // Text string of disassembly of the instruction.
   std::string disasm_string_;
   // Optional integer attribute array. This allows the decoder to create and
