@@ -98,10 +98,6 @@ class ElfProgramLoader : public ProgramLoaderInterface {
   absl::StatusOr<std::string> GetFunctionName(uint64_t address) const;
   // If the GNU stack size program header exists, return the memory size.
   absl::StatusOr<uint64_t> GetStackSize() const;
-
-  void set_text_size_scale(uint64_t scale) { text_size_scale_ = scale; }
-  void set_data_size_scale(uint64_t scale) { data_size_scale_ = scale; }
-
   const ELFIO::elfio* elf_reader() const { return &elf_reader_; }
 
  private:
@@ -117,8 +113,6 @@ class ElfProgramLoader : public ProgramLoaderInterface {
   std::map<AddressRange, std::string, AddressRangeComp> function_range_map_;
   uint64_t has_stack_size_ = false;
   uint64_t stack_size_ = 0;
-  uint64_t text_size_scale_ = 1;
-  uint64_t data_size_scale_ = 1;
 };
 
 }  // namespace util

@@ -125,6 +125,7 @@ absl::StatusOr<uint64_t> ElfProgramLoader::LoadSymbols(
             if (memory.predicate_fcn(*elf_reader_.segments[segment_index])) {
               if (memory.address_fcn) {
                 value = memory.address_fcn(value);
+                size = memory.address_fcn(size);
               }
               break;
             }
@@ -134,7 +135,7 @@ absl::StatusOr<uint64_t> ElfProgramLoader::LoadSymbols(
       if (type == ELFIO::STT_FUNC) {
         fcn_symbol_map_.emplace(value, name);
         function_range_map_.insert(
-            std::make_pair(AddressRange(value, size / text_size_scale_), name));
+            std::make_pair(AddressRange(value, size), name));
       }
     }
   }
