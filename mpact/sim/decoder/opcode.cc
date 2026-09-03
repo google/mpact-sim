@@ -71,6 +71,12 @@ DestinationOperand* Opcode::GetDestOp(absl::string_view op_name) {
   return nullptr;
 }
 
+void Opcode::ClearDestLatencies() {
+  for (auto* dest_op : dest_op_vec_) {
+    dest_op->ClearExpression();
+  }
+}
+
 bool Opcode::ValidateDestLatencies(
     const std::function<bool(int)>& validator) const {
   for (auto const* dest_op : dest_op_vec_) {

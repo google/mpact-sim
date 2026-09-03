@@ -401,7 +401,11 @@ opcode_attribute_list
 // An opcode attribute is either a disassembly specifier or a semfunc specifier.
 
 opcode_attribute
-  : disasm_spec | semfunc_spec | resource_spec | instruction_attribute_spec
+  : disasm_spec
+  | semfunc_spec
+  | resource_spec
+  | instruction_attribute_spec
+  | latency_spec
   ;
 
 // The disassembly specifier lists a sequence of format strings. Each formatted
@@ -411,6 +415,20 @@ opcode_attribute
 // strings are concatenated with no explicit width or justification applied.
 disasm_spec
   : DISASM ':' STRING_LITERAL ( ',' STRING_LITERAL )*
+  ;
+
+// The latency specifier lists the destination operands and their latencies.
+latency_spec
+  : LATENCY ':' dest_operand_latency_list
+  ;
+
+dest_operand_latency_list
+  : dest_operand_with_latency (',' dest_operand_with_latency)*
+  ;
+
+dest_operand_with_latency
+  : (op_name=IDENT | '[' array_dest=IDENT ']')
+    ('(' (expression | wildcard='*' ) ')')?
   ;
 
 // The semantic function specifier lists a sequence of strings that in C++ can

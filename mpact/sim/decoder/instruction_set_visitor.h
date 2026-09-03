@@ -132,6 +132,8 @@ class InstructionSetVisitor {
   void VisitOpcodeAttributes(OpcodeAttributeListCtx* ctx, Instruction* inst,
                              Slot* slot);
   void VisitSemfuncSpec(SemfuncSpecCtx* semfunc_spec, Instruction* inst);
+  void VisitLatencySpec(LatencySpecCtx* latency_spec, Slot* slot,
+                        Instruction* inst);
   void VisitResourceDetails(ResourceDetailsCtx* ctx, Instruction* inst,
                             Slot* slot);
   std::optional<ResourceReference*> ProcessResourceReference(

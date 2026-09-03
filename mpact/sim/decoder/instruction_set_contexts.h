@@ -49,6 +49,7 @@ using OpcodeAttributeListCtx =
     InstructionSetParser::Opcode_attribute_listContext;
 using InstructionAttributeListCtx =
     InstructionSetParser::Instruction_attribute_listContext;
+using LatencySpecCtx = InstructionSetParser::Latency_specContext;
 using SemfuncSpecCtx = InstructionSetParser::Semfunc_specContext;
 using ResourceItemCtx = InstructionSetParser::Resource_itemContext;
 using ResourceDetailsCtx = InstructionSetParser::Resource_detailsContext;

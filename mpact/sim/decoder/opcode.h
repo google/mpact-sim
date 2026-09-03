@@ -80,6 +80,16 @@ class DestinationOperand {
     expression_ = nullptr;
   }
 
+  void SetExpression(TemplateExpression* expression) {
+    if (expression_ != nullptr) delete expression_;
+    expression_ = expression;
+  }
+
+  void ClearExpression() {
+    delete expression_;
+    expression_ = nullptr;
+  }
+
   const std::string& name() const { return name_; }
   const std::string& pascal_case_name() const { return pascal_case_name_; }
   TemplateExpression* expression() const { return expression_; }
@@ -238,6 +248,8 @@ class Opcode {
   // Checks destination latencies with the given function. Returns true if all
   // comply.
   bool ValidateDestLatencies(const std::function<bool(int)>& validator) const;
+  // Clear destination latencies.
+  void ClearDestLatencies();
   int instruction_size() const { return instruction_size_; }
   void set_instruction_size(int val) { instruction_size_ = val; }
   Opcode* child() const { return child_; }

@@ -1214,12 +1214,11 @@ void InstructionSetVisitor::VisitOpcodeAttributes(OpcodeAttributeListCtx* ctx,
   bool has_semfunc = false;
   bool has_resources = false;
   bool has_attributes = false;
+  bool has_latency = false;
   // Visit the opcode attributes.
   for (auto* attribute_ctx : ctx->opcode_attribute()) {
     // Process any disassembly specifications.
     if (attribute_ctx->disasm_spec() != nullptr) {
-      // In case of override, need to clear any disasm info in instruction.
-      inst->ClearDisasmFormat();
       // Signal error if there is more than one disassembly spec.
       if (has_disasm) {
         error_listener()->semanticError(
@@ -1228,6 +1227,8 @@ void InstructionSetVisitor::VisitOpcodeAttributes(OpcodeAttributeListCtx* ctx,
         continue;
       }
       has_disasm = true;
+      // In case of override, need to clear any disasm info in instruction.
+      inst->ClearDisasmFormat();
       for (auto* disasm_fmt : attribute_ctx->disasm_spec()->STRING_LITERAL()) {
         std::string format = disasm_fmt->getText();
         // Trim the double quotes.
@@ -1247,8 +1248,6 @@ void InstructionSetVisitor::VisitOpcodeAttributes(OpcodeAttributeListCtx* ctx,
 
     // Process the semantic function specification.
     if (attribute_ctx->semfunc_spec() != nullptr) {
-      // In case of override, need to clear the semantic function string.
-      inst->ClearSemfuncCodeString();
       // Signal error if there is more than one semantic function spec.
       if (has_semfunc) {
         error_listener()->semanticError(
@@ -1257,14 +1256,14 @@ void InstructionSetVisitor::VisitOpcodeAttributes(OpcodeAttributeListCtx* ctx,
         continue;
       }
       has_semfunc = true;
+      // In case of override, need to clear the semantic function string.
+      inst->ClearSemfuncCodeString();
       VisitSemfuncSpec(attribute_ctx->semfunc_spec(), inst);
       continue;
     }
 
     // Process resource specification.
     if (attribute_ctx->resource_spec() != nullptr) {
-      // In case of override, need to clear the resource specifications.
-      inst->ClearResourceSpecs();
       // Signal error if there is more than one resource specification.
       if (has_resources) {
         error_listener()->semanticError(
@@ -1273,6 +1272,8 @@ void InstructionSetVisitor::VisitOpcodeAttributes(OpcodeAttributeListCtx* ctx,
         continue;
       }
       has_resources = true;
+      // In case of override, need to clear the resource specifications.
+      inst->ClearResourceSpecs();
       VisitResourceDetails(attribute_ctx->resource_spec()->resource_details(),
                            inst, slot);
       continue;
@@ -1280,8 +1281,6 @@ void InstructionSetVisitor::VisitOpcodeAttributes(OpcodeAttributeListCtx* ctx,
 
     // Process instruction attribute specification.
     if (attribute_ctx->instruction_attribute_spec() != nullptr) {
-      // In case of override, need to clear the attribute specification.
-      inst->ClearAttributeSpecs();
       // Signal error if there is more than one attribute specification.
       if (has_attributes) {
         error_listener()->semanticError(
@@ -1289,10 +1288,25 @@ void InstructionSetVisitor::VisitOpcodeAttributes(OpcodeAttributeListCtx* ctx,
             attribute_ctx->start, "Multiple attribute specifications");
         continue;
       }
+      // In case of override, need to clear the attribute specification.
+      inst->ClearAttributeSpecs();
       has_attributes = true;
       auto attr_list_ctx = attribute_ctx->instruction_attribute_spec()
                                ->instruction_attribute_list();
       VisitInstructionAttributeList(attr_list_ctx, slot, inst);
+      continue;
+    }
+
+    if (attribute_ctx->latency_spec() != nullptr) {
+      // Signal error if there is more than one latency specification.
+      if (has_latency) {
+        error_listener()->semanticError(
+            file_names_[context_file_map_.at(slot->ctx())],
+            attribute_ctx->start, "Multiple latency specifications");
+        continue;
+      }
+      has_latency = true;
+      VisitLatencySpec(attribute_ctx->latency_spec(), slot, inst);
       continue;
     }
 
@@ -1348,6 +1362,42 @@ void InstructionSetVisitor::VisitInstructionAttributeList(
     delete expr;
   }
   attributes.clear();
+}
+
+void InstructionSetVisitor::VisitLatencySpec(LatencySpecCtx* latency_spec,
+                                             Slot* slot, Instruction* inst) {
+  for (auto* dest_op_with_latency :
+       latency_spec->dest_operand_latency_list()->dest_operand_with_latency()) {
+    std::string name;
+    if (dest_op_with_latency->op_name != nullptr) {
+      name = dest_op_with_latency->op_name->getText();
+    } else {
+      name = dest_op_with_latency->array_dest->getText();
+    }
+    // Make sure the destination operand exists.
+    DestinationOperand* dest_op = inst->GetDestOp(name);
+    if (dest_op == nullptr) {
+      error_listener()->semanticError(
+          file_names_[context_file_map_.at(slot->ctx())],
+          dest_op_with_latency->start,
+          absl::StrCat("Unknown destination operand '", name, "'"));
+      continue;
+    }
+    dest_op->ClearExpression();
+    if (dest_op_with_latency->expression() != nullptr) {
+      context_file_map_.insert({dest_op_with_latency->expression(),
+                                context_file_map_.at(slot->ctx())});
+      auto* latency_expression =
+          VisitExpression(dest_op_with_latency->expression(), slot, inst);
+      dest_op->SetExpression(latency_expression);
+    } else if (dest_op_with_latency->wildcard == nullptr) {
+      if (slot->default_latency() != nullptr) {
+        dest_op->SetExpression(slot->default_latency()->DeepCopy());
+      } else {
+        dest_op->SetExpression(new TemplateConstant(1));
+      }
+    }
+  }
 }
 
 void InstructionSetVisitor::VisitSemfuncSpec(SemfuncSpecCtx* semfunc_spec,

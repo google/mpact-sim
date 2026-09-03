@@ -65,7 +65,7 @@ class SimpleResourceOperand : public ResourceOperandInterface {
 
   // If the latency is 0 release immediately, otherwise, add the resource set
   // to the resource set delay line for release after 'latency' cycles.
-  inline void Release(int latency) {
+  void Release(int latency) {
     if (latency == 0) {
       resource_set_->Release();
       return;
@@ -74,7 +74,7 @@ class SimpleResourceOperand : public ResourceOperandInterface {
   }
 
   // Uses latency_.
-  inline void Release() { Release(latency_); }
+  void Release() { Release(latency_); }
 
   bool IsFree() override { return resource_set_->IsFree(); }
 

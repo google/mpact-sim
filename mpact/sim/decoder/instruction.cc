@@ -137,7 +137,9 @@ absl::StatusOr<Instruction*> Instruction::CreateDerivedInstruction(
 
   // Instruction attributes.
   for (auto const& [attr_name, expr_ptr] : attribute_map_) {
-    auto result = expr_ptr->Evaluate(args);
+    auto result = (expr_ptr != nullptr)
+                      ? expr_ptr->Evaluate(args)
+                      : absl::InternalError("Null expression");
     if (result.ok()) {
       new_slot->AddAttributeName(attr_name);
       new_inst->AddInstructionAttribute(attr_name, result.value());
