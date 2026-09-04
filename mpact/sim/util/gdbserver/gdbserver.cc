@@ -223,6 +223,15 @@ bool GdbServer::Connect(int port) {
         Terminate();
         return false;
       }
+      // Check for possible buffer overflow allowing for the extra characters
+      // for the checksum.
+      if (buffer_pos >= sizeof(buffer_) - 4) {
+        LOG(ERROR) << absl::StrFormat(
+            "Failed to receive command on port %d - buffer overflow", port);
+        good_ = false;
+        Terminate();
+        return false;
+      }
       buffer_[buffer_pos++] = val;
     } while (val != '#');
     // Next read the checksum.
