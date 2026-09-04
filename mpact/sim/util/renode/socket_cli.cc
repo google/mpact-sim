@@ -63,7 +63,8 @@ SocketCLI::SocketCLI(int port, DebugCommandShellInterface& dbg_shell,
   }
   sockaddr_in server_address_int;
   server_address_int.sin_family = AF_INET;
-  server_address_int.sin_addr.s_addr = INADDR_ANY;
+  // Restricting to localhost only.
+  server_address_int.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
   server_address_int.sin_port = htons(port);
   std::memset(&server_address_int.sin_zero, 0,
               sizeof(server_address_int.sin_zero));
