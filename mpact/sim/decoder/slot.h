@@ -265,7 +265,8 @@ class Slot {
   absl::btree_map<std::string, IdentListCtx*> resource_array_ref_map_;
   // Default instruction attributes.
   absl::btree_map<std::string, TemplateExpression*> attribute_map_;
-  absl::btree_set<std::string> attribute_names_;
+  // We are using a global set of attritube names so make this static.
+  static absl::btree_set<std::string> attribute_names_;
 };
 
 }  // namespace instruction_set

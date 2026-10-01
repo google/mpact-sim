@@ -134,6 +134,8 @@ static std::string ExpandExpression(const FormatInfo& format,
                           : "))");
 }
 
+absl::btree_set<std::string> Slot::attribute_names_;
+
 Slot::Slot(absl::string_view name, InstructionSet* instruction_set,
            bool is_templated, SlotDeclCtx* ctx, unsigned generator_version)
     : instruction_set_(instruction_set),
