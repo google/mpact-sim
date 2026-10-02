@@ -835,6 +835,9 @@ void InstructionSetVisitor::VisitConstAndDefaultDecls(ConstAndDefaultCtx* ctx,
   if (ctx->SIZE() != nullptr) {  // Default size.
     int value = std::stoi(ctx->NUMBER()->getText(), nullptr, 0);
     slot->set_default_instruction_size(value);
+    if (slot->default_instruction() != nullptr) {
+      slot->default_instruction()->opcode()->set_instruction_size(value);
+    }
     return;
   }
   if (ctx->LATENCY() != nullptr) {  // Default latency.
@@ -876,6 +879,8 @@ void InstructionSetVisitor::VisitConstAndDefaultDecls(ConstAndDefaultCtx* ctx,
     }
     auto* default_instruction = new Instruction(
         slot->instruction_set()->opcode_factory()->CreateDefaultOpcode(), slot);
+    default_instruction->opcode()->set_instruction_size(
+        slot->default_instruction_size());
     bool has_disasm = false;
     bool has_semfunc = false;
     for (auto* attribute : ctx->opcode_attribute_list()->opcode_attribute()) {

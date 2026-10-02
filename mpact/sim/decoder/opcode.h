@@ -276,7 +276,7 @@ class Opcode {
 
  private:
   Opcode(absl::string_view name, int value);
-  int instruction_size_;
+  int instruction_size_ = 0;
   Opcode* child_ = nullptr;
   Opcode* parent_ = nullptr;
   std::string predicate_op_name_;

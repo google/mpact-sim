@@ -1284,7 +1284,10 @@ std::string Slot::CreateFuncGetterGlobalArray(absl::string_view encoding_type) {
       GenerateResourceSetter(default_instruction_, encoding_type), ",\n",
       "    ", GenerateAttributeSetter(default_instruction_), ",\n",
       "    SemFuncSetter{", default_instruction_->semfunc_code_string(), "}, ",
-      default_instruction_->opcode()->instruction_size(), "}),\n");
+      default_instruction_->opcode()->instruction_size() == 0
+          ? default_instruction_size()
+          : default_instruction_->opcode()->instruction_size(),
+      "}),\n");
   for (auto const& [unused, inst_ptr] : instruction_map_) {
     auto* instruction = inst_ptr;
     std::string opcode_name = instruction->opcode()->pascal_name();
