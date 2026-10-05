@@ -431,4 +431,43 @@ TEST_F(TaggedFlatDemandMemoryTest, ClearTags) {
   absl::RemoveLogSink(&log_sink);
 }
 
+TEST_F(TaggedFlatDemandMemoryTest, TagOnlyStoreAndLoad) {
+  for (unsigned granule : {8u, 16u}) {
+    auto mem = std::make_unique<TaggedFlatDemandMemory>(granule);
+    DataBuffer* st_data_db =
+        arch_state_->db_factory()->Allocate<uint8_t>(granule * 4);
+    DataBuffer* ld_data_db =
+        arch_state_->db_factory()->Allocate<uint8_t>(granule * 4);
+    DataBuffer* st_tag_db = arch_state_->db_factory()->Allocate<uint8_t>(4);
+    DataBuffer* ld_tag_db = arch_state_->db_factory()->Allocate<uint8_t>(4);
+    ld_data_db->set_latency(0);
+    ld_tag_db->set_latency(0);
+
+    for (int i = 0; i < st_data_db->size<uint8_t>(); i++) {
+      st_data_db->Set<uint8_t>(i, static_cast<uint8_t>(0xa0 + i));
+    }
+    mem->Store(0x1000, st_data_db);
+
+    for (int i = 0; i < 4; i++) {
+      st_tag_db->Set<uint8_t>(i, i & 1);
+    }
+    mem->Store(0x1000, nullptr, st_tag_db);
+    mem->Load(0x1000, nullptr, ld_tag_db, nullptr, nullptr);
+    for (int i = 0; i < 4; i++) {
+      EXPECT_EQ(ld_tag_db->Get<uint8_t>(i), i & 1)
+          << "granule=" << granule << " i=" << i;
+    }
+
+    // Verify underlying data was not modified by the tag-only store.
+    mem->Load(0x1000, ld_data_db, nullptr, nullptr);
+    EXPECT_THAT(ld_data_db->Get<uint8_t>(),
+                testing::ElementsAreArray(st_data_db->Get<uint8_t>()));
+
+    st_data_db->DecRef();
+    ld_data_db->DecRef();
+    st_tag_db->DecRef();
+    ld_tag_db->DecRef();
+  }
+}
+
 }  // namespace

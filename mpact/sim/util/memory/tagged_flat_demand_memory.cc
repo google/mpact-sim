@@ -78,8 +78,10 @@ void TaggedFlatDemandMemory::Load(uint64_t address, DataBuffer* db,
 void TaggedFlatDemandMemory::Store(uint64_t address, DataBuffer* db,
                                    DataBuffer* tags) {
   if (!CheckRequest(address, db, tags)) return;
-  // Store data and tags.
-  data_memory_->Store(address, db);
+  // Store data and tags. If db is null, this is just a store of tag bits.
+  if (db != nullptr) {
+    data_memory_->Store(address, db);
+  }
   tag_memory_->Store(address >> tag_granule_shift_, tags);
 }
 
