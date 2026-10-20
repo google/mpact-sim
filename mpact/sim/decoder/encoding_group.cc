@@ -475,7 +475,6 @@ void EncodingGroup::ProcessConstraint(
 
   // It's an overlay constraint.
   Overlay* overlay = constraint->overlay;
-  std::string name = absl::StrCat(overlay->name(), "_value");
   uint64_t mask = 0;
   // Get the bits that correspond to the overlay.
   auto result = overlay->GetBitField((1 << overlay->declared_width()) - 1);

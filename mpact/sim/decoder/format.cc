@@ -967,7 +967,6 @@ std::string Format::GenerateOverlayExtractor(Overlay* overlay) const {
 
 // Top level function called to generate all the inserters for this format.
 std::string Format::GenerateInserters() const {
-  std::string class_output;
   std::string h_output;
   if (extractors_.empty() && overlay_extractors_.empty()) {
     return h_output;

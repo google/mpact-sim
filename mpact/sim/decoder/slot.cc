@@ -235,7 +235,6 @@ std::string Slot::CreateAttributeLookupKey(const Instruction* inst) const {
   int count = attribute_names_.size();
   for (auto const& [name, expr] : inst->attribute_map()) {
     count--;
-    std::string value;
     auto result = expr->GetValue();
     if (!result.ok()) {
       absl::StrAppend(&key, name, "[e1]:");
@@ -315,7 +314,6 @@ std::string EscapeRegexCharacters(const std::string& str) {
   if (pos == std::string::npos) {
     return "\\s+";
   }
-  std::string input(str.substr(pos));
   bool in_space = false;
   char p = '\0';
   for (auto c : str) {
@@ -635,7 +633,6 @@ std::tuple<std::string, std::string> Slot::GenerateAsmRegexMatcher() const {
 std::string Slot::GenerateDisasmSetterFcn(absl::string_view name,
                                           const Instruction* inst) const {
   std::string output;
-  std::string class_name = pascal_name() + "Slot";
   absl::StrAppend(&output, "void ", name, "(Instruction *inst) {\n");
   absl::StrAppend(&output, "  inst->SetDisassemblyString(");
   int indent = 2;
@@ -1134,7 +1131,6 @@ std::string Slot::CreateOperandLookupKey(const Opcode* opcode) const {
   // Append identifier for destination operands.
   sep.clear();
   for (auto const* dst_op : opcode->dest_op_vec()) {
-    std::string dest_op_enum;
     if (dst_op->is_array()) {
       absl::StrAppend(&key, sep, "[", dst_op->name(), "]");
     } else {
@@ -1291,7 +1287,6 @@ std::string Slot::CreateFuncGetterGlobalArray(absl::string_view encoding_type) {
   for (auto const& [unused, inst_ptr] : instruction_map_) {
     auto* instruction = inst_ptr;
     std::string opcode_name = instruction->opcode()->pascal_name();
-    std::string opcode_enum = absl::StrCat("OpcodeEnum::k", opcode_name);
     absl::StrAppend(&output, "\n  // ***   k", opcode_name, "   ***\n");
     // For the opcode and any child opcodes, add the semantic function and
     // operand_setter_ lambda.
