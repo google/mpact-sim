@@ -497,14 +497,18 @@ absl::Status SimpleAssembler::CreateExecutable(
   ELFIO::segment* data_segment = nullptr;
   uint64_t data_segment_start = 0;
   uint64_t bss_segment_start = 0;
+  uint64_t data_symbol_start = 0;
+  uint64_t bss_symbol_start = 0;
   if ((data_section_ != nullptr) || (bss_section_ != nullptr)) {
-    if (data_segment_start_ != 0) {
-      data_segment_start = data_segment_start_;
+    uint64_t data_offset = 0;
+    if (has_data_segment_start_) {
+      data_offset = data_segment_start_ & ~data_segment_tag_;
     } else {
-      data_segment_start =
+      data_offset =
           (text_segment_start + section_address_map_[text_section_] + 4095) &
           ~4095ULL;
     }
+    data_segment_start = data_segment_tag_ | data_offset;
     data_segment = writer_.segments.add();
     if (data_segment == nullptr) {
       return absl::InternalError("Failed to create elf segment for data");
@@ -516,9 +520,12 @@ absl::Status SimpleAssembler::CreateExecutable(
     data_segment->set_align(4096);
 
     uint64_t bss_align = bss_section_->get_addr_align() - 1;
-    bss_segment_start =
-        (data_segment_start + section_address_map_[data_section_] + bss_align) &
+    uint64_t bss_offset =
+        (data_offset + section_address_map_[data_section_] + bss_align) &
         ~bss_align;
+    bss_segment_start = data_segment_tag_ | bss_offset;
+    data_symbol_start = data_segment_tag_ | (data_offset / data_address_unit_);
+    bss_symbol_start = data_segment_tag_ | (bss_offset / data_address_unit_);
   }
 
   // Now we can update the symbol table based on the new section sizes.
@@ -526,10 +533,10 @@ absl::Status SimpleAssembler::CreateExecutable(
   // Different size symbol table entries for 32 and 64 bit ELF files.
   if (elf_file_class_ == ELFIO::ELFCLASS64) {
     UpdateSymbolsForExecutable<ELFIO::Elf64_Sym>(
-        text_segment_start, data_segment_start, bss_segment_start);
+        text_segment_start, data_symbol_start, bss_symbol_start);
   } else if (elf_file_class_ == ELFIO::ELFCLASS32) {
     UpdateSymbolsForExecutable<ELFIO::Elf32_Sym>(
-        text_segment_start, data_segment_start, bss_segment_start);
+        text_segment_start, data_symbol_start, bss_symbol_start);
   } else {
     return absl::InternalError(
         absl::StrCat("Unsupported ELF file class: ", elf_file_class_));
@@ -940,7 +947,11 @@ absl::Status SimpleAssembler::ParseAsmDirective(
       return absl::InvalidArgumentError(
           absl::StrCat("Label: '", label, "' defined outside of a section"));
     }
-    auto status = AddSymbol(label, address, size, ELFIO::STT_NOTYPE,
+    uint64_t symbol_address = address;
+    if ((section == data_section_) || (section == bss_section_)) {
+      symbol_address = address / data_address_unit_;
+    }
+    auto status = AddSymbol(label, symbol_address, size, ELFIO::STT_NOTYPE,
                             ELFIO::STB_LOCAL, 0, section);
   }
   return absl::OkStatus();

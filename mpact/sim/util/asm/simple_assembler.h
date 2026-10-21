@@ -114,9 +114,16 @@ class SimpleAssembler {
   void set_data_address_unit(unsigned data_address_unit) {
     data_address_unit_ = data_address_unit;
   }
-  void set_data_segment_start(uint64_t data_segment_start) {
+  void set_data_segment_start(uint64_t data_segment_start,
+                              uint64_t data_segment_tag = 0) {
+    has_data_segment_start_ = true;
     data_segment_start_ = data_segment_start;
+    data_segment_tag_ = data_segment_tag;
   }
+  void set_data_segment_tag(uint64_t data_segment_tag) {
+    data_segment_tag_ = data_segment_tag;
+  }
+  uint64_t data_segment_tag() const { return data_segment_tag_; }
 
  private:
   // Helper function to update the symbol table entries.
@@ -192,7 +199,9 @@ class SimpleAssembler {
   absl::flat_hash_set<std::string> undefined_symbols_;
   // Data address unit - by default 1 for byte addressable.
   unsigned data_address_unit_ = 1;
+  bool has_data_segment_start_ = false;
   uint64_t data_segment_start_ = 0;
+  uint64_t data_segment_tag_ = 0;
 };
 
 }  // namespace assembler
