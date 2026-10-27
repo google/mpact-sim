@@ -261,6 +261,7 @@ cc_library(
         "type_helpers.h",
     ],
     deps = [
+        "@abseil-cpp//absl/base",
         "@abseil-cpp//absl/numeric:int128",
     ],
 )

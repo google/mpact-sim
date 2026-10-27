@@ -23,10 +23,10 @@ memory classes and an ELF loader.
 MPACT-Sim utilizes the [Bazel](https://bazel.build/) build system. The easiest
 way to install bazel is to use
 [Bazelisk](https://github.com/bazelbuild/bazelisk), a wrapper for Bazel that
-automates selecting and downloading the right version of bazel. Use `brew
-install bazelisk` on macOS, `choco install bazelisk` on Windows, and on linux,
-download the Bazelisk binary, add it to your `PATH`, then alias bazel to the
-bazelisk binary.
+automates selecting and downloading the right version of bazel. Use
+`brew install bazelisk` on macOS, `choco install bazelisk` on Windows, and on
+linux, download the Bazelisk binary, add it to your `PATH`, then alias bazel to
+the bazelisk binary.
 
 You need to use bazel version >= 7.0 to build this project.
 
