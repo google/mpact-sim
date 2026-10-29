@@ -82,8 +82,7 @@ class DelayLine : public DelayLineInterface {
   // is the value record type for the DelayLine. Returns the total number of
   // valid elements.
   template <typename... Ts>
-  int Add(int latency, Ts... args) /*ABSL_LOCKS_EXCLUDED(delay_line_lock_)*/ {
-    // absl::MutexLock dl(&delay_line_lock_);
+  int Add(int latency, Ts... args) {
     // If the latency is longer than the delay line, resize the delay line.
     if (latency >= static_cast<int>(delay_line_.size())) {
       Resize(latency);
@@ -99,8 +98,7 @@ class DelayLine : public DelayLineInterface {
   // instance and calling a function. Additional actions can be created by
   // deriving new delay lines as needed. Returns the number of valid entries
   // left in the delay line.
-  int Advance() override /*ABSL_LOCKS_EXCLUDED(delay_line_lock_)*/ {
-    // absl::MutexLock dl(&delay_line_lock_);
+  int Advance() override {
     current_ = (current_ + 1) & mask_;
     for (auto& rec : delay_line_[current_]) {
       rec.Apply();
@@ -116,8 +114,7 @@ class DelayLine : public DelayLineInterface {
  private:
   // If the latency is >= the delay line length, the delay line has to be
   // resized so the latency is covered.
-  void Resize(
-      uint32_t min_size) /*ABSL_EXCLUSIVE_LOCKS_REQUIRED(delay_line_lock_)*/ {
+  void Resize(uint32_t min_size) {
     // Compute a new size that's >= min_size and is a power of 2
     // Given that the initial size is a power of two, multiplying the
     // current size by two until it's greater or equal to min_size is
@@ -143,10 +140,8 @@ class DelayLine : public DelayLineInterface {
   }
 
   std::vector<std::vector<DelayRecord>> delay_line_;
-  /*ABSL_GUARDED_BY(delay_line_lock_)*/
-  int current_ /*ABSL_GUARDED_BY(delay_line_lock_)*/;
-  int mask_ /*ABSL_GUARDED_BY(delay_line_lock_)*/;
-  /*absl::Mutex delay_line_lock_;*/
+  int current_;
+  int mask_;
   uint32_t num_entries_;
 };
 
