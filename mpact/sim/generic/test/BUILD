@@ -32,6 +32,17 @@ cc_test(
 )
 
 cc_test(
+    name = "locking_data_buffer_test",
+    size = "small",
+    srcs = ["locking_data_buffer_test.cc"],
+    deps = [
+        "//mpact/sim/generic:core",
+        "@com_google_googletest//:gtest",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
     name = "delay_line_test",
     size = "small",
     srcs = ["delay_line_test.cc"],

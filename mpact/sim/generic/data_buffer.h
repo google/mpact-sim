@@ -20,7 +20,9 @@
 #include <vector>
 
 #include "absl/base/macros.h"
+#include "absl/base/thread_annotations.h"
 #include "absl/container/btree_map.h"
+#include "absl/synchronization/mutex.h"
 #include "absl/types/span.h"
 #include "mpact/sim/generic/delay_line.h"
 #include "mpact/sim/generic/ref_count.h"
@@ -46,11 +48,24 @@ namespace generic {
 
 class DataBuffer;
 
+namespace internal {
+
+// Data factory base class.
+class DataBufferFactoryBase {
+ public:
+  virtual ~DataBufferFactoryBase() = default;
+  // Method called by DataBuffer to recycle itself.
+  virtual void Recycle(DataBuffer* db) = 0;
+  DataBuffer* MakeCopyOf(const DataBuffer* src_db);
+};
+
+}  // namespace internal
+
 // Factory class for DataBuffer. Note that a new data buffer can be
 // either obtained through Allocate or MakeCopyOf. The latter call is useful
 // when only some of the bit/bytes/words of the original value of an item of
 // processor state will be modified by a semantic function.
-class DataBufferFactory {
+class DataBufferFactory : public internal::DataBufferFactoryBase {
   static constexpr int kShortSize = 4096;
   friend class DataBuffer;
 
@@ -82,8 +97,8 @@ class DataBufferFactory {
 
  private:
   // Moves the DataBuffer instance on to a free list based on the size of the
-  // internal buffer. This method is only called by DataBuffere instances.
-  inline void Recycle(DataBuffer* db);
+  // internal buffer. This method is only called by DataBuffer instances.
+  void Recycle(DataBuffer* db) final;
   // The DBStore keeps free DataBuffer instances in free lists by size of
   // the data_ store. That way runtime overhead is reduced, since DataBuffer
   // objects are allocated very frequently.
@@ -93,6 +108,57 @@ class DataBufferFactory {
 
   std::vector<DataBuffer*> short_free_list_[kShortSize + 1];
   DataBufferFreeList free_list_;
+};
+
+// Factory class for DataBuffer. Note that a new data buffer can be
+// either obtained through Allocate or MakeCopyOf. The latter call is useful
+// when only some of the bit/bytes/words of the original value of an item of
+// processor state will be modified by a semantic function.
+class LockingDataBufferFactory : public internal::DataBufferFactoryBase {
+  static constexpr int kShortSize = 4096;
+  friend class DataBuffer;
+
+ public:
+  // Constructor and Destructor.
+  LockingDataBufferFactory() = default;
+  virtual ~LockingDataBufferFactory();
+
+  // Allocates a DataBuffer instance with a buffer size of num instances of T.
+  // The free list is searched before falling back on using new.
+  template <typename T>
+  DataBuffer* Allocate(int num) {
+    return Allocate(sizeof(T) * num);
+  }
+
+  // Allocates a DataBuffer instance with a buffer of size bytes. The free
+  // list is searched before falling back on using new.
+  inline DataBuffer* Allocate(int size) ABSL_LOCKS_EXCLUDED(mutex_);
+
+  // Allocates a new DataBuffer instance with the same size as db and
+  // initializes the contents of the internal buffer to the value of that of
+  // db - without changing db. Except for the memcpy this method acts just like
+  // Allocate()
+  DataBuffer* MakeCopyOf(const DataBuffer* src_db);
+
+  // Clears and frees up all the objects contained in the DBStore that holds
+  // the recycled DataBuffers.
+  void Clear() ABSL_LOCKS_EXCLUDED(mutex_);
+
+ private:
+  // Moves the DataBuffer instance on to a free list based on the size of the
+  // internal buffer. This method is only called by DataBuffere instances.
+  void Recycle(DataBuffer* db) final ABSL_LOCKS_EXCLUDED(mutex_);
+  // The DBStore keeps free DataBuffer instances in free lists by size of
+  // the data_ store. That way runtime overhead is reduced, since DataBuffer
+  // objects are allocated very frequently.
+  //
+  // map <size of data buffer data_, list of free data buffers >
+  using DataBufferFreeList = absl::btree_map<int, std::vector<DataBuffer*>>;
+
+  absl::Mutex mutex_;
+  std::vector<DataBuffer*> short_free_list_[kShortSize + 1] ABSL_GUARDED_BY(
+      mutex_);
+  DataBufferFreeList free_list_ ABSL_GUARDED_BY(mutex_);
 };
 
 // DataBufferDestination is an interface that is inherited by the simulated
@@ -144,6 +210,7 @@ struct ElementTypeSelector<8> {
 
 class DataBuffer : public ReferenceCount {
   friend class DataBufferFactory;
+  friend class LockingDataBufferFactory;
 
  public:
   ~DataBuffer() override;
@@ -262,7 +329,7 @@ class DataBuffer : public ReferenceCount {
 
  private:
   explicit DataBuffer(unsigned size);
-  DataBufferFactory* db_factory_;
+  internal::DataBufferFactoryBase* db_factory_;
   DataBufferDelayLine* delay_line_;
   DataBufferDestination* destination_;
   int latency_;
@@ -313,11 +380,59 @@ inline void DataBufferFactory::Recycle(DataBuffer* db) {
   }
 }
 
+inline void LockingDataBufferFactory::Recycle(DataBuffer* db) {
+  absl::MutexLock lock(&mutex_);
+  int size = db->size<uint8_t>();
+  if (size <= kShortSize) {
+    short_free_list_[size].push_back(db);
+  } else {
+    auto ptr = free_list_.find(size);
+    if (ptr != free_list_.end()) {
+      ptr->second.push_back(db);
+      return;
+    }
+    free_list_.emplace(size, std::vector<DataBuffer*>{db});
+  }
+}
+
 // Search through the DataBuffer recycled store to see if there is a buffer
 // of the appropriate size. If not, allocate a new one.
 inline DataBuffer* DataBufferFactory::Allocate(int size) {
   DataBuffer* db = nullptr;
   {
+    if (size <= kShortSize) {
+      auto& free_list = short_free_list_[size];
+      if (!free_list.empty()) {
+        db = free_list.back();
+        free_list.pop_back();
+        db->IncRef();
+        db->ResetCounts();
+        return db;
+      }
+    } else {
+      auto ptr = free_list_.find(size);
+      if (ptr != free_list_.end()) {
+        if (!ptr->second.empty()) {
+          db = ptr->second.back();
+          ptr->second.pop_back();
+          db->IncRef();
+          db->ResetCounts();
+          return db;
+        }
+      }
+    }
+  }
+
+  db = new DataBuffer(size);
+  db->db_factory_ = this;
+
+  return db;
+}
+
+inline DataBuffer* LockingDataBufferFactory::Allocate(int size) {
+  DataBuffer* db = nullptr;
+  {
+    absl::MutexLock lock(&mutex_);
     if (size <= kShortSize) {
       auto& free_list = short_free_list_[size];
       if (!free_list.empty()) {

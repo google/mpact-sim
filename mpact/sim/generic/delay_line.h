@@ -87,9 +87,10 @@ class DelayLine : public DelayLineInterface {
     if (latency >= static_cast<int>(delay_line_.size())) {
       Resize(latency);
     }
+    ++num_entries_;
     int pos = (latency + current_) & mask_;
     delay_line_[pos].emplace_back(args...);
-    return ++num_entries_;
+    return num_entries_;
   }
 
   // Advances the delay line by a cycle and performs any actions required.

@@ -102,7 +102,7 @@ class ArchState : public Component {
   }
 
   // Advance all registered delay lines by one cycle.
-  inline void AdvanceDelayLines() {
+  void AdvanceDelayLines() {
     cycle_++;
     for (auto dl : delay_lines_) {
       dl->Advance();
@@ -141,9 +141,15 @@ class ArchState : public Component {
   DataBufferDelayLine* data_buffer_delay_line() const {
     return data_buffer_delay_line_;
   }
+  void set_data_buffer_delay_line(DataBufferDelayLine* data_buffer_delay_line) {
+    data_buffer_delay_line_ = data_buffer_delay_line;
+  }
   // The void() function delay line
   FunctionDelayLine* function_delay_line() const {
     return function_delay_line_;
+  }
+  void set_function_delay_line(FunctionDelayLine* function_delay_line) {
+    function_delay_line_ = function_delay_line;
   }
   // Returns the PC operand interface (read only)
   SourceOperandInterface* pc_operand() const { return pc_operand_; }

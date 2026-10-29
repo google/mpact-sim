@@ -15,12 +15,16 @@
 #include "mpact/sim/generic/data_buffer.h"
 
 #include <cstdint>
+#include <vector>
+
+#include "absl/synchronization/mutex.h"
 
 namespace mpact {
 namespace sim {
 namespace generic {
 
 DataBufferFactory::~DataBufferFactory() { Clear(); }
+LockingDataBufferFactory::~LockingDataBufferFactory() { Clear(); }
 
 // Free up all allocated DataBuffers held in the db_store.
 void DataBufferFactory::Clear() {
@@ -38,9 +42,31 @@ void DataBufferFactory::Clear() {
   }
 }
 
+void LockingDataBufferFactory::Clear() {
+  absl::MutexLock lock(&mutex_);
+  for (int i = 0; i <= kShortSize; i++) {
+    for (auto db : short_free_list_[i]) {
+      delete db;
+    }
+    short_free_list_[i].clear();
+  }
+  for (auto bucket : free_list_) {
+    for (auto db : bucket.second) {
+      delete db;
+    }
+    bucket.second.clear();
+  }
+}
+
 // Allocate a DataBuffer and then copy the value of the source DB into
 // the newly allocated buffer.
 DataBuffer* DataBufferFactory::MakeCopyOf(const DataBuffer* src_db) {
+  DataBuffer* db = Allocate(src_db->size<uint8_t>());
+  db->CopyFrom(src_db);
+  return db;
+}
+
+DataBuffer* LockingDataBufferFactory::MakeCopyOf(const DataBuffer* src_db) {
   DataBuffer* db = Allocate(src_db->size<uint8_t>());
   db->CopyFrom(src_db);
   return db;
@@ -66,6 +92,7 @@ void DataBuffer::Submit(int latency) {
     delay_line_->Add(latency, this, destination_);
   }
 }
+
 }  // namespace generic
 }  // namespace sim
 }  // namespace mpact

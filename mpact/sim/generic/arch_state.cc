@@ -96,7 +96,6 @@ ArchState::~ArchState() {
   fifos_.clear();
   pointer_set.clear();
   delete db_factory_;
-
   delete program_error_controller_;
 }
 

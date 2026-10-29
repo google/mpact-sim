@@ -22,6 +22,7 @@
 #include <functional>
 
 #include "mpact/sim/generic/delay_line.h"
+#include "mpact/sim/generic/locking_delay_line.h"
 
 namespace mpact {
 namespace sim {
@@ -45,6 +46,7 @@ class FunctionDelayRecord {
 };
 
 using FunctionDelayLine = DelayLine<FunctionDelayRecord>;
+using LockingFunctionDelayLine = LockingDelayLine<FunctionDelayRecord>;
 
 }  // namespace generic
 }  // namespace sim

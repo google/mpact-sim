@@ -184,9 +184,10 @@ void FlatDemandMemory::LoadStoreHelper(uint64_t address, uint8_t* data_ptr,
 
     uint8_t* block;
     if (iter == block_map_.end()) {
+      // In this case we need to allocate a new block.
       block = new uint8_t[allocation_byte_size_];
-      block_map_.insert(std::make_pair(block_address, block));
       std::memset(block, fill_value_, allocation_byte_size_);
+      block_map_.insert(std::make_pair(block_address, block));
     } else {
       block = iter->second;
     }

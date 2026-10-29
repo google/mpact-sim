@@ -28,6 +28,7 @@ cc_library(
         "atomic_tagged_memory.cc",
         "flat_demand_memory.cc",
         "flat_memory.cc",
+        "locking_flat_demand_memory.cc",
         "memory_router.cc",
         "memory_use_profiler.cc",
         "memory_watcher.cc",
@@ -41,6 +42,7 @@ cc_library(
         "atomic_tagged_memory.h",
         "flat_demand_memory.h",
         "flat_memory.h",
+        "locking_flat_demand_memory.h",
         "memory_interface.h",
         "memory_router.h",
         "memory_use_profiler.h",
@@ -65,6 +67,7 @@ cc_library(
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/strings",
         "@abseil-cpp//absl/strings:str_format",
+        "@abseil-cpp//absl/synchronization",
     ],
 )
 
