@@ -27,6 +27,7 @@
 #include <string_view>
 #include <vector>
 
+#include "absl/cleanup/cleanup.h"
 #include "absl/container/flat_hash_set.h"
 #include "absl/functional/bind_front.h"
 #include "absl/log/log.h"
@@ -150,6 +151,9 @@ absl::Status ProtoFormatVisitor::Process(
   }
 
   descriptor_pool_ = importer.pool();
+  absl::Cleanup cleanup_descriptor_pool = [this] {
+    descriptor_pool_ = nullptr;
+  };
   // Set the finder function objects.
   field_finder_ = absl::bind_front(
       &google::protobuf::DescriptorPool::FindFieldByName, descriptor_pool_);

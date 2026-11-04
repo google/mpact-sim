@@ -201,7 +201,7 @@ class ProtoFormatVisitor {
   std::unique_ptr<decoder::DecoderErrorListener> error_listener_ = nullptr;
   std::string decoder_name_;
   // Descriptor pool.
-  const google::protobuf::DescriptorPool* descriptor_pool_;
+  const google::protobuf::DescriptorPool* descriptor_pool_ = nullptr;
   absl::flat_hash_map<std::string, const google::protobuf::FileDescriptor*>
       file_descriptor_map_;
   // Using decl map.

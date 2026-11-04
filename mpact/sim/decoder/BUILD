@@ -320,6 +320,7 @@ mpact_cc_library(
         ":proto_format_lexer",
         ":proto_format_parser",
         "//mpact/sim/generic:type_helpers",
+        "@abseil-cpp//absl/cleanup",
         "@abseil-cpp//absl/container:btree",
         "@abseil-cpp//absl/container:flat_hash_map",
         "@abseil-cpp//absl/container:flat_hash_set",
