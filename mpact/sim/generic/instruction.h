@@ -202,11 +202,11 @@ class Instruction : public ReferenceCount {
   // that need to be reserved for writing.
   std::vector<ResourceOperandInterface*> resource_acquire_;
   // Simulated instruction size.
-  int size_;
+  int size_ = 0;
   // Simulated instruction address.
   uint64_t address_;
   // Integer value of the opcode enum.
-  int opcode_;
+  int opcode_ = 0;
   // Integer value of slot enum.
   int slot_ = -1;
   // Text string of disassembly of the instruction.
