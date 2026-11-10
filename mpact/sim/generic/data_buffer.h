@@ -17,6 +17,7 @@
 
 #include <cstdint>
 #include <cstring>
+#include <limits>
 #include <vector>
 
 #include "absl/base/macros.h"
@@ -77,13 +78,16 @@ class DataBufferFactory : public internal::DataBufferFactoryBase {
   // Allocates a DataBuffer instance with a buffer size of num instances of T.
   // The free list is searched before falling back on using new.
   template <typename T>
-  DataBuffer* Allocate(int num) {
+  DataBuffer* Allocate(size_t num) {
+    if (num > std::numeric_limits<size_t>::max() / sizeof(T)) {
+      return nullptr;
+    }
     return Allocate(sizeof(T) * num);
   }
 
   // Allocates a DataBuffer instance with a buffer of size bytes. The free
   // list is searched before falling back on using new.
-  inline DataBuffer* Allocate(int size);
+  inline DataBuffer* Allocate(size_t size);
 
   // Allocates a new DataBuffer instance with the same size as db and
   // initializes the contents of the internal buffer to the value of that of
@@ -104,7 +108,7 @@ class DataBufferFactory : public internal::DataBufferFactoryBase {
   // objects are allocated very frequently.
   //
   // map <size of data buffer data_, list of free data buffers >
-  using DataBufferFreeList = absl::btree_map<int, std::vector<DataBuffer*>>;
+  using DataBufferFreeList = absl::btree_map<size_t, std::vector<DataBuffer*>>;
 
   std::vector<DataBuffer*> short_free_list_[kShortSize + 1];
   DataBufferFreeList free_list_;
@@ -126,13 +130,16 @@ class LockingDataBufferFactory : public internal::DataBufferFactoryBase {
   // Allocates a DataBuffer instance with a buffer size of num instances of T.
   // The free list is searched before falling back on using new.
   template <typename T>
-  DataBuffer* Allocate(int num) {
+  DataBuffer* Allocate(size_t num) {
+    if (num > std::numeric_limits<size_t>::max() / sizeof(T)) {
+      return nullptr;
+    }
     return Allocate(sizeof(T) * num);
   }
 
   // Allocates a DataBuffer instance with a buffer of size bytes. The free
   // list is searched before falling back on using new.
-  inline DataBuffer* Allocate(int size) ABSL_LOCKS_EXCLUDED(mutex_);
+  inline DataBuffer* Allocate(size_t size) ABSL_LOCKS_EXCLUDED(mutex_);
 
   // Allocates a new DataBuffer instance with the same size as db and
   // initializes the contents of the internal buffer to the value of that of
@@ -153,7 +160,7 @@ class LockingDataBufferFactory : public internal::DataBufferFactoryBase {
   // objects are allocated very frequently.
   //
   // map <size of data buffer data_, list of free data buffers >
-  using DataBufferFreeList = absl::btree_map<int, std::vector<DataBuffer*>>;
+  using DataBufferFreeList = absl::btree_map<size_t, std::vector<DataBuffer*>>;
 
   absl::Mutex mutex_;
   std::vector<DataBuffer*> short_free_list_[kShortSize + 1] ABSL_GUARDED_BY(
@@ -328,12 +335,12 @@ class DataBuffer : public ReferenceCount {
   void* raw_ptr() const { return raw_ptr_; }
 
  private:
-  explicit DataBuffer(unsigned size);
+  explicit DataBuffer(size_t size);
   internal::DataBufferFactoryBase* db_factory_;
   DataBufferDelayLine* delay_line_;
   DataBufferDestination* destination_;
   int latency_;
-  unsigned size_;
+  size_t size_;
   void* raw_ptr_;
 };
 
@@ -397,7 +404,7 @@ inline void LockingDataBufferFactory::Recycle(DataBuffer* db) {
 
 // Search through the DataBuffer recycled store to see if there is a buffer
 // of the appropriate size. If not, allocate a new one.
-inline DataBuffer* DataBufferFactory::Allocate(int size) {
+inline DataBuffer* DataBufferFactory::Allocate(size_t size) {
   DataBuffer* db = nullptr;
   {
     if (size <= kShortSize) {
@@ -429,7 +436,7 @@ inline DataBuffer* DataBufferFactory::Allocate(int size) {
   return db;
 }
 
-inline DataBuffer* LockingDataBufferFactory::Allocate(int size) {
+inline DataBuffer* LockingDataBufferFactory::Allocate(size_t size) {
   DataBuffer* db = nullptr;
   {
     absl::MutexLock lock(&mutex_);

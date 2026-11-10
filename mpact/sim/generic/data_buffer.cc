@@ -14,6 +14,7 @@
 
 #include "mpact/sim/generic/data_buffer.h"
 
+#include <cstddef>
 #include <cstdint>
 #include <vector>
 
@@ -72,7 +73,7 @@ DataBuffer* LockingDataBufferFactory::MakeCopyOf(const DataBuffer* src_db) {
   return db;
 }
 
-DataBuffer::DataBuffer(unsigned size) : size_(size) {
+DataBuffer::DataBuffer(size_t size) : size_(size) {
   // Allocate using unsigned char to guarantee appropriate alignment according
   // to C++ standard 5.3.4 (11).
   raw_ptr_ = static_cast<void*>(new unsigned char[size_]);
