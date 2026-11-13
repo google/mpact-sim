@@ -410,8 +410,9 @@ TEST_F(GdbServerTest, HaltReason) {
   client.SendCommand("?");
   // Server should ack command.
   EXPECT_TRUE(client.ExpectAck());
-  // Server should respond with T02thread:1;20:3421000000000000.
-  EXPECT_EQ("T02thread:1;20:3412000000000000;", client.ReceiveResponse());
+  // Server should respond with T05thread:1;swbreak:;20:3412000000000000;.
+  EXPECT_EQ("T05thread:1;swbreak:;20:3412000000000000;",
+            client.ReceiveResponse());
   // Client should ack response.
   client.SendAck();
 
@@ -558,7 +559,8 @@ TEST_F(GdbServerTest, Continue) {
   client.SendAck();
   client.SendCommand("c");
   EXPECT_TRUE(client.ExpectAck());
-  EXPECT_EQ("T02thread:1;20:3412000000000000;", client.ReceiveResponse());
+  EXPECT_EQ("T05thread:1;hwbreak:;20:3412000000000000;",
+            client.ReceiveResponse());
   client.SendAck();
 
   client.SendCommand("D");

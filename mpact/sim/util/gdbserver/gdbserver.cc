@@ -582,10 +582,34 @@ std::string GdbServer::GetHaltReason(int thread_id) {
       halt_reason_str = "T05thread:1;";
       break;
     case *HaltReason::kSoftwareBreakpoint:
+      halt_reason_str = "T05thread:1;swbreak:;";
+      break;
     case *HaltReason::kHardwareBreakpoint:
-    case *HaltReason::kDataWatchPoint:
+      halt_reason_str = "T05thread:1;hwbreak:;";
+      break;
+    case *HaltReason::kDataWatchPoint: {
+      uint64_t wp_address = 0;
+      generic::AccessType access_type = generic::AccessType::kNone;
+      core_debug_interfaces_[thread_id]->GetWatchpointInfo(wp_address,
+                                                           access_type);
+      switch (access_type) {
+        case generic::AccessType::kLoad:
+          halt_reason_str = "T05thread:1;rwatch:;";
+          break;
+        case generic::AccessType::kStore:
+          halt_reason_str = "T05thread:1;watch:;";
+          break;
+        case generic::AccessType::kLoadStore:
+          halt_reason_str = "T05thread:1;awatch:;";
+          break;
+        default:
+          halt_reason_str = "T05thread:1;";
+          break;
+      }
+      break;
+    }
     case *HaltReason::kActionPoint:
-      halt_reason_str = "T02thread:1;";
+      halt_reason_str = "T05thread:1;";
       break;
     case *HaltReason::kSimulatorError:
       halt_reason_str = "T06thread:1;";
