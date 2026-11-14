@@ -185,7 +185,6 @@ StringPair ProtoEncodingInfo::GenerateDecoderClass() {
   std::string var_output;
   std::string cc_output;
   std::string class_name = ToPascalCase(decoder_->name()) + "Decoder";
-  std::string decoder_def;
   std::string type_aliases;
   // Add type aliases for protobuf messages used in decoders.
   for (auto* inst_group : decoder_->instruction_groups()) {

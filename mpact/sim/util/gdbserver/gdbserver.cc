@@ -805,7 +805,7 @@ void GdbServer::GdbVContinue(std::string_view command) {
       return Respond("T05thread:1;hwbreak:;");
     case *HaltReason::kDataWatchPoint: {
       core_debug_interfaces_[0]->GetWatchpointInfo(address, access_type);
-      std::string encoded_address =
+      [[maybe_unused]] std::string encoded_address =
           HexEncodeNumberInTargetEndianness(debug_info_.GetGprWidth(), address);
       // Need to differentiate between write (watch), read (rwatch), and
       // read/write (awatch) watch points.

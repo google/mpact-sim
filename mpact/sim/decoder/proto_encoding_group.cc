@@ -434,7 +434,6 @@ std::string ProtoEncodingGroup::EmitLeafDecoder(
   // Helper lambda.
   auto generate_condition =
       [](const ProtoConstraint* constraint) -> std::string {
-    std::string output;
     if (constraint->op == ConstraintType::kHas) {
       std::string ident = constraint->ctx->qualified_ident()->getText();
       auto pos = ident.find_last_of('.');

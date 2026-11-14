@@ -140,7 +140,7 @@ std::string ProtoInstructionGroup::GenerateDecoder() const {
                     name(), "'.\n");
     return output;
   }
-  std::string qualified_message_type =
+  [[maybe_unused]] std::string qualified_message_type =
       absl::StrReplaceAll(message_type_->full_name(), {{".", "::"}});
   std::string message_type = ToPascalCase(name()) + "MessageType";
   absl::StrAppend(
