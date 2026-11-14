@@ -261,8 +261,7 @@ std::string Slot::GenerateAttributeSetterFcn(absl::string_view name,
   absl::StrAppend(&output, "void ", name, "(Instruction *inst) {\n");
   int size = attribute_names_.size();
   if (size > 0) {
-    // Allocate the array and initialize to zero.
-    absl::StrAppend(&output, "  int *attrs = new int[", size, "]{");
+    absl::StrAppend(&output, "  static constexpr int kAttrs[", size, "] = {");
     for (auto const& attribute_name : attribute_names_) {
       auto it = inst->attribute_map().find(attribute_name);
       if (it == inst->attribute_map().end()) {
@@ -282,7 +281,8 @@ std::string Slot::GenerateAttributeSetterFcn(absl::string_view name,
       absl::StrAppend(&output, *value, ", ");
     }
     absl::StrAppend(&output, "};\n");
-    absl::StrAppend(&output, "  inst->SetAttributes(absl::Span<int>(attrs,",
+    absl::StrAppend(&output,
+                    "  inst->SetAttributes(absl::Span<const int>(kAttrs, ",
                     size, "));\n");
   }
   absl::StrAppend(&output, "}\n\n");

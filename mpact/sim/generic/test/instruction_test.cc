@@ -113,6 +113,25 @@ TEST(InstructionTest, InstructionList) {
   EXPECT_EQ(inst->next()->next()->next(), nullptr);
 }
 
+TEST(InstructionTest, ChildOutlivesParent) {
+  Instruction* parent = new Instruction(0x1000, nullptr);
+  Instruction* child0 = new Instruction(0x1000, nullptr);
+  Instruction* child1 = new Instruction(0x1000, nullptr);
+  Instruction* child2 = new Instruction(0x1000, nullptr);
+
+  parent->AppendChild(child0);
+  parent->AppendChild(child1);
+  parent->AppendChild(child2);
+  child0->DecRef();
+  child1->DecRef();
+  // Keep an extra reference to child2 (simulating an in-flight delayed bundle)
+  // while destroying parent first.
+  parent->DecRef();
+
+  EXPECT_EQ(child2->parent(), nullptr);
+  child2->DecRef();
+}
+
 TEST(InstructionTest, Attributes) {
   auto inst = std::make_unique<Instruction>(0x1000, nullptr);
   auto attr = inst->Attributes();
@@ -121,6 +140,10 @@ TEST(InstructionTest, Attributes) {
   inst->SetAttributes(my_array);
   EXPECT_THAT(inst->Attributes(),
               testing::ElementsAreArray(absl::Span<int>(my_array)));
+  int updated_array[] = {6, 7, 8};
+  inst->SetAttributes(updated_array);
+  EXPECT_THAT(inst->Attributes(),
+              testing::ElementsAreArray(absl::Span<int>(updated_array)));
 }
 
 }  // namespace

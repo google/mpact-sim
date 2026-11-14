@@ -94,7 +94,7 @@ Instruction::~Instruction() {
     delete op;
   }
   resource_acquire_.clear();
-  if (parent_ != nullptr) {
+  if ((parent_ != nullptr) && (parent_->child_ == this)) {
     // remove reference to this from the parent
     parent_->child_ = nullptr;
   }
@@ -103,7 +103,9 @@ Instruction::~Instruction() {
     next_ = nullptr;
   }
   if (child_ != nullptr) {
-    child_->parent_ = nullptr;
+    for (auto* child = child_; child != nullptr; child = child->next_) {
+      child->parent_ = nullptr;
+    }
     child_->DecRef();
     child_ = nullptr;
   }
@@ -112,7 +114,7 @@ Instruction::~Instruction() {
 std::string Instruction::AsString() const { return disasm_string_; }
 
 void Instruction::SetAttributes(absl::Span<const int> attributes) {
-  delete attribute_array_;
+  delete[] attribute_array_;
   attribute_array_ = new int[attributes.size()];
   std::memcpy(attribute_array_, attributes.data(),
               attributes.size() * sizeof(int));
