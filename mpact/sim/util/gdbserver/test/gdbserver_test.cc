@@ -113,6 +113,7 @@ class TestDebugInfo : public DebugInfo {
       debug_register_map_[i] = absl::StrCat("x", i);
     }
     debug_register_map_[32] = "pc";
+    debug_register_map_[33] = "v0";
   }
   const DebugRegisterMap& debug_register_map() const override {
     return debug_register_map_;
@@ -123,6 +124,7 @@ class TestDebugInfo : public DebugInfo {
   int GetPcWidth() const override { return 64; }
   int GetPcRegister() const override { return 32; }
   int GetRegisterByteWidth(int register_number) const override {
+    if (register_number == 33) return 4096;
     return 64 / 8;
   }
   std::string_view GetLLDBHostInfo() const override { return ""; }
@@ -198,7 +200,10 @@ class TestDebugInfo : public DebugInfo {
            "    <reg bitsize=\"64\" name=\"x31\" regnum=\"31\" "
            "type=\"uint64\"/>\n"
            "    <reg bitsize=\"64\" name=\"pc\" regnum=\"32\" "
-           "type=\"code_ptr\"/>\n"
+           "dwarf_regnum=\"11451\" type=\"code_ptr\"/>\n"
+           "    <reg bitsize=\"32768\" name=\"v0\" regnum=\"33\" "
+           "dwarf_regnum=\"64\" encoding=\"vector\" format=\"vector-uint32\" "
+           "group=\"vector\"/>\n"
            "  </feature>\n"
            "</target>\n";
   }
@@ -266,7 +271,13 @@ class GdbTestClient {
     }
     std::string packet =
         absl::StrFormat("$%s#%02x", command, static_cast<int>(checksum));
-    send(sock_fd_, packet.c_str(), packet.length(), 0);
+    size_t sent = 0;
+    while (sent < packet.length()) {
+      ssize_t n =
+          send(sock_fd_, packet.data() + sent, packet.length() - sent, 0);
+      if (n <= 0) break;
+      sent += static_cast<size_t>(n);
+    }
   }
 
   // Receive a response packet from server and extract content.
@@ -880,6 +891,72 @@ TEST_F(GdbServerTest, AsyncCtrlCInterrupt) {
   server_fiber.join();
   close(halt_pipe[0]);
   close(halt_pipe[1]);
+}
+
+TEST_F(GdbServerTest, ReadAndWriteWideVectorRegister) {
+  int port = PickUnusedPortOrDie();
+
+  generic::DataBuffer* v0_db = db_factory_.Allocate<uint32_t>(1024);
+  for (int i = 0; i < 1024; ++i) {
+    v0_db->Set<uint32_t>(i, 0xa500'0000u + static_cast<uint32_t>(i));
+  }
+
+  EXPECT_CALL(mock_core_, GetRegisterDataBuffer("v0"))
+      .Times(2)
+      .WillRepeatedly(Return(v0_db));
+
+  std::thread server_fiber([&]() { gdb_server_->Connect(port); });
+  absl::SleepFor(absl::Milliseconds(100));
+
+  GdbTestClient client;
+  ASSERT_TRUE(client.Connect(port));
+  client.SendAck();
+
+  // Verify qSupported advertises PacketSize=4000 (16 KiB).
+  client.SendCommand("qSupported:error-message+");
+  EXPECT_TRUE(client.ExpectAck());
+  std::string supported = client.ReceiveResponse();
+  client.SendAck();
+  EXPECT_NE(supported.find("PacketSize=4000"), std::string::npos);
+
+  // Read 4,096-byte v0 (regnum 33 = 0x21).
+  client.SendCommand("p21");
+  EXPECT_TRUE(client.ExpectAck());
+  std::string read_resp = client.ReceiveResponse();
+  client.SendAck();
+  ASSERT_EQ(read_resp.size(), 8192u);
+  // Word 0 = 0xa5000000 -> little-endian hex "000000a5".
+  EXPECT_EQ(read_resp.substr(0, 8), "000000a5");
+  // Word 1023 = 0xa50003ff -> little-endian hex "ff0300a5".
+  EXPECT_EQ(read_resp.substr(8192 - 8, 8), "ff0300a5");
+
+  // Write a full 4,096-byte payload via P21=<8192 hex chars>.
+  std::string write_hex;
+  write_hex.reserve(8192);
+  for (int i = 0; i < 1024; ++i) {
+    uint32_t v = 0x5a00'0000u + static_cast<uint32_t>(i * 3);
+    for (int b = 0; b < 4; ++b) {
+      absl::StrAppend(&write_hex,
+                      absl::Hex((v >> (8 * b)) & 0xffu, absl::kZeroPad2));
+    }
+  }
+  client.SendCommand(absl::StrCat("P21=", write_hex));
+  EXPECT_TRUE(client.ExpectAck());
+  EXPECT_EQ("OK", client.ReceiveResponse());
+  client.SendAck();
+
+  for (int i = 0; i < 1024; ++i) {
+    EXPECT_EQ(v0_db->Get<uint32_t>(i),
+              0x5a00'0000u + static_cast<uint32_t>(i * 3));
+  }
+
+  client.SendCommand("D");
+  EXPECT_TRUE(client.ExpectAck());
+  EXPECT_EQ("OK", client.ReceiveResponse());
+  client.SendAck();
+
+  server_fiber.join();
+  v0_db->DecRef();
 }
 
 }  // namespace

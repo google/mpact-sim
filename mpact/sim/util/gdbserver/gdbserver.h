@@ -58,6 +58,16 @@ class GdbSocketStreambuf : public std::streambuf {
     return c;
   }
 
+  std::streamsize xsputn(const char* s, std::streamsize n) override {
+    std::streamsize total = 0;
+    while (total < n) {
+      ssize_t written = write(fd_, s + total, n - total);
+      if (written <= 0) break;
+      total += written;
+    }
+    return total;
+  }
+
   // On underflow read character from the socket fd.
   std::streambuf::int_type underflow() override {
     int count = read(fd_, &ch_, 1);

@@ -21,6 +21,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <algorithm>
 #include <cerrno>
 #include <cstddef>
 #include <cstdint>
@@ -102,8 +103,8 @@ GdbServer::GdbServer(
   }
   // Get register widths for each register number.
   auto xml_data = absl::StrSplit(debug_info_.GetGdbTargetXml(), '\n');
-  RE2 bitsize_re{R"re2(<reg\s.*bitsize\s*=\s*"(\d+)")re2"};
-  RE2 regnum_re{R"re2(<reg\s.*regnum\s*=\s*"(\d+)")re2"};
+  RE2 bitsize_re{R"re2(<reg\b[^>]*\sbitsize\s*=\s*"(\d+)")re2"};
+  RE2 regnum_re{R"re2(<reg\b[^>]*\sregnum\s*=\s*"(\d+)")re2"};
   for (const auto& line : xml_data) {
     std::string regnum_str;
     int reg_num;
@@ -199,8 +200,11 @@ bool GdbServer::Connect(int port) {
     return false;
   }
   // Now read commands from the gdbserver client and process them.
+  constexpr size_t kMaxCommandSize = 4 * 1024 * 1024;
+  std::string cmd_buf;
+  cmd_buf.reserve(4096);
   while (good_) {
-    int buffer_pos = 0;
+    cmd_buf.clear();
     // First character is always '$' (ignore stray 0x03 Ctrl-C bytes arriving
     // after the target has already halted).
     do {
@@ -219,39 +223,34 @@ bool GdbServer::Connect(int port) {
       Terminate();
       return false;
     }
-    buffer_[buffer_pos++] = val;
+    cmd_buf.push_back(static_cast<char>(val));
     // Next read the command until we see a '#'.
     do {
       val = is_->get();
       if (!is_->good()) {
         LOG(ERROR) << absl::StrFormat(
             "Failed to receive complete command on port %d received: '%s'",
-            port,
-            std::string_view(reinterpret_cast<char*>(buffer_), buffer_pos));
+            port, cmd_buf);
         Terminate();
         return false;
       }
-      // Check for possible buffer overflow allowing for the extra characters
-      // for the checksum.
-      if (buffer_pos >= sizeof(buffer_) - 4) {
+      if (cmd_buf.size() >= kMaxCommandSize) {
         LOG(ERROR) << absl::StrFormat(
             "Failed to receive command on port %d - buffer overflow", port);
         good_ = false;
         Terminate();
         return false;
       }
-      buffer_[buffer_pos++] = val;
+      cmd_buf.push_back(static_cast<char>(val));
     } while (val != '#');
     // Next read the checksum.
-    buffer_[buffer_pos++] = is_->get();
+    cmd_buf.push_back(static_cast<char>(is_->get()));
     if (!is_->good()) break;
-    buffer_[buffer_pos++] = is_->get();
+    cmd_buf.push_back(static_cast<char>(is_->get()));
     if (!is_->good()) break;
-    if ((buffer_pos < 3) || (buffer_[buffer_pos - 3] != '#')) continue;
+    if ((cmd_buf.size() < 3) || (cmd_buf[cmd_buf.size() - 3] != '#')) continue;
 
-    AcceptGdbCommand(
-        std::string_view(reinterpret_cast<char*>(buffer_), buffer_pos));
-    buffer_pos = 0;
+    AcceptGdbCommand(cmd_buf);
   }
   good_ = false;
   return true;
@@ -1085,12 +1084,26 @@ void GdbServer::GdbReadGprRegisters(int thread_id) {
 
 void GdbServer::GdbWriteGprRegisters(int thread_id, std::string_view data) {
   int thread_index = thread_id - 1;
+  size_t expected_hex_len = 0;
   for (int i = debug_info_.GetFirstGpr(); i <= debug_info_.GetLastGpr(); ++i) {
-    auto it = debug_info_.debug_register_map().find(i);
-    if (it == debug_info_.debug_register_map().end()) {
+    if (!debug_info_.debug_register_map().contains(i)) {
       LOG(ERROR) << "Internal error - failed to find register";
       return SendError("Internal error - failed to find register");
     }
+    auto reg_bitsize_it = reg_bitsize_map_.find(i);
+    int byte_size = (reg_bitsize_it != reg_bitsize_map_.end())
+                        ? (reg_bitsize_it->second / 8)
+                        : debug_info_.GetRegisterByteWidth(i);
+    expected_hex_len += static_cast<size_t>(byte_size) * 2;
+  }
+  // Reject full-register-file 'G' payloads when the target's XML register set
+  // (e.g. GPRs + wide vector registers) is larger than GetFirstGpr..GetLastGpr,
+  // allowing the client (LLDB/GDB) to fall back to per-register 'P' writes.
+  if (data.size() != expected_hex_len) {
+    return Respond("");
+  }
+  for (int i = debug_info_.GetFirstGpr(); i <= debug_info_.GetLastGpr(); ++i) {
+    auto it = debug_info_.debug_register_map().find(i);
     const std::string& register_name = it->second;
     auto result = core_debug_interfaces_[thread_index]->GetRegisterDataBuffer(
         register_name);
@@ -1154,6 +1167,7 @@ void GdbServer::GdbReadRegister(int thread_id,
     }
     std::string response;
     int db_size = result.value()->size<uint8_t>();
+    response.reserve(static_cast<size_t>(std::max(db_size, byte_size)) * 2);
     for (const auto& byte : result.value()->Get<uint8_t>()) {
       absl::StrAppend(&response, absl::Hex(byte, absl::kZeroPad2));
     }
@@ -1215,11 +1229,13 @@ void GdbServer::GdbWriteRegister(int thread_id,
     return SendError(result.status().message());
   }
   for (auto& byte : result.value()->Get<uint8_t>()) {
-    if (register_value_str.empty()) break;
+    if (register_value_str.size() < 2) break;
     std::string_view byte_str = register_value_str.substr(0, 2);
     register_value_str.remove_prefix(2);
-    uint32_t byte_value_tmp;
-    (void)absl::SimpleHexAtoi(byte_str, &byte_value_tmp);
+    uint32_t byte_value_tmp = 0;
+    if (!absl::SimpleHexAtoi(byte_str, &byte_value_tmp)) {
+      return SendError("invalid register value");
+    }
     byte = static_cast<uint8_t>(byte_value_tmp);
   }
   Respond("OK");
@@ -1471,7 +1487,7 @@ void GdbServer::GdbSupported(std::string_view command) {
   }
   std::string response;
   absl::StrAppend(
-      &response, "PacketSize=2000;multi-wp-addr-",
+      &response, "PacketSize=4000;multi-wp-addr-",
       ";multiprocess-;hwbreak-;qRelocInsn-;fork-events-;exec-events-"
       ";vContSupported+;QThreadEvents-;QThreadOptions-;no-resumed-"
       ";memory-tagging-;vfork-events-;QStartNoAckMode+;swbreak+;watch+"
