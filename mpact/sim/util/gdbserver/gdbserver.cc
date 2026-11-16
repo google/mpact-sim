@@ -16,8 +16,10 @@
 
 #include <fcntl.h>
 #include <netinet/in.h>
+#include <poll.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <unistd.h>
 
 #include <cerrno>
 #include <cstddef>
@@ -27,6 +29,8 @@
 #include <istream>
 #include <ostream>
 #include <string>
+#include <thread>  // NOLINT
+#include <utility>
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
@@ -74,8 +78,9 @@ LazyRE2 GdbServer::gdb_command_re_{R"(\$([^#]*)#([0-9a-fA-F]{2}))"};
 LazyRE2 GdbServer::thread_re_{R"(;?thread\:(\d+);?)"};
 LazyRE2 GdbServer::xfer_read_target_re_{
     R"(Xfer\:features\:read\:target\.xml\:([0-9a-fA-F]+),([0-9a-fA-F]+))"};
-LazyRE2 GdbServer::swbreak_set_re_{R"(Z0,([0-9a-fA-F]+),(.+))"};
-LazyRE2 GdbServer::swbreak_clear_re_{R"(z0,([0-9a-fA-F]+),(.+))"};
+LazyRE2 GdbServer::break_set_re_{R"(Z([0234]),([0-9a-fA-F]+),([0-9a-fA-F]+))"};
+LazyRE2 GdbServer::break_clear_re_{
+    R"(z([0234]),([0-9a-fA-F]+),([0-9a-fA-F]+))"};
 
 using ::mpact::sim::generic::operator*;  // NOLINT
 using HaltReason = ::mpact::sim::generic::CoreDebugInterface::HaltReason;
@@ -196,8 +201,11 @@ bool GdbServer::Connect(int port) {
   // Now read commands from the gdbserver client and process them.
   while (good_) {
     int buffer_pos = 0;
-    // First character is always '$'.
-    val = is_->get();
+    // First character is always '$' (ignore stray 0x03 Ctrl-C bytes arriving
+    // after the target has already halted).
+    do {
+      val = is_->get();
+    } while (val == 0x03);
     if (val != '$') {
       if (val == 0xff) {
         LOG(INFO) << "Client disconnected";
@@ -513,14 +521,16 @@ void GdbServer::ParseGdbCommand(std::string_view command) {
     case 'z':
     case 'Z': {  // Add or remove breakpoint or watchpoint.
       // First make sure it's not a conditional breakpoint/watchpoint.
+      std::string_view type_str;
       std::string_view address_str;
       std::string_view kind_str;
-      if (RE2::FullMatch(command, *swbreak_set_re_, &address_str, &kind_str)) {
-        return GdbAddBreakpoint('0', address_str, kind_str);
-      }
-      if (RE2::FullMatch(command, *swbreak_clear_re_, &address_str,
+      if (RE2::FullMatch(command, *break_set_re_, &type_str, &address_str,
                          &kind_str)) {
-        return GdbRemoveBreakpoint('0', address_str, kind_str);
+        return GdbAddBreakpoint(type_str[0], address_str, kind_str);
+      }
+      if (RE2::FullMatch(command, *break_clear_re_, &type_str, &address_str,
+                         &kind_str)) {
+        return GdbRemoveBreakpoint(type_str[0], address_str, kind_str);
       }
       return Respond("");
     }
@@ -558,7 +568,7 @@ void GdbServer::GdbHalt() {
     LOG(ERROR) << "Failed to wait for core to halt: " << status.message();
     return SendError(status.message());
   }
-  Respond(absl::StrCat("T03"));
+  Respond(absl::StrCat("T02"));
 }
 
 std::string GdbServer::GetHaltReason(int thread_id) {
@@ -592,15 +602,16 @@ std::string GdbServer::GetHaltReason(int thread_id) {
       generic::AccessType access_type = generic::AccessType::kNone;
       core_debug_interfaces_[thread_id]->GetWatchpointInfo(wp_address,
                                                            access_type);
+      std::string wp_hex = absl::StrCat(absl::Hex(wp_address));
       switch (access_type) {
         case generic::AccessType::kLoad:
-          halt_reason_str = "T05thread:1;rwatch:;";
+          halt_reason_str = absl::StrCat("T05thread:1;rwatch:", wp_hex, ";");
           break;
         case generic::AccessType::kStore:
-          halt_reason_str = "T05thread:1;watch:;";
+          halt_reason_str = absl::StrCat("T05thread:1;watch:", wp_hex, ";");
           break;
         case generic::AccessType::kLoadStore:
-          halt_reason_str = "T05thread:1;awatch:;";
+          halt_reason_str = absl::StrCat("T05thread:1;awatch:", wp_hex, ";");
           break;
         default:
           halt_reason_str = "T05thread:1;";
@@ -615,7 +626,7 @@ std::string GdbServer::GetHaltReason(int thread_id) {
       halt_reason_str = "T06thread:1;";
       break;
     case *HaltReason::kUserRequest:
-      halt_reason_str = "T03thread:1;";
+      halt_reason_str = "T02thread:1;";
       break;
     case *HaltReason::kProgramDone:
     case *HaltReason::kSemihostHaltRequest:
@@ -626,6 +637,78 @@ std::string GdbServer::GetHaltReason(int thread_id) {
 }
 
 void GdbServer::GdbHaltReason() { Respond(GetHaltReason(0)); }
+
+absl::Status GdbServer::WaitForTargetOrInterrupt(
+    absl::Span<const int> thread_indices) {
+  if (thread_indices.empty()) return absl::OkStatus();
+  int wake_pipe[2] = {-1, -1};
+  std::thread interrupt_listener;
+  if ((cli_fd_ >= 0) && (pipe(wake_pipe) == 0)) {
+    int cli_fd = cli_fd_;
+    int wake_read_fd = wake_pipe[0];
+    std::vector<generic::CoreDebugInterface*> cores;
+    cores.reserve(thread_indices.size());
+    for (int idx : thread_indices) {
+      cores.push_back(core_debug_interfaces_[idx]);
+    }
+    interrupt_listener =
+        std::thread([cli_fd, wake_read_fd, cores = std::move(cores)]() {
+          struct pollfd fds[2];
+          fds[0].fd = cli_fd;
+          fds[0].events = POLLIN;
+          fds[1].fd = wake_read_fd;
+          fds[1].events = POLLIN;
+          while (true) {
+            int ret = poll(fds, 2, -1);
+            if (ret < 0) {
+              if (errno == EINTR) continue;
+              break;
+            }
+            if (fds[1].revents & (POLLIN | POLLHUP | POLLERR)) {
+              break;
+            }
+            if (fds[0].revents & POLLIN) {
+              uint8_t peek_byte = 0;
+              ssize_t n = recv(cli_fd, &peek_byte, 1, MSG_PEEK);
+              if ((n == 1) && (peek_byte == 0x03)) {
+                (void)recv(cli_fd, &peek_byte, 1, 0);
+                for (auto* core : cores) {
+                  (void)core->Halt(HaltReason::kUserRequest);
+                }
+              } else if (n == 0) {
+                for (auto* core : cores) {
+                  (void)core->Halt(HaltReason::kUserRequest);
+                }
+              }
+              break;
+            }
+            if (fds[0].revents & (POLLHUP | POLLERR | POLLNVAL)) {
+              for (auto* core : cores) {
+                (void)core->Halt(HaltReason::kUserRequest);
+              }
+              break;
+            }
+          }
+        });
+  }
+
+  absl::Status wait_status = absl::OkStatus();
+  for (int idx : thread_indices) {
+    auto status = core_debug_interfaces_[idx]->Wait();
+    if (!status.ok() && wait_status.ok()) {
+      wait_status = status;
+    }
+  }
+
+  if (interrupt_listener.joinable()) {
+    char done = 1;
+    (void)write(wake_pipe[1], &done, 1);
+    interrupt_listener.join();
+  }
+  if (wake_pipe[0] >= 0) close(wake_pipe[0]);
+  if (wake_pipe[1] >= 0) close(wake_pipe[1]);
+  return wait_status;
+}
 
 void GdbServer::GdbContinue(int thread_id, std::string_view command) {
   int thread_index = thread_id - 1;
@@ -661,8 +744,9 @@ void GdbServer::GdbContinue(int thread_id, std::string_view command) {
       LOG(ERROR) << "Failed to run core: " << status.message();
       return SendError(status.message());
     }
-    // Now wait for the core to halt.
-    status = core_debug_interfaces_[thread_index]->Wait();
+    // Now wait for the core to halt (or async 0x03 interrupt).
+    int indices[1] = {thread_index};
+    status = WaitForTargetOrInterrupt(indices);
     if (!status.ok()) {
       LOG(ERROR) << "Failed to wait for core to halt: " << status.message();
       return SendError(status.message());
@@ -757,14 +841,18 @@ void GdbServer::GdbVContinue(std::string_view command) {
     }
   }
   // Wait for all threads that haven't already finished to halt.
+  std::vector<int> active_indices;
   for (int tid = 1; tid <= core_debug_interfaces_.size(); ++tid) {
     if (halt_reasons_[tid - 1] == *HaltReason::kProgramDone) {
       continue;
     }
-    (void)core_debug_interfaces_[tid - 1]->Wait();
-    auto result = core_debug_interfaces_[tid - 1]->GetLastHaltReason();
+    active_indices.push_back(tid - 1);
+  }
+  (void)WaitForTargetOrInterrupt(active_indices);
+  for (int idx : active_indices) {
+    auto result = core_debug_interfaces_[idx]->GetLastHaltReason();
     if (!result.ok()) continue;
-    halt_reasons_[tid - 1] = result.value();
+    halt_reasons_[idx] = result.value();
   }
   // If the program is done we respond with W00, otherwise T05 and add the
   // halt reason for each thread. We only respond with W00 if all threads are
@@ -802,20 +890,22 @@ void GdbServer::GdbVContinue(std::string_view command) {
       address = core_debug_interfaces_[0]->GetSwBreakpointInfo();
       return Respond(absl::StrCat("T05thread:1;swbreak:;", encoded_pc));
     case *HaltReason::kHardwareBreakpoint:
-      return Respond("T05thread:1;hwbreak:;");
+      return Respond(absl::StrCat("T05thread:1;hwbreak:;", encoded_pc));
     case *HaltReason::kDataWatchPoint: {
       core_debug_interfaces_[0]->GetWatchpointInfo(address, access_type);
-      [[maybe_unused]] std::string encoded_address =
-          HexEncodeNumberInTargetEndianness(debug_info_.GetGprWidth(), address);
+      std::string wp_hex = absl::StrCat(absl::Hex(address));
       // Need to differentiate between write (watch), read (rwatch), and
       // read/write (awatch) watch points.
       switch (access_type) {
         case generic::AccessType::kLoad:
-          return Respond(absl::StrCat("T05thread:1;rwatch:;", encoded_pc));
+          return Respond(
+              absl::StrCat("T05thread:1;rwatch:", wp_hex, ";", encoded_pc));
         case generic::AccessType::kStore:
-          return Respond(absl::StrCat("T05thread:1;watch:;", encoded_pc));
+          return Respond(
+              absl::StrCat("T05thread:1;watch:", wp_hex, ";", encoded_pc));
         case generic::AccessType::kLoadStore:
-          return Respond(absl::StrCat("T05thread:1;awatch:;", encoded_pc));
+          return Respond(
+              absl::StrCat("T05thread:1;awatch:", wp_hex, ";", encoded_pc));
         default:
           LOG(ERROR) << "Invalid access type: "
                      << static_cast<int>(access_type);
@@ -823,10 +913,11 @@ void GdbServer::GdbVContinue(std::string_view command) {
       }
     }
     case *HaltReason::kActionPoint:
+      return Respond(absl::StrCat("T05thread:1;", encoded_pc));
     case *HaltReason::kSimulatorError:
       return Respond(absl::StrCat("T06thread:1;", encoded_pc));
     case *HaltReason::kUserRequest:
-      return Respond(absl::StrCat("T03thread:1;", encoded_pc));
+      return Respond(absl::StrCat("T02thread:1;", encoded_pc));
     case *HaltReason::kProgramDone:
     case *HaltReason::kSemihostHaltRequest:
       return Respond("W00");
@@ -1091,6 +1182,31 @@ void GdbServer::GdbWriteRegister(int thread_id,
     return SendError(absl::StrCat("Register not found: ", register_number));
   }
   const std::string& register_name = it->second;
+  auto reg_bitsize_it = reg_bitsize_map_.find(register_number);
+  int byte_size = 0;
+  if (reg_bitsize_it != reg_bitsize_map_.end()) {
+    byte_size = reg_bitsize_it->second / 8;
+  }
+  if ((byte_size != 0) && (byte_size <= sizeof(uint64_t))) {
+    uint64_t value = 0;
+    for (int i = 0; i < byte_size; ++i) {
+      if (register_value_str.size() < 2) break;
+      std::string_view byte_str = register_value_str.substr(0, 2);
+      register_value_str.remove_prefix(2);
+      uint32_t byte_value_tmp = 0;
+      if (!absl::SimpleHexAtoi(byte_str, &byte_value_tmp)) {
+        return SendError("invalid register value");
+      }
+      value |= (static_cast<uint64_t>(byte_value_tmp & 0xff) << (8 * i));
+    }
+    auto status = core_debug_interfaces_[thread_index]->WriteRegister(
+        register_name, value);
+    if (!status.ok()) {
+      LOG(ERROR) << "Failed to write register: " << status.message();
+      return SendError(status.message());
+    }
+    return Respond("OK");
+  }
   auto result = core_debug_interfaces_[thread_index]->GetRegisterDataBuffer(
       register_name);
   if (!result.ok()) {
@@ -1272,8 +1388,7 @@ void GdbServer::GdbAddBreakpoint(char type, std::string_view address_str,
         SendError(status.message());
         return;
       }
-      Respond("OK");
-      break;
+      return Respond("OK");
     }
   }
   Respond("");
@@ -1304,7 +1419,7 @@ void GdbServer::GdbRemoveBreakpoint(char type, std::string_view address_str,
       }
       return Respond("OK");
     }
-    case 2: {  // Data watchpoint write only.
+    case '2': {  // Data watchpoint write only.
       auto status = core_debug_interfaces_[0]->ClearDataWatchpoint(
           address, generic::AccessType::kStore);
       if (!status.ok()) {
@@ -1316,7 +1431,7 @@ void GdbServer::GdbRemoveBreakpoint(char type, std::string_view address_str,
       }
       return Respond("OK");
     }
-    case 3: {  // Data watchpoint read-only.
+    case '3': {  // Data watchpoint read-only.
       auto status = core_debug_interfaces_[0]->ClearDataWatchpoint(
           address, generic::AccessType::kLoad);
       if (!status.ok()) {
@@ -1328,7 +1443,7 @@ void GdbServer::GdbRemoveBreakpoint(char type, std::string_view address_str,
       }
       return Respond("OK");
     }
-    case 4: {  // Data watchpoint read or write.
+    case '4': {  // Data watchpoint read or write.
       auto status = core_debug_interfaces_[0]->ClearDataWatchpoint(
           address, generic::AccessType::kLoadStore);
       if (!status.ok()) {

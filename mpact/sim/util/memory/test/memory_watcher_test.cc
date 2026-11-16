@@ -408,4 +408,69 @@ TEST_F(MemoryWatcherTest, ScatterWatch) {
   data_db->DecRef();
 }
 
+TEST_F(MemoryWatcherTest, UnitStrideVectorStoreAndLoad) {
+  int load_hits = 0;
+  int store_hits = 0;
+  uint64_t last_addr = 0;
+  EXPECT_TRUE(watcher_
+                  ->SetStoreWatchCallback(AddressRange(0x1008, 0x100b),
+                                          [&](uint64_t addr, int) {
+                                            last_addr = addr;
+                                            store_hits++;
+                                          })
+                  .ok());
+  EXPECT_TRUE(watcher_
+                  ->SetLoadWatchCallback(AddressRange(0x1008, 0x100b),
+                                         [&](uint64_t addr, int) {
+                                           last_addr = addr;
+                                           load_hits++;
+                                         })
+                  .ok());
+
+  DataBuffer* address_db = db_factory_.Allocate<uint64_t>(1);
+  DataBuffer* mask_db = db_factory_.Allocate<bool>(4);
+  DataBuffer* data_db = db_factory_.Allocate<uint32_t>(4);
+  address_db->Set<uint64_t>(0, 0x1000);
+  auto masks = mask_db->Get<bool>();
+  masks[0] = true;
+  masks[1] = true;
+  masks[2] = true;
+  masks[3] = true;
+
+  watcher_->Store(address_db, mask_db, sizeof(uint32_t), data_db);
+  EXPECT_EQ(store_hits, 1);
+  EXPECT_EQ(last_addr, 0x1008);
+
+  last_addr = 0;
+  watcher_->Load(address_db, mask_db, sizeof(uint32_t), data_db, nullptr,
+                 nullptr);
+  EXPECT_EQ(load_hits, 1);
+  EXPECT_EQ(last_addr, 0x1008);
+
+  address_db->DecRef();
+  mask_db->DecRef();
+  data_db->DecRef();
+}
+
+TEST(WordAddressedMemoryWatcherTest, SingleWordStoreDoesNotHitNeighborWord) {
+  FlatDemandMemory word_mem(1024, 0, /*addressable_unit_size=*/4, 0);
+  MemoryWatcher word_watcher(&word_mem, /*addressable_unit_shift=*/2);
+  DataBufferFactory db_factory;
+
+  int hits = 0;
+  EXPECT_TRUE(word_watcher
+                  .SetStoreWatchCallback(AddressRange(102),
+                                         [&](uint64_t, int) { hits++; })
+                  .ok());
+
+  DataBuffer* word_db = db_factory.Allocate<uint32_t>(1);
+  word_db->Set<uint32_t>(0, 0xdeadbeef);
+  // Storing 1 word (4 bytes) at word 100 must NOT falsely match word 102.
+  word_watcher.Store(100, word_db);
+  EXPECT_EQ(hits, 0);
+  word_watcher.Store(102, word_db);
+  EXPECT_EQ(hits, 1);
+  word_db->DecRef();
+}
+
 }  // namespace

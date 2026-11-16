@@ -255,6 +255,9 @@ class GdbTestClient {
     return ack == '+';
   }
 
+  // Send a raw byte (such as 0x03 Ctrl-C) without packet framing.
+  void SendRawByte(char byte) { send(sock_fd_, &byte, 1, 0); }
+
   // Send a command string, wrapping it in GDB packet format.
   void SendCommand(const std::string& command) {
     uint8_t checksum = 0;
@@ -644,10 +647,9 @@ TEST_F(GdbServerTest, WriteGpr) {
 TEST_F(GdbServerTest, WriteRegister) {
   int port = PickUnusedPortOrDie();
 
-  generic::DataBuffer* db = db_factory_.Allocate<uint8_t>(8);
-
   // Writing register 32 ('pc', hex '20').
-  EXPECT_CALL(mock_core_, GetRegisterDataBuffer("pc")).WillOnce(Return(db));
+  EXPECT_CALL(mock_core_, WriteRegister("pc", 0x1234))
+      .WillOnce(Return(absl::OkStatus()));
 
   std::thread server_fiber([&]() { gdb_server_->Connect(port); });
 
@@ -662,10 +664,6 @@ TEST_F(GdbServerTest, WriteRegister) {
   EXPECT_TRUE(client.ExpectAck());
   EXPECT_EQ("OK", client.ReceiveResponse());
   client.SendAck();
-
-  EXPECT_EQ(db->Get<uint64_t>(0), 0x1234);
-
-  db->DecRef();
 
   client.SendCommand("D");
   EXPECT_TRUE(client.ExpectAck());
@@ -761,6 +759,127 @@ TEST_F(GdbServerTest, ClearSwBreakpoint) {
   client.SendAck();
 
   server_fiber.join();
+}
+
+TEST_F(GdbServerTest, SetClearAndHitDataWatchpoints) {
+  int port = PickUnusedPortOrDie();
+
+  EXPECT_CALL(mock_core_,
+              SetDataWatchpoint(0x1000000000000100ULL, 4, AccessType::kStore))
+      .WillOnce(Return(absl::OkStatus()));
+  EXPECT_CALL(mock_core_,
+              SetDataWatchpoint(0x1000000000000200ULL, 4, AccessType::kLoad))
+      .WillOnce(Return(absl::OkStatus()));
+  EXPECT_CALL(mock_core_, SetDataWatchpoint(0x1000000000000300ULL, 8,
+                                            AccessType::kLoadStore))
+      .WillOnce(Return(absl::OkStatus()));
+
+  EXPECT_CALL(mock_core_, GetRunStatus()).WillOnce(Return(RunStatus::kHalted));
+  EXPECT_CALL(mock_core_, Run()).WillOnce(Return(absl::OkStatus()));
+  EXPECT_CALL(mock_core_, Wait()).WillOnce(Return(absl::OkStatus()));
+  EXPECT_CALL(mock_core_, GetLastHaltReason())
+      .WillOnce(Return(
+          static_cast<HaltReasonValueType>(HaltReason::kDataWatchPoint)));
+  EXPECT_CALL(mock_core_, ReadRegister("pc")).WillOnce(Return(0x1234));
+  EXPECT_CALL(mock_core_, GetWatchpointInfo(_, _))
+      .WillOnce([](uint64_t& addr, AccessType& type) {
+        addr = 0x1000000000000100ULL;
+        type = AccessType::kStore;
+      });
+
+  EXPECT_CALL(mock_core_,
+              ClearDataWatchpoint(0x1000000000000100ULL, AccessType::kStore))
+      .WillOnce(Return(absl::OkStatus()));
+  EXPECT_CALL(mock_core_,
+              ClearDataWatchpoint(0x1000000000000200ULL, AccessType::kLoad))
+      .WillOnce(Return(absl::OkStatus()));
+  EXPECT_CALL(mock_core_, ClearDataWatchpoint(0x1000000000000300ULL,
+                                              AccessType::kLoadStore))
+      .WillOnce(Return(absl::OkStatus()));
+
+  std::thread server_fiber([&]() { gdb_server_->Connect(port); });
+  absl::SleepFor(absl::Milliseconds(100));
+
+  GdbTestClient client;
+  ASSERT_TRUE(client.Connect(port));
+  client.SendAck();
+
+  for (const char* cmd : {"Z2,1000000000000100,4", "Z3,1000000000000200,4",
+                          "Z4,1000000000000300,8"}) {
+    client.SendCommand(cmd);
+    EXPECT_TRUE(client.ExpectAck());
+    EXPECT_EQ("OK", client.ReceiveResponse());
+    client.SendAck();
+  }
+
+  client.SendCommand("c");
+  EXPECT_TRUE(client.ExpectAck());
+  EXPECT_EQ("T05thread:1;watch:1000000000000100;20:3412000000000000;",
+            client.ReceiveResponse());
+  client.SendAck();
+
+  for (const char* cmd : {"z2,1000000000000100,4", "z3,1000000000000200,4",
+                          "z4,1000000000000300,8"}) {
+    client.SendCommand(cmd);
+    EXPECT_TRUE(client.ExpectAck());
+    EXPECT_EQ("OK", client.ReceiveResponse());
+    client.SendAck();
+  }
+
+  client.SendCommand("D");
+  EXPECT_TRUE(client.ExpectAck());
+  EXPECT_EQ("OK", client.ReceiveResponse());
+  client.SendAck();
+
+  server_fiber.join();
+}
+
+TEST_F(GdbServerTest, AsyncCtrlCInterrupt) {
+  int port = PickUnusedPortOrDie();
+  int halt_pipe[2] = {-1, -1};
+  ASSERT_EQ(pipe(halt_pipe), 0);
+
+  EXPECT_CALL(mock_core_, GetRunStatus()).WillOnce(Return(RunStatus::kHalted));
+  EXPECT_CALL(mock_core_, Run()).WillOnce(Return(absl::OkStatus()));
+  EXPECT_CALL(mock_core_, Wait()).WillOnce([&]() {
+    char c = 0;
+    (void)read(halt_pipe[0], &c, 1);
+    return absl::OkStatus();
+  });
+  EXPECT_CALL(mock_core_, Halt(HaltReason::kUserRequest)).WillOnce([&]() {
+    char c = 1;
+    (void)write(halt_pipe[1], &c, 1);
+    return absl::OkStatus();
+  });
+  EXPECT_CALL(mock_core_, GetLastHaltReason())
+      .WillOnce(
+          Return(static_cast<HaltReasonValueType>(HaltReason::kUserRequest)));
+  EXPECT_CALL(mock_core_, ReadRegister("pc")).WillOnce(Return(0x4320));
+
+  std::thread server_fiber([&]() { gdb_server_->Connect(port); });
+  absl::SleepFor(absl::Milliseconds(100));
+
+  GdbTestClient client;
+  ASSERT_TRUE(client.Connect(port));
+  client.SendAck();
+
+  client.SendCommand("c");
+  EXPECT_TRUE(client.ExpectAck());
+
+  absl::SleepFor(absl::Milliseconds(50));
+  client.SendRawByte('\x03');
+
+  EXPECT_EQ("T02thread:1;20:2043000000000000;", client.ReceiveResponse());
+  client.SendAck();
+
+  client.SendCommand("D");
+  EXPECT_TRUE(client.ExpectAck());
+  EXPECT_EQ("OK", client.ReceiveResponse());
+  client.SendAck();
+
+  server_fiber.join();
+  close(halt_pipe[0]);
+  close(halt_pipe[1]);
 }
 
 }  // namespace

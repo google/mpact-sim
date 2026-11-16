@@ -121,6 +121,7 @@ class GdbServer {
   void GdbContinue(int thread_id, std::string_view command);
   void ContinueThread(int thread_id);
   void GdbVContinue(std::string_view command);
+  absl::Status WaitForTargetOrInterrupt(absl::Span<const int> thread_indices);
   // Detach from the simulator.
   void GdbDetach();
   // Select the thread to operate on.
@@ -188,8 +189,8 @@ class GdbServer {
   static LazyRE2 gdb_command_re_;
   static LazyRE2 thread_re_;
   static LazyRE2 xfer_read_target_re_;
-  static LazyRE2 swbreak_set_re_;
-  static LazyRE2 swbreak_clear_re_;
+  static LazyRE2 break_set_re_;
+  static LazyRE2 break_clear_re_;
 };
 
 }  // namespace mpact::sim::util::gdbserver

@@ -14,6 +14,7 @@
 
 #include "mpact/sim/util/memory/memory_watcher.h"
 
+#include <algorithm>
 #include <cstdint>
 #include <utility>
 
@@ -25,7 +26,9 @@ namespace mpact {
 namespace sim {
 namespace util {
 
-MemoryWatcher::MemoryWatcher(MemoryInterface* memory) : memory_(memory) {}
+MemoryWatcher::MemoryWatcher(MemoryInterface* memory,
+                             int addressable_unit_shift)
+    : memory_(memory), addressable_unit_shift_(addressable_unit_shift) {}
 
 // Methods to insert store and load watch callbacks. The methods check that
 // the address range is well formed (start <= end), and that there is no
@@ -93,8 +96,10 @@ absl::Status MemoryWatcher::ClearLoadWatchCallback(uint64_t address) {
 void MemoryWatcher::Load(uint64_t address, DataBuffer* db, Instruction* inst,
                          ReferenceCount* context) {
   if (!ld_watch_actions_.empty()) {
+    int size_in_units =
+        std::max(1, db->size<uint8_t>() >> addressable_unit_shift_);
     auto [first_match, last] = ld_watch_actions_.equal_range(
-        AddressRange(address, address + db->size<uint8_t>() - 1));
+        AddressRange(address, address + size_in_units - 1));
     while (first_match != last) {
       first_match->second(address, db->size<uint8_t>());
       first_match++;
@@ -111,12 +116,14 @@ void MemoryWatcher::Load(DataBuffer* address_db, DataBuffer* mask_db,
     int num_entries = mask_db->size<bool>();
     auto addresses = address_db->Get<uint64_t>();
     auto masks = mask_db->Get<bool>();
+    bool gather = addresses.size() > 1;
+    int size_in_units = std::max(1, el_size >> addressable_unit_shift_);
     for (int i = 0; i < num_entries; i++) {
       // Need to check each unmasked address.
       if (!masks[i]) continue;
-      uint64_t address = addresses[i];
+      uint64_t address = gather ? addresses[i] : addresses[0] + i * el_size;
       auto [first_match, last] = ld_watch_actions_.equal_range(
-          AddressRange(address, address + el_size - 1));
+          AddressRange(address, address + size_in_units - 1));
       while (first_match != last) {
         first_match->second(address, el_size);
         first_match++;
@@ -130,8 +137,10 @@ void MemoryWatcher::Load(DataBuffer* address_db, DataBuffer* mask_db,
 void MemoryWatcher::Store(uint64_t address, DataBuffer* db) {
   memory_->Store(address, db);
   if (!st_watch_actions_.empty()) {
+    int size_in_units =
+        std::max(1, db->size<uint8_t>() >> addressable_unit_shift_);
     auto [first_match, last] = st_watch_actions_.equal_range(
-        AddressRange(address, address + db->size<uint8_t>() - 1));
+        AddressRange(address, address + size_in_units - 1));
     while (first_match != last) {
       first_match->second(address, db->size<uint8_t>());
       first_match++;
@@ -147,12 +156,14 @@ void MemoryWatcher::Store(DataBuffer* address_db, DataBuffer* mask_db,
     int num_entries = mask_db->size<bool>();
     auto addresses = address_db->Get<uint64_t>();
     auto masks = mask_db->Get<bool>();
+    bool scatter = addresses.size() > 1;
+    int size_in_units = std::max(1, el_size >> addressable_unit_shift_);
     for (int i = 0; i < num_entries; i++) {
       // Need to check each unmasked address.
       if (!masks[i]) continue;
-      uint64_t address = addresses[i];
+      uint64_t address = scatter ? addresses[i] : addresses[0] + i * el_size;
       auto [first_match, last] = st_watch_actions_.equal_range(
-          AddressRange(address, address + el_size - 1));
+          AddressRange(address, address + size_in_units - 1));
       while (first_match != last) {
         first_match->second(address, el_size);
         first_match++;

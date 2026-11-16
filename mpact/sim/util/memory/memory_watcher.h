@@ -63,7 +63,8 @@ class MemoryWatcher : public MemoryInterface {
   using Callback = absl::AnyInvocable<void(uint64_t, int)>;
 
   // Constructor - default constructor is disabled. Use default destructor.
-  explicit MemoryWatcher(MemoryInterface* memory);
+  explicit MemoryWatcher(MemoryInterface* memory,
+                         int addressable_unit_shift = 0);
   MemoryWatcher() = delete;
   MemoryWatcher(const MemoryWatcher&) = delete;  // no copy constructor.
   MemoryWatcher& operator=(const MemoryWatcher&) = delete;  // no assignment.
@@ -94,6 +95,7 @@ class MemoryWatcher : public MemoryInterface {
  private:
   // The memory interface to forward the loads/stores to.
   MemoryInterface* memory_;
+  int addressable_unit_shift_ = 0;
   absl::btree_multimap<AddressRange, Callback, AddressRangeLess>
       ld_watch_actions_;
   absl::btree_multimap<AddressRange, Callback, AddressRangeLess>
