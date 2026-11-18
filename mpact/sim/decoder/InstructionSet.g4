@@ -384,8 +384,8 @@ operand
 //     >= 1 = buffered writeback after N cycles).
 //   - '(*)': Dynamic latency queried at decode time via
 //     <IsaName>EncodingBase::GetLatency(...).
-//   - Omitted: Uses the enclosing slot's 'default latency' (error if none is
-//     defined unless overridden via a 'latency:' attribute).
+//   - Omitted: Uses the enclosing slot's 'default latency', or 1 if no
+//     'default latency' is declared in the slot.
 
 dest_list
   : dest_operand (',' dest_operand)*

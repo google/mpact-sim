@@ -372,9 +372,11 @@ You can specify destination latency in three ways:
     call `enc->GetLatency(slot, entry, opcode, DestOpEnum::kRd, dest_no)` at
     decode time.
 3.  **Slot default**: `rd` (no parentheses) — uses `default latency = <expr>;`
-    from the enclosing `slot`. (If a slot has no `default latency`, omitting
-    `(latency)` on a destination operand is an error unless supplied via
-    `latency:`.)
+    from the enclosing `slot` (or defaults to `1` if the slot declares no
+    `default latency`). For reusable ISA descriptions, prefer leaving inline
+    destination latencies omitted in base slots and specifying
+    implementation-specific latencies in derived override files (see Section
+    9.7).
 
 ### Multi-Phase / Child Instructions (`(parent), (child)`)
 
@@ -991,6 +993,137 @@ slot riscv32f {
 }
 ```
 
+### 7. Separate Microarchitectural Latencies into Per-Implementation Override Files
+
+Destination operand latencies (for example, whether `mul` takes 1, 3, or 5
+cycles, or `div` takes 8 vs. 32 cycles) are properties of a **specific
+microarchitectural implementation**, not of the architectural ISA itself.
+Hardcoding `rd(3)` directly inside shared base `.isa` files couples your ISA
+definition to a single pipeline timing model.
+
+Instead, keep shared base `.isa` files timing-neutral (`default latency = 0;`
+for fast functional simulation, with no per-operand `(N)` annotations) and put
+**implementation-specific latencies in separate derived `.isa` files using
+`= override` and `latency:`**:
+
+```c
+// rv32im_base.isa — Architectural opcodes, operands, disasm, and semantics only
+slot riscv32i {
+  includes { #include "riscv_i_instructions.h" }
+  default size = 4;
+  default latency = 0;
+  opcodes {
+    add { : rs1, rs2 : rd },
+      disasm: "add", "%rd, %rs1, %rs2",
+      semfunc: "&::mpact::sim::riscv::RV32::RiscVIAdd";
+    lw { (: rs1, I_imm12), (: : rd) },
+      disasm: "lw", "%rd, %I_imm12(%rs1)",
+      semfunc: "&::mpact::sim::riscv::RV32::RiscVILw",
+               "&::mpact::sim::riscv::RV32::RiscVILwChild";
+  }
+}
+
+slot riscv32m {
+  includes { #include "riscv_m_instructions.h" }
+  default size = 4;
+  default latency = 0;
+  opcodes {
+    mul { : rs1, rs2 : rd },
+      disasm: "mul", "%rd, %rs1, %rs2",
+      semfunc: "&::mpact::sim::riscv::RV32::MMul";
+    div { : rs1, rs2 : rd },
+      disasm: "div", "%rd, %rs1, %rs2",
+      semfunc: "&::mpact::sim::riscv::RV32::MDiv";
+  }
+}
+```
+
+Multiple microarchitectural implementations of RISC-V can now live **side by
+side in the exact same directory**, each importing `rv32im_base.isa`, choosing
+its own C++ `namespace` and `isa` name, and overriding only the latencies (and,
+if needed, `resources:`) that differ:
+
+```c
+// rv32im_small_core.isa — Embedded core (2-cycle load, 4-cycle mul, iterative div)
+#include "rv32im_base.isa"
+
+isa RiscVSmallCore {
+  namespace sim::riscv::small_core;
+  slots { small_core; }
+}
+
+slot small_core : riscv32i, riscv32m {
+  default opcode =
+    disasm: "Illegal instruction at %(@:08x)",
+    semfunc: "&::mpact::sim::riscv::RiscVIllegalInstruction";
+  opcodes {
+    lw  = override, latency: rd(2);
+    mul = override, latency: rd(4);
+    div = override, latency: rd(32);
+  }
+}
+```
+
+```c
+// rv32im_fast_core.isa — High-frequency core (3-cycle load, 2-cycle pipelined mul)
+#include "rv32im_base.isa"
+
+isa RiscVFastCore {
+  namespace sim::riscv::fast_core;
+  slots { fast_core; }
+}
+
+slot fast_core : riscv32i, riscv32m {
+  default opcode =
+    disasm: "Illegal instruction at %(@:08x)",
+    semfunc: "&::mpact::sim::riscv::RiscVIllegalInstruction";
+  opcodes {
+    lw  = override, latency: rd(3);
+    mul = override, latency: rd(2);
+    div = override, latency: rd(10);
+  }
+}
+```
+
+In your `BUILD` file, give each implementation its own `mpact_isa_decoder`
+target and `prefix`:
+
+```python
+mpact_isa_decoder(
+    name = "rv32im_small_core_isa",
+    src = "rv32im_small_core.isa",
+    includes = ["rv32im_base.isa"],
+    isa_name = "RiscVSmallCore",
+    prefix = "rv32im_small_core",
+    deps = [":riscv_instructions"],
+)
+
+mpact_isa_decoder(
+    name = "rv32im_fast_core_isa",
+    src = "rv32im_fast_core.isa",
+    includes = ["rv32im_base.isa"],
+    isa_name = "RiscVFastCore",
+    prefix = "rv32im_fast_core",
+    deps = [":riscv_instructions"],
+)
+```
+
+Why this pattern works so well:
+
+*   **Zero duplication**: Operand lists, disassembly strings, child instruction
+    structure (even on split-phase loads like `lw`, where `latency: rd(2)`
+    automatically updates `rd` on the child writeback instruction), and C++
+    semantic functions stay in one canonical base file.
+*   **Side-by-side decoders in one directory**: Because each file sets a
+    distinct `prefix` and C++ `namespace`, both generated ISA decoders compile
+    cleanly in the same package—and can even be linked into the same binary (for
+    example, heterogeneous multi-core SoCs or A/B performance comparisons) while
+    sharing the exact same `.bin_fmt` extractors!
+*   **Note on `resources:`**: If your base slot defines resource hold windows
+    derived from destination latencies (such as `rd[..rd]`), remember to include
+    `resources:` alongside `latency:` in the `= override` entry when
+    re-evaluating resource windows for the new latency.
+
 --------------------------------------------------------------------------------
 
 ## 10. Common Pitfalls and Troubleshooting Checklist
@@ -998,9 +1131,10 @@ slot riscv32f {
 *   **Missing `default opcode` on a referenced slot**: Every slot referenced by
     `isa` or `bundle` **must** declare `default opcode = semfunc: "...";`.
     Without it, `decoder_gen` reports an error.
-*   **Missing destination operand latency**: If a slot does not set
-    `default latency = <expr>;`, then every destination operand in that slot
-    must explicitly specify either `(expr)` or `(*)`.
+*   **Negative destination operand latency**: Destination operand latency
+    expressions in non-templated slots must evaluate to a non-negative integer
+    (`>= 0`). (When omitted on an operand, latency uses the slot's
+    `default latency`, or `1` if none is declared.)
 *   **Mismatched `semfunc:` count on multi-part instructions**: If an opcode has
     a parent and child tuple `{ (: rs1, imm12), (: : rd) }`, `semfunc:` must
     list **two** strings (`semfunc: "&LoadIssue", "&LoadWriteback"`), not one.
