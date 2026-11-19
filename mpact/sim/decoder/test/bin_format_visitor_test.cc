@@ -637,4 +637,171 @@ TEST_F(BinFormatVisitorTest, InstructionGroupErrors) {
   EXPECT_TRUE(ptr != std::string::npos);
 }
 
+TEST_F(BinFormatVisitorTest, InstructionGroupInferredWidth) {
+  std::string file_name = testing::TempDir() + "/inferred_group_width.bin_fmt";
+  std::ofstream output_file(file_name, std::ofstream::out);
+  CHECK(output_file.good());
+  output_file << R"bin_fmt(
+decoder InferredWidthDecoder {
+  namespace sim::inferred_width;
+  opcode_enum = "isa::OpcodeEnum";
+  Inst16Group;
+  Combined32 = { Inst32GroupA, Inst32GroupB };
+};
+
+format Inst16Format[16] {
+  fields:
+    unsigned func4[4];
+    unsigned rs1[5];
+    unsigned rs2[5];
+    unsigned op[2];
+};
+
+format Inst32Format[32] {
+  fields:
+    unsigned bits[25];
+    unsigned opcode[7];
+};
+
+// Base format whose own width is inherited from Inst32Format.
+format SubBase32 : Inst32Format {
+  fields:
+    unsigned imm12[12];
+    unsigned rs1[5];
+    unsigned func3[3];
+    unsigned rd[5];
+    unsigned opcode[7];
+};
+
+// Group omitting '[width]' on a 16-bit base format.
+instruction group Inst16Group : Inst16Format {
+  c_add : Inst16Format : func4 == 0b1001, op == 0b10;
+};
+
+// Group omitting '[width]' on a base format with inherited 32-bit width,
+// merged with a sibling group that declares '[32]' explicitly.
+instruction group Inst32GroupA : SubBase32 {
+  addi : SubBase32 : func3 == 0b000, opcode == 0b001'0011;
+};
+
+instruction group Inst32GroupB[32] : SubBase32 {
+  ori : SubBase32 : func3 == 0b110, opcode == 0b001'0011;
+};
+)bin_fmt";
+  output_file.close();
+
+  std::vector<std::string> input_files = {file_name};
+  std::string output_dir = getenv(kTestUndeclaredOutputsDir);
+  constexpr char kPrefix[] = "inferred_group_width";
+
+  BinFormatVisitor visitor;
+  LogSink log_sink;
+  absl::AddLogSink(&log_sink);
+  EXPECT_TRUE(visitor
+                  .Process(input_files, "InferredWidthDecoder", kPrefix, paths_,
+                           output_dir)
+                  .ok())
+      << log_sink.error_log();
+  absl::RemoveLogSink(&log_sink);
+  EXPECT_TRUE(log_sink.error_log().empty()) << log_sink.error_log();
+
+  std::string decoder_hdr_path =
+      absl::StrCat(output_dir, "/", kPrefix, "_bin_decoder.h");
+  ASSERT_TRUE(FileExists(decoder_hdr_path));
+  std::ifstream decoder_hdr(decoder_hdr_path);
+  CHECK(decoder_hdr.good());
+  std::string hdr_str((std::istreambuf_iterator<char>(decoder_hdr)),
+                      (std::istreambuf_iterator<char>()));
+  EXPECT_TRUE(RE2::PartialMatch(hdr_str, R"(DecodeInst16Group\(uint16_t\b)"))
+      << hdr_str;
+  EXPECT_TRUE(RE2::PartialMatch(hdr_str, R"(DecodeCombined32\(uint32_t\b)"))
+      << hdr_str;
+}
+
+TEST_F(BinFormatVisitorTest, InstructionGroupInferredWidthErrors) {
+  std::string file_name =
+      testing::TempDir() + "/inferred_group_width_errors.bin_fmt";
+  std::ofstream output_file(file_name, std::ofstream::out);
+  CHECK(output_file.good());
+  output_file << R"bin_fmt(
+decoder InferredWidthErrors {
+  namespace sim::inferred_width_errors;
+  opcode_enum = "isa::OpcodeEnum";
+  WideGroup;
+  Group32;
+  UndefBaseGroup;
+  InvalidBaseGroup;
+};
+
+format Inst32Format[32] {
+  fields:
+    unsigned bits[32];
+};
+
+format Format33[33] {
+  fields:
+    unsigned bits[33];
+};
+
+format Inst72Format[72] {
+  fields:
+    unsigned bits[72];
+};
+
+format NoWidthFormat {
+  fields:
+    unsigned bits[32];
+};
+
+instruction group WideGroup : Inst72Format {
+  wide_inst : Inst72Format : bits == 0;
+};
+
+instruction group Group32 : Inst32Format {
+  bad_len : Format33 : bits == 0;
+};
+
+instruction group UndefBaseGroup : MissingFormat {
+};
+
+instruction group InvalidBaseGroup : NoWidthFormat {
+  bad_base : NoWidthFormat : bits == 0;
+};
+)bin_fmt";
+  output_file.close();
+
+  std::vector<std::string> input_files = {file_name};
+  std::string output_dir = getenv(kTestUndeclaredOutputsDir);
+
+  BinFormatVisitor visitor;
+  LogSink log_sink;
+  absl::AddLogSink(&log_sink);
+  EXPECT_FALSE(visitor
+                   .Process(input_files, "InferredWidthErrors",
+                            "inferred_group_width_errors", paths_, output_dir)
+                   .ok());
+  absl::RemoveLogSink(&log_sink);
+
+  EXPECT_NE(
+      log_sink.error_log().find(
+          "Error: Instruction group 'WideGroup': width must be <= 64 bits"),
+      std::string::npos)
+      << log_sink.error_log();
+  EXPECT_NE(log_sink.error_log().find(
+                "Error: Length of format 'Format33' (33) differs from the "
+                "declared width of the instruction group (32)"),
+            std::string::npos)
+      << log_sink.error_log();
+  EXPECT_NE(log_sink.error_log().find(
+                "Error: Undefined format 'MissingFormat' used by instruction "
+                "group 'UndefBaseGroup'"),
+            std::string::npos)
+      << log_sink.error_log();
+  EXPECT_NE(log_sink.error_log().find(
+                "Error: Format 'NoWidthFormat': must specify a width or "
+                "inherited format"),
+            std::string::npos)
+      << log_sink.error_log();
+}
+
 }  // namespace

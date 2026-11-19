@@ -944,10 +944,10 @@ InstructionGroup* BinFormatVisitor::VisitInstructionGroupDef(
         file_names_[context_file_map_.at(ctx)], ctx->start,
         absl::StrCat(group_name, ": illegal use of format name"));
   }
-  // If the width is specified, this is a single instruction group with
-  // format definitions.
-  if (ctx->number() != nullptr) {
-    int width = ConvertToInt(ctx->number());
+  // If an instruction format is specified, this is a single instruction group
+  // with format definitions (the width may be explicit or inferred from the
+  // base format).
+  if (ctx->inst_format != nullptr) {
     std::string format_name = ctx->inst_format->getText();
     auto iter = format_decl_map_.find(format_name);
     if (iter == format_decl_map_.end()) {
@@ -956,27 +956,30 @@ InstructionGroup* BinFormatVisitor::VisitInstructionGroupDef(
           absl::StrCat("Undefined format '", format_name,
                        "' used by instruction group '", group_name, "'"));
       return nullptr;
-    } else {
-      VisitFormatDef(iter->second, encoding_info);
-      auto* format = encoding_info->GetFormat(format_name);
-      // Verify that the format width = declared width and also <= 64 bits wide.
-      if (format->declared_width() != width) {
-        error_listener_->semanticError(
-            file_names_[context_file_map_.at(format_decl_map_.at(format_name))],
-            ctx->start,
-            absl::StrCat("Width of format '", format_name, "' (",
-                         format->declared_width(),
-                         ") differs from the declared width of instruction "
-                         "group '",
-                         group_name, "' (", width, ")"));
-      }
-      if (format->declared_width() > 64) {
-        error_listener_->semanticError(
-            file_names_[context_file_map_.at(format_decl_map_.at(format_name))],
-            ctx->start,
-            absl::StrCat("Instruction group '", group_name,
-                         "': width must be <= 64 bits"));
-      }
+    }
+    VisitFormatDef(iter->second, encoding_info);
+    auto* format = encoding_info->GetFormat(format_name);
+    if (format == nullptr) return nullptr;
+    int width = (ctx->width != nullptr) ? ConvertToInt(ctx->width->number())
+                                        : format->declared_width();
+    // Verify that the format width matches any declared width and is <= 64
+    // bits wide.
+    if ((ctx->width != nullptr) && (format->declared_width() != width)) {
+      error_listener_->semanticError(
+          file_names_[context_file_map_.at(format_decl_map_.at(format_name))],
+          ctx->start,
+          absl::StrCat("Width of format '", format_name, "' (",
+                       format->declared_width(),
+                       ") differs from the declared width of instruction "
+                       "group '",
+                       group_name, "' (", width, ")"));
+    }
+    if ((width > 64) || (format->declared_width() > 64)) {
+      error_listener_->semanticError(
+          file_names_[context_file_map_.at(format_decl_map_.at(format_name))],
+          ctx->start,
+          absl::StrCat("Instruction group '", group_name,
+                       "': width must be <= 64 bits"));
     }
     auto inst_group_res =
         encoding_info->AddInstructionGroup(group_name, width, format_name);

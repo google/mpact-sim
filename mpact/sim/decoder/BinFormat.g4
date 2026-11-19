@@ -38,8 +38,9 @@
 //      structs and unions alongside functional extractors/inserters.
 //
 // 3. Instruction groups ('instruction group'):
-//    - Group instruction encodings that share a bit width (up to 64 bits) and
-//      whose formats match or derive from a common base format, or merge
+//    - Group instruction encodings that share a bit width (up to 64 bits,
+//      either declared explicitly or inferred from the group's base format)
+//      and whose formats match or derive from a common base format, or merge
 //      existing compatible instruction groups ('= { Group1, Group2 }').
 //    - Each instruction encoding constrains fields or overlays using relational
 //      operators ('==', '!=', '>', '>=', '<', '<=') against numeric literals or
@@ -199,12 +200,15 @@ bit_index_range
   ;
 
 // Defines either:
-//   1. A single instruction group of 'number'-bit instructions (up to 64 bits)
-//      whose encoding formats are 'inst_format' or derive from 'inst_format'.
+//   1. A single instruction group of instructions (up to 64 bits wide) whose
+//      encoding formats are 'inst_format' or derive from 'inst_format'. The
+//      explicit bit width ('[number]') is optional; when omitted, the group's
+//      width is inferred from 'inst_format' (if both are given, they must
+//      match).
 //   2. A composite instruction group formed by merging two or more previously
 //      defined instruction groups that share the same width and base format.
 instruction_group_def
-  : INSTRUCTION GROUP name=IDENT '[' number ']' ':' inst_format=IDENT
+  : INSTRUCTION GROUP name=IDENT width=index? ':' inst_format=IDENT
     '{' instruction_def_list '}' ';'?
   | INSTRUCTION GROUP name=IDENT '=' '{' group_name_list '}' ';'?
   ;

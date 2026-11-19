@@ -129,7 +129,8 @@ format BType[32] : Inst32 {
 };
 
 // 3. Define the instruction encodings and field constraints.
-instruction group MiniRisc32[32] : Inst32 {
+//    ('[32]' is optional here; when omitted, Inst32's width is inferred.)
+instruction group MiniRisc32 : Inst32 {
   add  : RType : funct7 == 0b000'0000, funct3 == 0b000, opcode == 0b011'0011;
   addi : IType : funct3 == 0b000, opcode == 0b001'0011;
   beq  : BType : funct3 == 0b000, opcode == 0b110'0011;
@@ -402,10 +403,13 @@ What format inheritance does:
 1.  **Width inheritance & checking**: If `[width]` is omitted on the child
     format, it inherits the parent format's bit width. If `[width]` is specified
     on both, `bin_format_gen` verifies that they match.
-2.  **Instruction group membership**: Every `instruction group` specifies a base
-    format (`instruction group Name[width] : BaseFormat`). Only formats equal to
+2.  **Instruction group membership & width inference**: Every
+    `instruction group` specifies a base format
+    (`instruction group Name : BaseFormat` or
+    `instruction group Name[width] : BaseFormat`). Only formats equal to
     `BaseFormat` or transitively derived from `BaseFormat` may be used in that
-    group.
+    group, and when `[width]` is omitted on the group, its bit width is inferred
+    directly from `BaseFormat`.
 3.  **Extractor promotion**: Non-conflicting field and overlay extractors
     defined in child formats are automatically promoted into their ancestor
     format's namespace as convenience wrappers (provided no sibling/ancestor
@@ -542,6 +546,11 @@ describe *which bit values identify each instruction*.
 ### Single Instruction Group
 
 ```c
+instruction group GroupName : BaseFormat {
+  // instruction encodings...
+};
+
+// Or with an explicit '[width]' (checked against BaseFormat):
 instruction group GroupName[width] : BaseFormat {
   // instruction encodings...
 };
@@ -549,17 +558,20 @@ instruction group GroupName[width] : BaseFormat {
 
 Rules for a single instruction group:
 
-*   **`[width]`**: Every instruction in the group has this exact bit width (**up
-    to 64 bits**). If your ISA has both 16-bit compressed instructions and
-    32-bit standard instructions (like RISC-V C + G), place the 16-bit
-    instructions in a `[16]` group and the 32-bit instructions in a `[32]`
-    group. (For VLIW bundles wider than 64 bits, define a bundle `format` for
-    the full bundle width and define separate `instruction group`s for each
-    `<= 64`-bit instruction slot format!)
+*   **Bit width (`[width]`, optional)**: Every instruction in the group has the
+    same bit width (**up to 64 bits**). When `[width]` is omitted, the group's
+    bit width is inferred automatically from `BaseFormat` (including when
+    `BaseFormat` itself inherits its width from an ancestor format). When
+    `[width]` is specified explicitly, `bin_format_gen` verifies that it matches
+    `BaseFormat`'s width. If your ISA has both 16-bit compressed instructions
+    and 32-bit standard instructions (like RISC-V C + G), place the 16-bit
+    instructions in a 16-bit group (`: Inst16Base`) and the 32-bit instructions
+    in a 32-bit group (`: Inst32Base`). (For VLIW bundles wider than 64 bits,
+    define a bundle `format` for the full bundle width and define separate
+    `instruction group`s for each `<= 64`-bit instruction slot format!)
 *   **`: BaseFormat`**: Every instruction encoding in the group must reference
     either `BaseFormat` itself or a format that inherits (directly or
-    indirectly) from `BaseFormat`, and `BaseFormat`'s width must equal
-    `[width]`.
+    indirectly) from `BaseFormat`.
 
 ### Standard Instruction Encoding and Constraints
 
@@ -932,6 +944,11 @@ Why this works so well:
     formats shares identical C++ extractor namespaces (`r_type::ExtractRs1`,
     `v_arith::ExtractVm`), allowing C++ operand getter libraries (`*_getters.h`)
     to be reused across multiple simulator variants.
+3.  **Decoupled group widths**: Because `instruction group Name : BaseFormat`
+    infers its bit width from `BaseFormat` when `[width]` is omitted, shared
+    instruction-encoding files do not need to hardcode slot widths—making it
+    easy to reuse encoding groups across related ISA or VLIW variants whose
+    format files widen or narrow a slot while preserving field names.
 
 ### 2. Split Instruction Encodings by Extension or Functional Unit
 
@@ -1115,10 +1132,11 @@ mpact_bin_fmt_decoder(
     points to the C++ `OpcodeEnum` namespace from `.isa`, and
     `includes { #include "<prefix>_enums.h" }` is present in `decoder { ... }`.
 *   **VLIW bundle wider than 64 bits**: Do **not** create an `instruction group`
-    with `[width]` > 64. Instead, define a `format Bundle[128]` (or `[256]`)
+    wider than 64 bits (whether via an explicit `[width]` > 64 or a `BaseFormat`
+    wider than 64 bits). Instead, define a `format Bundle[128]` (or `[256]`)
     containing sub-formats for each slot (`format AluSlot alu[2];`), and define
-    separate `instruction group AluGroup[42] : AluSlot { ... };` blocks for each
-    slot!
+    separate `instruction group AluGroup : AluSlot { ... };` blocks for each
+    `<= 64`-bit slot!
 
 --------------------------------------------------------------------------------
 
